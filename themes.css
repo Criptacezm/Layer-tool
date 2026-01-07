@@ -812,18 +812,43 @@
 [data-theme="liquid-glass"] .form-input,
 [data-theme="liquid-glass"] .form-textarea,
 [data-theme="liquid-glass"] .form-select {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(20, 20, 50, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 [data-theme="liquid-glass"] .form-input:focus,
 [data-theme="liquid-glass"] .form-textarea:focus,
 [data-theme="liquid-glass"] .form-select:focus {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(25, 25, 60, 0.98);
   border-color: rgba(120, 180, 255, 0.4);
   box-shadow: 0 0 20px rgba(120, 180, 255, 0.15);
+}
+
+/* Fix for dropdown options in Liquid Glass theme */
+[data-theme="liquid-glass"] .form-select option {
+  background-color: #1a1a3e;
+  color: #ffffff;
+  padding: 12px;
+}
+
+[data-theme="liquid-glass"] .form-select option:hover,
+[data-theme="liquid-glass"] .form-select option:focus,
+[data-theme="liquid-glass"] .form-select option:checked {
+  background-color: #2a2a5e;
+  color: #ffffff;
+}
+
+[data-theme="liquid-glass"] select.form-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 [data-theme="liquid-glass"] .project-detail-sidebar,
@@ -1460,6 +1485,28 @@
     radial-gradient(ellipse at 20% 20%, rgba(60, 120, 200, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 80%, rgba(100, 80, 200, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(50, 150, 200, 0.04) 0%, transparent 70%);
+}
+
+/* Liquid Glass Light Mode - Form Select Fix */
+[data-theme="liquid-glass"][data-mode="light"] .form-input,
+[data-theme="liquid-glass"][data-mode="light"] .form-textarea,
+[data-theme="liquid-glass"][data-mode="light"] .form-select {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(60, 120, 200, 0.2);
+  color: rgba(15, 30, 60, 0.9);
+}
+
+[data-theme="liquid-glass"][data-mode="light"] .form-select option {
+  background-color: #ffffff;
+  color: #1a2040;
+  padding: 12px;
+}
+
+[data-theme="liquid-glass"][data-mode="light"] .form-select option:hover,
+[data-theme="liquid-glass"][data-mode="light"] .form-select option:focus,
+[data-theme="liquid-glass"][data-mode="light"] .form-select option:checked {
+  background-color: #e8f0f8;
+  color: #1a2040;
 }
 
 /* Mode Toggle Icons */
