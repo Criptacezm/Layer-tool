@@ -250,37 +250,8 @@ function loadIssues() {
   } catch (e) {
     console.error('Failed to load issues:', e);
   }
-  // Return sample data if empty
-  return [
-    {
-      id: 'LAYER-42',
-      title: 'Implement dark mode persistence across sessions',
-      status: 'in-progress',
-      priority: 'high',
-      description: 'We need dark mode to persist even after refresh and across tabs.',
-      assignee: 'Zeyad Maher',
-      dueDate: '2025-12-31',
-      updated: '2 hours ago',
-    },
-    {
-      id: 'LAYER-38',
-      title: 'Add keyboard shortcuts for common actions',
-      status: 'todo',
-      priority: 'medium',
-      description: 'Users should be able to navigate and perform actions using keyboard shortcuts.',
-      assignee: 'Zeyad Maher',
-      updated: '1 day ago',
-    },
-    {
-      id: 'LAYER-25',
-      title: 'Optimize bundle size for faster load times',
-      status: 'review',
-      priority: 'high',
-      description: 'Current bundle size is too large, affecting initial load performance.',
-      assignee: 'Zeyad Maher',
-      updated: '3 days ago',
-    },
-  ];
+  // Return empty array for fresh start
+  return [];
 }
 
 function saveIssues(issues) {
