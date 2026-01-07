@@ -595,10 +595,10 @@ body {
   gap: 10px;
   width: 100%;
   padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+  background: var(--surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--foreground);
   font-size: 14px;
@@ -608,14 +608,14 @@ body {
 }
 
 .focus-toggle-btn:hover {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(139, 92, 246, 0.25));
-  border-color: rgba(59, 130, 246, 0.4);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .focus-toggle-btn .icon {
-  color: hsl(217, 91%, 60%);
+  color: var(--primary);
 }
 
 .sidebar.collapsed .focus-toggle-btn span {
@@ -676,10 +676,10 @@ body {
   gap: 10px;
   width: 100%;
   padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+  background: var(--surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--foreground);
   font-size: 14px;
@@ -689,16 +689,16 @@ body {
 }
 
 .sign-in-btn:hover {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(139, 92, 246, 0.25));
-  border-color: rgba(59, 130, 246, 0.4);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .sign-in-btn .icon {
   width: 18px;
   height: 18px;
-  color: hsl(217, 91%, 60%);
+  color: var(--primary);
 }
 
 .sidebar.collapsed .sign-in-btn span {
@@ -708,6 +708,28 @@ body {
 .sidebar.collapsed .sign-in-btn {
   justify-content: center;
   padding: 12px;
+}
+
+/* Workspace Action Buttons */
+.workspace-action-btn {
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.workspace-action-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.workspace-action-btn .icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* Sign Out Button */
@@ -797,6 +819,17 @@ body {
   text-decoration: underline;
 }
 
+/* Toast Animation */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Main Content */
 .main-content {
@@ -1087,14 +1120,23 @@ body {
 .mobile-header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+.mobile-logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(94, 106, 210, 0.3));
 }
 
 .mobile-header-logo {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--foreground);
   letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--muted-foreground) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .mobile-header-right {
@@ -1302,7 +1344,7 @@ body {
     border-radius: 4px;
   }
 
-  /* Mobile Schedule/Calendar */
+  /* Mobile Schedule/Calendar - Compact Professional */
   .schedule-view-wrapper {
     flex-direction: column;
     height: auto;
@@ -1314,82 +1356,168 @@ body {
   }
 
   .schedule-view {
-    padding: 0 16px 16px;
+    padding: 0 12px 12px;
+    overflow: visible;
   }
 
   .schedule-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    padding: 16px 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 0;
+    flex-wrap: nowrap;
   }
 
   .schedule-title-section {
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  
+  .schedule-title-section .view-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
   }
 
   .schedule-subtitle {
-    font-size: 14px;
+    font-size: 12px;
+    color: var(--muted-foreground);
   }
 
   .calendar-controls {
-    width: 100%;
-    justify-content: space-between;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    padding: 0;
+  }
+
+  .calendar-nav-btns {
     background: var(--surface);
-    padding: 8px;
-    border-radius: 14px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+  }
+
+  .calendar-nav-btn {
+    padding: 6px 10px;
+  }
+  
+  .calendar-nav-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .calendar-controls .btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+  
+  .calendar-controls .btn svg {
+    width: 12px;
+    height: 12px;
   }
 
   .calendar-grid {
-    border-radius: 20px;
-    font-size: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    font-size: 11px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
 
   .weekday-header {
-    padding: 12px 4px;
-    font-size: 10px;
+    padding: 8px 2px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
   }
 
   .calendar-day {
-    padding: 6px;
-    min-height: 65px;
+    padding: 4px;
+    min-height: 52px;
     border-radius: 0;
+  }
+  
+  .calendar-day .day-header {
+    margin-bottom: 2px;
   }
 
   .calendar-day .day-number {
-    width: 26px;
-    height: 26px;
-    font-size: 12px;
-    font-weight: 700;
-    border-radius: 8px;
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
   }
 
   .calendar-day .day-name {
     display: none;
   }
-
-  .calendar-task {
-    font-size: 10px;
-    padding: 4px 6px;
-    border-radius: 6px;
+  
+  .day-tasks-container {
+    gap: 2px;
   }
 
-  .task-time-mini {
+  .calendar-task {
+    font-size: 9px;
+    padding: 3px 5px;
+    border-radius: 4px;
+    border-left-width: 2px;
+  }
+  
+  .calendar-task .task-mini {
+    gap: 4px;
+  }
+
+  .task-time-mini,
+  .recurring-badge {
     display: none;
+  }
+  
+  .task-color-dot {
+    width: 6px;
+    height: 6px;
   }
 
   .task-title-mini {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
+    max-width: 40px;
   }
 
   .add-task-hint {
-    font-size: 8px;
     display: none;
+  }
+  
+  /* Expanded task on mobile */
+  .calendar-task.expanded {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 90px;
+    z-index: 1000;
+    font-size: 13px;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
+    border-left-width: 4px;
+  }
+  
+  .calendar-task.expanded .task-title-mini {
+    font-size: 14px;
+    max-width: none;
+  }
+  
+  .calendar-task.expanded .task-expanded-details {
+    display: block;
+    padding-top: 10px;
+    margin-top: 8px;
+  }
+  
+  .calendar-task.expanded .task-time-mini,
+  .calendar-task.expanded .recurring-badge {
+    display: inline-flex;
   }
 
   /* Mobile Backlog */
@@ -1624,57 +1752,131 @@ body {
     padding: 4px 20px 32px;
   }
 
-  /* Mobile Project Detail */
+  /* Mobile Project Detail - Compact Professional */
   .project-detail {
     flex-direction: column;
   }
 
   .project-detail-main {
-    padding: 16px;
+    padding: 12px;
   }
 
   .project-detail-header {
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 24px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: nowrap;
   }
 
   .back-btn {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     background: var(--surface);
     border: 1px solid var(--glass-border);
-    align-self: flex-start;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  
+  .back-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .project-detail-title {
-    font-size: 22px;
+    font-size: 18px;
+    font-weight: 700;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .project-detail-sidebar {
     display: none;
   }
+  
+  /* Compact Project Info Section */
+  .project-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .project-status-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
 
   .kanban-board {
-    padding-bottom: 24px;
-    gap: 12px;
-    margin: 0 -8px;
-    padding: 0 8px 24px;
+    padding-bottom: 16px;
+    gap: 8px;
+    margin: 0 -4px;
+    padding: 0 4px 16px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .kanban-column {
-    width: 280px;
-    min-width: 280px;
-    border-radius: 16px;
+    width: 240px;
+    min-width: 240px;
+    border-radius: 12px;
   }
 
   .kanban-column-header {
-    padding: 14px 16px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .kanban-column-header .column-count {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+  
+  .kanban-tasks {
+    padding: 8px;
+    gap: 6px;
   }
 
   .kanban-task {
-    padding: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  
+  .kanban-task .task-title {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  
+  /* Compact Add Task on Mobile */
+  .kanban-add-task {
+    padding: 8px 12px;
+    font-size: 12px;
+    margin: 0 8px 8px;
+  }
+  
+  /* Mobile Project Actions */
+  .project-actions-mobile {
+    position: fixed;
+    bottom: 70px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  
+  .project-actions-mobile .btn {
+    flex: 1;
+    padding: 12px;
     border-radius: 12px;
+    font-size: 13px;
   }
 
   /* Mobile Focus Timer */
