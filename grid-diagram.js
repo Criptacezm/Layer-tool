@@ -21,6 +21,7 @@ let gripResizingCellId = null;
 let gripResizeStartSize = { width: 200, height: 120 };
 let gripResizeStartPos = { x: 0, y: 0 };
 let gripIsInitialOpen = false; // Track initial open for animation
+let gripEraserMode = false; // NEW: Eraser mode for deleting connections
 
 // Text boxes state
 let gripTextBoxes = [];
@@ -216,38 +217,53 @@ function renderGripDiagramOverlay() {
   
   overlay.innerHTML = `
     <div class="grip-diagram-container clickup-style">
-      <!-- Header -->
+      <!-- Professional Enhanced Header -->
       <div class="grip-diagram-header clickup-header">
         <div class="grip-header-left">
-          <button type="button" class="grip-back-btn" id="gripBackBtn">
+          <button type="button" class="grip-back-btn" id="gripBackBtn" title="Back to project">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
           </button>
+          <div class="header-divider"></div>
           <div class="whiteboard-title">
-            <span class="whiteboard-icon">📋</span>
-            <h2>Whiteboard</h2>
-            <button class="whiteboard-star" title="Add to favorites">
+            <div class="whiteboard-icon-wrapper">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18"/>
+                <path d="M9 21V9"/>
               </svg>
-            </button>
+            </div>
+            <div class="whiteboard-title-content">
+              <h2>Whiteboard</h2>
+              <span class="whiteboard-subtitle">${gripCells.length} cells • ${gripConnections.length} connections</span>
+            </div>
           </div>
         </div>
         <div class="grip-header-center">
-          <!-- Quick Actions -->
-          <button type="button" class="header-action-btn" id="selectAllBtn" title="Select All (Ctrl+A)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            <span>Select All</span>
-          </button>
-          <button type="button" class="header-action-btn" id="fitToScreenBtn" title="Fit to Screen">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
-            </svg>
-          </button>
+          <!-- Quick Actions with better styling -->
+          <div class="header-action-group">
+            <button type="button" class="header-action-btn" id="selectAllBtn" title="Select All (Ctrl+A)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span>Select All</span>
+            </button>
+            <button type="button" class="header-action-btn" id="fitToScreenBtn" title="Fit to Screen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+              </svg>
+              <span class="action-label-desktop">Fit View</span>
+            </button>
+            <button type="button" class="header-action-btn" id="centerViewBtn" title="Center View">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="header-divider"></div>
           <button type="button" class="header-action-btn ${gripBacklogOpen ? 'active' : ''}" id="toggleBacklogBtn" title="Toggle Backlog">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
@@ -255,6 +271,7 @@ function renderGripDiagramOverlay() {
               <path d="M9 12h6M9 16h6"/>
             </svg>
             <span>Backlog</span>
+            <span class="backlog-count">${backlogStats.todo + backlogStats.in_progress}</span>
           </button>
         </div>
         <div class="grip-header-right">
@@ -269,6 +286,13 @@ function renderGripDiagramOverlay() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
             </button>
           </div>
+          <div class="header-divider"></div>
+          <button class="header-icon-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7v6h6"/>
+              <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6.36 2.64L3 13"/>
+            </svg>
+          </button>
           <button class="share-btn" title="Share">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -283,7 +307,7 @@ function renderGripDiagramOverlay() {
       <div class="grip-diagram-body clickup-body">
         <!-- Canvas Area -->
         <div class="grip-canvas-wrapper ${gripBacklogOpen ? 'with-backlog' : ''}">
-          <div class="grip-diagram-canvas clickup-canvas ${gripActiveTool === 'pan' ? 'pan-mode' : ''}" id="gripCanvas">
+          <div class="grip-diagram-canvas clickup-canvas ${gripActiveTool === 'pan' ? 'pan-mode' : ''} ${gripEraserMode ? 'eraser-mode' : ''}" id="gripCanvas">
             <div class="grip-canvas-transform" id="gripCanvasTransform" style="transform: scale(${gripZoomLevel}); transform-origin: 0 0;">
               <svg class="grip-connections-layer" id="gripConnectionsSvg"></svg>
               <div class="grip-cells-layer" id="gripCellsContainer"></div>
@@ -291,6 +315,7 @@ function renderGripDiagramOverlay() {
               <div class="grip-textboxes-layer" id="gripTextBoxesContainer"></div>
             </div>
             ${gripIsDraggingConnection ? '<div class="grip-connect-hint">Release on another cell to connect</div>' : ''}
+            ${gripEraserMode ? '<div class="grip-eraser-hint">Click on connections to delete them • Press E or Esc to exit</div>' : ''}
           </div>
           
           <!-- Selection info bar -->
@@ -377,7 +402,7 @@ function renderGripDiagramOverlay() {
       <!-- Hidden file input for image import -->
       <input type="file" id="gripImageInput" accept="image/*" style="display: none;" />
       
-      <!-- Bottom Toolbar -->
+      <!-- Bottom Toolbar - Minimalistic with smooth animations -->
       <div class="whiteboard-bottom-toolbar" id="whiteboardToolbar">
         <div class="toolbar-group toolbar-main">
           <button type="button" class="toolbar-tool ${gripActiveTool === 'select' ? 'active' : ''}" data-tool="select" title="Select (V)">
@@ -395,17 +420,50 @@ function renderGripDiagramOverlay() {
           
           <div class="toolbar-divider"></div>
           
-          <button type="button" class="toolbar-tool toolbar-tool-task" id="gripAddBtn" title="Add Task Card">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M9 12l2 2 4-4"/>
-            </svg>
-            <span class="toolbar-label">Task</span>
-          </button>
+          <div class="toolbar-dropdown-wrapper" id="cellTypeDropdown">
+            <button type="button" class="toolbar-tool toolbar-tool-task" id="gripAddBtn" title="Add Cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M12 8v8M8 12h8"/>
+              </svg>
+              <span class="toolbar-label">Add</span>
+              <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="toolbar-dropup-menu" id="cellTypeMenu">
+              <button type="button" class="dropup-item" onclick="addGripCell(); closeCellTypeMenu();">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+                <span>Task Cell</span>
+                <small>Simple task card</small>
+              </button>
+              <button type="button" class="dropup-item" onclick="addDrawerCell(); closeCellTypeMenu();">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <line x1="8" y1="9" x2="16" y2="9"/>
+                  <line x1="8" y1="13" x2="16" y2="13"/>
+                  <line x1="8" y1="17" x2="16" y2="17"/>
+                </svg>
+                <span>Drawer Cell</span>
+                <small>List with connectable items</small>
+              </button>
+            </div>
+          </div>
           
-          <button type="button" class="toolbar-tool" id="gripConnectBtn" title="Arrow - Drag from connection points (A)">
+          <button type="button" class="toolbar-tool ${gripConnectMode ? 'active' : ''}" id="gripConnectBtn" title="Connect (A)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+          
+          <button type="button" class="toolbar-tool ${gripEraserMode ? 'active toolbar-tool-eraser-active' : ''}" id="gripEraserBtn" title="Eraser - Click connections to delete (E)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 20H9"/>
+              <path d="M16.466 6.534a5 5 0 0 1 0 7.07L12 18.07l-4.536-4.536a5 5 0 0 1 7.07-7.07l.93.93.932-.93a5 5 0 0 1 7.07 0l-7 7.07z"/>
+              <path d="m9.568 15.568 3.5-3.5"/>
             </svg>
           </button>
           
@@ -427,11 +485,10 @@ function renderGripDiagramOverlay() {
           
           ${getSelectedCellHasConnections() ? `
           <div class="toolbar-divider"></div>
-          <button type="button" class="toolbar-tool" id="deleteLinksBtn" title="Delete Links" style="background: #ef4444; color: white;">
+          <button type="button" class="toolbar-tool toolbar-tool-danger" id="deleteLinksBtn" title="Delete All Links">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
-            <span class="toolbar-label">Delete Links</span>
           </button>
           ` : ''}
         </div>
@@ -441,8 +498,8 @@ function renderGripDiagramOverlay() {
         <div class="toolbar-group toolbar-extras">
           <button type="button" class="toolbar-tool toolbar-ai" id="gripAiChatToggle" title="AI Assistant">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2a10 10 0 1010 10H12V2z"/>
-              <path d="M12 2a7 7 0 017 7h-7V2z"/>
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+              <path d="M8 10h.01M12 10h.01M16 10h.01"/>
             </svg>
           </button>
         </div>
@@ -570,11 +627,30 @@ function setupGripEventListeners() {
   // Header buttons
   const backBtn = document.getElementById('gripBackBtn');
   const connectBtn = document.getElementById('gripConnectBtn');
+  const eraserBtn = document.getElementById('gripEraserBtn');
   const addBtn = document.getElementById('gripAddBtn');
+  const cellTypeDropdown = document.getElementById('cellTypeDropdown');
+  const centerViewBtn = document.getElementById('centerViewBtn');
   
   if (backBtn) backBtn.addEventListener('click', closeGripDiagram);
   if (connectBtn) connectBtn.addEventListener('click', toggleGripConnectMode);
-  if (addBtn) addBtn.addEventListener('click', addGripCell);
+  if (eraserBtn) eraserBtn.addEventListener('click', toggleGripEraserMode);
+  if (centerViewBtn) centerViewBtn.addEventListener('click', centerCanvasView);
+  
+  // Add cell dropdown toggle
+  if (addBtn && cellTypeDropdown) {
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCellTypeMenu();
+    });
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#cellTypeDropdown')) {
+      closeCellTypeMenu();
+    }
+  });
   
   // Global mouse/touch events for dragging
   document.addEventListener('mousemove', handleGripMouseMove);
@@ -593,9 +669,46 @@ function setupGripEventListeners() {
           gripConnectFromPosition = null;
           renderGripDiagramOverlay();
         }
+        // Exit eraser mode on canvas click
+        if (gripEraserMode && !e.target.closest('.grip-connection-group')) {
+          // Keep eraser mode active, user may want to delete more
+        }
       }
     });
   }
+}
+
+// Toggle eraser mode for deleting connections
+function toggleGripEraserMode() {
+  gripEraserMode = !gripEraserMode;
+  // Disable connect mode when eraser is on
+  if (gripEraserMode) {
+    gripConnectMode = false;
+    gripConnectFromId = null;
+    gripConnectFromPosition = null;
+  }
+  renderGripDiagramOverlay();
+}
+
+// Center canvas view
+function centerCanvasView() {
+  const canvas = document.getElementById('gripCanvas');
+  if (!canvas || gripCells.length === 0) return;
+  
+  // Find bounding box of all cells
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  gripCells.forEach(cell => {
+    minX = Math.min(minX, cell.x);
+    minY = Math.min(minY, cell.y);
+    maxX = Math.max(maxX, cell.x + (cell.width || 200));
+    maxY = Math.max(maxY, cell.y + (cell.height || 120));
+  });
+  
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  
+  canvas.scrollLeft = centerX * gripZoomLevel - canvas.clientWidth / 2;
+  canvas.scrollTop = centerY * gripZoomLevel - canvas.clientHeight / 2;
 }
 
 function renderGripCells() {
@@ -606,11 +719,33 @@ function renderGripCells() {
     const width = cell.width || DEFAULT_CELL_WIDTH;
     const height = cell.height || DEFAULT_CELL_HEIGHT;
     const hasComment = cell.comment && cell.comment.trim().length > 0;
+    const isDrawer = cell.isDrawer === true;
+    
+    // Render drawer items if this is a drawer cell - with left/right connection points and drag handle
+    const drawerItemsHtml = isDrawer && cell.drawerItems ? cell.drawerItems.map((item, idx) => `
+      <div class="drawer-item" data-cell-id="${cell.id}" data-item-id="${item.id}" data-item-index="${idx}" draggable="true" ondblclick="handleDrawerItemDoubleClick(event, ${cell.id}, ${item.id})">
+        <div class="drawer-item-connection-point drawer-item-conn-left" data-cell-id="${cell.id}" data-item-id="${item.id}" data-position="item-left" title="Connect from left"></div>
+        <div class="drawer-item-handle" data-cell-id="${cell.id}" data-item-id="${item.id}" title="Drag to reorder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+            <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
+            <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+          </svg>
+        </div>
+        <span class="drawer-item-text" contenteditable="false" data-cell-id="${cell.id}" data-item-id="${item.id}" onclick="event.stopPropagation()">${item.text}</span>
+        <button type="button" class="drawer-item-delete" onclick="deleteDrawerItem(${cell.id}, ${item.id})" title="Delete item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+        <div class="drawer-item-connection-point drawer-item-conn-right" data-cell-id="${cell.id}" data-item-id="${item.id}" data-position="item-right" title="Connect from right"></div>
+      </div>
+    `).join('') : '';
     
     return `
-    <div class="grip-cell ${gripSelectedCellId === cell.id ? 'selected' : ''} ${gripConnectMode ? 'connect-mode' : ''} ${gripConnectFromId === cell.id ? 'connect-from' : ''}"
+    <div class="grip-cell ${isDrawer ? 'grip-cell-drawer' : ''} ${gripSelectedCellId === cell.id ? 'selected' : ''} ${gripConnectMode ? 'connect-mode' : ''} ${gripConnectFromId === cell.id ? 'connect-from' : ''}"
          id="gripCell-${cell.id}"
          data-cell-id="${cell.id}"
+         data-is-drawer="${isDrawer}"
          style="left: ${cell.x}px; top: ${cell.y}px; width: ${width}px; min-height: ${height}px;"
          ${hasComment ? `data-comment="${escapeHtml(cell.comment)}"` : ''}>
       
@@ -641,16 +776,35 @@ function renderGripCells() {
       
       <div class="grip-cell-header" style="background: ${cell.headerColor};">
         <span class="grip-cell-title">${cell.title || 'Untitled'}</span>
-      </div>
-      <div class="grip-cell-content">
-        ${cell.content || 'Click to edit...'}
+        ${isDrawer ? '<span class="grip-cell-badge">Drawer</span>' : ''}
       </div>
       
-      <!-- Connection Points -->
-      <div class="grip-cell-connection-point grip-conn-top" data-cell-id="${cell.id}" data-position="top"></div>
-      <div class="grip-cell-connection-point grip-conn-right" data-cell-id="${cell.id}" data-position="right"></div>
-      <div class="grip-cell-connection-point grip-conn-bottom" data-cell-id="${cell.id}" data-position="bottom"></div>
-      <div class="grip-cell-connection-point grip-conn-left" data-cell-id="${cell.id}" data-position="left"></div>
+      ${isDrawer ? `
+        <div class="drawer-items-container">
+          ${drawerItemsHtml}
+          <button type="button" class="drawer-add-item-btn" onclick="addDrawerItem(${cell.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Item
+          </button>
+        </div>
+      ` : `
+        <div class="grip-cell-content">
+          ${cell.content || 'Click to edit...'}
+        </div>
+      `}
+      
+      <!-- Connection Points - Drawer cells only have left/right, regular cells have all 4 -->
+      ${isDrawer ? `
+        <div class="grip-cell-connection-point grip-conn-right" data-cell-id="${cell.id}" data-position="right"></div>
+        <div class="grip-cell-connection-point grip-conn-left" data-cell-id="${cell.id}" data-position="left"></div>
+      ` : `
+        <div class="grip-cell-connection-point grip-conn-top" data-cell-id="${cell.id}" data-position="top"></div>
+        <div class="grip-cell-connection-point grip-conn-right" data-cell-id="${cell.id}" data-position="right"></div>
+        <div class="grip-cell-connection-point grip-conn-bottom" data-cell-id="${cell.id}" data-position="bottom"></div>
+        <div class="grip-cell-connection-point grip-conn-left" data-cell-id="${cell.id}" data-position="left"></div>
+      `}
       
       <!-- Resize Handles -->
       <div class="grip-cell-resize-handle grip-resize-e" data-cell-id="${cell.id}" data-direction="e"></div>
@@ -670,15 +824,44 @@ function renderGripCells() {
       // Touch events
       cellElement.addEventListener('touchstart', (e) => handleGripCellTouchStart(e, cell.id), { passive: false });
       
-      // Connection points - drag to connect
+      // Connection points - drag to connect OR click to delete in eraser mode
       const connectionPoints = cellElement.querySelectorAll('.grip-cell-connection-point');
       connectionPoints.forEach(point => {
         point.addEventListener('mousedown', (e) => {
           e.stopPropagation();
           const position = point.dataset.position;
+          // In eraser mode, handle as click immediately
+          if (gripEraserMode) {
+            handleConnectionPointClick(cell.id, position);
+            return;
+          }
           handleConnectionPointMouseDown(e, cell.id, position);
         });
+        // Also handle click for eraser mode
+        point.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (gripEraserMode) {
+            const position = point.dataset.position;
+            handleConnectionPointClick(cell.id, position);
+          }
+        });
       });
+      
+      // Drawer item connection points - both left and right
+      const drawerItemPoints = cellElement.querySelectorAll('.drawer-item-connection-point');
+      drawerItemPoints.forEach(point => {
+        point.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          const itemId = parseInt(point.dataset.itemId);
+          const position = point.dataset.position || 'item-right';
+          handleDrawerItemConnectionPointMouseDown(e, cell.id, itemId, position);
+        });
+      });
+      
+      // Setup drawer item drag-to-reorder
+      if (cell.isDrawer) {
+        setupDrawerItemDragListeners(cell.id);
+      }
       
       // Resize handles
       const resizeHandles = cellElement.querySelectorAll('.grip-cell-resize-handle');
@@ -737,15 +920,18 @@ function renderGripConnections() {
   // Add professional arrow marker definitions
   svgContent += `
     <defs>
-      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
-        <path d="M0,0 L0,7 L10,3.5 z" fill="#64748b"/>
+      <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/>
       </marker>
-      <marker id="arrowhead-hover" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
-        <path d="M0,0 L0,7 L10,3.5 z" fill="#ef4444"/>
+      <marker id="arrowhead-hover" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="#dc2626"/>
       </marker>
-      <filter id="connection-shadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.15"/>
-      </filter>
+      <marker id="arrowhead-drawer" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+      </marker>
+      <marker id="arrowhead-drawer-hover" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="#dc2626"/>
+      </marker>
     </defs>
   `;
 
@@ -754,7 +940,18 @@ function renderGripConnections() {
     const toCell = gripCells.find(c => c.id === conn.toId);
     if (!fromCell || !toCell) return;
 
-    const fromPoint = getCellConnectionPoint(fromCell, conn.fromPosition);
+    // Check if this is a drawer item connection
+    const isDrawerConnection = conn.fromItemId !== undefined;
+    let fromPoint;
+    
+    if (isDrawerConnection) {
+      fromPoint = getDrawerItemConnectionPoint(fromCell, conn.fromItemId, conn.fromPosition);
+    } else {
+      fromPoint = getCellConnectionPoint(fromCell, conn.fromPosition);
+    }
+    
+    if (!fromPoint) return;
+    
     const toPoint = getCellConnectionPoint(toCell, conn.toPosition);
 
     // Create a smooth bezier curve
@@ -766,9 +963,14 @@ function renderGripConnections() {
     let cp1x, cp1y, cp2x, cp2y;
     
     // Calculate control points based on connection positions
-    switch (conn.fromPosition) {
-      case 'right': cp1x = fromPoint.x + curvature; cp1y = fromPoint.y; break;
-      case 'left': cp1x = fromPoint.x - curvature; cp1y = fromPoint.y; break;
+    const fromPos = conn.fromPosition || 'right';
+    switch (fromPos) {
+      case 'right': 
+      case 'item-right':
+        cp1x = fromPoint.x + curvature; cp1y = fromPoint.y; break;
+      case 'left': 
+      case 'item-left':
+        cp1x = fromPoint.x - curvature; cp1y = fromPoint.y; break;
       case 'top': cp1x = fromPoint.x; cp1y = fromPoint.y - curvature; break;
       case 'bottom': cp1x = fromPoint.x; cp1y = fromPoint.y + curvature; break;
       default: cp1x = fromPoint.x + curvature; cp1y = fromPoint.y;
@@ -783,21 +985,27 @@ function renderGripConnections() {
     }
 
     const path = `M ${fromPoint.x} ${fromPoint.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${toPoint.x} ${toPoint.y}`;
+    
+    // Use different colors for drawer item connections - more subtle for minimalistic look
+    const strokeColor = isDrawerConnection ? '#10b981' : '#4b5563';
+    const markerEnd = isDrawerConnection ? 'url(#arrowhead-drawer)' : 'url(#arrowhead)';
+
+    // Calculate midpoint for delete button
+    const midX = (fromPoint.x + toPoint.x) / 2;
+    const midY = (fromPoint.y + toPoint.y) / 2;
 
     svgContent += `
-      <g class="grip-connection-group" data-connection-index="${index}">
-        <!-- Shadow path -->
-        <path d="${path}" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="5" filter="url(#connection-shadow)"/>
+      <g class="grip-connection-group ${isDrawerConnection ? 'drawer-connection' : ''}" data-connection-index="${index}" data-is-drawer="${isDrawerConnection}" data-stroke-color="${strokeColor}">
         <!-- Main path -->
-        <path class="grip-connection-path" d="${path}" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" marker-end="url(#arrowhead)"/>
+        <path class="grip-connection-path" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-linecap="round" marker-end="${markerEnd}"/>
         <!-- Hit area for interaction -->
-        <path d="${path}" fill="none" stroke="transparent" stroke-width="20" class="grip-connection-hitarea" data-index="${index}" style="cursor: pointer;"/>
+        <path d="${path}" fill="none" stroke="transparent" stroke-width="16" class="grip-connection-hitarea" data-index="${index}" style="cursor: pointer;"/>
         <!-- Start dot -->
-        <circle cx="${fromPoint.x}" cy="${fromPoint.y}" r="3.5" fill="#64748b" class="grip-connection-dot"/>
-        <!-- Delete indicator (shows on hover) -->
-        <g class="grip-connection-delete-indicator" style="opacity: 0; transition: opacity 0.2s;">
-          <circle cx="${(fromPoint.x + toPoint.x) / 2}" cy="${(fromPoint.y + toPoint.y) / 2}" r="12" fill="#ef4444"/>
-          <path d="M${(fromPoint.x + toPoint.x) / 2 - 4} ${(fromPoint.y + toPoint.y) / 2} L${(fromPoint.x + toPoint.x) / 2 + 4} ${(fromPoint.y + toPoint.y) / 2}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="${fromPoint.x}" cy="${fromPoint.y}" r="3" fill="${strokeColor}" class="grip-connection-dot"/>
+        <!-- Delete indicator (minus button - shows on hover) -->
+        <g class="grip-connection-delete-indicator" style="opacity: 0; transition: opacity 0.15s; cursor: pointer;">
+          <circle cx="${midX}" cy="${midY}" r="10" fill="#dc2626"/>
+          <path d="M${midX - 4} ${midY} L${midX + 4} ${midY}" stroke="white" stroke-width="2" stroke-linecap="round"/>
         </g>
       </g>
     `;
@@ -805,36 +1013,75 @@ function renderGripConnections() {
   
   svg.innerHTML = svgContent;
   
-  // Attach click handlers to connection hit areas
-  svg.querySelectorAll('.grip-connection-hitarea').forEach(hitArea => {
-    hitArea.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const index = parseInt(hitArea.dataset.index);
-      handleConnectionClick(index);
-    });
+  // Attach click handlers to connection hit areas and delete indicators
+  svg.querySelectorAll('.grip-connection-group').forEach(group => {
+    const hitArea = group.querySelector('.grip-connection-hitarea');
+    const deleteIndicator = group.querySelector('.grip-connection-delete-indicator');
+    const index = parseInt(group.dataset.connectionIndex);
     
-    // Add hover effect
-    hitArea.addEventListener('mouseenter', () => {
-      const group = hitArea.closest('.grip-connection-group');
-      if (group) {
-        group.querySelector('.grip-connection-path').style.stroke = '#ef4444';
-        group.querySelector('.grip-connection-path').setAttribute('marker-end', 'url(#arrowhead-hover)');
-        group.querySelector('.grip-connection-dot').style.fill = '#ef4444';
-        const deleteIndicator = group.querySelector('.grip-connection-delete-indicator');
+    // Click on hit area deletes connection
+    if (hitArea) {
+      hitArea.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleConnectionClick(index);
+      });
+    }
+    
+    // Click on delete indicator also deletes connection
+    if (deleteIndicator) {
+      deleteIndicator.style.cursor = 'pointer';
+      deleteIndicator.style.pointerEvents = 'auto';
+      deleteIndicator.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleConnectionClick(index);
+      });
+    }
+    
+    // Add hover effect on hit area
+    if (hitArea) {
+      hitArea.addEventListener('mouseenter', () => {
+        const isDrawer = group.dataset.isDrawer === 'true';
+        group.querySelector('.grip-connection-path').style.stroke = '#dc2626';
+        group.querySelector('.grip-connection-path').setAttribute('marker-end', isDrawer ? 'url(#arrowhead-drawer-hover)' : 'url(#arrowhead-hover)');
+        group.querySelector('.grip-connection-dot').style.fill = '#dc2626';
         if (deleteIndicator) deleteIndicator.style.opacity = '1';
-      }
-    });
-    
-    hitArea.addEventListener('mouseleave', () => {
-      const group = hitArea.closest('.grip-connection-group');
-      if (group) {
-        group.querySelector('.grip-connection-path').style.stroke = '#64748b';
-        group.querySelector('.grip-connection-path').setAttribute('marker-end', 'url(#arrowhead)');
-        group.querySelector('.grip-connection-dot').style.fill = '#64748b';
-        const deleteIndicator = group.querySelector('.grip-connection-delete-indicator');
+      });
+      
+      hitArea.addEventListener('mouseleave', (e) => {
+        // Check if we're hovering over the delete indicator
+        const relatedTarget = e.relatedTarget;
+        if (relatedTarget && (deleteIndicator?.contains(relatedTarget) || relatedTarget.closest('.grip-connection-delete-indicator'))) {
+          return; // Don't hide if moving to delete indicator
+        }
+        
+        const isDrawer = group.dataset.isDrawer === 'true';
+        const originalColor = group.dataset.strokeColor || (isDrawer ? '#10b981' : '#4b5563');
+        group.querySelector('.grip-connection-path').style.stroke = originalColor;
+        group.querySelector('.grip-connection-path').setAttribute('marker-end', isDrawer ? 'url(#arrowhead-drawer)' : 'url(#arrowhead)');
+        group.querySelector('.grip-connection-dot').style.fill = originalColor;
         if (deleteIndicator) deleteIndicator.style.opacity = '0';
-      }
-    });
+      });
+    }
+    
+    // Keep delete indicator visible when hovering over it
+    if (deleteIndicator) {
+      deleteIndicator.addEventListener('mouseenter', () => {
+        const isDrawer = group.dataset.isDrawer === 'true';
+        group.querySelector('.grip-connection-path').style.stroke = '#dc2626';
+        group.querySelector('.grip-connection-path').setAttribute('marker-end', isDrawer ? 'url(#arrowhead-drawer-hover)' : 'url(#arrowhead-hover)');
+        group.querySelector('.grip-connection-dot').style.fill = '#dc2626';
+        deleteIndicator.style.opacity = '1';
+      });
+      
+      deleteIndicator.addEventListener('mouseleave', () => {
+        const isDrawer = group.dataset.isDrawer === 'true';
+        const originalColor = group.dataset.strokeColor || (isDrawer ? '#10b981' : '#4b5563');
+        group.querySelector('.grip-connection-path').style.stroke = originalColor;
+        group.querySelector('.grip-connection-path').setAttribute('marker-end', isDrawer ? 'url(#arrowhead-drawer)' : 'url(#arrowhead)');
+        group.querySelector('.grip-connection-dot').style.fill = originalColor;
+        deleteIndicator.style.opacity = '0';
+      });
+    }
   });
 }
 
@@ -854,6 +1101,63 @@ function getCellConnectionPoint(cell, position) {
     default:
       return { x: cell.x + cellWidth / 2, y: cell.y + cellHeight / 2 };
   }
+}
+
+// Get connection point for a drawer item (supports both left and right sides)
+// Uses actual DOM element positions for accurate connection points
+function getDrawerItemConnectionPoint(cell, itemId, position = 'item-right') {
+  if (!cell || !cell.drawerItems) return null;
+  
+  const itemIndex = cell.drawerItems.findIndex(i => i.id === itemId);
+  if (itemIndex === -1) return null;
+  
+  const cellWidth = cell.width || DEFAULT_CELL_WIDTH;
+  
+  // Try to get actual position from DOM element
+  const cellElement = document.getElementById(`gripCell-${cell.id}`);
+  const itemElement = cellElement?.querySelector(`[data-item-id="${itemId}"].drawer-item`);
+  
+  if (itemElement && cellElement) {
+    const cellRect = cellElement.getBoundingClientRect();
+    const itemRect = itemElement.getBoundingClientRect();
+    const canvas = document.getElementById('gripCanvas');
+    const canvasRect = canvas?.getBoundingClientRect();
+    
+    if (canvasRect && canvas) {
+      // Calculate the item's center Y relative to canvas (accounting for zoom)
+      const itemCenterY = ((itemRect.top + itemRect.height / 2 - canvasRect.top + canvas.scrollTop) / gripZoomLevel);
+      
+      if (position === 'item-left') {
+        return {
+          x: cell.x,
+          y: itemCenterY
+        };
+      }
+      
+      return {
+        x: cell.x + cellWidth,
+        y: itemCenterY
+      };
+    }
+  }
+  
+  // Fallback: Calculate position using fixed values
+  const headerHeight = 40;
+  const containerPadding = 10;
+  const itemHeight = 46; // Height of each drawer item including gap
+  const itemVerticalCenter = headerHeight + containerPadding + (itemIndex * itemHeight) + (itemHeight / 2) - 3;
+  
+  if (position === 'item-left') {
+    return {
+      x: cell.x,
+      y: cell.y + itemVerticalCenter
+    };
+  }
+  
+  return {
+    x: cell.x + cellWidth,
+    y: cell.y + itemVerticalCenter
+  };
 }
 
 function renderGripCellEditor() {
@@ -1330,6 +1634,12 @@ function handleGripCellClick(event, cellId) {
 }
 
 function handleConnectionPointClick(cellId, position) {
+  // If eraser mode is active, delete connections at this point
+  if (gripEraserMode) {
+    deleteConnectionsAtPoint(cellId, position);
+    return;
+  }
+  
   if (!gripConnectMode) {
     // Start connect mode from this specific point
     gripConnectMode = true;
@@ -1348,6 +1658,55 @@ function handleConnectionPointClick(cellId, position) {
     gripConnectFromPosition = null;
     renderGripDiagramOverlay();
   }
+}
+
+// Delete all connections attached to a specific connection point
+function deleteConnectionsAtPoint(cellId, position) {
+  const initialCount = gripConnections.length;
+  
+  // Filter out connections that match this cell and position (from or to)
+  gripConnections = gripConnections.filter(conn => {
+    const isFromMatch = conn.fromId === cellId && conn.fromPosition === position;
+    const isToMatch = conn.toId === cellId && conn.toPosition === position;
+    return !isFromMatch && !isToMatch;
+  });
+  
+  const deletedCount = initialCount - gripConnections.length;
+  
+  if (deletedCount > 0) {
+    saveGripDiagramData(gripProjectIndex);
+    renderGripConnections();
+    // Show visual feedback
+    showEraserFeedback(deletedCount);
+  }
+}
+
+// Show feedback when connections are deleted
+function showEraserFeedback(count) {
+  const canvas = document.getElementById('gripCanvas');
+  if (!canvas) return;
+  
+  const feedback = document.createElement('div');
+  feedback.className = 'eraser-feedback';
+  feedback.textContent = `${count} connection${count > 1 ? 's' : ''} deleted`;
+  feedback.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #dc2626;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 10000;
+    animation: fadeInOut 1.5s ease forwards;
+    pointer-events: none;
+  `;
+  
+  document.body.appendChild(feedback);
+  setTimeout(() => feedback.remove(), 1500);
 }
 
 function handleConnectionClick(connectionIndex) {
@@ -1410,6 +1769,451 @@ function findBestConnectionPoints(fromCell, toCell) {
   }
   
   return { from: fromPos, to: toPos };
+}
+
+// Drawer Cell - a cell with connectable list items
+function addDrawerCell() {
+  const canvas = document.getElementById('gripCanvas');
+  const canvasWidth = canvas ? canvas.clientWidth : 800;
+  const canvasHeight = canvas ? canvas.clientHeight : 600;
+  
+  const scrollLeft = canvas ? canvas.scrollLeft : 0;
+  const scrollTop = canvas ? canvas.scrollTop : 0;
+  
+  let x = scrollLeft + (canvasWidth / 2) - (DEFAULT_CELL_WIDTH / 2);
+  let y = scrollTop + (canvasHeight / 2) - (DEFAULT_CELL_HEIGHT / 2);
+  
+  const offset = (gripCells.length % 5) * 40;
+  x += offset;
+  y += offset;
+  
+  x = Math.max(50, x);
+  y = Math.max(50, y);
+  
+  const newCell = {
+    id: gripNextCellId++,
+    x: x,
+    y: y,
+    width: DEFAULT_CELL_WIDTH + 40,
+    height: DEFAULT_CELL_HEIGHT + 60,
+    title: `Drawer ${gripNextCellId - 1}`,
+    content: '',
+    comment: '',
+    headerColor: GRIP_COLORS[Math.floor(Math.random() * GRIP_COLORS.length)],
+    isDrawer: true,
+    drawerItems: [
+      { id: 1, text: 'Item 1' },
+      { id: 2, text: 'Item 2' },
+      { id: 3, text: 'Item 3' }
+    ],
+    nextDrawerItemId: 4
+  };
+  
+  gripCells.push(newCell);
+  saveGripDiagramData(gripProjectIndex);
+  renderGripCells();
+  renderGripConnections();
+}
+
+function toggleCellTypeMenu() {
+  const menu = document.getElementById('cellTypeMenu');
+  if (menu) {
+    menu.classList.toggle('open');
+  }
+}
+
+function closeCellTypeMenu() {
+  const menu = document.getElementById('cellTypeMenu');
+  if (menu) {
+    menu.classList.remove('open');
+  }
+}
+
+function addDrawerItem(cellId) {
+  const cellIndex = gripCells.findIndex(c => c.id === cellId);
+  if (cellIndex === -1) return;
+  
+  const cell = gripCells[cellIndex];
+  if (!cell.drawerItems) cell.drawerItems = [];
+  if (!cell.nextDrawerItemId) cell.nextDrawerItemId = 1;
+  
+  cell.drawerItems.push({
+    id: cell.nextDrawerItemId++,
+    text: 'New Item'
+  });
+  
+  // Increase cell height if needed
+  cell.height = Math.max(cell.height, 120 + (cell.drawerItems.length * 44));
+  
+  saveGripDiagramData(gripProjectIndex);
+  renderGripCells();
+  renderGripConnections();
+}
+
+// Handle double-click on drawer item to edit text
+function handleDrawerItemDoubleClick(event, cellId, itemId) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const textElement = event.target.closest('.drawer-item')?.querySelector('.drawer-item-text');
+  if (textElement) {
+    textElement.contentEditable = 'true';
+    textElement.focus();
+    
+    // Select all text
+    const range = document.createRange();
+    range.selectNodeContents(textElement);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Handle blur to save and disable editing
+    const handleBlur = () => {
+      textElement.contentEditable = 'false';
+      updateDrawerItemText(cellId, itemId, textElement.textContent);
+      textElement.removeEventListener('blur', handleBlur);
+    };
+    
+    // Handle Enter key to finish editing
+    const handleKeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        textElement.blur();
+      }
+      if (e.key === 'Escape') {
+        textElement.blur();
+      }
+    };
+    
+    textElement.addEventListener('blur', handleBlur);
+    textElement.addEventListener('keydown', handleKeydown, { once: true });
+  }
+}
+
+// Make function globally available
+window.handleDrawerItemDoubleClick = handleDrawerItemDoubleClick;
+
+function updateDrawerItemText(cellId, itemId, text) {
+  const cellIndex = gripCells.findIndex(c => c.id === cellId);
+  if (cellIndex === -1) return;
+  
+  const cell = gripCells[cellIndex];
+  const item = cell.drawerItems?.find(i => i.id === itemId);
+  if (item) {
+    item.text = text;
+    saveGripDiagramData(gripProjectIndex);
+  }
+}
+
+function deleteDrawerItem(cellId, itemId) {
+  const cellIndex = gripCells.findIndex(c => c.id === cellId);
+  if (cellIndex === -1) return;
+  
+  const cell = gripCells[cellIndex];
+  if (cell.drawerItems) {
+    cell.drawerItems = cell.drawerItems.filter(i => i.id !== itemId);
+    // Also remove any connections from this item
+    gripConnections = gripConnections.filter(c => 
+      !(c.fromCellId === cellId && c.fromItemId === itemId) &&
+      !(c.toCellId === cellId && c.toItemId === itemId)
+    );
+    saveGripDiagramData(gripProjectIndex);
+    renderGripCells();
+    renderGripConnections();
+  }
+}
+
+// Drawer item reordering via drag - supports moving between drawers
+let gripDraggingDrawerItem = null;
+let gripDraggingDrawerItemCellId = null;
+let gripDragGhost = null;
+let gripDragTargetCellId = null;
+let gripDragTargetPosition = null;
+
+function setupDrawerItemDragListeners(cellId) {
+  const cellElement = document.getElementById(`gripCell-${cellId}`);
+  if (!cellElement) return;
+  
+  const drawerItems = cellElement.querySelectorAll('.drawer-item');
+  
+  drawerItems.forEach((item) => {
+    const handle = item.querySelector('.drawer-item-handle');
+    if (!handle) return;
+    
+    handle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const itemId = parseInt(item.dataset.itemId);
+      startDrawerItemDrag(cellId, itemId, item, e);
+    });
+  });
+}
+
+function startDrawerItemDrag(cellId, itemId, itemElement, e) {
+  gripDraggingDrawerItem = itemId;
+  gripDraggingDrawerItemCellId = cellId;
+  gripDragTargetCellId = cellId;
+  
+  itemElement.classList.add('dragging');
+  document.body.style.cursor = 'grabbing';
+  
+  // Create drag ghost
+  const rect = itemElement.getBoundingClientRect();
+  gripDragGhost = document.createElement('div');
+  gripDragGhost.className = 'drawer-item-drag-ghost';
+  gripDragGhost.innerHTML = itemElement.querySelector('.drawer-item-text')?.textContent || 'Item';
+  gripDragGhost.style.cssText = `
+    position: fixed;
+    left: ${e.clientX - 50}px;
+    top: ${e.clientY - 15}px;
+    width: ${rect.width}px;
+    padding: 8px 12px;
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transform: rotate(2deg);
+    transition: transform 0.1s;
+  `;
+  document.body.appendChild(gripDragGhost);
+  
+  // Add global listeners
+  document.addEventListener('mousemove', handleDrawerItemDragMove);
+  document.addEventListener('mouseup', handleDrawerItemDragEnd);
+}
+
+function handleDrawerItemDragMove(e) {
+  if (!gripDraggingDrawerItem || !gripDragGhost) return;
+  
+  // Update ghost position
+  gripDragGhost.style.left = `${e.clientX - 50}px`;
+  gripDragGhost.style.top = `${e.clientY - 15}px`;
+  
+  // Clear all drop indicators
+  document.querySelectorAll('.drawer-item').forEach(item => {
+    item.classList.remove('drop-before', 'drop-after');
+  });
+  document.querySelectorAll('.grip-cell-drawer').forEach(cell => {
+    cell.classList.remove('drawer-drop-target');
+  });
+  
+  // Find target drawer cell and item
+  const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+  if (!targetElement) return;
+  
+  const targetDrawerItem = targetElement.closest('.drawer-item');
+  const targetDrawerCell = targetElement.closest('.grip-cell-drawer');
+  
+  if (targetDrawerCell) {
+    const targetCellId = parseInt(targetDrawerCell.dataset.cellId);
+    gripDragTargetCellId = targetCellId;
+    targetDrawerCell.classList.add('drawer-drop-target');
+    
+    if (targetDrawerItem) {
+      const targetItemId = parseInt(targetDrawerItem.dataset.itemId);
+      // Don't highlight the dragged item itself
+      if (!(targetCellId === gripDraggingDrawerItemCellId && targetItemId === gripDraggingDrawerItem)) {
+        const rect = targetDrawerItem.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+          targetDrawerItem.classList.add('drop-before');
+          gripDragTargetPosition = { itemId: targetItemId, before: true };
+        } else {
+          targetDrawerItem.classList.add('drop-after');
+          gripDragTargetPosition = { itemId: targetItemId, before: false };
+        }
+      }
+    } else {
+      // Dropping at end of drawer
+      gripDragTargetPosition = { itemId: null, before: false };
+    }
+  } else {
+    gripDragTargetCellId = null;
+    gripDragTargetPosition = null;
+  }
+}
+
+function handleDrawerItemDragEnd(e) {
+  document.removeEventListener('mousemove', handleDrawerItemDragMove);
+  document.removeEventListener('mouseup', handleDrawerItemDragEnd);
+  
+  if (!gripDraggingDrawerItem) return;
+  
+  // Perform the move/reorder
+  if (gripDragTargetCellId && gripDragTargetCellId !== gripDraggingDrawerItemCellId) {
+    // Moving to a different drawer
+    moveDrawerItemToCell(gripDraggingDrawerItemCellId, gripDraggingDrawerItem, gripDragTargetCellId, gripDragTargetPosition);
+  } else if (gripDragTargetCellId === gripDraggingDrawerItemCellId && gripDragTargetPosition?.itemId) {
+    // Reordering within same drawer
+    reorderDrawerItem(gripDraggingDrawerItemCellId, gripDraggingDrawerItem, gripDragTargetPosition.itemId, gripDragTargetPosition.before);
+  }
+  
+  finishDrawerItemDrag();
+}
+
+function moveDrawerItemToCell(fromCellId, itemId, toCellId, targetPosition) {
+  const fromCellIndex = gripCells.findIndex(c => c.id === fromCellId);
+  const toCellIndex = gripCells.findIndex(c => c.id === toCellId);
+  
+  if (fromCellIndex === -1 || toCellIndex === -1) return;
+  
+  const fromCell = gripCells[fromCellIndex];
+  const toCell = gripCells[toCellIndex];
+  
+  if (!fromCell.drawerItems || !toCell.isDrawer) return;
+  
+  // Find and remove item from source
+  const itemIndex = fromCell.drawerItems.findIndex(i => i.id === itemId);
+  if (itemIndex === -1) return;
+  
+  const [movedItem] = fromCell.drawerItems.splice(itemIndex, 1);
+  
+  // Generate new ID for target cell
+  if (!toCell.drawerItems) toCell.drawerItems = [];
+  if (!toCell.nextDrawerItemId) toCell.nextDrawerItemId = 1;
+  
+  movedItem.id = toCell.nextDrawerItemId++;
+  
+  // Insert at target position
+  if (targetPosition?.itemId) {
+    const targetIndex = toCell.drawerItems.findIndex(i => i.id === targetPosition.itemId);
+    if (targetIndex !== -1) {
+      const insertIndex = targetPosition.before ? targetIndex : targetIndex + 1;
+      toCell.drawerItems.splice(insertIndex, 0, movedItem);
+    } else {
+      toCell.drawerItems.push(movedItem);
+    }
+  } else {
+    toCell.drawerItems.push(movedItem);
+  }
+  
+  // Update cell heights
+  fromCell.height = Math.max(120, 120 + (fromCell.drawerItems.length * 44));
+  toCell.height = Math.max(toCell.height, 120 + (toCell.drawerItems.length * 44));
+  
+  // Update connections (remove connections from the moved item in source)
+  gripConnections = gripConnections.filter(c => 
+    !(c.fromCellId === fromCellId && c.fromItemId === itemId)
+  );
+  
+  saveGripDiagramData(gripProjectIndex);
+  renderGripCells();
+  renderGripConnections();
+}
+
+function finishDrawerItemDrag() {
+  // Remove ghost
+  if (gripDragGhost) {
+    gripDragGhost.remove();
+    gripDragGhost = null;
+  }
+  
+  // Clear all drag classes
+  document.querySelectorAll('.drawer-item').forEach(item => {
+    item.classList.remove('dragging', 'drop-before', 'drop-after');
+  });
+  document.querySelectorAll('.grip-cell-drawer').forEach(cell => {
+    cell.classList.remove('drawer-drop-target');
+  });
+  
+  gripDraggingDrawerItem = null;
+  gripDraggingDrawerItemCellId = null;
+  gripDragTargetCellId = null;
+  gripDragTargetPosition = null;
+  document.body.style.cursor = '';
+}
+
+function reorderDrawerItem(cellId, draggedItemId, targetItemId, insertBefore) {
+  const cellIndex = gripCells.findIndex(c => c.id === cellId);
+  if (cellIndex === -1) return;
+  
+  const cell = gripCells[cellIndex];
+  if (!cell.drawerItems) return;
+  
+  const draggedIndex = cell.drawerItems.findIndex(i => i.id === draggedItemId);
+  const targetIndex = cell.drawerItems.findIndex(i => i.id === targetItemId);
+  
+  if (draggedIndex === -1 || targetIndex === -1) return;
+  
+  // Remove dragged item
+  const [draggedItem] = cell.drawerItems.splice(draggedIndex, 1);
+  
+  // Calculate new position
+  let newIndex = targetIndex;
+  if (draggedIndex < targetIndex) newIndex--;
+  if (!insertBefore) newIndex++;
+  
+  // Insert at new position
+  cell.drawerItems.splice(newIndex, 0, draggedItem);
+  
+  saveGripDiagramData(gripProjectIndex);
+  renderGripCells();
+  renderGripConnections();
+}
+
+// Handle drawer item connection point mouse down - supports both left and right sides
+let gripDraggingFromDrawerItem = null;
+let gripDraggingFromDrawerItemPosition = null;
+
+function handleDrawerItemConnectionPointMouseDown(e, cellId, itemId, position = 'item-right') {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  gripIsDraggingConnection = true;
+  gripDraggingFromDrawerItem = { cellId, itemId };
+  gripDraggingFromDrawerItemPosition = position;
+  
+  const cell = gripCells.find(c => c.id === cellId);
+  const item = cell?.drawerItems?.find(i => i.id === itemId);
+  
+  if (cell && item) {
+    // Calculate position of the drawer item connection point
+    const cellElement = document.getElementById(`gripCell-${cellId}`);
+    const itemElement = cellElement?.querySelector(`[data-item-id="${itemId}"]`);
+    
+    if (itemElement) {
+      const canvas = document.getElementById('gripCanvas');
+      const canvasRect = canvas.getBoundingClientRect();
+      const itemRect = itemElement.getBoundingClientRect();
+      
+      // Use left or right based on position
+      const xPos = position === 'item-left' 
+        ? (itemRect.left - canvasRect.left + canvas.scrollLeft) / gripZoomLevel
+        : (itemRect.right - canvasRect.left + canvas.scrollLeft) / gripZoomLevel;
+      
+      gripConnectionDragStart = {
+        x: xPos,
+        y: (itemRect.top + itemRect.height / 2 - canvasRect.top + canvas.scrollTop) / gripZoomLevel
+      };
+      gripConnectionDragEnd = { ...gripConnectionDragStart };
+    }
+  }
+}
+
+// Extend the connection creation to support drawer items from both sides
+const originalCreateGripConnection = createGripConnection;
+
+function createDrawerItemConnection(fromCellId, fromItemId, toCellId, toPosition, fromPosition = 'item-right') {
+  // Check if connection already exists
+  const exists = gripConnections.some(c => 
+    c.fromCellId === fromCellId && c.fromItemId === fromItemId && c.toId === toCellId
+  );
+  
+  if (!exists) {
+    gripConnections.push({
+      fromId: fromCellId,
+      fromCellId: fromCellId,
+      fromItemId: fromItemId,
+      fromPosition: fromPosition,
+      toId: toCellId,
+      toPosition: toPosition || (fromPosition === 'item-left' ? 'right' : 'left')
+    });
+    saveGripDiagramData(gripProjectIndex);
+    renderGripConnections();
+  }
 }
 
 // ============================================
@@ -1671,126 +2475,89 @@ function handleAiSend() {
 function generateAiResponse(userMessage) {
   const msg = userMessage.toLowerCase();
   
-  // Website/App help responses
+  // Whiteboard-specific responses (enhanced)
   
   // Greetings
   if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
-    const greetings = ["Hey! How can I help you with Layer today?", "Hi there! What do you need help with?", "Hey! I'm here to assist with any questions about the app."];
+    const greetings = [
+      "Hey! I'm your whiteboard assistant. Need help with cells, connections, or organizing your flowchart?",
+      "Hi there! I can help you navigate the whiteboard. Try asking about cells, connections, or drawer items!",
+      "Hey! What do you need help with on the whiteboard today?"
+    ];
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
   
-  // Project creation
-  if (msg.includes('create project') || msg.includes('new project') || msg.includes('add project')) {
-    return "To create a new project: Go to the 'Activity' tab in the sidebar, then click 'Create project' button. Fill in the name, target date, and any notes you want to add.";
+  // Cell creation help
+  if (msg.includes('create') || msg.includes('add cell') || msg.includes('new cell')) {
+    return "To add a cell: Click the '+Add' button in the toolbar at the bottom. Choose 'Task Cell' for simple cards, or 'Drawer Cell' for a list with connectable items. Cells can be dragged anywhere on the canvas!";
   }
   
-  // Tasks
-  if (msg.includes('add task') || msg.includes('create task') || msg.includes('new task')) {
-    return "To add a task: Open a project, scroll to the Tasks section, and type in the '+ Add a task...' input at the bottom of any column. Press Enter to add it.";
+  // Drawer cell specific help
+  if (msg.includes('drawer') || msg.includes('list') || msg.includes('items')) {
+    return "Drawer cells are special! They contain a list of items, each with connection points on both left AND right sides. You can: \\n• Edit item labels by clicking on them \\n• Drag items by their handle to reorder \\n• Connect items to other cells from either side \\n• Delete items with the X button";
   }
   
-  // Columns
-  if (msg.includes('column') || msg.includes('kanban')) {
-    return "You can add columns by clicking 'Add Column' button in the Tasks section. Rename columns by clicking on their title. Delete them with the X button.";
+  // Connection help
+  if (msg.includes('connect') || msg.includes('link') || msg.includes('arrow') || msg.includes('line')) {
+    return "To connect cells: \\n1. Hover over a cell to see connection points (dots on sides) \\n2. Drag from a connection point to another cell \\n3. To remove: hover over a connection line - it turns red with a delete button. Click to remove!";
   }
   
-  // Grid/Diagram help
-  if (msg.includes('grid') || msg.includes('diagram') || msg.includes('flowchart') || msg.includes('cell')) {
-    return "The Grip Diagram lets you create visual flowcharts. Click 'Add Cell' to create blocks, drag them to position. Use 'Connect' to draw lines between cells. Click on a connection to remove it.";
+  // Remove/Delete connections
+  if (msg.includes('delete connection') || msg.includes('remove connection') || msg.includes('remove link')) {
+    return "Easy! Just hover over any connection line - it will highlight in red and show a delete indicator in the middle. Click it to remove the connection instantly.";
   }
   
-  // Issues
-  if (msg.includes('issue') || msg.includes('bug') || msg.includes('problem')) {
-    return "To track issues: Go to 'My issues' in the sidebar. Click 'New Issue' to create one. You can set priority, status, and description. Filter issues using the tabs at the top.";
+  // Text and images
+  if (msg.includes('text') || msg.includes('image') || msg.includes('picture')) {
+    return "Click the 'T' icon in the toolbar to add text boxes anywhere. Click the image icon to upload images. Both can be dragged around and resized!";
   }
   
-  // Schedule/Calendar
-  if (msg.includes('schedule') || msg.includes('calendar') || msg.includes('event')) {
-    return "The Schedule view shows a calendar. Click on any day to add a task/event. Drag tasks between days to reschedule. Click a task to expand details or delete it.";
+  // Zoom and pan
+  if (msg.includes('zoom') || msg.includes('pan') || msg.includes('move around') || msg.includes('navigate')) {
+    return "Use the zoom controls in the header (+/-) or scroll wheel. To pan: click the hand icon in the toolbar, then drag the canvas. Keyboard: use H for hand tool, V for select, + and - for zoom.";
   }
   
   // Backlog
   if (msg.includes('backlog')) {
-    return "The Backlog is for tasks you haven't started yet. Add tasks there, check them off when done. Great for brain dumps and future planning.";
+    return "The Backlog panel on the right helps you track project tasks! Click 'Backlog' in the header to open it. You can drag backlog items onto the canvas to create cells, or use filters to organize.";
+  }
+  
+  // Select all / multiple selection
+  if (msg.includes('select all') || msg.includes('multiple') || msg.includes('bulk')) {
+    return "Press Ctrl/Cmd + A to select all cells. Hold Shift and click to select multiple. A selection bar appears at top with options to delete or duplicate selected items.";
+  }
+  
+  // Keyboard shortcuts
+  if (msg.includes('keyboard') || msg.includes('shortcut')) {
+    return "Keyboard shortcuts: \\n• V - Select tool \\n• H - Pan/Hand tool \\n• T - Text tool \\n• A - Toggle connect mode \\n• Delete/Backspace - Remove selected \\n• Ctrl+A - Select all \\n• +/- - Zoom in/out \\n• Escape - Deselect";
+  }
+  
+  // Save / persistence
+  if (msg.includes('save') || msg.includes('data')) {
+    return "Your whiteboard automatically saves to your browser! All cells, connections, and positions are preserved. Use the back button to return to project view - your diagram will be there when you come back.";
   }
   
   // Theme
   if (msg.includes('theme') || msg.includes('dark') || msg.includes('light') || msg.includes('color')) {
-    return "Change themes in Settings! We have multiple options: Dark, Light, Liquid Glass, Coffee, Pink, Purple, Ocean, and more. Just select from the dropdown.";
-  }
-  
-  // Comments
-  if (msg.includes('comment') || msg.includes('update') || msg.includes('message')) {
-    return "You can add comments in the project sidebar under 'Team Comments & Updates'. Choose Normal or Important message type, then post your update. Others can reply or react!";
-  }
-  
-  // Team/Members
-  if (msg.includes('team') || msg.includes('member') || msg.includes('invite') || msg.includes('collaborate')) {
-    return "To add team members: Open a project, look for the team icons in the sidebar, click the + button to invite by email. Team members will appear as overlapping avatars.";
-  }
-  
-  // Priority
-  if (msg.includes('priority')) {
-    return "To set project priority: In the project sidebar, click on the Priority badge. Choose High, Medium, or Low. Priority is color-coded: Red=High, Yellow=Medium, Green=Low.";
-  }
-  
-  // Target date
-  if (msg.includes('target') || msg.includes('deadline') || msg.includes('due date')) {
-    return "To change the target date: In project properties sidebar, click on the date. A modal will pop up where you can pick a new date and save.";
-  }
-  
-  // Documents
-  if (msg.includes('document') || msg.includes('upload') || msg.includes('pdf') || msg.includes('file')) {
-    return "You can upload documents to share with your team! In the project sidebar, find 'Share Document', click to upload PDFs or docs. They'll appear in a list for easy access.";
-  }
-  
-  // Progress
-  if (msg.includes('progress') || msg.includes('chart') || msg.includes('graph')) {
-    return "The progress chart at the bottom of project details shows task completion over the past 4 weeks. Hover over points to see exact numbers. The circular progress in sidebar shows overall completion.";
-  }
-  
-  // Status
-  if (msg.includes('status')) {
-    return "Project status is automatic! 0% = To Do, 1-99% = In Progress, 100% = Done. Complete tasks to update the status automatically.";
-  }
-  
-  // Export/Import
-  if (msg.includes('export') || msg.includes('backup') || msg.includes('import')) {
-    return "Go to Settings to export all your data as JSON backup. You can also import from a previous backup file. Great for keeping your work safe!";
-  }
-  
-  // Delete
-  if (msg.includes('delete') || msg.includes('remove')) {
-    return "Delete projects with the trash icon in project header. Delete tasks with the X button. Delete columns with the X in their header. Be careful - deletes are permanent!";
-  }
-  
-  // Settings
-  if (msg.includes('setting')) {
-    return "Settings has: Theme selection, Data export/import, and Reset option. Access it from the sidebar (gear icon).";
-  }
-  
-  // Connection/Link removal
-  if (msg.includes('connection') || msg.includes('link') || msg.includes('line') || msg.includes('arrow')) {
-    return "To remove a connection in the Grid Diagram: Simply click on the connection line. It will highlight in red, then click to delete it.";
-  }
-  
-  // Thank you
-  if (msg.includes('thank') || msg.includes('thanks')) {
-    return "You're welcome! Let me know if you need anything else! 😊";
+    return "The whiteboard uses your app theme! Change it in Settings from the main sidebar. We support Dark, Light, and many custom themes like Liquid Glass, Coffee, Pink, and more.";
   }
   
   // Help
   if (msg.includes('help') || msg.includes('what can you') || msg.includes('how do') || msg.includes('how to')) {
-    return "I can help with: creating projects & tasks, using the grid diagram, managing team members, changing themes, uploading documents, understanding the progress chart, and more! What do you need?";
+    return "I can help with: \\n• Creating cells and drawer cells \\n• Connecting elements \\n• Removing connections (just hover!) \\n• Reordering drawer items \\n• Keyboard shortcuts \\n• Zoom/pan navigation \\n\\nWhat would you like to know?";
   }
   
-  // Default responses
+  // Thanks
+  if (msg.includes('thank') || msg.includes('thanks')) {
+    return "Happy to help! Let me know if you need anything else with your whiteboard. 🎨";
+  }
+  
+  // Default responses - more whiteboard focused
   const defaults = [
-    "I can help with any Layer feature! Try asking about projects, tasks, themes, team, or the grid diagram.",
-    "What would you like to do? I can guide you through any feature.",
-    "Need help navigating? Just ask about specific features like 'how to add tasks' or 'how to change theme'.",
-    "I'm here to help! Ask me about any feature in Layer.",
-    "Try asking: 'How do I create a project?' or 'How to add team members?'"
+    "I'm here to help with the whiteboard! Try asking about cells, connections, drawer items, or keyboard shortcuts.",
+    "Need help organizing your flowchart? Ask me about connecting cells, adding items to drawers, or using the toolbar!",
+    "I can guide you through any whiteboard feature. Try: 'How do I connect cells?' or 'How do drawer cells work?'",
+    "Whiteboard tip: Hover over connections to delete them! Ask me about any feature you'd like to learn."
   ];
   
   return defaults[Math.floor(Math.random() * defaults.length)];
@@ -2529,15 +3296,22 @@ function handleKeyboardShortcut(e) {
   // Tool shortcuts
   if (key === 'v') {
     gripActiveTool = 'select';
+    gripEraserMode = false;
     renderGripDiagramOverlay();
   } else if (key === 'h') {
     gripActiveTool = 'pan';
+    gripEraserMode = false;
     renderGripDiagramOverlay();
   } else if (key === 't') {
     gripActiveTool = 'text';
+    gripEraserMode = false;
     renderGripDiagramOverlay();
+  } else if (key === 'e') {
+    // Toggle eraser mode
+    toggleGripEraserMode();
   } else if (key === 'a' && !e.ctrlKey && !e.metaKey) {
     // Toggle arrow/connect mode
+    gripEraserMode = false;
     toggleGripConnectMode();
   } else if (key === 'escape') {
     if (gripConnectMode) {
@@ -2545,6 +3319,7 @@ function handleKeyboardShortcut(e) {
       gripConnectFromId = null;
       gripConnectFromPosition = null;
     }
+    gripEraserMode = false;
     clearSelection();
   }
 }
@@ -3041,7 +3816,9 @@ function handleConnectionDragEnd(e) {
   let targetPosition = null;
   
   for (const cell of gripCells) {
-    if (cell.id === gripConnectFromId) continue;
+    // Skip the source cell for drawer item connections too
+    const sourceId = gripDraggingFromDrawerItem ? gripDraggingFromDrawerItem.cellId : gripConnectFromId;
+    if (cell.id === sourceId) continue;
     
     const cellWidth = cell.width || DEFAULT_CELL_WIDTH;
     const cellHeight = cell.height || DEFAULT_CELL_HEIGHT;
@@ -3068,15 +3845,27 @@ function handleConnectionDragEnd(e) {
     }
   }
   
-  if (targetCellId && gripConnectFromId) {
+  // Handle drawer item connection
+  if (targetCellId && gripDraggingFromDrawerItem) {
+    createDrawerItemConnection(
+      gripDraggingFromDrawerItem.cellId, 
+      gripDraggingFromDrawerItem.itemId, 
+      targetCellId, 
+      targetPosition
+    );
+  }
+  // Handle normal cell connection
+  else if (targetCellId && gripConnectFromId) {
     createGripConnection(gripConnectFromId, gripConnectFromPosition, targetCellId, targetPosition);
   }
   
+  // Reset all connection state
   gripIsDraggingConnection = false;
   gripConnectFromId = null;
   gripConnectFromPosition = null;
   gripConnectionDragStart = null;
   gripConnectionDragEnd = null;
+  gripDraggingFromDrawerItem = null;
   
   renderGripDiagramOverlay();
 }
