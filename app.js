@@ -81,6 +81,11 @@ function init() {
 // Beta Notification Popup
 // ============================================
 function showBetaNotification() {
+  // Check if user has opted out
+  if (localStorage.getItem('hideBetaNotification') === 'true') {
+    return;
+  }
+  
   // Create overlay
   const overlay = document.createElement('div');
   overlay.className = 'beta-notification-overlay';
@@ -93,6 +98,10 @@ function showBetaNotification() {
       <p class="beta-notification-message">
         This website is currently in beta. Some features may not work as expected. Thank you for your patience!
       </p>
+      <label class="beta-notification-checkbox">
+        <input type="checkbox" id="dontShowAgainCheckbox">
+        <span>Don't show this again</span>
+      </label>
       <button class="beta-notification-close" onclick="closeBetaNotification()">Got it!</button>
     </div>
   `;
@@ -113,6 +122,12 @@ function showBetaNotification() {
 }
 
 function closeBetaNotification() {
+  // Save preference if checkbox is checked
+  const checkbox = document.getElementById('dontShowAgainCheckbox');
+  if (checkbox && checkbox.checked) {
+    localStorage.setItem('hideBetaNotification', 'true');
+  }
+  
   const overlay = document.getElementById('betaNotificationOverlay');
   if (overlay) {
     overlay.classList.remove('show');
