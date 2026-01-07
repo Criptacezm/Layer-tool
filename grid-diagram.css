@@ -1,5 +1,5 @@
 /* ============================================
-   Layer - Whiteboard Styles (ClickUp-inspired)
+   Layer - Whiteboard Styles (Minimalistic Professional)
    ============================================ */
 
 /* Overlay */
@@ -14,7 +14,7 @@
 
 /* Animation only applied on initial open via JS class */
 .grip-diagram-overlay.grip-animate-in {
-  animation: gripFadeIn 0.3s ease-out;
+  animation: gripFadeIn 0.25s ease-out;
 }
 
 @keyframes gripFadeIn {
@@ -30,26 +30,36 @@
 }
 
 .grip-diagram-container.clickup-style {
-  background: #1a1a1d;
+  background: #0f0f10;
 }
 
 /* ============================================
-   ClickUp-style Header
+   Professional Enhanced Header
    ============================================ */
 .grip-diagram-header.clickup-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background: #1e1e21;
-  border-bottom: 1px solid #2a2a2e;
+  padding: 10px 20px;
+  background: linear-gradient(180deg, #18181b 0%, #131316 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  gap: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .grip-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .grip-back-btn {
@@ -58,17 +68,19 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   color: #a1a1aa;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 
 .grip-back-btn:hover {
-  background: #27272a;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
   color: #fafafa;
+  transform: translateX(-2px);
 }
 
 .grip-back-btn svg {
@@ -79,44 +91,141 @@
 .whiteboard-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.whiteboard-icon {
-  font-size: 18px;
+.whiteboard-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+}
+
+.whiteboard-icon-wrapper svg {
+  width: 18px;
+  height: 18px;
+  color: #3b82f6;
+}
+
+.whiteboard-title-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .whiteboard-title h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #fafafa;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
-.whiteboard-star {
+.whiteboard-subtitle {
+  font-size: 11px;
+  color: #71717a;
+  font-weight: 500;
+}
+
+.grip-header-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.header-action-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.header-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
   background: transparent;
   border: none;
-  padding: 6px;
+  border-radius: 8px;
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  color: #71717a;
-  border-radius: 6px;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.whiteboard-star:hover {
-  color: #fbbf24;
-  background: #27272a;
+.header-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
 }
 
-.whiteboard-star svg {
+.header-action-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.header-action-btn svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
+}
+
+.backlog-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
 }
 
 .grip-header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  color: #71717a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+}
+
+.header-icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .zoom-controls {
@@ -184,7 +293,7 @@
 }
 
 /* ============================================
-   ClickUp-style Canvas
+   Minimalistic Canvas
    ============================================ */
 .grip-diagram-body.clickup-body {
   flex: 1;
@@ -198,110 +307,245 @@
   position: relative;
   overflow: auto;
   background: 
-    radial-gradient(circle at 1px 1px, #3f3f46 1px, transparent 0);
-  background-size: 24px 24px;
-  background-color: #18181b;
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-size: 20px 20px;
+  background-color: #0a0a0b;
   min-height: 100%;
 }
 
 /* ============================================
-   ClickUp-style Bottom Toolbar
+   Minimalistic Bottom Toolbar
    ============================================ */
 .whiteboard-bottom-toolbar {
   position: absolute;
-  bottom: 20px;
+  bottom: 24px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(0);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 8px 12px;
-  background: #27272a;
-  border: 1px solid #3f3f46;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  background: rgba(20, 20, 22, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   z-index: 100;
+  animation: toolbarSlideUp 0.2s ease-out;
+}
+
+@keyframes toolbarSlideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .toolbar-main {
-  padding-right: 8px;
+  padding-right: 6px;
 }
 
 .toolbar-extras {
-  padding-left: 8px;
-  border-left: 1px solid #3f3f46;
+  padding-left: 6px;
+  border-left: 1px solid rgba(63, 63, 70, 0.6);
 }
 
 .toolbar-divider {
   width: 1px;
-  height: 24px;
-  background: #3f3f46;
-  margin: 0 6px;
+  height: 20px;
+  background: rgba(63, 63, 70, 0.6);
+  margin: 0 4px;
 }
 
 .toolbar-tool {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 40px;
-  height: 40px;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #a1a1aa;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
 .toolbar-tool:hover {
-  background: #3f3f46;
+  background: rgba(63, 63, 70, 0.8);
   color: #fafafa;
+  transform: scale(1.05);
+}
+
+.toolbar-tool:active {
+  transform: scale(0.95);
 }
 
 .toolbar-tool.active {
-  background: #3b82f6;
+  background: rgba(255, 255, 255, 0.1);
   color: white;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .toolbar-tool svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.15s ease;
+}
+
+.toolbar-tool:hover svg {
+  transform: scale(1.1);
 }
 
 .toolbar-tool .dropdown-arrow {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   position: absolute;
-  bottom: 4px;
-  right: 4px;
+  bottom: 3px;
+  right: 3px;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.toolbar-dropdown-wrapper:hover .dropdown-arrow {
+  transform: rotate(180deg);
 }
 
 .toolbar-tool.toolbar-tool-task,
 .toolbar-tool.toolbar-tool-note {
   width: auto;
-  padding: 0 14px;
+  padding: 0 12px;
+}
+
+.toolbar-tool.toolbar-tool-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.toolbar-tool.toolbar-tool-danger:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Eraser tool styling */
+.toolbar-tool-eraser-active {
+  background: rgba(249, 115, 22, 0.2) !important;
+  color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3) !important;
+}
+
+.toolbar-tool-eraser-active:hover {
+  background: rgba(249, 115, 22, 0.3) !important;
+}
+
+/* When eraser mode is on, canvas connections show delete hints */
+.eraser-mode .grip-connection-group:hover .grip-connection-path {
+  stroke: #dc2626 !important;
+}
+
+.eraser-mode .grip-connection-group:hover .grip-connection-delete-indicator {
+  opacity: 1 !important;
 }
 
 .toolbar-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .toolbar-ai {
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   color: white;
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3);
 }
 
 .toolbar-ai:hover {
   background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);
+  transform: scale(1.08);
+}
+
+/* Dropup menu animations */
+.toolbar-dropup-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(39, 39, 42, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 180px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 200;
+  margin-bottom: 8px;
+}
+
+.toolbar-dropup-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.dropup-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.dropup-item:hover {
+  background: rgba(63, 63, 70, 0.8);
+  transform: translateX(2px);
+}
+
+.dropup-item svg {
+  width: 16px;
+  height: 16px;
+  color: #a1a1aa;
+  margin-bottom: 4px;
+  transition: color 0.15s ease;
+}
+
+.dropup-item:hover svg {
+  color: #3b82f6;
+}
+
+.dropup-item span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fafafa;
+}
+
+.dropup-item small {
+  font-size: 10px;
+  color: #71717a;
 }
 
 /* Legacy styles kept for compatibility */
@@ -408,29 +652,30 @@
 }
 
 
-/* Cells */
+/* Cells - Minimalistic Professional */
 .grip-cell {
   position: absolute;
   width: 200px;
   min-height: 120px;
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: 12px;
+  background: rgba(20, 20, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   overflow: visible;
   cursor: grab;
-  transition: box-shadow 0.2s, border-color 0.2s, transform 0.1s;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
   user-select: none;
   touch-action: none;
+  backdrop-filter: blur(8px);
 }
 
 .grip-cell:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border-color: var(--border-strong);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .grip-cell.selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--ring);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 .grip-cell.connect-mode {
@@ -438,14 +683,14 @@
 }
 
 .grip-cell.connect-from {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--ring), 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .grip-cell.dragging {
   cursor: grabbing;
   z-index: 100;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
   transform: scale(1.02);
 }
 
@@ -598,15 +843,75 @@
   50% { opacity: 0.8; }
 }
 
+/* Eraser mode hint */
+.grip-eraser-hint {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(249, 115, 22, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+  z-index: 50;
+  animation: eraserHintPulse 2s infinite;
+}
+
+@keyframes eraserHintPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3); }
+  50% { opacity: 0.9; box-shadow: 0 4px 24px rgba(249, 115, 22, 0.5); }
+}
+
+/* Eraser mode cursor */
+.grip-diagram-canvas.eraser-mode {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'%3E%3Cpath d='M20 20H9L16.466 6.534a5 5 0 0 1 0 7.07L12 18.07l-4.536-4.536a5 5 0 0 1 7.07-7.07l.93.93.932-.93a5 5 0 0 1 7.07 0l-7 7.07z'/%3E%3C/svg%3E") 12 12, pointer;
+}
+
+/* Eraser mode - connection points become delete targets */
+.eraser-mode .grip-cell-connection-point {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  cursor: crosshair !important;
+  transform: scale(1.3);
+  opacity: 1 !important;
+}
+
+.eraser-mode .grip-cell-connection-point:hover {
+  background: #b91c1c !important;
+  transform: scale(1.6);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+}
+
+/* Eraser mode connection hover effects */
+.eraser-mode .grip-connection-group {
+  cursor: crosshair !important;
+}
+
+.eraser-mode .grip-connection-group:hover .grip-connection-path {
+  stroke: #dc2626 !important;
+  stroke-width: 2.5px;
+}
+
+/* Eraser feedback animation */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
 .grip-cell-header {
   padding: 10px 14px;
   background: var(--primary);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 9px 9px 0 0;
 }
 
 .grip-cell-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: white;
   white-space: nowrap;
@@ -617,22 +922,22 @@
 .grip-cell-content {
   padding: 12px 14px;
   font-size: 13px;
-  color: var(--muted-foreground);
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
   min-height: 40px;
   overflow: hidden;
 }
 
-/* Connection Points */
+/* Connection Points - Cell - Minimalistic */
 .grip-cell-connection-point {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background: var(--card);
-  border: 2px solid var(--muted-foreground);
+  width: 12px;
+  height: 12px;
+  background: #0a0a0b;
+  border: 2px solid #64748b;
   border-radius: 50%;
   opacity: 0;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   cursor: crosshair;
   z-index: 10;
 }
@@ -643,49 +948,50 @@
 }
 
 .grip-cell-connection-point:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-  transform: scale(1.3);
+  background: #3b82f6;
+  border-color: #3b82f6;
+  transform: scale(1.2);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
 }
 
 .grip-conn-top {
-  top: -7px;
+  top: -6px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .grip-conn-top:hover {
-  transform: translateX(-50%) scale(1.3);
+  transform: translateX(-50%) scale(1.2);
 }
 
 .grip-conn-right {
-  right: -7px;
+  right: -6px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .grip-conn-right:hover {
-  transform: translateY(-50%) scale(1.3);
+  transform: translateY(-50%) scale(1.2);
 }
 
 .grip-conn-bottom {
-  bottom: -7px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .grip-conn-bottom:hover {
-  transform: translateX(-50%) scale(1.3);
+  transform: translateX(-50%) scale(1.2);
 }
 
 .grip-conn-left {
-  left: -7px;
+  left: -6px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .grip-conn-left:hover {
-  transform: translateY(-50%) scale(1.3);
+  transform: translateY(-50%) scale(1.2);
 }
 
 /* Resize Handles */
@@ -2247,4 +2553,533 @@
 
 .highlight-option.active {
   border-color: #3b82f6;
+}
+
+/* ============================================
+   Toolbar Dropdown Styles
+   ============================================ */
+.toolbar-dropdown-wrapper {
+  position: relative;
+}
+
+.toolbar-dropup-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 200px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(10px);
+  transition: all 0.2s ease;
+  z-index: 200;
+  margin-bottom: 8px;
+}
+
+.toolbar-dropup-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.dropup-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.dropup-item:hover {
+  background: #3f3f46;
+}
+
+.dropup-item svg {
+  width: 18px;
+  height: 18px;
+  color: #a1a1aa;
+  margin-bottom: 4px;
+}
+
+.dropup-item span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fafafa;
+}
+
+.dropup-item small {
+  font-size: 11px;
+  color: #71717a;
+}
+
+.toolbar-tool .dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+}
+
+/* ============================================
+   Drawer Cell Styles - Minimalistic with dual connection points
+   ============================================ */
+.grip-cell-drawer {
+  background: rgba(20, 20, 22, 0.95);
+  overflow: visible;
+}
+
+.grip-cell-drawer .grip-cell-content {
+  display: none;
+}
+
+.grip-cell-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.drawer-items-container {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  padding-left: 24px;
+  padding-right: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  position: relative;
+  transition: all 0.15s ease;
+  min-height: 40px;
+  cursor: default;
+}
+
+.drawer-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.drawer-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-item.drop-before::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #3b82f6;
+  border-radius: 1px;
+  animation: dropIndicator 0.15s ease;
+}
+
+.drawer-item.drop-after::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #3b82f6;
+  border-radius: 1px;
+  animation: dropIndicator 0.15s ease;
+}
+
+@keyframes dropIndicator {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+.drawer-item-handle {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: grab;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.drawer-item-handle:active {
+  cursor: grabbing;
+}
+
+.drawer-item:hover .drawer-item-handle {
+  opacity: 1;
+}
+
+.drawer-item-text {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  outline: none;
+  min-width: 50px;
+  cursor: default;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.drawer-item-text[contenteditable="true"] {
+  cursor: text;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.drawer-item-text:focus {
+  color: #fff;
+}
+
+/* Drawer Item Connection Points - Both Left and Right */
+.drawer-item-connection-point {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: #0a0a0b;
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  cursor: crosshair;
+  opacity: 0;
+  transition: all 0.15s ease;
+  z-index: 20;
+}
+
+.drawer-item-conn-left {
+  left: 6px;
+}
+
+.drawer-item-conn-right {
+  right: 6px;
+}
+
+.drawer-item:hover .drawer-item-connection-point,
+.grip-cell-drawer.connect-mode .drawer-item-connection-point {
+  opacity: 1;
+}
+
+.drawer-item-connection-point:hover {
+  background: #10b981;
+  border-color: #10b981;
+  transform: translateY(-50%) scale(1.2);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.drawer-item-delete {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.drawer-item:hover .drawer-item-delete {
+  opacity: 1;
+}
+
+.drawer-item-delete:hover {
+  background: #ef4444;
+  color: white;
+  transform: scale(1.1);
+}
+
+.drawer-add-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+}
+
+.drawer-add-item-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #3b82f6;
+}
+
+/* ============================================
+   Connection hover delete enhancement
+   ============================================ */
+.grip-connection-group {
+  cursor: pointer;
+}
+
+.grip-connection-delete-indicator {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.grip-connection-delete-indicator:hover {
+  opacity: 1 !important;
+}
+
+.grip-connection-delete-indicator:hover circle {
+  fill: #b91c1c;
+}
+
+.grip-connection-hitarea {
+  cursor: pointer;
+}
+
+.grip-connection-hitarea:hover ~ .grip-connection-delete-indicator {
+  opacity: 1 !important;
+}
+
+/* ============================================
+   Drawer item drag between drawers
+   ============================================ */
+.grip-cell-drawer.drawer-drop-target {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.drawer-item-drag-ghost {
+  pointer-events: none;
+  user-select: none;
+}
+
+.drawer-item.dragging {
+  opacity: 0.3;
+  transform: scale(0.95);
+  border-style: dashed;
+}
+
+/* ============================================
+   Mobile Responsive Header Styles
+   ============================================ */
+@media (max-width: 768px) {
+  .grip-diagram-header.clickup-header {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  
+  .header-divider {
+    display: none;
+  }
+  
+  .grip-header-left {
+    gap: 8px;
+  }
+  
+  .whiteboard-title-content {
+    display: none;
+  }
+  
+  .whiteboard-icon-wrapper {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .whiteboard-icon-wrapper svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .grip-back-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  
+  .grip-back-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .grip-header-center {
+    flex: 0;
+    gap: 4px;
+  }
+  
+  .header-action-group {
+    display: none;
+  }
+  
+  .header-action-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .header-action-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .header-action-btn span:not(.backlog-count) {
+    display: none;
+  }
+  
+  .action-label-desktop {
+    display: none !important;
+  }
+  
+  .backlog-count {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: 0 4px;
+  }
+  
+  .grip-header-right {
+    gap: 6px;
+  }
+  
+  .zoom-controls {
+    padding: 2px;
+    border-radius: 6px;
+  }
+  
+  .zoom-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+  }
+  
+  .zoom-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .zoom-level-btn {
+    padding: 0 6px;
+    font-size: 10px;
+    min-width: 36px;
+  }
+  
+  .header-icon-btn {
+    display: none;
+  }
+  
+  .share-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+  
+  .share-btn span {
+    display: none;
+  }
+  
+  .share-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Mobile Toolbar */
+  .whiteboard-bottom-toolbar {
+    bottom: 12px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    gap: 2px;
+  }
+  
+  .toolbar-tool {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+  
+  .toolbar-tool svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .toolbar-tool.toolbar-tool-task,
+  .toolbar-tool.toolbar-tool-note {
+    padding: 0 8px;
+  }
+  
+  .toolbar-label {
+    font-size: 10px;
+  }
+  
+  .toolbar-divider {
+    height: 16px;
+    margin: 0 2px;
+  }
+  
+  .toolbar-extras {
+    padding-left: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .grip-diagram-header.clickup-header {
+    padding: 6px 8px;
+  }
+  
+  .grip-back-btn,
+  .whiteboard-icon-wrapper {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .header-action-btn {
+    padding: 5px 8px;
+  }
+  
+  .zoom-controls {
+    display: none;
+  }
+  
+  .share-btn {
+    padding: 5px 8px;
+  }
+  
+  .whiteboard-bottom-toolbar {
+    bottom: 8px;
+    padding: 4px 6px;
+  }
+  
+  .toolbar-tool {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .toolbar-tool.toolbar-tool-task {
+    width: auto;
+    padding: 0 6px;
+  }
+  
+  .toolbar-tool.toolbar-tool-task .toolbar-label {
+    display: none;
+  }
 }
