@@ -93,6 +93,85 @@
   background: hsl(0 0% 100%);
 }
 
+/* ============================================
+   Beta Notification Popup
+   ============================================ */
+.beta-notification-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.beta-notification-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.beta-notification {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.beta-notification-overlay.show .beta-notification {
+  transform: scale(1) translateY(0);
+}
+
+.beta-notification-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.beta-notification-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 12px;
+}
+
+.beta-notification-message {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.beta-notification-close {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.beta-notification-close:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.light .beta-notification-overlay {
+  background: rgba(255, 255, 255, 0.6);
+}
+
 /* CSS Variables - Dark Theme (Default) */
 
 :root {
