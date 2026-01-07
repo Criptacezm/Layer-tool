@@ -498,7 +498,7 @@ function renderBacklogView() {
               placeholder="What needs to be done?" 
               onkeypress="handleQuickAddKeypress(event)"
             />
-            <button class="quick-add-btn" onclick="document.getElementById('quickAddInput').focus()">
+            <button class="quick-add-btn" onclick="handleQuickAddClick()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
                 <path d="M12 5v14M5 12h14"/>
               </svg>
@@ -677,6 +677,22 @@ function handleQuickAddKeypress(event) {
       input.value = '';
       renderCurrentView();
     }
+  }
+}
+
+// Handle quick add button click
+function handleQuickAddClick() {
+  const input = document.getElementById('quickAddInput');
+  if (!input) return;
+  
+  const title = input.value.trim();
+  if (title) {
+    addBacklogTask(title);
+    input.value = '';
+    renderCurrentView();
+  } else {
+    // If empty, focus the input
+    input.focus();
   }
 }
 
@@ -1384,11 +1400,28 @@ function renderActivityView(searchQuery = '') {
     <div class="projects-container" style="padding: 24px;">
       <div class="view-header" style="border: none; padding: 0; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
         <h2 class="view-title" style="font-size: 24px; font-weight: 600; margin: 0;">Workspace</h2>
-        <button class="btn btn-primary" onclick="openCreateProjectModal()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          New Project
-        </button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn btn-ghost workspace-action-btn" onclick="exportAllProjects()" title="Export Projects">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </button>
+          <button class="btn btn-ghost workspace-action-btn" onclick="importProjects()" title="Import Projects">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="btn btn-primary" onclick="openCreateProjectModal()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Project
+          </button>
+        </div>
       </div>
+      <input type="file" id="projectImportInput" accept=".json" style="display: none;" onchange="handleProjectImport(event)" />
       
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
         ${projects.map((project, index) => {
@@ -3304,6 +3337,132 @@ function toggleFocusTask(index) {
   }
   
   renderFocusTasks();
+}
+
+// ============================================
+// Project Export/Import Functions
+// ============================================
+
+function exportAllProjects() {
+  const projects = loadProjects();
+  if (projects.length === 0) {
+    alert('No projects to export!');
+    return;
+  }
+  
+  const exportData = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    projects: projects
+  };
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `layer-projects-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // Show success toast
+  showToast('Projects exported successfully!');
+}
+
+function importProjects() {
+  const input = document.getElementById('projectImportInput');
+  if (input) {
+    input.click();
+  }
+}
+
+function handleProjectImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importData = JSON.parse(e.target.result);
+      
+      // Validate import data
+      if (!importData.projects || !Array.isArray(importData.projects)) {
+        alert('Invalid file format. Please select a valid Layer projects export file.');
+        return;
+      }
+      
+      // Ask user how to handle import
+      const existingProjects = loadProjects();
+      const importCount = importData.projects.length;
+      
+      if (existingProjects.length > 0) {
+        const choice = confirm(
+          `Found ${importCount} project(s) to import.\n\n` +
+          `You currently have ${existingProjects.length} project(s).\n\n` +
+          `Click OK to MERGE (add to existing)\n` +
+          `Click Cancel to REPLACE all existing projects`
+        );
+        
+        if (choice) {
+          // Merge - add imported projects with new IDs to avoid conflicts
+          const mergedProjects = [...existingProjects];
+          importData.projects.forEach(project => {
+            // Generate new ID to avoid conflicts
+            project.id = generateId('PROJ');
+            mergedProjects.push(project);
+          });
+          saveProjects(mergedProjects);
+        } else {
+          // Replace all
+          saveProjects(importData.projects);
+        }
+      } else {
+        // No existing projects, just import
+        saveProjects(importData.projects);
+      }
+      
+      // Reset the input
+      event.target.value = '';
+      
+      // Refresh view
+      renderCurrentView();
+      
+      showToast(`${importCount} project(s) imported successfully!`);
+      
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import projects. Please check the file format.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 24px;
+    background: var(--card);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    font-size: 14px;
+    font-weight: 500;
+    animation: toastSlideIn 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // Make functions globally accessible
