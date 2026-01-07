@@ -1,0 +1,1211 @@
+/* ============================================
+   Layer - Component Styles
+   ============================================ */
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background-color: var(--border);
+  color: #ffffff62;
+}
+
+.btn-primary:hover {
+  background-color: var(--muted-foreground);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.btn-secondary:hover {
+  background-color: var(--accent);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.btn-ghost:hover {
+  background-color: var(--accent);
+  color: var(--foreground);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ============================================
+   Filter Tabs
+   ============================================ */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-tab {
+  padding: 6px 12px;
+  border: none;
+  background-color: var(--surface-hover);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-tab:hover {
+  color: var(--foreground);
+}
+
+.filter-tab.active {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* ============================================
+   Cards
+   ============================================ */
+.card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.card-hover:hover {
+  border-color: hsla(239, 84%, 67%, 0.3);
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+.table-header {
+  display: grid;
+  gap: 16px;
+  padding: 12px 20px;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+}
+
+.table-row {
+  display: grid;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s;
+  cursor: pointer;
+  align-items: center;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background-color: var(--surface-hover);
+}
+
+.issues-grid {
+  grid-template-columns: auto 3fr auto auto auto;
+}
+
+/* ============================================
+   Badges
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-sm {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.badge-todo {
+  background-color: hsla(215, 16%, 47%, 0.15);
+  color: var(--status-todo);
+}
+
+.badge-in-progress {
+  background-color: hsla(217, 91%, 60%, 0.15);
+  color: var(--status-in-progress);
+}
+
+.badge-review {
+  background-color: hsla(271, 91%, 65%, 0.15);
+  color: var(--status-review);
+}
+
+.badge-done {
+  background-color: hsla(142, 71%, 45%, 0.15);
+  color: var(--status-done);
+}
+
+.badge-backlog {
+  background-color: hsla(215, 14%, 45%, 0.15);
+  color: var(--status-backlog);
+}
+
+.badge-priority-high {
+  background-color: hsla(0, 84%, 60%, 0.15);
+  color: var(--priority-high);
+  border: 1px solid hsla(0, 84%, 60%, 0.3);
+  border-radius: 4px;
+}
+
+.badge-priority-medium {
+  background-color: hsla(48, 96%, 53%, 0.15);
+  color: var(--priority-medium);
+  border: 1px solid hsla(48, 96%, 53%, 0.3);
+  border-radius: 4px;
+}
+
+.badge-priority-low {
+  background-color: hsla(142, 71%, 45%, 0.15);
+  color: var(--priority-low);
+  border: 1px solid hsla(142, 71%, 45%, 0.3);
+  border-radius: 4px;
+}
+
+/* ============================================
+   Forms
+   ============================================ */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+}
+
+.form-label .required {
+  color: var(--destructive);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--foreground);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px hsla(239, 84%, 67%, 0.15);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* ============================================
+   Empty States
+   ============================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  min-height: 400px;
+}
+
+.empty-state-icon {
+  font-size: 60px;
+  opacity: 0.25;
+  margin-bottom: 20px;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.empty-state-text {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  margin-bottom: 24px;
+  max-width: 320px;
+}
+
+/* ============================================
+   Progress Bar
+   ============================================ */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.progress-bar-sm {
+  height: 4px;
+}
+
+/* ============================================
+   Checkbox
+   ============================================ */
+.checkbox-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.checkbox-custom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--muted-foreground);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.checkbox-container:hover .checkbox-custom {
+  border-color: hsla(239, 84%, 67%, 0.5);
+}
+
+.checkbox-container input:checked + .checkbox-custom {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox-custom .check-icon {
+  display: none;
+  width: 12px;
+  height: 12px;
+  color: var(--primary-foreground);
+}
+
+.checkbox-container input:checked + .checkbox-custom .check-icon {
+  display: block;
+}
+
+/* ============================================
+   View Headers
+   ============================================ */
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.view-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+/* ============================================
+   Backlog View
+   ============================================ */
+.backlog-container {
+  padding: 24px;
+}
+
+.backlog-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.backlog-progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backlog-progress-text {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+
+.backlog-progress-bar {
+  width: 220px;
+}
+
+.backlog-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backlog-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.15s;
+}
+
+.backlog-task.done {
+  opacity: 0.6;
+}
+
+.backlog-task-title {
+  flex: 1;
+  font-size: 14px;
+  color: var(--foreground);
+  outline: none;
+  min-height: 24px;
+  line-height: 1.5;
+}
+
+.backlog-task.done .backlog-task-title {
+  text-decoration: line-through;
+}
+
+.backlog-task-delete {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.backlog-task:hover .backlog-task-delete {
+  opacity: 1;
+}
+
+.backlog-task-delete:hover {
+  color: var(--destructive);
+}
+
+.quick-add {
+  margin-top: 24px;
+  padding: 14px 16px;
+  background-color: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.quick-add input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--foreground);
+  outline: none;
+}
+
+.quick-add input::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Activity / Projects View
+   ============================================ */
+.projects-container {
+  padding: 20px;
+}
+
+.project-card {
+  padding: 20px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.project-card:hover {
+  border-color: hsla(239, 84%, 67%, 0.3);
+}
+
+.project-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.project-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--foreground);
+  transition: color 0.15s;
+}
+
+.project-card:hover .project-card-title {
+  color: var(--primary);
+}
+
+.project-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-delete-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.project-card:hover .project-delete-btn {
+  opacity: 1;
+}
+
+.project-delete-btn:hover {
+  color: var(--destructive);
+}
+
+.project-description {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-progress {
+  margin-bottom: 16px;
+}
+
+.project-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.project-progress-label {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+
+.project-progress-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.project-progress-stats {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 6px;
+}
+
+.project-meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Project Detail View
+   ============================================ */
+.project-detail {
+  display: flex;
+  height: 100%;
+}
+
+.project-detail-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+}
+
+.project-detail-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background-color: var(--accent);
+  color: var(--foreground);
+}
+
+.project-detail-info {
+  flex: 1;
+}
+
+.project-detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.project-detail-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--foreground);
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.project-detail-badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.project-detail-delete {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  transition: color 0.15s;
+}
+
+.project-detail-delete:hover {
+  color: var(--destructive);
+}
+
+.project-update-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 32px;
+}
+
+.project-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: hsla(142, 71%, 45%, 0.15);
+  color: var(--status-done);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.project-update-meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+}
+
+.project-update-text {
+  font-size: 14px;
+  color: var(--foreground);
+}
+
+.project-description-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.project-description-text {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  outline: none;
+}
+
+/* Kanban Board */
+.kanban-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  margin-bottom: 32px;
+}
+
+.kanban-column {
+  flex-shrink: 0;
+  width: 280px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-column-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  outline: none;
+  min-width: 60px;
+}
+
+.kanban-column-count {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.kanban-column-delete {
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.kanban-column-header:hover .kanban-column-delete {
+  opacity: 1;
+}
+
+.kanban-column-delete:hover {
+  color: var(--destructive) !important;
+  opacity: 1 !important;
+}
+
+.kanban-tasks {
+  padding: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.kanban-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.15s;
+}
+
+.kanban-task:hover {
+  border-color: hsla(239, 84%, 67%, 0.3);
+}
+
+.kanban-task.done {
+  opacity: 0.6;
+}
+
+.kanban-task-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--foreground);
+}
+
+.kanban-task.done .kanban-task-title {
+  text-decoration: line-through;
+}
+
+.kanban-task-delete {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.kanban-task:hover .kanban-task-delete {
+  opacity: 1;
+}
+
+.kanban-task-delete:hover {
+  color: var(--destructive);
+}
+
+.kanban-add-task {
+  padding: 8px;
+}
+
+.kanban-add-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.kanban-add-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.kanban-add-input:focus {
+  border-color: var(--border);
+}
+
+/* Project Detail Sidebar */
+.project-detail-sidebar {
+  width: 260px;
+  background-color: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.project-sidebar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 24px;
+}
+
+.progress-circle-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.progress-circle {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.progress-circle svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-circle-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 8;
+}
+
+.progress-circle-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s ease;
+}
+
+.progress-circle-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.progress-circle-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 8px;
+}
+
+.properties-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.property-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.property-item:last-child {
+  border-bottom: none;
+}
+
+.property-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.property-value {
+  font-size: 12px;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.property-link {
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.property-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================
+   Inbox View
+   ============================================ */
+.inbox-container {
+  padding: 24px;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-message {
+  font-size: 14px;
+  color: var(--foreground);
+  margin-bottom: 4px;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Team View
+   ============================================ */
+.team-container {
+  padding: 24px;
+}
+
+/* ============================================
+   Issues View
+   ============================================ */
+.issues-container {
+}
+
+.issue-id {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--muted-foreground);
+}
+
+.issue-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.issue-description {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.issue-updated {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+@media (max-width: 1024px) {
+  .project-detail-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .view-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .issues-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .table-header.issues-grid {
+    display: none;
+  }
+  
+  .table-row.issues-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+  }
+  
+  .kanban-column {
+    width: 260px;
+  }
+  
+  .project-detail-main {
+    padding: 20px;
+  }
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--foreground);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: hsl(142 71% 45%);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+  background-color: white;
+}
+
+/* Creator Badge */
+.creator-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, hsl(271 91% 65% / 0.15), hsl(217 91% 60% / 0.15));
+  border: 1px solid hsl(271 91% 65% / 0.3);
+  border-radius: 8px;
+}
+
+.creator-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(271 91% 65%), hsl(217 91% 60%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.creator-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Progress Chart Modern Styles */
+.progress-chart-modern {
+  padding: 8px 0;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.chart-total {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.total-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.total-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
