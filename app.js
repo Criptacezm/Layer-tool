@@ -39,6 +39,11 @@ function init() {
     setTimeout(() => {
       loadingScreen.remove();
     }, 500);
+    
+    // Show beta notification popup after 1 second
+    setTimeout(() => {
+      showBetaNotification();
+    }, 1000);
   }, 3000);
 
   // Load theme with mode support
@@ -70,6 +75,51 @@ function init() {
 
   // Render initial view
   renderCurrentView();
+}
+
+// ============================================
+// Beta Notification Popup
+// ============================================
+function showBetaNotification() {
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'beta-notification-overlay';
+  overlay.id = 'betaNotificationOverlay';
+  
+  overlay.innerHTML = `
+    <div class="beta-notification">
+      <div class="beta-notification-icon">🚧</div>
+      <div class="beta-notification-title">Notes!</div>
+      <p class="beta-notification-message">
+        This website is currently in beta. Some features may not work as expected. Thank you for your patience!
+      </p>
+      <button class="beta-notification-close" onclick="closeBetaNotification()">Got it!</button>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Trigger animation
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+  });
+  
+  // Close when clicking outside
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeBetaNotification();
+    }
+  });
+}
+
+function closeBetaNotification() {
+  const overlay = document.getElementById('betaNotificationOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      overlay.remove();
+    }, 300);
+  }
 }
 
 // ============================================
