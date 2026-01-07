@@ -148,7 +148,25 @@
   font-size: 14px;
   color: var(--muted-foreground);
   line-height: 1.6;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.beta-notification-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  margin-bottom: 20px;
+  user-select: none;
+}
+
+.beta-notification-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
 }
 
 .beta-notification-close {
