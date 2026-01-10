@@ -3556,6 +3556,22 @@ body {
   z-index: 9999;
   display: flex;
   align-items: center;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Snap animation for smooth corner transitions */
+.focus-timer-float.snapping {
+  transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              bottom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.focus-timer-float.dragging {
+  cursor: grabbing;
+  opacity: 0.95;
+  transform: scale(1.02);
 }
 
 .focus-timer-widget {
@@ -3566,8 +3582,17 @@ body {
   border-radius: 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.3s ease, transform 0.3s ease, min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 180px;
+  cursor: grab;
+}
+
+.focus-timer-widget:active {
+  cursor: grabbing;
+}
+
+.focus-timer-float.dragging .focus-timer-widget {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
 }
 
 .focus-timer-widget.expanded {
@@ -3578,12 +3603,31 @@ body {
   min-width: 340px;
 }
 
+/* Drag handle indicator */
+.timer-drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 4px;
+  background: var(--muted-foreground);
+  border-radius: 2px;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.focus-timer-widget:hover .timer-drag-handle {
+  opacity: 0.6;
+}
+
 .timer-main {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 20px 18px 14px;
   cursor: pointer;
+  position: relative;
 }
 
 .timer-display {
