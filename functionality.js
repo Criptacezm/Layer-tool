@@ -211,7 +211,10 @@ function renderInboxView() {
               </div>
             </div>
           </div>
-  `;
+          
+          <!-- Feature 2: Space Widgets -->
+          ${renderSpaceWidgets()}
+        `;
 
   // === Upcoming Tasks - Card Grid Layout ===
   if (upcomingEvents.length > 0) {
@@ -4354,7 +4357,7 @@ function openDocEditor(docId = null) {
             </svg>
             Ask AI
           </button>
-          <button class="notion-action-btn" onclick="openShareModal()" title="Share">
+          <button class="notion-action-btn" onclick="openInEditorSharePanel('doc')" title="Share">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -4775,7 +4778,7 @@ function openExcelEditor(excelId = null) {
               <path d="M12 12h6"/>
             </svg>
           </button>
-          <button class="notion-action-btn" onclick="showComingSoonToast()" title="Share">
+          <button class="notion-action-btn" onclick="openInEditorSharePanel('excel')" title="Share">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -5546,8 +5549,13 @@ function renderSpaceDetailView(space) {
   // Recent docs (last 5)
   const recentDocs = [...docs].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
   
+  // Initialize checklist after render
+  setTimeout(() => renderChecklistSidebar(space.id), 100);
+  
   return `
-    <div class="clickup-docs-container">
+    <div class="clickup-docs-container" style="display: flex;">
+      <!-- Feature 3: Checklist Sidebar on Right -->
+      ${renderChecklistSidebarHTML(space.id)}
       <!-- Docs Sidebar -->
       <div class="docs-sidebar">
         <div class="docs-sidebar-header">
@@ -6490,4 +6498,403 @@ function applyPageStyles() {
 
 function applyToAllPages() {
   showToast('Typography applied to all pages');
+}
+
+/* ============================================
+   Feature 2: Dashboard Space Widgets
+   ============================================ */
+
+function getSpaceIconSVGById(iconId) {
+  const iconData = SPACE_ICON_SVGS.find(i => i.id === iconId);
+  if (iconData) return iconData.svg;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+}
+
+function renderSpaceWidgets() {
+  const spaces = loadSpaces();
+  const allDocs = loadDocs();
+  const allExcels = loadExcels();
+  
+  if (spaces.length === 0) return '';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return `
+    <div class="dashboard-spaces-section">
+      <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;vertical-align:-4px;margin-right:8px;">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Your Spaces
+      </h3>
+      <div class="dashboard-spaces-grid">
+        ${spaces.map(space => {
+          const docs = allDocs.filter(d => d.spaceId === space.id);
+          const excels = allExcels.filter(e => e.spaceId === space.id);
+          const dueDate = space.dueDate ? new Date(space.dueDate) : null;
+          let dueDateClass = '';
+          let dueDateText = '';
+          
+          if (dueDate) {
+            dueDate.setHours(0, 0, 0, 0);
+            const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysUntilDue < 0) {
+              dueDateClass = 'overdue';
+              dueDateText = 'Overdue';
+            } else if (daysUntilDue <= 3) {
+              dueDateClass = 'soon';
+              dueDateText = daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? 'Due tomorrow' : 'Due in ' + daysUntilDue + ' days';
+            } else {
+              dueDateText = formatDate(space.dueDate);
+            }
+          }
+          
+          const colorVar = space.colorTag && space.colorTag !== 'none' ? 'var(--event-' + space.colorTag + ')' : 'var(--primary)';
+          
+          return '<div class="space-widget" style="--space-accent: ' + colorVar + ';" onclick="openSpaceView(' + space.id + ')">' +
+            '<div class="space-widget-header">' +
+              '<div class="space-widget-icon">' + getSpaceIconSVGById(space.icon) + '</div>' +
+              '<h4 class="space-widget-title">' + space.name + '</h4>' +
+            '</div>' +
+            (space.description ? '<p class="space-widget-description">' + space.description + '</p>' : '') +
+            '<div class="space-widget-stats">' +
+              '<div class="space-widget-stat">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+                '<span>' + docs.length + ' docs</span>' +
+              '</div>' +
+              '<div class="space-widget-stat">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>' +
+                '<span>' + excels.length + ' sheets</span>' +
+              '</div>' +
+            '</div>' +
+            (dueDate ? '<div class="space-widget-due ' + dueDateClass + '">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
+              '<span>' + dueDateText + '</span>' +
+            '</div>' : '') +
+          '</div>';
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================
+   Feature 3: Checklist Sidebar for Spaces
+   ============================================ */
+
+const CHECKLISTS_KEY = 'layerSpaceChecklists';
+
+function loadChecklists() {
+  try {
+    return JSON.parse(localStorage.getItem(CHECKLISTS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveChecklists(checklists) {
+  localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+}
+
+function getSpaceChecklist(spaceId) {
+  const checklists = loadChecklists();
+  return checklists[spaceId] || [];
+}
+
+function saveSpaceChecklist(spaceId, items) {
+  const checklists = loadChecklists();
+  checklists[spaceId] = items;
+  saveChecklists(checklists);
+}
+
+function addChecklistItem(spaceId, text) {
+  if (!text || !text.trim()) return;
+  
+  const items = getSpaceChecklist(spaceId);
+  items.push({
+    id: Date.now(),
+    text: text.trim(),
+    completed: false,
+    createdAt: new Date().toISOString()
+  });
+  saveSpaceChecklist(spaceId, items);
+  renderChecklistSidebar(spaceId);
+}
+
+function toggleChecklistItem(spaceId, itemId) {
+  const items = getSpaceChecklist(spaceId);
+  const item = items.find(i => i.id === itemId);
+  if (item) {
+    item.completed = !item.completed;
+    saveSpaceChecklist(spaceId, items);
+    renderChecklistSidebar(spaceId);
+  }
+}
+
+function deleteChecklistItem(spaceId, itemId) {
+  let items = getSpaceChecklist(spaceId);
+  items = items.filter(i => i.id !== itemId);
+  saveSpaceChecklist(spaceId, items);
+  renderChecklistSidebar(spaceId);
+}
+
+function renderChecklistSidebar(spaceId) {
+  const container = document.getElementById('checklistContainer');
+  if (!container) return;
+  
+  const items = getSpaceChecklist(spaceId);
+  const completedCount = items.filter(i => i.completed).length;
+  const totalCount = items.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  
+  container.innerHTML = `
+    <div class="checklist-header">
+      <div class="checklist-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        To-Do
+      </div>
+    </div>
+    ${totalCount > 0 ? `
+      <div class="checklist-progress">
+        <div class="checklist-progress-bar">
+          <div class="checklist-progress-fill" style="width: ${progressPercent}%;"></div>
+        </div>
+        <div class="checklist-progress-text">${completedCount} of ${totalCount} completed</div>
+      </div>
+    ` : ''}
+    <div class="checklist-content">
+      ${items.length > 0 ? `
+        <div class="checklist-items">
+          ${items.map(item => `
+            <div class="checklist-item ${item.completed ? 'completed' : ''}">
+              <div class="checklist-checkbox" onclick="toggleChecklistItem(${spaceId}, ${item.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="checklist-item-content">
+                <div class="checklist-item-text">${item.text}</div>
+              </div>
+              <button class="checklist-item-delete" onclick="deleteChecklistItem(${spaceId}, ${item.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div class="checklist-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          <p>No tasks yet.<br>Add your first to-do item below.</p>
+        </div>
+      `}
+    </div>
+    <div class="checklist-add-input-wrapper">
+      <input type="text" class="checklist-add-input" id="checklistAddInput" 
+             placeholder="Add a task..." 
+             onkeypress="if(event.key==='Enter'){addChecklistItem(${spaceId}, this.value); this.value='';}" />
+    </div>
+  `;
+}
+
+function renderChecklistSidebarHTML(spaceId) {
+  return `
+    <div class="docs-checklist-sidebar" id="checklistContainer">
+      <!-- Content will be rendered by renderChecklistSidebar -->
+    </div>
+  `;
+}
+
+/* ============================================
+   Feature 4: In-Editor Share Panel
+   ============================================ */
+
+function openInEditorSharePanel(type) {
+  // type = 'doc' or 'excel'
+  let overlay = document.getElementById('inEditorShareOverlay');
+  let panel = document.getElementById('inEditorSharePanel');
+  
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'in-editor-share-overlay';
+    overlay.id = 'inEditorShareOverlay';
+    overlay.onclick = closeInEditorSharePanel;
+    document.body.appendChild(overlay);
+  }
+  
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.className = 'in-editor-share-panel';
+    panel.id = 'inEditorSharePanel';
+    document.body.appendChild(panel);
+  }
+  
+  const itemId = type === 'doc' ? currentDocId : currentExcelId;
+  const shareLink = 'https://layer.app/share/' + type + '/' + itemId;
+  
+  panel.innerHTML = `
+    <div class="in-editor-share-header">
+      <div class="in-editor-share-title">Share ${type === 'doc' ? 'Document' : 'Spreadsheet'}</div>
+      <button class="in-editor-share-close" onclick="closeInEditorSharePanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="in-editor-share-content">
+      <div class="share-input-section">
+        <label style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 8px; display: block;">Add people by email</label>
+        <div class="share-input-row">
+          <input type="email" class="share-email-input" id="inEditorShareEmailInput" placeholder="name@email.com" />
+          <button class="share-add-btn" onclick="addInEditorShareEmail()">Add</button>
+        </div>
+      </div>
+      
+      <div class="share-people-section" style="margin-top: 20px;">
+        <label style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 12px; display: block;">People with access</label>
+        <div id="inEditorSharePersonItems">
+          <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
+            No one has been added yet. Add people by email above.
+          </div>
+        </div>
+      </div>
+      
+      <div class="share-link-section">
+        <label style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 8px; display: block;">Or share via link</label>
+        <div class="share-link-row">
+          <input type="text" class="share-link-input" id="inEditorShareLinkInput" value="${shareLink}" readonly />
+          <button class="share-copy-btn" onclick="copyInEditorShareLink()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+      
+      <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeInEditorSharePanel()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmInEditorShare()">Share</button>
+      </div>
+    </div>
+  `;
+  
+  // Show with animation
+  requestAnimationFrame(() => {
+    overlay.classList.add('open');
+    panel.classList.add('open');
+  });
+  
+  setTimeout(() => {
+    document.getElementById('inEditorShareEmailInput')?.focus();
+  }, 300);
+}
+
+function closeInEditorSharePanel() {
+  const overlay = document.getElementById('inEditorShareOverlay');
+  const panel = document.getElementById('inEditorSharePanel');
+  
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
+  
+  setTimeout(() => {
+    if (overlay) overlay.remove();
+    if (panel) panel.remove();
+  }, 300);
+}
+
+let inEditorShareEmails = [];
+
+function addInEditorShareEmail() {
+  const input = document.getElementById('inEditorShareEmailInput');
+  const email = input.value.trim();
+  
+  if (!email || !email.includes('@')) {
+    input.style.borderColor = 'hsl(0, 84%, 60%)';
+    setTimeout(() => input.style.borderColor = '', 2000);
+    return;
+  }
+  
+  if (inEditorShareEmails.find(e => e.email === email)) {
+    showToast('Email already added');
+    return;
+  }
+  
+  inEditorShareEmails.push({ email, role: 'Can view' });
+  input.value = '';
+  renderInEditorSharePeople();
+}
+
+function renderInEditorSharePeople() {
+  const container = document.getElementById('inEditorSharePersonItems');
+  if (!container) return;
+  
+  if (inEditorShareEmails.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
+        No one has been added yet. Add people by email above.
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = inEditorShareEmails.map((person, index) => `
+    <div class="share-person-item">
+      <div class="share-person-avatar">${person.email.charAt(0).toUpperCase()}</div>
+      <div class="share-person-info">
+        <div class="share-person-name">${person.email.split('@')[0]}</div>
+        <div class="share-person-email">${person.email}</div>
+      </div>
+      <select class="share-person-role" onchange="updateInEditorShareRole(${index}, this.value)">
+        <option value="Can view" ${person.role === 'Can view' ? 'selected' : ''}>Can view</option>
+        <option value="Can edit" ${person.role === 'Can edit' ? 'selected' : ''}>Can edit</option>
+      </select>
+      <button onclick="removeInEditorSharePerson(${index})" style="background:none;border:none;cursor:pointer;color:var(--muted-foreground);padding:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function updateInEditorShareRole(index, role) {
+  if (inEditorShareEmails[index]) {
+    inEditorShareEmails[index].role = role;
+  }
+}
+
+function removeInEditorSharePerson(index) {
+  inEditorShareEmails.splice(index, 1);
+  renderInEditorSharePeople();
+}
+
+function copyInEditorShareLink() {
+  const input = document.getElementById('inEditorShareLinkInput');
+  if (input) {
+    input.select();
+    document.execCommand('copy');
+    showToast('Link copied to clipboard!');
+  }
+}
+
+function confirmInEditorShare() {
+  if (inEditorShareEmails.length === 0) {
+    showToast('Add at least one email to share');
+    return;
+  }
+  
+  showToast('Shared with ' + inEditorShareEmails.length + ' people!');
+  inEditorShareEmails = [];
+  closeInEditorSharePanel();
 }
