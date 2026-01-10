@@ -175,7 +175,11 @@ function renderInboxView() {
                 </span>
               </div>
               <div class="streak-display">
-                <span class="streak-flame">🔥</span>
+                <span class="streak-flame">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;color:hsl(24, 90%, 60%);">
+                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                  </svg>
+                </span>
                 <div class="streak-info">
                   <div class="streak-count">${calculateStreak(calendarEvents)} days</div>
                   <div class="streak-label">Keep it up!</div>
@@ -352,56 +356,56 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   
   let message = `${greeting} Here's your daily overview:\n\n`;
   
-  // Today's Tasks
-  message += `📋 Today's Tasks:\n`;
+  // Today's Tasks (using [Tasks] instead of emoji)
+  message += `[Tasks] Today's Tasks:\n`;
   if (todayTasks.length === 0) {
-    message += `• No tasks scheduled for today — great time to plan ahead or tackle pending items.\n\n`;
+    message += `No tasks scheduled for today. Great time to plan ahead or tackle pending items.\n\n`;
   } else {
     todayTasks.slice(0, 4).forEach(task => {
       const timeStr = task.time ? ` at ${task.time}` : '';
-      message += `• ${task.title}${timeStr}\n`;
+      message += `- ${task.title}${timeStr}\n`;
     });
     if (todayTasks.length > 4) {
-      message += `• ...and ${todayTasks.length - 4} more task${todayTasks.length - 4 > 1 ? 's' : ''}\n`;
+      message += `- ...and ${todayTasks.length - 4} more task${todayTasks.length - 4 > 1 ? 's' : ''}\n`;
     }
     message += `\n`;
   }
   
-  // Upcoming This Week
+  // Upcoming This Week (using [Calendar] instead of emoji)
   const futureTasks = upcomingEvents.filter(e => e.date !== new Date().toISOString().split('T')[0]);
-  message += `📅 Upcoming This Week:\n`;
+  message += `[Calendar] Upcoming This Week:\n`;
   if (futureTasks.length === 0) {
-    message += `• No upcoming tasks scheduled — consider planning your week.\n\n`;
+    message += `No upcoming tasks scheduled. Consider planning your week.\n\n`;
   } else {
     futureTasks.slice(0, 3).forEach(task => {
       const eventDate = new Date(task.date);
       const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      message += `• ${task.title} — ${dayLabel}\n`;
+      message += `- ${task.title} — ${dayLabel}\n`;
     });
     if (futureTasks.length > 3) {
-      message += `• ...and ${futureTasks.length - 3} more upcoming\n`;
+      message += `- ...and ${futureTasks.length - 3} more upcoming\n`;
     }
     message += `\n`;
   }
   
-  // Projects Overview
-  message += `🚀 Projects:\n`;
+  // Projects Overview (using [Projects] instead of emoji)
+  message += `[Projects] Active Projects:\n`;
   if (projects.length === 0) {
-    message += `• No active projects — create one to organize your work.\n\n`;
+    message += `No active projects. Create one to organize your work.\n\n`;
   } else {
-    message += `• You have ${projects.length} active project${projects.length > 1 ? 's' : ''} to manage.\n\n`;
+    message += `You have ${projects.length} active project${projects.length > 1 ? 's' : ''} to manage.\n\n`;
   }
   
-  // Priority Tips
-  message += `💡 Focus Tip:\n`;
+  // Priority Tips (using [Tip] instead of emoji)
+  message += `[Tip] Focus Insight:\n`;
   if (todayTasks.length > 3) {
-    message += `• You have multiple tasks today. Consider prioritizing the most important ones first.`;
+    message += `You have multiple tasks today. Consider prioritizing the most important ones first.`;
   } else if (todayTasks.length === 0 && futureTasks.length > 0) {
-    message += `• Clear day today! Perfect for deep work or preparing for upcoming tasks.`;
+    message += `Clear day today. Perfect for deep work or preparing for upcoming tasks.`;
   } else if (todayTasks.length > 0) {
-    message += `• Stay focused and tackle your tasks one at a time. You've got this!`;
+    message += `Stay focused and tackle your tasks one at a time.`;
   } else {
-    message += `• A quiet week ahead. Use this time to set new goals or reflect on progress.`;
+    message += `A quiet week ahead. Use this time to set new goals or reflect on progress.`;
   }
   
   return message;
@@ -516,7 +520,13 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
           </button>
         </div>
         <div class="empty-state">
-          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <path d="M9 14l2 2 4-4"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No issues yet</h3>
           <p class="empty-state-text">Create your first issue to get started</p>
           <button class="btn btn-primary" onclick="openCreateIssueModal()">
@@ -1627,7 +1637,11 @@ function renderScheduleView() {
         </div>
 
         <div class="sidebar-section sidebar-tips">
-          <div class="tip-icon">💡</div>
+          <div class="tip-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:hsl(48, 96%, 53%);">
+              <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/>
+            </svg>
+          </div>
           <div class="tip-content">
             <strong>Pro tip:</strong> Drag tasks from sidebar to a day to duplicate. Right-click to edit.
           </div>
@@ -1899,7 +1913,11 @@ function renderActivityView(searchQuery = '') {
           </button>
         </div>
         <div class="empty-state">
-          <div class="empty-state-icon">📂</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No projects yet</h3>
           <p class="empty-state-text">Get started by creating your first project</p>
           <button class="btn btn-primary" onclick="openCreateProjectModal()">
@@ -3078,7 +3096,14 @@ function renderTeamView() {
   return `
     <div class="team-container">
       <div class="empty-state">
-        <div class="empty-state-icon">👥</div>
+        <div class="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
         <h3 class="empty-state-title">Team collaboration coming soon</h3>
         <p class="empty-state-text">Invite team members and collaborate on projects together</p>
       </div>
@@ -4088,341 +4113,144 @@ function openDocEditor(docId = null) {
   currentDocId = doc ? doc.id : Date.now();
   const isFavorited = doc ? isDocFavorited(doc.id) : false;
   
+  // Get current user for author display
+  const currentUser = JSON.parse(localStorage.getItem('layerCurrentUser') || '{}');
+  const authorName = currentUser.username || 'You';
+  const authorInitial = authorName.charAt(0).toUpperCase();
+  const lastUpdated = doc ? formatTimeAgo(doc.updatedAt) : 'Just now';
+  
   const overlay = document.createElement('div');
   overlay.className = 'doc-editor-overlay';
   overlay.id = 'docEditorOverlay';
   
   overlay.innerHTML = `
-    <div class="doc-editor-container word-style">
-      <!-- Professional Header Bar -->
-      <div class="doc-editor-header word-header">
+    <div class="doc-editor-container notion-style">
+      <!-- Minimalistic Header Bar -->
+      <div class="doc-editor-header notion-header">
         <div class="doc-header-left">
-          <button class="doc-back-btn" onclick="closeDocEditor()" title="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <div class="doc-title-container">
-            <input type="text" class="doc-title-input" id="docTitleInput" 
-                   placeholder="Untitled Document" value="${doc ? doc.title : ''}" />
-            <span class="doc-saved-indicator" id="docSavedIndicator" style="display:none;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:hsl(142, 71%, 45%);">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
+          <div class="doc-breadcrumb">
+            <span class="breadcrumb-item" onclick="closeDocEditor()">Docs</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
               </svg>
-              Saved
             </span>
+            <span class="breadcrumb-current">Doc</span>
+            <button class="doc-favorite-btn-mini ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite(${currentDocId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+              <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
           </div>
         </div>
-        <div class="doc-header-right">
-          <button class="doc-favorite-btn ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite(${currentDocId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
-            <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="doc-export-btn" onclick="exportDocAsPDF()" title="Export as PDF">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-          <button class="doc-print-btn" onclick="printDoc()" title="Print">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <polyline points="6 9 6 2 18 2 18 9"/>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-              <rect x="6" y="14" width="12" height="8"/>
-            </svg>
-          </button>
-          <button class="doc-save-btn btn-themed-primary" onclick="saveCurrentDoc()">
+        <div class="doc-header-right notion-actions">
+          <button class="notion-action-btn" onclick="insertLink()" title="Add link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
-            Save
+          </button>
+          <button class="notion-action-btn" onclick="showComingSoonToast()" title="Ask AI">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-4.5h-2v-1c0-1.1.9-2 2-2a2 2 0 0 0 0-4 2 2 0 0 0-2 2h-2a4 4 0 1 1 6 3.46v1.54z"/>
+            </svg>
+            Ask AI
+          </button>
+          <button class="notion-action-btn" onclick="openShareModal()" title="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Share
+          </button>
+          <button class="notion-action-btn" title="More options">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <circle cx="12" cy="12" r="1"/>
+              <circle cx="19" cy="12" r="1"/>
+              <circle cx="5" cy="12" r="1"/>
+            </svg>
+          </button>
+          <button class="doc-close-btn" onclick="closeDocEditor()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
           </button>
         </div>
       </div>
       
-      <!-- Professional Toolbar - Word-like -->
-      <div class="doc-toolbar word-toolbar">
-        <!-- File operations -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <select class="toolbar-select font-family-select" id="docFontSelect" onchange="execDocCommand('fontName', this.value)">
-              <option value="inherit">Default Font</option>
-              <option value="Arial, sans-serif">Arial</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Times New Roman, serif">Times New Roman</option>
-              <option value="Courier New, monospace">Courier New</option>
-              <option value="Verdana, sans-serif">Verdana</option>
-            </select>
-          </div>
-          
-          <div class="toolbar-group">
-            <select class="toolbar-select font-size-select" id="docFontSizeSelect" onchange="setFontSize(this.value)">
-              <option value="1">8pt</option>
-              <option value="2">10pt</option>
-              <option value="3" selected>12pt</option>
-              <option value="4">14pt</option>
-              <option value="5">18pt</option>
-              <option value="6">24pt</option>
-              <option value="7">36pt</option>
-            </select>
-          </div>
-          
-          <div class="toolbar-group">
-            <select class="toolbar-select heading-select" id="docHeadingSelect" onchange="execDocCommand('formatBlock', this.value)">
-              <option value="p">Paragraph</option>
-              <option value="h1">Heading 1</option>
-              <option value="h2">Heading 2</option>
-              <option value="h3">Heading 3</option>
-              <option value="h4">Heading 4</option>
-              <option value="blockquote">Quote</option>
-              <option value="pre">Code Block</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Text formatting -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" id="btnBold" onclick="execDocCommand('bold')" title="Bold (Ctrl+B)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;">
-                <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-                <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" id="btnItalic" onclick="execDocCommand('italic')" title="Italic (Ctrl+I)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="19" y1="4" x2="10" y2="4"/>
-                <line x1="14" y1="20" x2="5" y2="20"/>
-                <line x1="15" y1="4" x2="9" y2="20"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" id="btnUnderline" onclick="execDocCommand('underline')" title="Underline (Ctrl+U)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
-                <line x1="4" y1="21" x2="20" y2="21"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" id="btnStrike" onclick="execDocCommand('strikeThrough')" title="Strikethrough">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="4" y1="12" x2="20" y2="12"/>
-                <path d="M17.5 7.5c-.8-1.5-2.8-2.5-5.5-2.5-3 0-5.5 1.3-5.5 4 0 2.1 1.7 3.2 3.5 3.7"/>
-                <path d="M9.5 14.5c.8 1.5 2.8 2.5 5.5 2.5 3 0 5.5-1.3 5.5-4"/>
-              </svg>
-            </button>
-          </div>
-          
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('subscript')" title="Subscript">
-              <span style="font-size:12px;font-weight:600;">X<sub style="font-size:8px;">2</sub></span>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('superscript')" title="Superscript">
-              <span style="font-size:12px;font-weight:600;">X<sup style="font-size:8px;">2</sup></span>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Colors -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <div class="color-picker-container" title="Text Color">
-              <span class="color-picker-icon">A</span>
-              <input type="color" class="color-picker-input" id="textColorPicker" value="#ffffff" 
-                     onchange="execDocCommand('foreColor', this.value)" />
-            </div>
-            <div class="color-picker-container highlight" title="Highlight">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M9 11l-6 6v3h9l3-3"/>
-                <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>
-              </svg>
-              <input type="color" class="color-picker-input" id="bgColorPicker" value="#facc15" 
-                     onchange="execDocCommand('hiliteColor', this.value)" />
-            </div>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Lists -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('insertUnorderedList')" title="Bullet List">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="9" y1="6" x2="20" y2="6"/>
-                <line x1="9" y1="12" x2="20" y2="12"/>
-                <line x1="9" y1="18" x2="20" y2="18"/>
-                <circle cx="5" cy="6" r="1" fill="currentColor"/>
-                <circle cx="5" cy="12" r="1" fill="currentColor"/>
-                <circle cx="5" cy="18" r="1" fill="currentColor"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('insertOrderedList')" title="Numbered List">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="10" y1="6" x2="21" y2="6"/>
-                <line x1="10" y1="12" x2="21" y2="12"/>
-                <line x1="10" y1="18" x2="21" y2="18"/>
-                <path d="M4 6h1v4"/>
-                <path d="M4 10h2"/>
-                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Alignment -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('justifyLeft')" title="Align Left">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="15" y2="12"/>
-                <line x1="3" y1="18" x2="18" y2="18"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('justifyCenter')" title="Align Center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="6" y1="12" x2="18" y2="12"/>
-                <line x1="4" y1="18" x2="20" y2="18"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('justifyRight')" title="Align Right">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="9" y1="12" x2="21" y2="12"/>
-                <line x1="6" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('justifyFull')" title="Justify">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Indent -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('outdent')" title="Decrease Indent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <polyline points="7 8 3 12 7 16"/>
-                <line x1="21" y1="12" x2="11" y2="12"/>
-                <line x1="21" y1="6" x2="11" y2="6"/>
-                <line x1="21" y1="18" x2="11" y2="18"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('indent')" title="Increase Indent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <polyline points="3 8 7 12 3 16"/>
-                <line x1="21" y1="12" x2="11" y2="12"/>
-                <line x1="21" y1="6" x2="11" y2="6"/>
-                <line x1="21" y1="18" x2="11" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Insert -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="insertLink()" title="Insert Link">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="insertImage()" title="Insert Image">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="insertTable()" title="Insert Table">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <line x1="3" y1="9" x2="21" y2="9"/>
-                <line x1="3" y1="15" x2="21" y2="15"/>
-                <line x1="9" y1="3" x2="9" y2="21"/>
-                <line x1="15" y1="3" x2="15" y2="21"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="insertHorizontalRule()" title="Horizontal Line">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <line x1="3" y1="12" x2="21" y2="12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Undo/Redo -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('undo')" title="Undo (Ctrl+Z)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M3 7v6h6"/>
-                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
-              </svg>
-            </button>
-            <button class="toolbar-btn" onclick="execDocCommand('redo')" title="Redo (Ctrl+Y)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M21 7v6h-6"/>
-                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="toolbar-divider"></div>
-        
-        <!-- Clear formatting -->
-        <div class="toolbar-section">
-          <div class="toolbar-group">
-            <button class="toolbar-btn" onclick="execDocCommand('removeFormat')" title="Clear Formatting">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M17 17H7a5 5 0 0 1-5-5 5 5 0 0 1 5-5h14"/>
-                <path d="m18 11-3 3-3-3"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+      <!-- Minimalistic Sidebar -->
+      <div class="notion-sidebar">
+        <button class="notion-sidebar-btn" onclick="showComingSoonToast()" title="Add page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add page
+        </button>
       </div>
       
-      <!-- Document Content Area - Paper Style -->
-      <div class="doc-content-area word-content-area">
-        <div class="doc-paper-container">
-          <div class="doc-editor-content word-editor-content" id="docEditorContent" contenteditable="true" spellcheck="true">${doc ? doc.content : '<p></p>'}</div>
-        </div>
+      <!-- Right Action Bar -->
+      <div class="notion-right-actions">
+        <button class="notion-right-btn" onclick="openPageStylesSidebar()" title="Page Styles">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M7 7h10M7 12h6M7 17h8"/>
+          </svg>
+          <span class="notion-right-label">Aa</span>
+        </button>
+        <button class="notion-right-btn" onclick="insertLink()" title="Add link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </button>
+        <button class="notion-right-btn" onclick="saveCurrentDoc()" title="Save">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+        </button>
+        <button class="notion-right-btn" onclick="exportDocAsPDF()" title="Download">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
       </div>
       
-      <!-- Status Bar -->
-      <div class="doc-status-bar">
-        <div class="status-left">
-          <span id="wordCount">Words: 0</span>
-          <span class="status-divider">|</span>
-          <span id="charCount">Characters: 0</span>
-        </div>
-        <div class="status-right">
-          <span id="lastSaved">${doc ? 'Last saved: ' + formatTimeAgo(doc.updatedAt) : 'Not saved'}</span>
+      <!-- Document Content Area - Notion Style -->
+      <div class="doc-content-area notion-content-area">
+        <div class="notion-page-container">
+          <!-- Link Task or Doc -->
+          <div class="notion-link-task" onclick="showComingSoonToast()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            Link Task or Doc
+          </div>
+          
+          <!-- Title Input - Large like Notion -->
+          <input type="text" class="notion-title-input" id="docTitleInput" 
+                 placeholder="Untitled" value="${doc ? doc.title : ''}" />
+          
+          <!-- Author and Last Updated -->
+          <div class="notion-meta">
+            <div class="notion-author">
+              <span class="notion-author-avatar">${authorInitial}</span>
+              <span class="notion-author-name">${authorName}</span>
+            </div>
+            <span class="notion-meta-separator">·</span>
+            <span class="notion-last-updated">Last updated ${lastUpdated}</span>
+          </div>
+          
+          <!-- Content Editor -->
+          <div class="notion-editor-content" id="docEditorContent" contenteditable="true" spellcheck="true">${doc ? doc.content : ''}</div>
         </div>
       </div>
     </div>
@@ -4431,14 +4259,71 @@ function openDocEditor(docId = null) {
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   
-  // Set up word count updates
-  setupWordCount();
+  // Set up placeholder and autosave
+  setupNotionEditor();
   
-  // Focus on content if new doc, title if editing
+  // Focus on title if new doc
   if (!doc) {
     setTimeout(() => {
       document.getElementById('docTitleInput')?.focus();
     }, 100);
+  }
+}
+
+function setupNotionEditor() {
+  const contentDiv = document.getElementById('docEditorContent');
+  if (!contentDiv) return;
+  
+  // Placeholder behavior
+  contentDiv.addEventListener('focus', function() {
+    if (this.textContent.trim() === '' && !this.querySelector('*')) {
+      this.innerHTML = '';
+    }
+  });
+  
+  contentDiv.addEventListener('blur', function() {
+    if (this.textContent.trim() === '') {
+      this.innerHTML = '';
+    }
+  });
+  
+  // Auto-save on input
+  let saveTimeout;
+  contentDiv.addEventListener('input', function() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      autoSaveDoc();
+    }, 2000);
+  });
+  
+  // Handle keyboard shortcuts
+  contentDiv.addEventListener('keydown', function(e) {
+    if (e.key === '/' && contentDiv.textContent.trim() === '') {
+      // Show slash command menu (coming soon)
+    }
+  });
+}
+
+function autoSaveDoc() {
+  const titleInput = document.getElementById('docTitleInput');
+  const contentDiv = document.getElementById('docEditorContent');
+  
+  if (!titleInput || !contentDiv) return;
+  
+  const title = titleInput.value.trim() || 'Untitled';
+  const content = contentDiv.innerHTML;
+  
+  const docs = loadDocs();
+  const existingIndex = docs.findIndex(d => d.id === currentDocId);
+  
+  if (existingIndex !== -1) {
+    docs[existingIndex] = {
+      ...docs[existingIndex],
+      title,
+      content,
+      updatedAt: new Date().toISOString()
+    };
+    saveDocs(docs);
   }
 }
 
@@ -4646,57 +4531,133 @@ function openExcelEditor(excelId = null) {
   const data = excel ? excel.data : createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS);
   const isFavorited = excel ? isExcelFavorited(excel.id) : false;
   
+  // Get current user for author display
+  const currentUser = JSON.parse(localStorage.getItem('layerCurrentUser') || '{}');
+  const authorName = currentUser.username || 'You';
+  const authorInitial = authorName.charAt(0).toUpperCase();
+  const lastUpdated = excel ? formatTimeAgo(excel.updatedAt) : 'Just now';
+  
   const overlay = document.createElement('div');
   overlay.className = 'excel-editor-overlay';
   overlay.id = 'excelEditorOverlay';
   
   overlay.innerHTML = `
-    <div class="excel-editor-container">
-      <div class="excel-header">
-        <div class="excel-header-left">
-          <button class="doc-back-btn" onclick="closeExcelEditor()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
+    <div class="excel-editor-container notion-style">
+      <!-- Minimalistic Header Bar -->
+      <div class="doc-editor-header notion-header">
+        <div class="doc-header-left">
+          <div class="doc-breadcrumb">
+            <span class="breadcrumb-item" onclick="closeExcelEditor()">Spreadsheets</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+            </span>
+            <span class="breadcrumb-current">Sheet</span>
+            <button class="doc-favorite-btn-mini ${isFavorited ? 'is-favorite' : ''}" data-favorite-excel="${currentExcelId}" onclick="toggleExcelFavorite(${currentExcelId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+              <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="doc-header-right notion-actions">
+          <button class="notion-action-btn" onclick="addExcelRow()" title="Add Row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 15h18"/>
+              <path d="M12 12v6"/>
             </svg>
           </button>
-          <input type="text" class="excel-title-input" id="excelTitleInput" 
+          <button class="notion-action-btn" onclick="addExcelColumn()" title="Add Column">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M15 3v18"/>
+              <path d="M12 12h6"/>
+            </svg>
+          </button>
+          <button class="notion-action-btn" onclick="showComingSoonToast()" title="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Share
+          </button>
+          <button class="notion-action-btn" title="More options">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <circle cx="12" cy="12" r="1"/>
+              <circle cx="19" cy="12" r="1"/>
+              <circle cx="5" cy="12" r="1"/>
+            </svg>
+          </button>
+          <button class="doc-close-btn" onclick="closeExcelEditor()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Right Action Bar -->
+      <div class="notion-right-actions">
+        <button class="notion-right-btn" onclick="addExcelRow()" title="Add Row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 15h18"/>
+            <path d="M12 12v6"/>
+          </svg>
+        </button>
+        <button class="notion-right-btn" onclick="addExcelColumn()" title="Add Column">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M15 3v18"/>
+            <path d="M12 12h6"/>
+          </svg>
+        </button>
+        <button class="notion-right-btn" onclick="saveCurrentExcel()" title="Save">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+        </button>
+        <button class="notion-right-btn" onclick="exportExcelAsCSV()" title="Export CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:18px;height:18px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Spreadsheet Content Area - Notion Style -->
+      <div class="doc-content-area notion-content-area excel-notion-content">
+        <div class="notion-page-container excel-page-container">
+          <!-- Title Input - Large like Notion -->
+          <input type="text" class="notion-title-input" id="excelTitleInput" 
                  placeholder="Untitled Spreadsheet" value="${excel ? excel.title : ''}" />
-        </div>
-        <div class="doc-header-right">
-          <button class="excel-favorite-btn ${isFavorited ? 'is-favorite' : ''}" data-favorite-excel="${currentExcelId}" onclick="toggleExcelFavorite(${currentExcelId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
-            <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="doc-save-btn" onclick="saveCurrentExcel()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Save
-          </button>
-        </div>
-      </div>
-      
-      <div class="excel-toolbar">
-        <button class="excel-toolbar-btn" onclick="addExcelRow()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Add Row
-        </button>
-        <button class="excel-toolbar-btn" onclick="addExcelColumn()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Add Column
-        </button>
-      </div>
-      
-      <div class="excel-content-area">
-        <div class="excel-grid" id="excelGrid" style="grid-template-columns: 50px repeat(${data[0]?.length || DEFAULT_COLS}, 120px);">
-          ${renderExcelGrid(data)}
+          
+          <!-- Author and Last Updated -->
+          <div class="notion-meta">
+            <div class="notion-author">
+              <span class="notion-author-avatar">${authorInitial}</span>
+              <span class="notion-author-name">${authorName}</span>
+            </div>
+            <span class="notion-meta-separator">·</span>
+            <span class="notion-last-updated">Last updated ${lastUpdated}</span>
+          </div>
+          
+          <!-- Excel Grid -->
+          <div class="excel-grid-wrapper">
+            <div class="excel-grid" id="excelGrid" style="grid-template-columns: 50px repeat(${data[0]?.length || DEFAULT_COLS}, 120px);">
+              ${renderExcelGrid(data)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -4704,6 +4665,13 @@ function openExcelEditor(excelId = null) {
   
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
+  
+  // Focus on title if new sheet
+  if (!excel) {
+    setTimeout(() => {
+      document.getElementById('excelTitleInput')?.focus();
+    }, 100);
+  }
 }
 
 function createEmptyGrid(rows, cols) {
@@ -4837,10 +4805,48 @@ function saveCurrentExcel() {
   
   saveExcels(excels);
   showToast('Spreadsheet saved successfully!');
-  closeExcelEditor();
   
   // Refresh favorites sidebar
   renderFavoritesInSidebar();
+  
+  // If we're in a space, re-render the space view
+  if (currentSpaceId) {
+    const spaces = loadSpaces();
+    const space = spaces.find(s => s.id === currentSpaceId);
+    if (space) {
+      const viewsContainer = document.getElementById('viewsContainer');
+      if (viewsContainer) {
+        viewsContainer.innerHTML = renderSpaceDetailView(space);
+      }
+    }
+  }
+}
+
+function exportExcelAsCSV() {
+  const data = getExcelData();
+  const titleInput = document.getElementById('excelTitleInput');
+  const title = titleInput?.value?.trim() || 'spreadsheet';
+  
+  // Convert to CSV
+  const csvContent = data.map(row => 
+    row.map(cell => {
+      // Escape quotes and wrap in quotes if needed
+      const escaped = String(cell).replace(/"/g, '""');
+      return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n') 
+        ? `"${escaped}"` 
+        : escaped;
+    }).join(',')
+  ).join('\n');
+  
+  // Create and download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${title}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  
+  showToast('Spreadsheet exported as CSV!');
 }
 
 // ============================================
@@ -5232,22 +5238,35 @@ function renderFavoritesInSidebar() {
       Favorites
     </div>
     ${favoriteDocs.map(doc => `
-      <div class="custom-space-item-wrapper favorite-doc-item favorite-item-row">
-        <button class="custom-space-item favorite-with-icon-left" onclick="openDocEditor(${doc.id})">
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="favorite-star-left">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <span class="space-name-text favorite-text-truncate" title="${doc.title}">${truncateTitle(doc.title)}</span>
+      <div class="custom-space-item-wrapper favorite-doc-item">
+        <button class="custom-space-item" onclick="openDocEditor(${doc.id})">
+          <div class="favorite-item-layout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon doc-icon">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span class="favorite-text-truncate" title="${doc.title}">${truncateTitle(doc.title)}</span>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
         </button>
       </div>
     `).join('')}
     ${favoriteExcels.map(excel => `
-      <div class="custom-space-item-wrapper favorite-excel-item favorite-item-row">
-        <button class="custom-space-item favorite-with-icon-left" onclick="openExcelEditor(${excel.id})">
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="favorite-star-left">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <span class="space-name-text favorite-text-truncate" title="${excel.title}">${truncateTitle(excel.title)}</span>
+      <div class="custom-space-item-wrapper favorite-excel-item">
+        <button class="custom-space-item" onclick="openExcelEditor(${excel.id})">
+          <div class="favorite-item-layout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon excel-icon">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+            <span class="favorite-text-truncate" title="${excel.title}">${truncateTitle(excel.title)}</span>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
         </button>
       </div>
     `).join('')}
@@ -5259,7 +5278,13 @@ function renderFavoritesInSidebar() {
 function confirmDeleteSpace(spaceId, spaceName) {
   const content = `
     <div style="text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 16px;">🗑️</div>
+      <div style="width: 64px; height: 64px; margin: 0 auto 16px; background: var(--surface); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 32px; height: 32px; color: var(--destructive);">
+          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          <line x1="10" y1="11" x2="10" y2="17"/>
+          <line x1="14" y1="11" x2="14" y2="17"/>
+        </svg>
+      </div>
       <p style="color: var(--muted-foreground); margin-bottom: 24px;">
         Are you sure you want to delete the space "<strong>${spaceName}</strong>"? This action cannot be undone.
       </p>
@@ -5446,7 +5471,11 @@ function renderSpaceDetailView(space) {
           <div class="docs-editor-wrapper" style="padding: 24px;">
             <div style="width: 100%; max-width: 1200px;">
               <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
-                📄 Documents (${docs.length})
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;vertical-align:-4px;margin-right:8px;color:hsl(217, 91%, 60%);">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Documents (${docs.length})
               </h3>
               
               ${docs.length > 0 ? `
@@ -5480,7 +5509,12 @@ function renderSpaceDetailView(space) {
               
               ${excels.length > 0 ? `
                 <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
-                  📊 Spreadsheets (${excels.length})
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;vertical-align:-4px;margin-right:8px;color:hsl(142, 71%, 45%);">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="3" x2="9" y2="21"/>
+                  </svg>
+                  Spreadsheets (${excels.length})
                 </h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
                   ${excels.map(excel => {
@@ -5548,21 +5582,6 @@ function renderSpaceDetailView(space) {
           </div>
         `}
       </div>
-      
-      <!-- Comments Panel (Hidden on smaller screens) -->
-      <div class="docs-comments-panel">
-        <div class="docs-comments-header">
-          <span class="docs-comments-title">💬 Comments</span>
-        </div>
-        <div class="docs-comments-list">
-          <div style="text-align: center; padding: 32px 16px; color: var(--muted-foreground);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;margin-bottom:12px;opacity:0.5;">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            <p style="font-size: 13px;">No comments yet.<br>Open a document to start discussing.</p>
-          </div>
-        </div>
-      </div>
     </div>
   `;
 }
@@ -5597,7 +5616,13 @@ function filterSpaceDocs(spaceId) {
 function confirmDeleteDoc(docId, docTitle) {
   const content = `
     <div style="text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+      <div style="margin-bottom: 16px; display: flex; justify-content: center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--destructive);">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+      </div>
       <p style="color: var(--muted-foreground); margin-bottom: 24px;">
         Are you sure you want to delete "<strong>${docTitle}</strong>"? This action cannot be undone.
       </p>
@@ -5720,3 +5745,553 @@ window.setBacklogSort = setBacklogSort;
 window.moveToProject = moveToProject;
 window.confirmMoveToProject = confirmMoveToProject;
 window.clearCompletedBacklog = clearCompletedBacklog;
+window.openShareModal = openShareModal;
+window.openPageStylesSidebar = openPageStylesSidebar;
+window.closePageStylesSidebar = closePageStylesSidebar;
+window.togglePageStyleOption = togglePageStyleOption;
+window.togglePageStyleToggle = togglePageStyleToggle;
+window.addShareEmail = addShareEmail;
+window.copyShareLink = copyShareLink;
+
+// ============================================
+// Share Modal Function
+// ============================================
+let pendingShareEmails = [];
+
+function openShareModal() {
+  pendingShareEmails = [];
+  
+  const content = `
+    <div class="share-modal-content">
+      <div class="share-input-group">
+        <input type="email" class="share-email-input" id="shareEmailInput" placeholder="Enter email address" />
+        <button class="share-add-btn" onclick="addShareEmail()">Add</button>
+      </div>
+      
+      <div class="share-people-list" id="sharePeopleList">
+        <div class="share-people-title">People with access</div>
+        <div id="sharePersonItems">
+          <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
+            No one has been added yet. Add people by email above.
+          </div>
+        </div>
+      </div>
+      
+      <div class="share-link-section">
+        <div class="share-people-title">Share link</div>
+        <div class="share-link-row">
+          <input type="text" class="share-link-input" id="shareLinkInput" value="${window.location.origin}/doc/${currentDocId}" readonly />
+          <button class="share-copy-btn" onclick="copyShareLink()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+      
+      <div class="form-actions" style="margin-top: 24px;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="shareDocConfirm()">Share</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Share Document', content);
+  
+  setTimeout(() => {
+    document.getElementById('shareEmailInput')?.focus();
+  }, 100);
+}
+
+function addShareEmail() {
+  const input = document.getElementById('shareEmailInput');
+  const email = input.value.trim();
+  
+  if (!email || !email.includes('@')) {
+    input.style.borderColor = 'hsl(0, 84%, 60%)';
+    setTimeout(() => input.style.borderColor = '', 2000);
+    return;
+  }
+  
+  if (pendingShareEmails.find(e => e.email === email)) {
+    showToast('Email already added');
+    return;
+  }
+  
+  pendingShareEmails.push({ email, role: 'Can view' });
+  input.value = '';
+  renderSharePeople();
+}
+
+function renderSharePeople() {
+  const container = document.getElementById('sharePersonItems');
+  if (!container) return;
+  
+  if (pendingShareEmails.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
+        No one has been added yet. Add people by email above.
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = pendingShareEmails.map((person, index) => `
+    <div class="share-person-item">
+      <div class="share-person-avatar">${person.email.charAt(0).toUpperCase()}</div>
+      <div class="share-person-info">
+        <div class="share-person-name">${person.email.split('@')[0]}</div>
+        <div class="share-person-email">${person.email}</div>
+      </div>
+      <select class="share-person-role" onchange="updateShareRole(${index}, this.value)">
+        <option value="Can view" ${person.role === 'Can view' ? 'selected' : ''}>Can view</option>
+        <option value="Can edit" ${person.role === 'Can edit' ? 'selected' : ''}>Can edit</option>
+        <option value="Can comment" ${person.role === 'Can comment' ? 'selected' : ''}>Can comment</option>
+      </select>
+      <button onclick="removeSharePerson(${index})" style="background:none;border:none;cursor:pointer;color:var(--muted-foreground);padding:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function updateShareRole(index, role) {
+  if (pendingShareEmails[index]) {
+    pendingShareEmails[index].role = role;
+  }
+}
+
+function removeSharePerson(index) {
+  pendingShareEmails.splice(index, 1);
+  renderSharePeople();
+}
+
+function shareDocConfirm() {
+  if (pendingShareEmails.length === 0) {
+    showToast('Add at least one email to share');
+    return;
+  }
+  
+  // Save share settings to doc
+  const docs = loadDocs();
+  const docIndex = docs.findIndex(d => d.id === currentDocId);
+  if (docIndex !== -1) {
+    docs[docIndex].sharedWith = pendingShareEmails;
+    saveDocs(docs);
+  }
+  
+  closeModal();
+  showToast(`Document shared with ${pendingShareEmails.length} people`);
+}
+
+function copyShareLink() {
+  const input = document.getElementById('shareLinkInput');
+  if (input) {
+    input.select();
+    document.execCommand('copy');
+    showToast('Link copied to clipboard');
+  }
+}
+
+// ============================================
+// Page Styles Sidebar
+// ============================================
+let pageStylesSettings = {
+  fontStyle: 'system',
+  fontSize: 'default',
+  pageWidth: 'default',
+  coverImage: false,
+  pageIcon: true,
+  owners: true,
+  contributors: false,
+  subtitle: false,
+  lastModified: true,
+  pageOutline: false,
+  focusBlock: false,
+  focusPage: false
+};
+
+function openPageStylesSidebar() {
+  // Create overlay
+  let overlay = document.getElementById('pageStylesOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'page-styles-overlay';
+    overlay.id = 'pageStylesOverlay';
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closePageStylesSidebar();
+    };
+    
+    overlay.innerHTML = `
+      <div class="page-styles-sidebar" id="pageStylesSidebar">
+        <div class="page-styles-container">
+          <!-- Left Tabs -->
+          <div class="page-styles-tabs">
+            <button class="page-styles-tab" title="Document">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </button>
+            <button class="page-styles-tab active" title="Typography">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 7 4 4 20 4 20 7"/>
+                <line x1="9" y1="20" x2="15" y2="20"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+              </svg>
+            </button>
+            <button class="page-styles-tab" title="Layout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+            </button>
+            <button class="page-styles-tab" title="Export">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Content -->
+          <div class="page-styles-content">
+            <div class="page-styles-header">
+              <span class="page-styles-title">Page Styles</span>
+              <button class="page-styles-close" onclick="closePageStylesSidebar()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                  <polyline points="13 17 18 12 13 7"/>
+                  <polyline points="6 17 11 12 6 7"/>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Font Style -->
+            <div class="page-styles-section">
+              <div class="page-styles-section-title">Font style</div>
+              <div class="page-styles-options">
+                <button class="page-styles-option ${pageStylesSettings.fontStyle === 'system' ? 'active' : ''}" onclick="togglePageStyleOption('fontStyle', 'system')">
+                  <span style="font-family: -apple-system, sans-serif; font-size: 16px; font-weight: 600;">Aa</span>
+                  <span>System</span>
+                </button>
+                <button class="page-styles-option ${pageStylesSettings.fontStyle === 'serif' ? 'active' : ''}" onclick="togglePageStyleOption('fontStyle', 'serif')">
+                  <span style="font-family: Georgia, serif; font-size: 16px; font-weight: 600;">Ss</span>
+                  <span>Serif</span>
+                </button>
+                <button class="page-styles-option ${pageStylesSettings.fontStyle === 'mono' ? 'active' : ''}" onclick="togglePageStyleOption('fontStyle', 'mono')">
+                  <span style="font-family: monospace; font-size: 14px; font-weight: 600;">00</span>
+                  <span>Mono</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Font Size -->
+            <div class="page-styles-section">
+              <div class="page-styles-section-title">Font size</div>
+              <div class="page-styles-options">
+                <button class="page-styles-option ${pageStylesSettings.fontSize === 'small' ? 'active' : ''}" onclick="togglePageStyleOption('fontSize', 'small')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                    <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
+                  </svg>
+                  <span>Small</span>
+                </button>
+                <button class="page-styles-option ${pageStylesSettings.fontSize === 'default' ? 'active' : ''}" onclick="togglePageStyleOption('fontSize', 'default')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                    <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
+                  </svg>
+                  <span>Default</span>
+                </button>
+                <button class="page-styles-option ${pageStylesSettings.fontSize === 'large' ? 'active' : ''}" onclick="togglePageStyleOption('fontSize', 'large')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;">
+                    <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
+                  </svg>
+                  <span>Large</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Page Width -->
+            <div class="page-styles-section">
+              <div class="page-styles-section-title">Page width</div>
+              <div class="page-styles-options" style="grid-template-columns: 1fr 1fr;">
+                <button class="page-styles-option ${pageStylesSettings.pageWidth === 'default' ? 'active' : ''}" onclick="togglePageStyleOption('pageWidth', 'default')">
+                  <span>Default</span>
+                </button>
+                <button class="page-styles-option ${pageStylesSettings.pageWidth === 'full' ? 'active' : ''}" onclick="togglePageStyleOption('pageWidth', 'full')">
+                  <span>Full width</span>
+                </button>
+              </div>
+            </div>
+            
+            <button class="page-styles-apply-btn" onclick="applyToAllPages()">Apply typography to all pages</button>
+            
+            <!-- Header Section -->
+            <div class="page-styles-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+              <div class="page-styles-section-title">Header</div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  Cover image
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.coverImage ? 'active' : ''}" onclick="togglePageStyleToggle('coverImage')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                  </svg>
+                  Page icon & title
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.pageIcon ? 'active' : ''}" onclick="togglePageStyleToggle('pageIcon')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  Owners
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.owners ? 'active' : ''}" onclick="togglePageStyleToggle('owners')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  Contributors
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.contributors ? 'active' : ''}" onclick="togglePageStyleToggle('contributors')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 7 4 4 20 4 20 7"/>
+                    <line x1="9" y1="20" x2="15" y2="20"/>
+                    <line x1="12" y1="4" x2="12" y2="20"/>
+                  </svg>
+                  Subtitle
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.subtitle ? 'active' : ''}" onclick="togglePageStyleToggle('subtitle')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  Last modified
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.lastModified ? 'active' : ''}" onclick="togglePageStyleToggle('lastModified')"></div>
+              </div>
+            </div>
+            
+            <!-- Sections -->
+            <div class="page-styles-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+              <div class="page-styles-section-title">Sections</div>
+              
+              <div class="page-styles-link-row">
+                <div class="page-styles-link-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  Subpages
+                </div>
+                <div class="page-styles-link-value">
+                  Table
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+              
+              <div class="page-styles-link-row">
+                <div class="page-styles-link-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="18" cy="5" r="3"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                  Relationships
+                </div>
+                <div class="page-styles-link-value">
+                  Dialog
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                  Page outline
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.pageOutline ? 'active' : ''}" onclick="togglePageStyleToggle('pageOutline')"></div>
+              </div>
+            </div>
+            
+            <!-- Focus mode -->
+            <div class="page-styles-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+              <div class="page-styles-section-title">Focus mode</div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                  Block
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.focusBlock ? 'active' : ''}" onclick="togglePageStyleToggle('focusBlock')"></div>
+              </div>
+              
+              <div class="page-styles-toggle-row">
+                <div class="page-styles-toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Page
+                </div>
+                <div class="page-styles-toggle ${pageStylesSettings.focusPage ? 'active' : ''}" onclick="togglePageStyleToggle('focusPage')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+  }
+  
+  // Show
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+    document.getElementById('pageStylesSidebar')?.classList.add('show');
+  });
+}
+
+function closePageStylesSidebar() {
+  const overlay = document.getElementById('pageStylesOverlay');
+  const sidebar = document.getElementById('pageStylesSidebar');
+  
+  if (sidebar) sidebar.classList.remove('show');
+  if (overlay) {
+    overlay.classList.remove('show');
+    setTimeout(() => overlay.remove(), 250);
+  }
+  
+  // Apply styles to document
+  applyPageStyles();
+}
+
+function togglePageStyleOption(key, value) {
+  pageStylesSettings[key] = value;
+  
+  // Update UI
+  const section = document.querySelector(`[onclick*="'${key}'"]`)?.closest('.page-styles-section');
+  if (section) {
+    section.querySelectorAll('.page-styles-option').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.onclick.toString().includes(`'${value}'`)) {
+        btn.classList.add('active');
+      }
+    });
+  }
+  
+  applyPageStyles();
+}
+
+function togglePageStyleToggle(key) {
+  pageStylesSettings[key] = !pageStylesSettings[key];
+  
+  // Update UI
+  const toggles = document.querySelectorAll('.page-styles-toggle');
+  toggles.forEach(toggle => {
+    if (toggle.onclick.toString().includes(`'${key}'`)) {
+      toggle.classList.toggle('active', pageStylesSettings[key]);
+    }
+  });
+  
+  applyPageStyles();
+}
+
+function applyPageStyles() {
+  const editor = document.getElementById('docEditorContent') || document.querySelector('.notion-editor-content');
+  const titleInput = document.getElementById('docTitleInput');
+  const metaSection = document.querySelector('.notion-meta');
+  
+  if (editor) {
+    // Font style
+    switch (pageStylesSettings.fontStyle) {
+      case 'serif':
+        editor.style.fontFamily = 'Georgia, "Times New Roman", serif';
+        if (titleInput) titleInput.style.fontFamily = 'Georgia, "Times New Roman", serif';
+        break;
+      case 'mono':
+        editor.style.fontFamily = '"SF Mono", Monaco, Consolas, monospace';
+        if (titleInput) titleInput.style.fontFamily = '"SF Mono", Monaco, Consolas, monospace';
+        break;
+      default:
+        editor.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        if (titleInput) titleInput.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    }
+    
+    // Font size
+    switch (pageStylesSettings.fontSize) {
+      case 'small':
+        editor.style.fontSize = '14px';
+        break;
+      case 'large':
+        editor.style.fontSize = '18px';
+        break;
+      default:
+        editor.style.fontSize = '16px';
+    }
+    
+    // Page width
+    const container = document.querySelector('.notion-page-container');
+    if (container) {
+      container.style.maxWidth = pageStylesSettings.pageWidth === 'full' ? '100%' : '720px';
+    }
+  }
+  
+  // Show/hide meta section
+  if (metaSection) {
+    metaSection.style.display = (pageStylesSettings.owners || pageStylesSettings.lastModified) ? 'flex' : 'none';
+  }
+}
+
+function applyToAllPages() {
+  showToast('Typography applied to all pages');
+}
