@@ -2,9 +2,14 @@
    Layer - Inbox View (Modern Card Layout)
    ============================================ */
 
+// Track if dashboard AI greeting has been shown this session
+let dashboardAIShown = false;
+
 function renderInboxView() {
   const projects = loadProjects();
   const calendarEvents = loadCalendarEvents();
+  const issues = loadIssues();
+  const docs = loadDocs();
 
   // Normalize date helper (fixes comparison issues)
   function normalizeDate(dateStr) {
@@ -16,6 +21,7 @@ function renderInboxView() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
   const oneWeekFromNow = new Date(today);
   oneWeekFromNow.setDate(today.getDate() + 7);
@@ -28,11 +34,179 @@ function renderInboxView() {
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  const todayTasks = calendarEvents.filter(e => e.date === todayStr);
   const recentActivity = getRecentActivity(projects);
+  
+  // Calculate stats
+  const completedTasks = calendarEvents.filter(e => e.completed).length;
+  const totalTasks = calendarEvents.length;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const openIssues = issues.filter(i => i.status !== 'done').length;
+  const activeProjects = projects.length;
+  
+  // Generate AI greeting message
+  const aiMessage = generateAIGreeting(todayTasks, upcomingEvents, projects);
+
+  // Calculate daily productivity (last 7 days)
+  const productivityData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const count = calendarEvents.filter(e => e.date === dateStr && e.completed).length;
+    productivityData.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }), count });
+  }
+  const maxCount = Math.max(...productivityData.map(d => d.count), 1);
 
   let content = `
-    <div class="inbox-container" style="padding: 32px 24px;">
-      <h2 class="view-title" style="margin-bottom: 32px; font-size: 28px; font-weight: 700;">Dashboard</h2>
+    <div class="dashboard-layout">
+      <!-- Main Dashboard Content -->
+      <div class="dashboard-main">
+        <div class="inbox-container" style="padding: 32px 24px;">
+          <h2 class="view-title" style="margin-bottom: 32px; font-size: 28px; font-weight: 700;">Dashboard</h2>
+          
+          <!-- Enhanced Dashboard Widgets Grid -->
+          <div class="dashboard-widgets-grid">
+            <!-- Stats Widget -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                  </svg>
+                  Overview
+                </span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                <div style="text-align: center;">
+                  <div class="widget-stat-value">${activeProjects}</div>
+                  <div class="widget-stat-label">Projects</div>
+                </div>
+                <div style="text-align: center;">
+                  <div class="widget-stat-value">${openIssues}</div>
+                  <div class="widget-stat-label">Open Issues</div>
+                </div>
+                <div style="text-align: center;">
+                  <div class="widget-stat-value">${docs.length}</div>
+                  <div class="widget-stat-label">Documents</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Progress Widget -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  Task Completion
+                </span>
+                <span style="font-size: 24px; font-weight: 700; color: var(--foreground);">${completionRate}%</span>
+              </div>
+              <div class="widget-progress-bar">
+                <div class="widget-progress-fill" style="width: ${completionRate}%;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted-foreground);">
+                <span>${completedTasks} completed</span>
+                <span>${totalTasks - completedTasks} remaining</span>
+              </div>
+            </div>
+            
+            <!-- Quick Actions Widget -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                  Quick Actions
+                </span>
+              </div>
+              <div class="quick-actions-grid">
+                <button class="quick-action-btn" onclick="openDocEditor()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  New Doc
+                </button>
+                <button class="quick-action-btn" onclick="openCreateIssueModal()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                  New Issue
+                </button>
+                <button class="quick-action-btn" onclick="currentView = 'activity'; renderCurrentView();">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  Projects
+                </button>
+                <button class="quick-action-btn" onclick="currentView = 'schedule'; renderCurrentView();">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  Calendar
+                </button>
+              </div>
+            </div>
+            
+            <!-- Productivity Chart -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+                  </svg>
+                  Weekly Activity
+                </span>
+              </div>
+              <div class="productivity-chart">
+                ${productivityData.map(d => `
+                  <div class="chart-bar ${d.count === 0 ? 'muted' : ''}" style="height: ${Math.max(10, (d.count / maxCount) * 100)}%;" title="${d.day}: ${d.count} tasks"></div>
+                `).join('')}
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--muted-foreground);">
+                ${productivityData.map(d => `<span>${d.day}</span>`).join('')}
+              </div>
+            </div>
+            
+            <!-- Streak Widget -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                  Your Streak
+                </span>
+              </div>
+              <div class="streak-display">
+                <span class="streak-flame">🔥</span>
+                <div class="streak-info">
+                  <div class="streak-count">${calculateStreak(calendarEvents)} days</div>
+                  <div class="streak-label">Keep it up!</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Today's Focus Goals -->
+            <div class="dashboard-widget">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+                  </svg>
+                  Today's Focus
+                </span>
+              </div>
+              <div class="goals-list">
+                ${todayTasks.length > 0 ? todayTasks.slice(0, 3).map((task, i) => `
+                  <div class="goal-item">
+                    <div class="goal-checkbox ${task.completed ? 'completed' : ''}" onclick="toggleDashboardGoal(${task.id})"></div>
+                    <span class="goal-text ${task.completed ? 'completed' : ''}">${task.title}</span>
+                  </div>
+                `).join('') : `
+                  <div style="text-align: center; padding: 16px; color: var(--muted-foreground); font-size: 13px;">
+                    No tasks for today. Add some from the Schedule!
+                  </div>
+                `}
+              </div>
+            </div>
+          </div>
   `;
 
   // === Upcoming Tasks - Card Grid Layout ===
@@ -41,7 +215,7 @@ function renderInboxView() {
       <div style="margin-bottom: 48px;">
         <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">Upcoming This Week</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-          ${upcomingEvents.map(event => {
+          ${upcomingEvents.slice(0, 6).map(event => {
             const eventDate = normalizeDate(event.date);
             const isToday = eventDate.getTime() === today.getTime();
             const isTomorrow = eventDate.getTime() === new Date(today.getTime() + 86400000).getTime();
@@ -71,20 +245,6 @@ function renderInboxView() {
         </div>
       </div>
     `;
-  } else {
-    content += `
-      <div class="empty-state" style="text-align: center; padding: 60px 20px;">
-        <div class="empty-state-icon" style="font-size: 64px; margin-bottom: 24px;">📅</div>
-        <h3 class="empty-state-title">Nothing scheduled this week</h3>
-        <p class="empty-state-text" style="max-width: 400px; margin: 0 auto 24px;">
-          Your upcoming tasks and events will appear here as cards when added to the schedule.
-        </p>
-        <button class="btn btn-primary" onclick="currentView = 'schedule'; renderCurrentView();">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Add Task to Schedule
-        </button>
-      </div>
-    `;
   }
 
   // === Recent Project Activity - Simple Timeline ===
@@ -105,8 +265,175 @@ function renderInboxView() {
     `;
   }
 
-  content += `</div>`;
+  content += `
+        </div>
+      </div>
+      
+      <!-- Summary of Today Sidebar (Right) -->
+      <aside class="dashboard-ai-sidebar">
+        <div class="ai-sidebar-header">
+          <span class="ai-title">Summary of Today</span>
+        </div>
+        <div class="ai-message-container">
+          <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
+            <span class="ai-typing-text"></span>
+            <span class="ai-cursor">|</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  `;
+  
+  // Start typing animation after render
+  setTimeout(() => {
+    if (!dashboardAIShown) {
+      startAITypingAnimation();
+      dashboardAIShown = true;
+    } else {
+      // Show message immediately if already shown
+      const msgEl = document.getElementById('aiGreetingMessage');
+      if (msgEl) {
+        const text = msgEl.dataset.fullMessage;
+        const typingEl = msgEl.querySelector('.ai-typing-text');
+        const cursorEl = msgEl.querySelector('.ai-cursor');
+        if (typingEl) typingEl.textContent = text;
+        if (cursorEl) cursorEl.style.display = 'none';
+      }
+    }
+  }, 100);
+  
   return content;
+}
+
+// Calculate streak days
+function calculateStreak(events) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  
+  for (let i = 0; i < 365; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(today.getDate() - i);
+    const dateStr = checkDate.toISOString().split('T')[0];
+    const hasCompleted = events.some(e => e.date === dateStr && e.completed);
+    
+    if (i === 0 && !hasCompleted) {
+      // Today doesn't count against streak if not completed yet
+      continue;
+    }
+    
+    if (hasCompleted) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
+// Toggle dashboard goal completion
+function toggleDashboardGoal(taskId) {
+  const events = loadCalendarEvents();
+  const idx = events.findIndex(e => e.id === taskId);
+  if (idx !== -1) {
+    events[idx].completed = !events[idx].completed;
+    saveCalendarEvents(events);
+    renderCurrentView();
+  }
+}
+
+function generateAIGreeting(todayTasks, upcomingEvents, projects) {
+  const hour = new Date().getHours();
+  let greeting = 'Hello!';
+  if (hour < 12) greeting = 'Good morning!';
+  else if (hour < 18) greeting = 'Good afternoon!';
+  else greeting = 'Good evening!';
+  
+  let message = `${greeting} Here's your daily overview:\n\n`;
+  
+  // Today's Tasks
+  message += `📋 Today's Tasks:\n`;
+  if (todayTasks.length === 0) {
+    message += `• No tasks scheduled for today — great time to plan ahead or tackle pending items.\n\n`;
+  } else {
+    todayTasks.slice(0, 4).forEach(task => {
+      const timeStr = task.time ? ` at ${task.time}` : '';
+      message += `• ${task.title}${timeStr}\n`;
+    });
+    if (todayTasks.length > 4) {
+      message += `• ...and ${todayTasks.length - 4} more task${todayTasks.length - 4 > 1 ? 's' : ''}\n`;
+    }
+    message += `\n`;
+  }
+  
+  // Upcoming This Week
+  const futureTasks = upcomingEvents.filter(e => e.date !== new Date().toISOString().split('T')[0]);
+  message += `📅 Upcoming This Week:\n`;
+  if (futureTasks.length === 0) {
+    message += `• No upcoming tasks scheduled — consider planning your week.\n\n`;
+  } else {
+    futureTasks.slice(0, 3).forEach(task => {
+      const eventDate = new Date(task.date);
+      const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      message += `• ${task.title} — ${dayLabel}\n`;
+    });
+    if (futureTasks.length > 3) {
+      message += `• ...and ${futureTasks.length - 3} more upcoming\n`;
+    }
+    message += `\n`;
+  }
+  
+  // Projects Overview
+  message += `🚀 Projects:\n`;
+  if (projects.length === 0) {
+    message += `• No active projects — create one to organize your work.\n\n`;
+  } else {
+    message += `• You have ${projects.length} active project${projects.length > 1 ? 's' : ''} to manage.\n\n`;
+  }
+  
+  // Priority Tips
+  message += `💡 Focus Tip:\n`;
+  if (todayTasks.length > 3) {
+    message += `• You have multiple tasks today. Consider prioritizing the most important ones first.`;
+  } else if (todayTasks.length === 0 && futureTasks.length > 0) {
+    message += `• Clear day today! Perfect for deep work or preparing for upcoming tasks.`;
+  } else if (todayTasks.length > 0) {
+    message += `• Stay focused and tackle your tasks one at a time. You've got this!`;
+  } else {
+    message += `• A quiet week ahead. Use this time to set new goals or reflect on progress.`;
+  }
+  
+  return message;
+}
+
+function startAITypingAnimation() {
+  const msgEl = document.getElementById('aiGreetingMessage');
+  if (!msgEl) return;
+  
+  const fullText = msgEl.dataset.fullMessage;
+  const typingEl = msgEl.querySelector('.ai-typing-text');
+  const cursorEl = msgEl.querySelector('.ai-cursor');
+  
+  if (!typingEl || !fullText) return;
+  
+  let charIndex = 0;
+  const typingSpeed = 30; // ms per character
+  
+  function typeChar() {
+    if (charIndex < fullText.length) {
+      typingEl.textContent = fullText.substring(0, charIndex + 1);
+      charIndex++;
+      setTimeout(typeChar, typingSpeed);
+    } else {
+      // Done typing, hide cursor after a moment
+      setTimeout(() => {
+        if (cursorEl) cursorEl.style.display = 'none';
+      }, 1000);
+    }
+  }
+  
+  typeChar();
 }
 
 function getEventColor(color) {
@@ -1059,8 +1386,8 @@ function renderScheduleView() {
                  data-current-date="${dateStr}"
                  ${ev.isRecurring ? `data-recurring-id="${ev.recurringId}"` : ''}
                  ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
-                 oncontextmenu="event.preventDefault(); openEditTaskModal(${ev.id})"
                  onclick="event.stopPropagation(); setExpandedTask(${ev.id})"
+                 oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})"
                  style="border-left: 3px solid var(${colorVar});">
               <div class="task-mini">
                 <div class="task-left">
@@ -1081,13 +1408,31 @@ function renderScheduleView() {
                       ${ev.isRecurring ? '<span class="task-recurring-label">Repeats weekly</span>' : ''}
                     </div>
                   </div>
-                  <button class="task-delete-btn" 
-                          onclick="event.stopPropagation(); deleteTask(${ev.id})"
-                          title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                    </svg>
-                  </button>
+                  <div class="task-actions-row">
+                    <button class="task-action-btn duplicate-btn" 
+                            onclick="event.stopPropagation(); duplicateCalendarTask(${ev.id})"
+                            title="Duplicate">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                    </button>
+                    <button class="task-action-btn edit-btn" 
+                            onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
+                            title="Edit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button class="task-action-btn delete-btn" 
+                            onclick="event.stopPropagation(); deleteTask(${ev.id})"
+                            title="Delete">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1178,6 +1523,62 @@ function renderScheduleView() {
       </div>
 
       <div class="schedule-sidebar">
+        <!-- All Tasks Section (NEW) - Unique tasks only -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h3>All Tasks</h3>
+            <span class="task-count-badge">${getUniqueTasksByTitle(events).length}</span>
+          </div>
+          ${events.length === 0 ? `
+            <div class="recurring-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px; opacity: 0.4;">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <p>No tasks scheduled</p>
+              <span>Click a day to add a task</span>
+            </div>
+          ` : `
+            <div class="sidebar-tasks-list">
+              ${getUniqueTasksByTitle(events).slice(0, 15).map(ev => {
+                const colorVar = '--event-' + (ev.color || 'blue');
+                const eventDate = new Date(ev.date);
+                const dateLabel = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return `
+                  <div class="sidebar-task-item"
+                       draggable="true"
+                       ondragstart="handleSidebarDragStart(event, ${ev.id})"
+                       style="border-left: 3px solid var(${colorVar});">
+                    <div class="sidebar-task-main" onclick="openEditTaskModal(${ev.id})">
+                      <div class="sidebar-task-title">${ev.title}</div>
+                      <div class="sidebar-task-meta">
+                        <span>${dateLabel}</span>
+                        ${ev.time ? ' • ' + ev.time : ''}
+                        ${ev.isRecurring ? ' <span class="recurring-mini-badge">↻</span>' : ''}
+                      </div>
+                    </div>
+                    <div class="sidebar-task-actions">
+                      <button class="sidebar-task-btn" onclick="event.stopPropagation(); duplicateCalendarTask(${ev.id})" title="Duplicate to another day">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                          <rect x="9" y="9" width="13" height="13" rx="2"/>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                      </button>
+                      <button class="sidebar-task-btn edit" onclick="event.stopPropagation(); openEditTaskModal(${ev.id})" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+              ${getUniqueTasksByTitle(events).length > 15 ? '<div class="sidebar-more-hint">+ ' + (getUniqueTasksByTitle(events).length - 15) + ' more tasks</div>' : ''}
+            </div>
+          `}
+        </div>
+
         <div class="sidebar-section">
           <div class="sidebar-section-header">
             <h3>Recurring Tasks</h3>
@@ -1228,7 +1629,7 @@ function renderScheduleView() {
         <div class="sidebar-section sidebar-tips">
           <div class="tip-icon">💡</div>
           <div class="tip-content">
-            <strong>Pro tip:</strong> Drag tasks between days to reschedule. Right-click to edit.
+            <strong>Pro tip:</strong> Drag tasks from sidebar to a day to duplicate. Right-click to edit.
           </div>
         </div>
       </div>
@@ -1236,62 +1637,176 @@ function renderScheduleView() {
   `;
 }
 
-// Drag handlers (unchanged)
+// Helper: Get unique tasks by title (show each name only once)
+function getUniqueTasksByTitle(events) {
+  const seen = new Set();
+  return events.filter(ev => {
+    if (seen.has(ev.title)) return false;
+    seen.add(ev.title);
+    return true;
+  }).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Context menu for schedule tasks
+function showTaskContextMenu(event, eventId) {
+  // Remove any existing context menu
+  const existingMenu = document.getElementById('taskContextMenu');
+  if (existingMenu) existingMenu.remove();
+  
+  const menu = document.createElement('div');
+  menu.id = 'taskContextMenu';
+  menu.className = 'task-context-menu';
+  menu.innerHTML = `
+    <button class="context-menu-item" onclick="duplicateCalendarTask(${eventId}); hideTaskContextMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Duplicate
+    </button>
+    <button class="context-menu-item" onclick="openEditTaskModal(${eventId}); hideTaskContextMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Edit
+    </button>
+    <button class="context-menu-item delete" onclick="deleteTask(${eventId}); hideTaskContextMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+      </svg>
+      Delete
+    </button>
+  `;
+  
+  menu.style.left = event.clientX + 'px';
+  menu.style.top = event.clientY + 'px';
+  
+  document.body.appendChild(menu);
+  
+  // Close on click outside
+  setTimeout(() => {
+    document.addEventListener('click', hideTaskContextMenu, { once: true });
+  }, 10);
+}
+
+function hideTaskContextMenu() {
+  const menu = document.getElementById('taskContextMenu');
+  if (menu) menu.remove();
+}
+
+// Drag handlers
 function handleDragStart(event, eventId, currentDate) {
-  event.dataTransfer.setData('text/plain', JSON.stringify({ id: eventId, fromDate: currentDate }));
+  event.dataTransfer.setData('text/plain', JSON.stringify({ id: eventId, fromDate: currentDate, type: 'move' }));
+  event.currentTarget.classList.add('dragging');
+}
+
+// Sidebar drag handler - for duplicating
+function handleSidebarDragStart(event, eventId) {
+  event.dataTransfer.setData('text/plain', JSON.stringify({ id: eventId, type: 'duplicate' }));
   event.currentTarget.classList.add('dragging');
 }
 
 function handleDrop(event, targetDate) {
   event.preventDefault();
   const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-  const { id, fromDate } = data;
-
-  if (fromDate === targetDate) return;
+  const { id, fromDate, type } = data;
 
   let events = loadCalendarEvents();
-  const taskIndex = events.findIndex(e => e.id === id);
-  if (taskIndex === -1) return;
+  const task = events.find(e => e.id === id);
+  if (!task) return;
 
-  events[taskIndex].date = targetDate;
-  saveCalendarEvents(events);
-
-  saveExpandedTaskId(null);
-  renderCurrentView();
-}
-
-// NEW: Drag and Drop handlers
-function handleDragStart(event, eventId, currentDate) {
-  event.dataTransfer.setData('text/plain', JSON.stringify({ id: eventId, fromDate: currentDate }));
-  event.currentTarget.classList.add('dragging');
-}
-
-function handleDrop(event, targetDate) {
-  event.preventDefault();
-  const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-  const { id, fromDate } = data;
-
-  if (fromDate === targetDate) return; // same day, no change
-
-  let events = loadCalendarEvents();
-  const taskIndex = events.findIndex(e => e.id === id);
-  if (taskIndex === -1) return;
-
-  events[taskIndex].date = targetDate;
-  saveCalendarEvents(events);
-
-  // Optional: collapse after move
-  saveExpandedTaskId(null);
-
-  renderCurrentView();
-}
-
-// Add this to clean up dragging style
-document.addEventListener('dragend', (event) => {
-  if (event.target.classList.contains('calendar-task')) {
-    event.target.classList.remove('dragging');
+  if (type === 'duplicate') {
+    // Create a duplicate on the target date
+    const newTask = {
+      id: Date.now() + Math.floor(Math.random() * 10000),
+      title: task.title,
+      date: targetDate,
+      time: task.time || null,
+      color: task.color || 'blue',
+      isRecurring: false,
+      recurringId: null
+    };
+    events.push(newTask);
+    saveCalendarEvents(events);
+    showToast(`Task duplicated to ${targetDate}`);
+  } else {
+    // Move task to new date
+    if (fromDate === targetDate) return;
+    const taskIndex = events.findIndex(e => e.id === id);
+    if (taskIndex === -1) return;
+    events[taskIndex].date = targetDate;
+    saveCalendarEvents(events);
   }
-});
+
+  saveExpandedTaskId(null);
+  renderCurrentView();
+}
+
+// Duplicate a calendar task - opens modal to select date
+function duplicateCalendarTask(eventId) {
+  const events = loadCalendarEvents();
+  const task = events.find(e => e.id === eventId);
+  if (!task) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  const content = `
+    <form id="duplicateTaskForm" onsubmit="handleDuplicateTaskSubmit(event, ${eventId})">
+      <div class="form-group">
+        <label class="form-label">Duplicate Task</label>
+        <p style="color: var(--muted-foreground); font-size: 14px; margin-bottom: 16px;">
+          Creating a copy of "<strong>${task.title}</strong>"
+        </p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Select new date <span class="required">*</span></label>
+        <input type="date" name="date" class="form-input" value="${today}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time (optional)</label>
+        <input type="time" name="time" class="form-input" value="${task.time || ''}">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Duplicate Task</button>
+      </div>
+    </form>
+  `;
+  openModal('Duplicate Task', content);
+}
+
+function handleDuplicateTaskSubmit(e, originalEventId) {
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  
+  const date = data.get('date');
+  const time = data.get('time');
+  
+  if (!date) return;
+  
+  const events = loadCalendarEvents();
+  const originalTask = events.find(ev => ev.id === originalEventId);
+  if (!originalTask) return;
+  
+  const newTask = {
+    id: Date.now() + Math.floor(Math.random() * 10000),
+    title: originalTask.title,
+    date: date,
+    time: time || originalTask.time || null,
+    color: originalTask.color || 'blue',
+    isRecurring: false,
+    recurringId: null
+  };
+  
+  events.push(newTask);
+  saveCalendarEvents(events);
+  
+  closeModal();
+  showToast('Task duplicated successfully!');
+  renderCurrentView();
+}
 
 // Navigation
 window.prevMonth = () => { currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1); renderCurrentView(); };
@@ -3464,6 +3979,1730 @@ function showToast(message) {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+/* ============================================
+   Layer - Create Features (Doc, Excel, Space)
+   ============================================ */
+
+// Storage keys
+const DOCS_KEY = 'layerDocs';
+const EXCELS_KEY = 'layerExcels';
+const SPACES_KEY = 'layerSpaces';
+
+// State
+let currentDocId = null;
+let currentExcelId = null;
+let currentSpaceId = null; // Track which space we're in for saving docs/excels
+
+// ============================================
+// Create Dropdown (legacy - moved to sidebar)
+// ============================================
+function toggleCreateDropdown() {
+  const container = document.getElementById('createDropdownContainer');
+  if (container) {
+    container.classList.toggle('open');
+  }
+}
+
+// Sidebar Create Dropdown
+function toggleSidebarCreateDropdown() {
+  const dropdown = document.getElementById('sidebarCreateDropdown');
+  const btn = document.getElementById('sidebarCreateBtn');
+  if (dropdown && btn) {
+    dropdown.classList.toggle('show');
+    btn.classList.toggle('active');
+  }
+}
+
+function closeSidebarCreateDropdown() {
+  const dropdown = document.getElementById('sidebarCreateDropdown');
+  const btn = document.getElementById('sidebarCreateBtn');
+  if (dropdown) dropdown.classList.remove('show');
+  if (btn) btn.classList.remove('active');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  const container = document.getElementById('createDropdownContainer');
+  if (container && !container.contains(e.target)) {
+    container.classList.remove('open');
+  }
+  
+  // Sidebar create dropdown
+  const sidebarDropdown = document.getElementById('sidebarCreateDropdown');
+  const sidebarBtn = document.getElementById('sidebarCreateBtn');
+  if (sidebarDropdown && sidebarBtn && !sidebarDropdown.contains(e.target) && !sidebarBtn.contains(e.target)) {
+    sidebarDropdown.classList.remove('show');
+    sidebarBtn.classList.remove('active');
+  }
+});
+
+// ============================================
+// Doc Storage
+// ============================================
+function loadDocs() {
+  try {
+    return JSON.parse(localStorage.getItem(DOCS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDocs(docs) {
+  localStorage.setItem(DOCS_KEY, JSON.stringify(docs));
+}
+
+function addDoc(doc) {
+  const docs = loadDocs();
+  docs.unshift(doc);
+  saveDocs(docs);
+  return doc;
+}
+
+function updateDoc(id, updates) {
+  const docs = loadDocs();
+  const index = docs.findIndex(d => d.id === id);
+  if (index !== -1) {
+    docs[index] = { ...docs[index], ...updates, updatedAt: new Date().toISOString() };
+    saveDocs(docs);
+  }
+}
+
+function deleteDoc(id) {
+  let docs = loadDocs();
+  docs = docs.filter(d => d.id !== id);
+  saveDocs(docs);
+}
+
+// ============================================
+// Doc Editor - Professional Word-like UI
+// ============================================
+function openDocEditor(docId = null) {
+  toggleCreateDropdown();
+  
+  let doc = null;
+  if (docId) {
+    const docs = loadDocs();
+    doc = docs.find(d => d.id === docId);
+  }
+  
+  currentDocId = doc ? doc.id : Date.now();
+  const isFavorited = doc ? isDocFavorited(doc.id) : false;
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'doc-editor-overlay';
+  overlay.id = 'docEditorOverlay';
+  
+  overlay.innerHTML = `
+    <div class="doc-editor-container word-style">
+      <!-- Professional Header Bar -->
+      <div class="doc-editor-header word-header">
+        <div class="doc-header-left">
+          <button class="doc-back-btn" onclick="closeDocEditor()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="doc-title-container">
+            <input type="text" class="doc-title-input" id="docTitleInput" 
+                   placeholder="Untitled Document" value="${doc ? doc.title : ''}" />
+            <span class="doc-saved-indicator" id="docSavedIndicator" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:hsl(142, 71%, 45%);">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Saved
+            </span>
+          </div>
+        </div>
+        <div class="doc-header-right">
+          <button class="doc-favorite-btn ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite(${currentDocId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+            <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="doc-export-btn" onclick="exportDocAsPDF()" title="Export as PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="doc-print-btn" onclick="printDoc()" title="Print">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <polyline points="6 9 6 2 18 2 18 9"/>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+              <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+          </button>
+          <button class="doc-save-btn btn-themed-primary" onclick="saveCurrentDoc()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save
+          </button>
+        </div>
+      </div>
+      
+      <!-- Professional Toolbar - Word-like -->
+      <div class="doc-toolbar word-toolbar">
+        <!-- File operations -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <select class="toolbar-select font-family-select" id="docFontSelect" onchange="execDocCommand('fontName', this.value)">
+              <option value="inherit">Default Font</option>
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Times New Roman, serif">Times New Roman</option>
+              <option value="Courier New, monospace">Courier New</option>
+              <option value="Verdana, sans-serif">Verdana</option>
+            </select>
+          </div>
+          
+          <div class="toolbar-group">
+            <select class="toolbar-select font-size-select" id="docFontSizeSelect" onchange="setFontSize(this.value)">
+              <option value="1">8pt</option>
+              <option value="2">10pt</option>
+              <option value="3" selected>12pt</option>
+              <option value="4">14pt</option>
+              <option value="5">18pt</option>
+              <option value="6">24pt</option>
+              <option value="7">36pt</option>
+            </select>
+          </div>
+          
+          <div class="toolbar-group">
+            <select class="toolbar-select heading-select" id="docHeadingSelect" onchange="execDocCommand('formatBlock', this.value)">
+              <option value="p">Paragraph</option>
+              <option value="h1">Heading 1</option>
+              <option value="h2">Heading 2</option>
+              <option value="h3">Heading 3</option>
+              <option value="h4">Heading 4</option>
+              <option value="blockquote">Quote</option>
+              <option value="pre">Code Block</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Text formatting -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" id="btnBold" onclick="execDocCommand('bold')" title="Bold (Ctrl+B)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;">
+                <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" id="btnItalic" onclick="execDocCommand('italic')" title="Italic (Ctrl+I)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="19" y1="4" x2="10" y2="4"/>
+                <line x1="14" y1="20" x2="5" y2="20"/>
+                <line x1="15" y1="4" x2="9" y2="20"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" id="btnUnderline" onclick="execDocCommand('underline')" title="Underline (Ctrl+U)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
+                <line x1="4" y1="21" x2="20" y2="21"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" id="btnStrike" onclick="execDocCommand('strikeThrough')" title="Strikethrough">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="4" y1="12" x2="20" y2="12"/>
+                <path d="M17.5 7.5c-.8-1.5-2.8-2.5-5.5-2.5-3 0-5.5 1.3-5.5 4 0 2.1 1.7 3.2 3.5 3.7"/>
+                <path d="M9.5 14.5c.8 1.5 2.8 2.5 5.5 2.5 3 0 5.5-1.3 5.5-4"/>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('subscript')" title="Subscript">
+              <span style="font-size:12px;font-weight:600;">X<sub style="font-size:8px;">2</sub></span>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('superscript')" title="Superscript">
+              <span style="font-size:12px;font-weight:600;">X<sup style="font-size:8px;">2</sup></span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Colors -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <div class="color-picker-container" title="Text Color">
+              <span class="color-picker-icon">A</span>
+              <input type="color" class="color-picker-input" id="textColorPicker" value="#ffffff" 
+                     onchange="execDocCommand('foreColor', this.value)" />
+            </div>
+            <div class="color-picker-container highlight" title="Highlight">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M9 11l-6 6v3h9l3-3"/>
+                <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>
+              </svg>
+              <input type="color" class="color-picker-input" id="bgColorPicker" value="#facc15" 
+                     onchange="execDocCommand('hiliteColor', this.value)" />
+            </div>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Lists -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('insertUnorderedList')" title="Bullet List">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="9" y1="6" x2="20" y2="6"/>
+                <line x1="9" y1="12" x2="20" y2="12"/>
+                <line x1="9" y1="18" x2="20" y2="18"/>
+                <circle cx="5" cy="6" r="1" fill="currentColor"/>
+                <circle cx="5" cy="12" r="1" fill="currentColor"/>
+                <circle cx="5" cy="18" r="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('insertOrderedList')" title="Numbered List">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="10" y1="6" x2="21" y2="6"/>
+                <line x1="10" y1="12" x2="21" y2="12"/>
+                <line x1="10" y1="18" x2="21" y2="18"/>
+                <path d="M4 6h1v4"/>
+                <path d="M4 10h2"/>
+                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Alignment -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('justifyLeft')" title="Align Left">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="15" y2="12"/>
+                <line x1="3" y1="18" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('justifyCenter')" title="Align Center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="6" y1="12" x2="18" y2="12"/>
+                <line x1="4" y1="18" x2="20" y2="18"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('justifyRight')" title="Align Right">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="9" y1="12" x2="21" y2="12"/>
+                <line x1="6" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('justifyFull')" title="Justify">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Indent -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('outdent')" title="Decrease Indent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <polyline points="7 8 3 12 7 16"/>
+                <line x1="21" y1="12" x2="11" y2="12"/>
+                <line x1="21" y1="6" x2="11" y2="6"/>
+                <line x1="21" y1="18" x2="11" y2="18"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('indent')" title="Increase Indent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <polyline points="3 8 7 12 3 16"/>
+                <line x1="21" y1="12" x2="11" y2="12"/>
+                <line x1="21" y1="6" x2="11" y2="6"/>
+                <line x1="21" y1="18" x2="11" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Insert -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="insertLink()" title="Insert Link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="insertImage()" title="Insert Image">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="insertTable()" title="Insert Table">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="3" y1="15" x2="21" y2="15"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="insertHorizontalRule()" title="Horizontal Line">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <line x1="3" y1="12" x2="21" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Undo/Redo -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('undo')" title="Undo (Ctrl+Z)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M3 7v6h6"/>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" onclick="execDocCommand('redo')" title="Redo (Ctrl+Y)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M21 7v6h-6"/>
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Clear formatting -->
+        <div class="toolbar-section">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="execDocCommand('removeFormat')" title="Clear Formatting">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M17 17H7a5 5 0 0 1-5-5 5 5 0 0 1 5-5h14"/>
+                <path d="m18 11-3 3-3-3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Document Content Area - Paper Style -->
+      <div class="doc-content-area word-content-area">
+        <div class="doc-paper-container">
+          <div class="doc-editor-content word-editor-content" id="docEditorContent" contenteditable="true" spellcheck="true">${doc ? doc.content : '<p></p>'}</div>
+        </div>
+      </div>
+      
+      <!-- Status Bar -->
+      <div class="doc-status-bar">
+        <div class="status-left">
+          <span id="wordCount">Words: 0</span>
+          <span class="status-divider">|</span>
+          <span id="charCount">Characters: 0</span>
+        </div>
+        <div class="status-right">
+          <span id="lastSaved">${doc ? 'Last saved: ' + formatTimeAgo(doc.updatedAt) : 'Not saved'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  
+  // Set up word count updates
+  setupWordCount();
+  
+  // Focus on content if new doc, title if editing
+  if (!doc) {
+    setTimeout(() => {
+      document.getElementById('docTitleInput')?.focus();
+    }, 100);
+  }
+}
+
+function closeDocEditor() {
+  const overlay = document.getElementById('docEditorOverlay');
+  if (overlay) {
+    overlay.remove();
+    document.body.style.overflow = '';
+  }
+  currentDocId = null;
+}
+
+function execDocCommand(command, value = null) {
+  document.execCommand(command, false, value);
+  document.getElementById('docEditorContent')?.focus();
+}
+
+function setFontSize(size) {
+  document.execCommand('fontSize', false, size);
+  document.getElementById('docEditorContent')?.focus();
+}
+
+function setupWordCount() {
+  const contentDiv = document.getElementById('docEditorContent');
+  if (!contentDiv) return;
+  
+  const updateCount = () => {
+    const text = contentDiv.innerText || '';
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+    
+    const wordCountEl = document.getElementById('wordCount');
+    const charCountEl = document.getElementById('charCount');
+    
+    if (wordCountEl) wordCountEl.textContent = `Words: ${words}`;
+    if (charCountEl) charCountEl.textContent = `Characters: ${chars}`;
+  };
+  
+  contentDiv.addEventListener('input', updateCount);
+  updateCount();
+}
+
+function insertLink() {
+  const url = prompt('Enter URL:', 'https://');
+  if (url) {
+    document.execCommand('createLink', false, url);
+    document.getElementById('docEditorContent')?.focus();
+  }
+}
+
+function insertImage() {
+  const url = prompt('Enter image URL:', 'https://');
+  if (url) {
+    document.execCommand('insertImage', false, url);
+    document.getElementById('docEditorContent')?.focus();
+  }
+}
+
+function insertTable() {
+  const rows = prompt('Number of rows:', '3') || '3';
+  const cols = prompt('Number of columns:', '3') || '3';
+  
+  let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 16px 0;">';
+  for (let r = 0; r < parseInt(rows); r++) {
+    tableHtml += '<tr>';
+    for (let c = 0; c < parseInt(cols); c++) {
+      tableHtml += '<td style="border: 1px solid var(--border); padding: 8px; min-width: 80px;">&nbsp;</td>';
+    }
+    tableHtml += '</tr>';
+  }
+  tableHtml += '</table>';
+  
+  document.execCommand('insertHTML', false, tableHtml);
+  document.getElementById('docEditorContent')?.focus();
+}
+
+function insertHorizontalRule() {
+  document.execCommand('insertHorizontalRule', false, null);
+  document.getElementById('docEditorContent')?.focus();
+}
+
+function exportDocAsPDF() {
+  showToast('PDF export feature coming soon!');
+}
+
+function printDoc() {
+  const content = document.getElementById('docEditorContent');
+  const title = document.getElementById('docTitleInput')?.value || 'Document';
+  
+  if (!content) return;
+  
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${title}</title>
+      <style>
+        body { font-family: Georgia, serif; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.7; }
+        h1 { font-size: 24px; font-weight: bold; margin-bottom: 24px; }
+        h2 { font-size: 20px; font-weight: bold; margin: 20px 0 16px; }
+        h3 { font-size: 18px; font-weight: bold; margin: 16px 0 12px; }
+        p { margin: 12px 0; }
+        ul, ol { margin: 12px 0; padding-left: 24px; }
+        table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+        td, th { border: 1px solid #ddd; padding: 8px; }
+        blockquote { margin: 16px 0; padding-left: 16px; border-left: 4px solid #3b82f6; color: #666; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <h1>${title}</h1>
+      ${content.innerHTML}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+function saveCurrentDoc() {
+  const titleInput = document.getElementById('docTitleInput');
+  const contentDiv = document.getElementById('docEditorContent');
+  
+  if (!titleInput || !contentDiv) return;
+  
+  const title = titleInput.value.trim() || 'Untitled Document';
+  const content = contentDiv.innerHTML;
+  
+  const docs = loadDocs();
+  const existingIndex = docs.findIndex(d => d.id === currentDocId);
+  
+  if (existingIndex !== -1) {
+    docs[existingIndex] = {
+      ...docs[existingIndex],
+      title,
+      content,
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    docs.unshift({
+      id: currentDocId,
+      title,
+      content,
+      spaceId: currentSpaceId, // Associate with current space
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  
+  saveDocs(docs);
+  
+  // Show saved indicator
+  const indicator = document.getElementById('docSavedIndicator');
+  if (indicator) {
+    indicator.style.display = 'flex';
+    setTimeout(() => indicator.style.display = 'none', 2000);
+  }
+  
+  // Update last saved
+  const lastSaved = document.getElementById('lastSaved');
+  if (lastSaved) {
+    lastSaved.textContent = 'Saved just now';
+  }
+  
+  // Refresh favorites sidebar
+  renderFavoritesInSidebar();
+  
+  // Show success notification
+  showToast('Document saved successfully!');
+}
+
+// ============================================
+// Excel Storage
+// ============================================
+function loadExcels() {
+  try {
+    return JSON.parse(localStorage.getItem(EXCELS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExcels(excels) {
+  localStorage.setItem(EXCELS_KEY, JSON.stringify(excels));
+}
+
+// ============================================
+// Excel Editor
+// ============================================
+const DEFAULT_ROWS = 20;
+const DEFAULT_COLS = 10;
+const COLUMN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function openExcelEditor(excelId = null) {
+  toggleCreateDropdown();
+  
+  let excel = null;
+  if (excelId) {
+    const excels = loadExcels();
+    excel = excels.find(e => e.id === excelId);
+  }
+  
+  currentExcelId = excel ? excel.id : Date.now();
+  const data = excel ? excel.data : createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS);
+  const isFavorited = excel ? isExcelFavorited(excel.id) : false;
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'excel-editor-overlay';
+  overlay.id = 'excelEditorOverlay';
+  
+  overlay.innerHTML = `
+    <div class="excel-editor-container">
+      <div class="excel-header">
+        <div class="excel-header-left">
+          <button class="doc-back-btn" onclick="closeExcelEditor()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <input type="text" class="excel-title-input" id="excelTitleInput" 
+                 placeholder="Untitled Spreadsheet" value="${excel ? excel.title : ''}" />
+        </div>
+        <div class="doc-header-right">
+          <button class="excel-favorite-btn ${isFavorited ? 'is-favorite' : ''}" data-favorite-excel="${currentExcelId}" onclick="toggleExcelFavorite(${currentExcelId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+            <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="doc-save-btn" onclick="saveCurrentExcel()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save
+          </button>
+        </div>
+      </div>
+      
+      <div class="excel-toolbar">
+        <button class="excel-toolbar-btn" onclick="addExcelRow()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add Row
+        </button>
+        <button class="excel-toolbar-btn" onclick="addExcelColumn()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add Column
+        </button>
+      </div>
+      
+      <div class="excel-content-area">
+        <div class="excel-grid" id="excelGrid" style="grid-template-columns: 50px repeat(${data[0]?.length || DEFAULT_COLS}, 120px);">
+          ${renderExcelGrid(data)}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+}
+
+function createEmptyGrid(rows, cols) {
+  const grid = [];
+  for (let r = 0; r < rows; r++) {
+    const row = [];
+    for (let c = 0; c < cols; c++) {
+      row.push('');
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
+function renderExcelGrid(data) {
+  const cols = data[0]?.length || DEFAULT_COLS;
+  let html = '';
+  
+  // Header row
+  html += '<div class="excel-header-row">';
+  html += '<div class="excel-header-cell"></div>';
+  for (let c = 0; c < cols; c++) {
+    html += `<div class="excel-header-cell">${COLUMN_LETTERS[c] || c + 1}</div>`;
+  }
+  html += '</div>';
+  
+  // Data rows
+  data.forEach((row, rowIndex) => {
+    html += `<div class="excel-row-header">${rowIndex + 1}</div>`;
+    row.forEach((cell, colIndex) => {
+      html += `<div class="excel-cell">
+        <input type="text" value="${cell}" data-row="${rowIndex}" data-col="${colIndex}" 
+               onchange="updateExcelCell(${rowIndex}, ${colIndex}, this.value)" />
+      </div>`;
+    });
+  });
+  
+  return html;
+}
+
+function updateExcelCell(row, col, value) {
+  // Update happens on save
+}
+
+function getExcelData() {
+  const inputs = document.querySelectorAll('#excelGrid .excel-cell input');
+  const data = [];
+  let maxRow = 0;
+  let maxCol = 0;
+  
+  inputs.forEach(input => {
+    const row = parseInt(input.dataset.row);
+    const col = parseInt(input.dataset.col);
+    if (row > maxRow) maxRow = row;
+    if (col > maxCol) maxCol = col;
+  });
+  
+  for (let r = 0; r <= maxRow; r++) {
+    data.push([]);
+    for (let c = 0; c <= maxCol; c++) {
+      data[r].push('');
+    }
+  }
+  
+  inputs.forEach(input => {
+    const row = parseInt(input.dataset.row);
+    const col = parseInt(input.dataset.col);
+    data[row][col] = input.value;
+  });
+  
+  return data;
+}
+
+function addExcelRow() {
+  const data = getExcelData();
+  const cols = data[0]?.length || DEFAULT_COLS;
+  data.push(new Array(cols).fill(''));
+  refreshExcelGrid(data);
+}
+
+function addExcelColumn() {
+  const data = getExcelData();
+  data.forEach(row => row.push(''));
+  refreshExcelGrid(data);
+}
+
+function refreshExcelGrid(data) {
+  const grid = document.getElementById('excelGrid');
+  if (grid) {
+    grid.style.gridTemplateColumns = `50px repeat(${data[0]?.length}, 120px)`;
+    grid.innerHTML = renderExcelGrid(data);
+  }
+}
+
+function closeExcelEditor() {
+  const overlay = document.getElementById('excelEditorOverlay');
+  if (overlay) {
+    overlay.remove();
+    document.body.style.overflow = '';
+  }
+  currentExcelId = null;
+}
+
+function saveCurrentExcel() {
+  const titleInput = document.getElementById('excelTitleInput');
+  if (!titleInput) return;
+  
+  const title = titleInput.value.trim() || 'Untitled Spreadsheet';
+  const data = getExcelData();
+  
+  const excels = loadExcels();
+  const existingIndex = excels.findIndex(e => e.id === currentExcelId);
+  
+  if (existingIndex !== -1) {
+    excels[existingIndex] = {
+      ...excels[existingIndex],
+      title,
+      data,
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    excels.unshift({
+      id: currentExcelId,
+      title,
+      data,
+      spaceId: currentSpaceId, // Associate with current space
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  
+  saveExcels(excels);
+  showToast('Spreadsheet saved successfully!');
+  closeExcelEditor();
+  
+  // Refresh favorites sidebar
+  renderFavoritesInSidebar();
+}
+
+// ============================================
+// Spaces
+// ============================================
+function loadSpaces() {
+  try {
+    return JSON.parse(localStorage.getItem(SPACES_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSpaces(spaces) {
+  localStorage.setItem(SPACES_KEY, JSON.stringify(spaces));
+}
+
+// Minimalistic SVG icons for spaces (instead of emojis)
+const SPACE_ICON_SVGS = [
+  { id: 'folder', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
+  { id: 'home', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
+  { id: 'briefcase', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>' },
+  { id: 'target', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
+  { id: 'rocket', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>' },
+  { id: 'lightbulb', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>' },
+  { id: 'bar-chart', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>' },
+  { id: 'palette', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z"/></svg>' },
+  { id: 'edit', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' },
+  { id: 'star', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
+  { id: 'zap', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' },
+  { id: 'layers', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>' },
+  { id: 'users', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+  { id: 'code', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
+  { id: 'globe', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+  { id: 'book', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' }
+];
+
+function openNewSpaceModal() {
+  toggleCreateDropdown();
+  
+  const projects = loadProjects();
+  
+  const content = `
+    <form id="newSpaceForm" onsubmit="handleCreateSpace(event)" class="new-space-form">
+      <div class="form-group">
+        <label class="form-label">Space Name <span class="required">*</span></label>
+        <input type="text" name="name" class="form-input" required placeholder="e.g. Marketing, Development..." />
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Choose an Icon</label>
+        <div class="space-icon-grid-svg" id="spaceIconGrid">
+          ${SPACE_ICON_SVGS.map((icon, index) => `
+            <button type="button" class="space-icon-svg-option ${index === 0 ? 'selected' : ''}" 
+                    data-icon="${icon.id}" onclick="selectSpaceIcon(this)">
+              ${icon.svg}
+            </button>
+          `).join('')}
+        </div>
+        <input type="hidden" name="icon" id="selectedSpaceIcon" value="${SPACE_ICON_SVGS[0].id}" />
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Description <span style="color: var(--muted-foreground); font-weight: normal;">(optional)</span></label>
+        <textarea name="description" class="form-textarea" placeholder="What is this space for?" rows="2"></textarea>
+      </div>
+      
+      <div class="optional-fields-toggle" onclick="toggleOptionalFields()">
+        <svg class="icon optional-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        <span>Add more details</span>
+      </div>
+      
+      <div class="optional-fields" id="optionalFields" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Due Date <span style="color: var(--muted-foreground); font-weight: normal;">(optional)</span></label>
+          <input type="date" name="dueDate" class="form-input" />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Link with Project <span style="color: var(--muted-foreground); font-weight: normal;">(optional)</span></label>
+          <select name="linkedProject" class="form-select">
+            <option value="">No linked project</option>
+            ${projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Invite Team Members <span style="color: var(--muted-foreground); font-weight: normal;">(optional)</span></label>
+          <div class="team-invite-input-container">
+            <input type="email" id="teamMemberEmail" class="form-input" placeholder="Enter email address" />
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addTeamMemberToSpace()">Add</button>
+          </div>
+          <div id="invitedMembersList" class="invited-members-list"></div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Color Tag <span style="color: var(--muted-foreground); font-weight: normal;">(optional)</span></label>
+          <div class="color-tag-options">
+            <button type="button" class="color-tag-option selected" data-color="none" onclick="selectColorTag(this)" style="background: var(--surface); border: 2px dashed var(--border);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;opacity:0.5;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+            <button type="button" class="color-tag-option" data-color="blue" onclick="selectColorTag(this)" style="background: hsl(217, 91%, 60%);"></button>
+            <button type="button" class="color-tag-option" data-color="green" onclick="selectColorTag(this)" style="background: hsl(142, 71%, 45%);"></button>
+            <button type="button" class="color-tag-option" data-color="purple" onclick="selectColorTag(this)" style="background: hsl(271, 91%, 65%);"></button>
+            <button type="button" class="color-tag-option" data-color="orange" onclick="selectColorTag(this)" style="background: hsl(24, 90%, 60%);"></button>
+            <button type="button" class="color-tag-option" data-color="red" onclick="selectColorTag(this)" style="background: hsl(0, 84%, 60%);"></button>
+          </div>
+          <input type="hidden" name="colorTag" id="selectedColorTag" value="none" />
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-themed-primary">Create Space</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Create New Space', content);
+}
+
+// Store invited team members temporarily
+let pendingInvitedMembers = [];
+
+function addTeamMemberToSpace() {
+  const emailInput = document.getElementById('teamMemberEmail');
+  const email = emailInput.value.trim();
+  
+  if (!email || !email.includes('@')) {
+    emailInput.style.borderColor = 'hsl(0, 84%, 60%)';
+    setTimeout(() => emailInput.style.borderColor = '', 2000);
+    return;
+  }
+  
+  if (pendingInvitedMembers.includes(email)) return;
+  
+  pendingInvitedMembers.push(email);
+  emailInput.value = '';
+  renderInvitedMembers();
+}
+
+function removeInvitedMember(email) {
+  pendingInvitedMembers = pendingInvitedMembers.filter(e => e !== email);
+  renderInvitedMembers();
+}
+
+function renderInvitedMembers() {
+  const container = document.getElementById('invitedMembersList');
+  if (!container) return;
+  
+  container.innerHTML = pendingInvitedMembers.map(email => `
+    <div class="invited-member-chip">
+      <span>${email}</span>
+      <button type="button" onclick="removeInvitedMember('${email}')" class="remove-member-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function toggleOptionalFields() {
+  const container = document.getElementById('optionalFields');
+  const toggle = document.querySelector('.optional-fields-toggle');
+  
+  if (container.style.display === 'none') {
+    container.style.display = 'block';
+    toggle.classList.add('expanded');
+  } else {
+    container.style.display = 'none';
+    toggle.classList.remove('expanded');
+  }
+}
+
+function selectColorTag(button) {
+  document.querySelectorAll('.color-tag-option').forEach(btn => btn.classList.remove('selected'));
+  button.classList.add('selected');
+  document.getElementById('selectedColorTag').value = button.dataset.color;
+}
+
+function selectSpaceIcon(button) {
+  document.querySelectorAll('.space-icon-svg-option').forEach(btn => btn.classList.remove('selected'));
+  button.classList.add('selected');
+  document.getElementById('selectedSpaceIcon').value = button.dataset.icon;
+}
+
+function handleCreateSpace(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const name = form.name.value.trim();
+  const icon = document.getElementById('selectedSpaceIcon').value;
+  const description = form.description?.value?.trim() || '';
+  const dueDate = form.dueDate?.value || null;
+  const linkedProject = form.linkedProject?.value || null;
+  const colorTag = document.getElementById('selectedColorTag')?.value || 'none';
+  
+  if (!name) return;
+  
+  const spaces = loadSpaces();
+  const newSpace = {
+    id: Date.now(),
+    name,
+    icon,
+    description,
+    dueDate,
+    linkedProject,
+    colorTag,
+    teamMembers: [...pendingInvitedMembers],
+    createdAt: new Date().toISOString()
+  };
+  
+  // Reset pending members
+  pendingInvitedMembers = [];
+  
+  spaces.push(newSpace);
+  saveSpaces(spaces);
+  
+  closeModal();
+  renderSpacesInSidebar();
+  showToast(`Space "${name}" created!`);
+}
+
+function renderSpacesInSidebar() {
+  const spaces = loadSpaces();
+  const sidebar = document.querySelector('.sidebar-nav');
+  
+  // Remove existing spaces section
+  const existingSection = document.getElementById('spacesSection');
+  if (existingSection) {
+    existingSection.remove();
+  }
+  
+  if (spaces.length === 0) return;
+  
+  // Helper function to get SVG icon by id
+  function getSpaceIconSVG(iconId) {
+    const iconData = SPACE_ICON_SVGS.find(i => i.id === iconId);
+    if (iconData) return iconData.svg;
+    // Fallback for old emoji-based icons
+    return `<span style="font-size:16px;">${iconId}</span>`;
+  }
+  
+  // Create spaces section
+  const spacesSection = document.createElement('div');
+  spacesSection.id = 'spacesSection';
+  spacesSection.innerHTML = `
+    <div class="spaces-divider"></div>
+    <div class="spaces-section-label">Spaces</div>
+    ${spaces.map(space => `
+      <div class="custom-space-item-wrapper" ${space.colorTag && space.colorTag !== 'none' ? `style="--space-accent: var(--event-${space.colorTag});"` : ''}>
+        <button class="custom-space-item ${space.colorTag && space.colorTag !== 'none' ? 'has-color' : ''}" data-space-id="${space.id}" onclick="openSpaceView(${space.id})">
+          <span class="space-icon-svg">${getSpaceIconSVG(space.icon)}</span>
+          <span class="space-name-text">${space.name}</span>
+        </button>
+        <button class="delete-item-btn" onclick="confirmDeleteSpace(${space.id}, '${space.name.replace(/'/g, "\\'")}')" title="Delete space">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    `).join('')}
+  `;
+  
+  sidebar.appendChild(spacesSection);
+  
+  // Also render favorites section
+  renderFavoritesInSidebar();
+}
+
+// ============================================
+// Favorites System for Documents
+// ============================================
+const FAVORITES_KEY = 'layerFavorites';
+const EXCEL_FAVORITES_KEY = 'layerExcelFavorites';
+
+function loadFavorites() {
+  try {
+    return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFavorites(favorites) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+}
+
+function loadExcelFavorites() {
+  try {
+    return JSON.parse(localStorage.getItem(EXCEL_FAVORITES_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExcelFavorites(favorites) {
+  localStorage.setItem(EXCEL_FAVORITES_KEY, JSON.stringify(favorites));
+}
+
+function toggleDocFavorite(docId) {
+  const favorites = loadFavorites();
+  const index = favorites.indexOf(docId);
+  
+  if (index === -1) {
+    favorites.push(docId);
+    showToast('Added to favorites!');
+  } else {
+    favorites.splice(index, 1);
+    showToast('Removed from favorites');
+  }
+  
+  saveFavorites(favorites);
+  renderFavoritesInSidebar();
+  
+  // Update star icon if visible
+  const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
+  if (starBtn) {
+    starBtn.classList.toggle('is-favorite', index === -1);
+  }
+}
+
+function toggleExcelFavorite(excelId) {
+  const favorites = loadExcelFavorites();
+  const index = favorites.indexOf(excelId);
+  
+  if (index === -1) {
+    favorites.push(excelId);
+    showToast('Added to favorites!');
+  } else {
+    favorites.splice(index, 1);
+    showToast('Removed from favorites');
+  }
+  
+  saveExcelFavorites(favorites);
+  renderFavoritesInSidebar();
+  
+  // Update star icon if visible
+  const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
+  if (starBtn) {
+    starBtn.classList.toggle('is-favorite', index === -1);
+  }
+}
+
+function isDocFavorited(docId) {
+  return loadFavorites().includes(docId);
+}
+
+function isExcelFavorited(excelId) {
+  return loadExcelFavorites().includes(excelId);
+}
+
+function renderFavoritesInSidebar() {
+  const docFavorites = loadFavorites();
+  const excelFavorites = loadExcelFavorites();
+  const docs = loadDocs();
+  const excels = loadExcels();
+  const sidebar = document.querySelector('.sidebar-nav');
+  
+  // Remove existing favorites section
+  const existingSection = document.getElementById('favoritesSection');
+  if (existingSection) {
+    existingSection.remove();
+  }
+  
+  // Get favorited docs and excels
+  const favoriteDocs = docs.filter(doc => docFavorites.includes(doc.id));
+  const favoriteExcels = excels.filter(excel => excelFavorites.includes(excel.id));
+  
+  if (favoriteDocs.length === 0 && favoriteExcels.length === 0) return;
+  
+  // Helper to truncate title
+  function truncateTitle(title, maxLen = 12) {
+    if (title.length <= maxLen) return title;
+    return title.substring(0, maxLen) + '...';
+  }
+  
+  // Create favorites section
+  const favoritesSection = document.createElement('div');
+  favoritesSection.id = 'favoritesSection';
+  favoritesSection.innerHTML = `
+    <div class="spaces-divider"></div>
+    <div class="spaces-section-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:-1px;">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      Favorites
+    </div>
+    ${favoriteDocs.map(doc => `
+      <div class="custom-space-item-wrapper favorite-doc-item favorite-item-row">
+        <button class="custom-space-item favorite-with-icon-left" onclick="openDocEditor(${doc.id})">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="favorite-star-left">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span class="space-name-text favorite-text-truncate" title="${doc.title}">${truncateTitle(doc.title)}</span>
+        </button>
+      </div>
+    `).join('')}
+    ${favoriteExcels.map(excel => `
+      <div class="custom-space-item-wrapper favorite-excel-item favorite-item-row">
+        <button class="custom-space-item favorite-with-icon-left" onclick="openExcelEditor(${excel.id})">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="favorite-star-left">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span class="space-name-text favorite-text-truncate" title="${excel.title}">${truncateTitle(excel.title)}</span>
+        </button>
+      </div>
+    `).join('')}
+  `;
+  
+  sidebar.appendChild(favoritesSection);
+}
+
+function confirmDeleteSpace(spaceId, spaceName) {
+  const content = `
+    <div style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🗑️</div>
+      <p style="color: var(--muted-foreground); margin-bottom: 24px;">
+        Are you sure you want to delete the space "<strong>${spaceName}</strong>"? This action cannot be undone.
+      </p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="deleteSpace(${spaceId})">Delete Space</button>
+      </div>
+    </div>
+  `;
+  openModal('Delete Space', content);
+}
+
+function deleteSpace(spaceId) {
+  let spaces = loadSpaces();
+  spaces = spaces.filter(s => s.id !== spaceId);
+  saveSpaces(spaces);
+  closeModal();
+  renderSpacesInSidebar();
+  showToast('Space deleted successfully!');
+  
+  // Navigate to home if viewing deleted space
+  const activeSpace = document.querySelector(`[data-space-id="${spaceId}"]`);
+  if (activeSpace && activeSpace.classList.contains('active')) {
+    document.querySelector('.nav-item')?.click();
+  }
+}
+
+function openSpaceView(spaceId) {
+  const spaces = loadSpaces();
+  const space = spaces.find(s => s.id === spaceId);
+  
+  if (!space) return;
+  
+  // Set current space for doc/excel saving
+  currentSpaceId = spaceId;
+  
+  // Update active nav
+  document.querySelectorAll('.nav-item, .custom-space-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  const spaceBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
+  if (spaceBtn) spaceBtn.classList.add('active');
+  
+  // Render space view
+  const viewsContainer = document.getElementById('viewsContainer');
+  if (viewsContainer) {
+    viewsContainer.innerHTML = renderSpaceDetailView(space);
+  }
+  
+  updateBreadcrumb(space.name);
+}
+
+function renderSpaceDetailView(space) {
+  const allDocs = loadDocs();
+  const allExcels = loadExcels();
+  const excelFavorites = loadExcelFavorites();
+  
+  // Filter docs and excels by space
+  const docs = allDocs.filter(d => d.spaceId === space.id);
+  const excels = allExcels.filter(e => e.spaceId === space.id);
+  
+  // Recent docs (last 5)
+  const recentDocs = [...docs].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
+  
+  return `
+    <div class="clickup-docs-container">
+      <!-- Docs Sidebar -->
+      <div class="docs-sidebar">
+        <div class="docs-sidebar-header">
+          <div class="docs-sidebar-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            ${space.name}
+          </div>
+          <div class="docs-search-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" class="docs-search-input" placeholder="Search docs..." id="docsSearchInput" oninput="filterSpaceDocs(${space.id})" />
+          </div>
+        </div>
+        
+        <div class="docs-tree" id="docsTreeContainer">
+          <!-- Recent Section -->
+          <div class="docs-tree-section">
+            <div class="docs-tree-label">
+              <span>Recent</span>
+            </div>
+            ${recentDocs.length > 0 ? recentDocs.map(doc => `
+              <div class="docs-tree-item" onclick="openDocEditor(${doc.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span class="docs-tree-item-text">${doc.title}</span>
+                <span class="docs-tree-item-date">${formatTimeAgo(doc.updatedAt)}</span>
+              </div>
+            `).join('') : `
+              <div style="padding: 12px; font-size: 12px; color: var(--muted-foreground); text-align: center;">
+                No recent docs
+              </div>
+            `}
+          </div>
+          
+          <!-- All Documents -->
+          <div class="docs-tree-section">
+            <div class="docs-tree-label">
+              <span>All Documents</span>
+              <button class="docs-tree-add-btn" onclick="openDocEditor()" title="Create new doc">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+            </div>
+            ${docs.length > 0 ? docs.map(doc => `
+              <div class="docs-tree-item" onclick="openDocEditor(${doc.id})" data-doc-id="${doc.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span class="docs-tree-item-text">${doc.title}</span>
+              </div>
+            `).join('') : ''}
+          </div>
+          
+          <!-- Spreadsheets -->
+          <div class="docs-tree-section">
+            <div class="docs-tree-label">
+              <span>Spreadsheets</span>
+              <button class="docs-tree-add-btn" onclick="openExcelEditor()" title="Create new spreadsheet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+            </div>
+            ${excels.length > 0 ? excels.map(excel => `
+              <div class="docs-tree-item" onclick="openExcelEditor(${excel.id})" data-excel-id="${excel.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="3" x2="9" y2="21"/>
+                </svg>
+                <span class="docs-tree-item-text">${excel.title}</span>
+              </div>
+            `).join('') : ''}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main Content Area -->
+      <div class="docs-main-area">
+        ${docs.length > 0 || excels.length > 0 ? `
+          <!-- Docs Header -->
+          <div class="docs-header">
+            <div class="docs-header-left">
+              <div class="docs-breadcrumb">
+                <span class="docs-breadcrumb-item" onclick="currentView = 'activity'; renderCurrentView();">Spaces</span>
+                <span class="docs-breadcrumb-separator">›</span>
+                <span class="docs-breadcrumb-item">${space.name}</span>
+              </div>
+            </div>
+            <div class="docs-header-actions">
+              <button class="docs-action-btn" onclick="openExcelEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="3" x2="9" y2="21"/>
+                </svg>
+                New Spreadsheet
+              </button>
+              <button class="docs-action-btn primary" onclick="openDocEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                New Doc
+              </button>
+            </div>
+          </div>
+          
+          <!-- Documents Grid -->
+          <div class="docs-editor-wrapper" style="padding: 24px;">
+            <div style="width: 100%; max-width: 1200px;">
+              <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
+                📄 Documents (${docs.length})
+              </h3>
+              
+              ${docs.length > 0 ? `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 40px;">
+                  ${docs.map(doc => `
+                    <div class="card doc-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
+                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteDoc(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')" title="Delete document">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                      <div onclick="openDocEditor(${doc.id})">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                          </div>
+                          <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--foreground); margin-bottom: 2px;">${doc.title}</div>
+                            <div style="font-size: 12px; color: var(--muted-foreground);">Updated ${formatTimeAgo(doc.updatedAt)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+              
+              ${excels.length > 0 ? `
+                <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
+                  📊 Spreadsheets (${excels.length})
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                  ${excels.map(excel => {
+                    const isFavorited = isExcelFavorited(excel.id);
+                    return `
+                    <div class="card excel-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
+                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteExcel(${excel.id}, '${excel.title.replace(/'/g, "\\'")}')" title="Delete spreadsheet">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                      <div onclick="openExcelEditor(${excel.id})">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(142, 71%, 35%)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
+                              <rect x="3" y="3" width="18" height="18" rx="2"/>
+                              <line x1="3" y1="9" x2="21" y2="9"/>
+                              <line x1="9" y1="3" x2="9" y2="21"/>
+                            </svg>
+                          </div>
+                          <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--foreground); margin-bottom: 2px;">${excel.title}</div>
+                            <div style="font-size: 12px; color: var(--muted-foreground);">Updated ${formatTimeAgo(excel.updatedAt)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `}).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : `
+          <!-- Empty State with ClickUp Style -->
+          <div class="docs-empty-state">
+            <div class="docs-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <h3 class="docs-empty-title">Create your first document</h3>
+            <p class="docs-empty-text">
+              Documents help you organize information, collaborate with your team, and keep everything in one place.
+            </p>
+            <div style="display: flex; gap: 12px;">
+              <button class="docs-create-btn" onclick="openDocEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Create Doc
+              </button>
+              <button class="docs-action-btn" onclick="openExcelEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="3" x2="9" y2="21"/>
+                </svg>
+                Create Spreadsheet
+              </button>
+            </div>
+          </div>
+        `}
+      </div>
+      
+      <!-- Comments Panel (Hidden on smaller screens) -->
+      <div class="docs-comments-panel">
+        <div class="docs-comments-header">
+          <span class="docs-comments-title">💬 Comments</span>
+        </div>
+        <div class="docs-comments-list">
+          <div style="text-align: center; padding: 32px 16px; color: var(--muted-foreground);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;margin-bottom:12px;opacity:0.5;">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <p style="font-size: 13px;">No comments yet.<br>Open a document to start discussing.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Filter docs in space sidebar
+function filterSpaceDocs(spaceId) {
+  const searchInput = document.getElementById('docsSearchInput');
+  const query = searchInput ? searchInput.value.toLowerCase() : '';
+  const allDocs = loadDocs();
+  const docs = allDocs.filter(d => d.spaceId === spaceId);
+  
+  const container = document.getElementById('docsTreeContainer');
+  if (!container) return;
+  
+  const treeItems = container.querySelectorAll('.docs-tree-item[data-doc-id]');
+  treeItems.forEach(item => {
+    const text = item.querySelector('.docs-tree-item-text');
+    if (text) {
+      const title = text.textContent.toLowerCase();
+      if (query && !title.includes(query)) {
+        item.style.display = 'none';
+      } else {
+        item.style.display = '';
+      }
+    }
+  });
+}
+
+// ============================================
+// Delete Confirmations for Docs and Excels
+// ============================================
+function confirmDeleteDoc(docId, docTitle) {
+  const content = `
+    <div style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+      <p style="color: var(--muted-foreground); margin-bottom: 24px;">
+        Are you sure you want to delete "<strong>${docTitle}</strong>"? This action cannot be undone.
+      </p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="deleteDocConfirmed(${docId})">Delete Document</button>
+      </div>
+    </div>
+  `;
+  openModal('Delete Document', content);
+}
+
+function deleteDocConfirmed(docId) {
+  deleteDoc(docId);
+  closeModal();
+  showToast('Document deleted successfully!');
+  
+  // Refresh current view
+  const activeSpace = document.querySelector('.custom-space-item.active');
+  if (activeSpace) {
+    const spaceId = parseInt(activeSpace.dataset.spaceId);
+    openSpaceView(spaceId);
+  }
+}
+
+function confirmDeleteExcel(excelId, excelTitle) {
+  const content = `
+    <div style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+      <p style="color: var(--muted-foreground); margin-bottom: 24px;">
+        Are you sure you want to delete "<strong>${excelTitle}</strong>"? This action cannot be undone.
+      </p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="deleteExcelConfirmed(${excelId})">Delete Spreadsheet</button>
+      </div>
+    </div>
+  `;
+  openModal('Delete Spreadsheet', content);
+}
+
+function deleteExcelConfirmed(excelId) {
+  let excels = loadExcels();
+  excels = excels.filter(e => e.id !== excelId);
+  saveExcels(excels);
+  closeModal();
+  showToast('Spreadsheet deleted successfully!');
+  
+  // Refresh current view
+  const activeSpace = document.querySelector('.custom-space-item.active');
+  if (activeSpace) {
+    const spaceId = parseInt(activeSpace.dataset.spaceId);
+    openSpaceView(spaceId);
+  }
+}
+
+// ============================================
+// Toast Notification
+// ============================================
+function showToast(message) {
+  const existing = document.querySelector('.layer-toast');
+  if (existing) existing.remove();
+  
+  const toast = document.createElement('div');
+  toast.className = 'layer-toast';
+  toast.innerHTML = `
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:hsl(142, 71%, 45%);">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+    <span>${message}</span>
+  `;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    color: var(--foreground);
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9999;
+    animation: toastSlideIn 0.3s ease;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Initialize spaces on load
+document.addEventListener('DOMContentLoaded', () => {
+  renderSpacesInSidebar();
+});
+
 
 // Make functions globally accessible
 window.openFocusModeModal = openFocusModeModal;
