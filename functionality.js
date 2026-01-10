@@ -3695,11 +3695,204 @@ function showFocusTimer(projectName) {
     projectNameEl.textContent = projectName;
     renderFocusTasks();
     
+    // Initialize drag functionality
+    initFocusTimerDrag();
+    
+    // Restore saved position or use default
+    restoreTimerPosition();
+    
     if (!focusPaused) {
       startTimerInterval();
     } else {
       updateTimerDisplay();
     }
+  }
+}
+
+// ============================================
+// Focus Timer Drag & Snap to Corner
+// ============================================
+let timerDragState = {
+  isDragging: false,
+  startX: 0,
+  startY: 0,
+  initialLeft: 0,
+  initialTop: 0
+};
+
+const TIMER_POSITION_KEY = 'layerFocusTimerPosition';
+const SNAP_MARGIN = 24; // Distance from edges
+
+function initFocusTimerDrag() {
+  const floatEl = document.getElementById('focusTimerFloat');
+  const widget = document.getElementById('focusTimerWidget');
+  
+  if (!floatEl || !widget) return;
+  
+  // Mouse events
+  widget.addEventListener('mousedown', handleTimerDragStart);
+  document.addEventListener('mousemove', handleTimerDrag);
+  document.addEventListener('mouseup', handleTimerDragEnd);
+  
+  // Touch events for mobile
+  widget.addEventListener('touchstart', handleTimerDragStart, { passive: false });
+  document.addEventListener('touchmove', handleTimerDrag, { passive: false });
+  document.addEventListener('touchend', handleTimerDragEnd);
+}
+
+function handleTimerDragStart(e) {
+  const floatEl = document.getElementById('focusTimerFloat');
+  if (!floatEl) return;
+  
+  // Prevent default to stop text selection
+  e.preventDefault();
+  
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+  
+  // Get current position
+  const rect = floatEl.getBoundingClientRect();
+  
+  timerDragState.isDragging = true;
+  timerDragState.startX = clientX;
+  timerDragState.startY = clientY;
+  timerDragState.initialLeft = rect.left;
+  timerDragState.initialTop = rect.top;
+  
+  // Remove snapping class and add dragging class
+  floatEl.classList.remove('snapping');
+  floatEl.classList.add('dragging');
+  
+  // Clear positional styles and use left/top for dragging
+  floatEl.style.right = 'auto';
+  floatEl.style.bottom = 'auto';
+  floatEl.style.left = rect.left + 'px';
+  floatEl.style.top = rect.top + 'px';
+}
+
+function handleTimerDrag(e) {
+  if (!timerDragState.isDragging) return;
+  
+  e.preventDefault();
+  
+  const floatEl = document.getElementById('focusTimerFloat');
+  if (!floatEl) return;
+  
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+  
+  const deltaX = clientX - timerDragState.startX;
+  const deltaY = clientY - timerDragState.startY;
+  
+  let newLeft = timerDragState.initialLeft + deltaX;
+  let newTop = timerDragState.initialTop + deltaY;
+  
+  // Keep widget within bounds
+  const rect = floatEl.getBoundingClientRect();
+  const maxX = window.innerWidth - rect.width;
+  const maxY = window.innerHeight - rect.height;
+  
+  newLeft = Math.max(0, Math.min(newLeft, maxX));
+  newTop = Math.max(0, Math.min(newTop, maxY));
+  
+  floatEl.style.left = newLeft + 'px';
+  floatEl.style.top = newTop + 'px';
+}
+
+function handleTimerDragEnd(e) {
+  if (!timerDragState.isDragging) return;
+  
+  timerDragState.isDragging = false;
+  
+  const floatEl = document.getElementById('focusTimerFloat');
+  if (!floatEl) return;
+  
+  floatEl.classList.remove('dragging');
+  
+  // Calculate which corner to snap to
+  const rect = floatEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const windowCenterX = window.innerWidth / 2;
+  const windowCenterY = window.innerHeight / 2;
+  
+  // Determine the closest corner
+  const isLeft = centerX < windowCenterX;
+  const isTop = centerY < windowCenterY;
+  
+  // Add snapping class for smooth animation
+  floatEl.classList.add('snapping');
+  
+  // Clear current positioning
+  floatEl.style.left = 'auto';
+  floatEl.style.right = 'auto';
+  floatEl.style.top = 'auto';
+  floatEl.style.bottom = 'auto';
+  
+  // Set the corner position
+  let corner = '';
+  if (isTop && isLeft) {
+    floatEl.style.left = SNAP_MARGIN + 'px';
+    floatEl.style.top = SNAP_MARGIN + 'px';
+    corner = 'top-left';
+  } else if (isTop && !isLeft) {
+    floatEl.style.right = SNAP_MARGIN + 'px';
+    floatEl.style.top = SNAP_MARGIN + 'px';
+    corner = 'top-right';
+  } else if (!isTop && isLeft) {
+    floatEl.style.left = SNAP_MARGIN + 'px';
+    floatEl.style.bottom = SNAP_MARGIN + 'px';
+    corner = 'bottom-left';
+  } else {
+    floatEl.style.right = SNAP_MARGIN + 'px';
+    floatEl.style.bottom = SNAP_MARGIN + 'px';
+    corner = 'bottom-right';
+  }
+  
+  // Save the position
+  saveTimerPosition(corner);
+  
+  // Remove snapping class after animation completes
+  setTimeout(() => {
+    floatEl.classList.remove('snapping');
+  }, 450);
+}
+
+function saveTimerPosition(corner) {
+  localStorage.setItem(TIMER_POSITION_KEY, corner);
+}
+
+function restoreTimerPosition() {
+  const floatEl = document.getElementById('focusTimerFloat');
+  if (!floatEl) return;
+  
+  const savedCorner = localStorage.getItem(TIMER_POSITION_KEY) || 'bottom-left';
+  
+  // Clear all positioning first
+  floatEl.style.left = 'auto';
+  floatEl.style.right = 'auto';
+  floatEl.style.top = 'auto';
+  floatEl.style.bottom = 'auto';
+  
+  // Apply saved corner position
+  switch (savedCorner) {
+    case 'top-left':
+      floatEl.style.left = SNAP_MARGIN + 'px';
+      floatEl.style.top = SNAP_MARGIN + 'px';
+      break;
+    case 'top-right':
+      floatEl.style.right = SNAP_MARGIN + 'px';
+      floatEl.style.top = SNAP_MARGIN + 'px';
+      break;
+    case 'bottom-right':
+      floatEl.style.right = SNAP_MARGIN + 'px';
+      floatEl.style.bottom = SNAP_MARGIN + 'px';
+      break;
+    case 'bottom-left':
+    default:
+      floatEl.style.left = SNAP_MARGIN + 'px';
+      floatEl.style.bottom = SNAP_MARGIN + 'px';
+      break;
   }
 }
 
@@ -3740,6 +3933,9 @@ function updateTimerDisplay() {
 }
 
 function toggleTimerExpand() {
+  // Prevent expand toggle during drag
+  if (timerDragState.isDragging) return;
+  
   const widget = document.getElementById('focusTimerWidget');
   const isExpanded = widget.classList.contains('expanded');
   
