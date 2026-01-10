@@ -2176,7 +2176,7 @@ function renderProjectDetailView(projectIndex) {
               <rect x="3" y="14" width="7" height="7" rx="1"/>
               <path d="M10 6.5h4M10 17.5h4M6.5 10v4M17.5 10v4"/>
             </svg>
-            Open Grip Diagram
+            Open Whiteboard
           </button>
         </div>
 
