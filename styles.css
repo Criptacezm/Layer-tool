@@ -3634,7 +3634,7 @@ body {
   font-size: 28px;
   font-weight: 700;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  color: var(--primary-foreground);
+  color: var(--foreground);
   letter-spacing: 2px;
 }
 
