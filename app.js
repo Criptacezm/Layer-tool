@@ -175,6 +175,10 @@ function setupNavigation() {
         currentFilter = 'all';
         searchQuery = '';
         searchInput.value = '';
+        // Reset currentSpaceId when navigating away from space views
+        if (typeof currentSpaceId !== 'undefined') {
+          currentSpaceId = null;
+        }
         renderCurrentView();
       }
     });
