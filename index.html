@@ -305,9 +305,10 @@
     </div>
   </div>
 
-  <!-- Focus Timer Float Widget -->
+  <!-- Focus Timer Float Widget - Draggable with Snap to Corner -->
   <div class="focus-timer-float" id="focusTimerFloat" style="display: none;">
     <div class="focus-timer-widget" id="focusTimerWidget">
+      <div class="timer-drag-handle"></div>
       <div class="timer-main" onclick="toggleTimerExpand()">
         <div>
           <div class="timer-display" id="timerDisplay">00:00</div>
@@ -315,14 +316,14 @@
         </div>
       </div>
       <div class="timer-controls">
-        <button class="timer-btn pause" id="timerPauseBtn" onclick="toggleTimerPause()">
+        <button class="timer-btn pause" id="timerPauseBtn" onclick="event.stopPropagation(); toggleTimerPause()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
             <rect x="6" y="4" width="4" height="16" id="pauseIcon1"/>
             <rect x="14" y="4" width="4" height="16" id="pauseIcon2"/>
           </svg>
           <span id="pauseBtnText">Pause</span>
         </button>
-        <button class="timer-btn stop" onclick="stopFocusMode()">
+        <button class="timer-btn stop" onclick="event.stopPropagation(); stopFocusMode()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
             <rect x="4" y="4" width="16" height="16" rx="2"/>
           </svg>
