@@ -58,6 +58,11 @@ function renderInboxView() {
   }
   const maxCount = Math.max(...productivityData.map(d => d.count), 1);
 
+  // Load widget order from localStorage
+  const savedWidgetOrder = JSON.parse(localStorage.getItem('layerDashboardWidgetOrder') || '[]');
+  const defaultWidgetOrder = ['overview', 'completion', 'quick-actions', 'activity', 'streak', 'focus'];
+  const widgetOrder = savedWidgetOrder.length === 6 ? savedWidgetOrder : defaultWidgetOrder;
+
   let content = `
     <div class="dashboard-layout">
       <!-- Main Dashboard Content -->
@@ -65,10 +70,11 @@ function renderInboxView() {
         <div class="inbox-container" style="padding: 32px 24px;">
           <h2 class="view-title" style="margin-bottom: 32px; font-size: 28px; font-weight: 700;">Dashboard</h2>
           
-          <!-- Enhanced Dashboard Widgets Grid -->
-          <div class="dashboard-widgets-grid">
+          <!-- Enhanced Dashboard Widgets Grid - Draggable -->
+          <div class="dashboard-widgets-grid" id="dashboardWidgetsGrid">
             <!-- Stats Widget -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="overview" draggable="true">
+              <div class="widget-drag-handle"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;opacity:0.3;"><circle cx="5" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg></div>
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -273,16 +279,43 @@ function renderInboxView() {
         </div>
       </div>
       
-      <!-- Summary of Today Sidebar (Right) -->
-      <aside class="dashboard-ai-sidebar">
-        <div class="ai-sidebar-header">
-          <span class="ai-title">Summary of Today</span>
+      <!-- Summary of Today Sidebar (Right) - Redesigned Minimalistic -->
+      <aside class="dashboard-ai-sidebar ai-sidebar-modern">
+        <div class="ai-sidebar-header-modern">
+          <div class="ai-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="ai-header-text">
+            <span class="ai-title-modern">Daily Summary</span>
+            <span class="ai-subtitle-modern">${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+          </div>
         </div>
-        <div class="ai-message-container">
-          <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
+        
+        <div class="ai-quick-stats">
+          <div class="ai-quick-stat">
+            <span class="ai-stat-num">${todayTasks.length}</span>
+            <span class="ai-stat-text">Tasks Today</span>
+          </div>
+          <div class="ai-quick-stat">
+            <span class="ai-stat-num">${upcomingEvents.length}</span>
+            <span class="ai-stat-text">This Week</span>
+          </div>
+        </div>
+        
+        <div class="ai-message-container-modern">
+          <div class="ai-message-modern" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
             <span class="ai-typing-text"></span>
             <span class="ai-cursor">|</span>
           </div>
+        </div>
+        
+        <div class="ai-actions-modern">
+          <button class="ai-action-btn" onclick="currentView = 'schedule'; renderCurrentView();">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            View Schedule
+          </button>
         </div>
       </aside>
     </div>
@@ -4348,9 +4381,9 @@ function openDocEditor(docId = null) {
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
           </button>
-          <button class="notion-action-btn" onclick="showComingSoonToast()" title="Ask AI">
+          <button class="notion-action-btn" onclick="openAiChatSidebar()" title="Ask AI">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-4.5h-2v-1c0-1.1.9-2 2-2a2 2 0 0 0 0-4 2 2 0 0 0-2 2h-2a4 4 0 1 1 6 3.46v1.54z"/>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             Ask AI
           </button>
@@ -6491,3 +6524,204 @@ function applyPageStyles() {
 function applyToAllPages() {
   showToast('Typography applied to all pages');
 }
+
+// ============================================
+// Dashboard Widget Drag and Drop
+// ============================================
+function initDashboardWidgetDrag() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+
+  let draggedWidget = null;
+
+  grid.querySelectorAll('.dashboard-widget').forEach(widget => {
+    widget.addEventListener('dragstart', (e) => {
+      draggedWidget = widget;
+      widget.classList.add('widget-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    widget.addEventListener('dragend', () => {
+      widget.classList.remove('widget-dragging');
+      draggedWidget = null;
+      saveWidgetOrder();
+    });
+
+    widget.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (!draggedWidget || draggedWidget === widget) return;
+      
+      const rect = widget.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      
+      if (e.clientX < midpoint) {
+        grid.insertBefore(draggedWidget, widget);
+      } else {
+        grid.insertBefore(draggedWidget, widget.nextSibling);
+      }
+    });
+  });
+}
+
+function saveWidgetOrder() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+  
+  const order = Array.from(grid.querySelectorAll('.dashboard-widget'))
+    .map(w => w.dataset.widgetId)
+    .filter(id => id);
+  
+  localStorage.setItem('layerDashboardWidgetOrder', JSON.stringify(order));
+}
+
+// Initialize widget drag after render
+const originalRenderInbox = renderInboxView;
+const _renderInboxViewWithDrag = function() {
+  const result = originalRenderInbox.apply(this, arguments);
+  setTimeout(initDashboardWidgetDrag, 100);
+  return result;
+};
+
+// ============================================
+// AI Chat Sidebar for Docs
+// ============================================
+let aiChatMessages = [];
+
+function openAiChatSidebar() {
+  const existingSidebar = document.getElementById('aiChatSidebar');
+  if (existingSidebar) {
+    existingSidebar.classList.add('open');
+    return;
+  }
+
+  const sidebar = document.createElement('div');
+  sidebar.id = 'aiChatSidebar';
+  sidebar.className = 'ai-chat-sidebar';
+  
+  sidebar.innerHTML = `
+    <div class="ai-chat-header">
+      <div class="ai-chat-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>AI Assistant</span>
+      </div>
+      <button class="ai-chat-close" onclick="closeAiChatSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <div class="ai-chat-welcome">
+        <div class="ai-avatar-large">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:28px;height:28px;">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </div>
+        <h3>How can I help you?</h3>
+        <p>Ask me anything about your document, project management, or general knowledge.</p>
+        <div class="ai-suggestions">
+          <button onclick="sendAiMessage('Summarize this document')">Summarize this document</button>
+          <button onclick="sendAiMessage('Help me improve the writing')">Improve writing</button>
+          <button onclick="sendAiMessage('What are the key points?')">Extract key points</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="ai-chat-input-area">
+      <input type="text" id="aiChatInput" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendAiMessage()">
+      <button class="ai-send-btn" onclick="sendAiMessage()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(sidebar);
+  setTimeout(() => sidebar.classList.add('open'), 10);
+}
+
+function closeAiChatSidebar() {
+  const sidebar = document.getElementById('aiChatSidebar');
+  if (sidebar) {
+    sidebar.classList.remove('open');
+    setTimeout(() => sidebar.remove(), 300);
+  }
+}
+
+function sendAiMessage(predefinedMessage) {
+  const input = document.getElementById('aiChatInput');
+  const message = predefinedMessage || (input ? input.value.trim() : '');
+  
+  if (!message) return;
+  
+  if (input) input.value = '';
+  
+  const messagesContainer = document.getElementById('aiChatMessages');
+  if (!messagesContainer) return;
+  
+  // Remove welcome message if present
+  const welcome = messagesContainer.querySelector('.ai-chat-welcome');
+  if (welcome) welcome.remove();
+  
+  // Add user message
+  messagesContainer.innerHTML += `
+    <div class="ai-chat-message user">
+      <div class="message-content">${message}</div>
+    </div>
+  `;
+  
+  // Add AI typing indicator
+  messagesContainer.innerHTML += `
+    <div class="ai-chat-message ai typing" id="aiTyping">
+      <div class="message-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+      </div>
+      <div class="message-content">
+        <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+      </div>
+    </div>
+  `;
+  
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  // Simulate AI response (placeholder - would connect to real AI with backend)
+  setTimeout(() => {
+    const typingEl = document.getElementById('aiTyping');
+    if (typingEl) typingEl.remove();
+    
+    const responses = [
+      "I'd be happy to help with that! To provide AI-powered responses, this feature requires connecting to an AI service. Please enable Lovable Cloud for full AI functionality.",
+      "Great question! This is a placeholder response. To get real AI assistance, you'll need to enable backend functionality through Lovable Cloud.",
+      "I understand what you're looking for. For actual AI-powered responses with document analysis and knowledge retrieval, please enable Lovable Cloud integration."
+    ];
+    
+    const response = responses[Math.floor(Math.random() * responses.length)];
+    
+    messagesContainer.innerHTML += `
+      <div class="ai-chat-message ai">
+        <div class="message-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </div>
+        <div class="message-content">${response}</div>
+      </div>
+    `;
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }, 1500);
+}
+
+// ============================================
+// Team Member Context Menu
+// ============================================
