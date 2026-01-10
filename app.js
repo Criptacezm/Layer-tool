@@ -93,16 +93,22 @@ function showBetaNotification() {
   
   overlay.innerHTML = `
     <div class="beta-notification">
-      <div class="beta-notification-icon">🚧</div>
-      <div class="beta-notification-title">Notes!</div>
+      <div class="beta-notification-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;color:var(--primary);">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div class="beta-notification-title">Notes</div>
       <p class="beta-notification-message">
-        This website is currently in beta. Some features may not work as expected. Thank you for your patience!
+        This website is currently in beta. Some features may not work as expected. Thank you for your patience.
       </p>
       <label class="beta-notification-checkbox">
         <input type="checkbox" id="dontShowAgainCheckbox">
         <span>Don't show this again</span>
       </label>
-      <button class="beta-notification-close" onclick="closeBetaNotification()">Got it!</button>
+      <button class="beta-notification-close" onclick="closeBetaNotification()">Got it</button>
     </div>
   `;
   
@@ -795,7 +801,12 @@ function renderInboxView() {
     return `
       <div class="inbox-container">
         <div class="empty-state">
-          <div class="empty-state-icon">📬</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No recent activity</h3>
           <p class="empty-state-text">Activity from your projects will appear here</p>
         </div>
@@ -885,7 +896,13 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
           </button>
         </div>
         <div class="empty-state">
-          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <path d="M9 14l2 2 4-4"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No issues yet</h3>
           <p class="empty-state-text">Create your first issue to get started</p>
           <button class="btn btn-primary" onclick="openCreateIssueModal()">
@@ -954,7 +971,12 @@ function renderBacklogView() {
           <h1 class="view-title">Backlog</h1>
         </div>
         <div class="empty-state">
-          <div class="empty-state-icon">📪</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No tasks in backlog yet</h3>
           <p class="empty-state-text">Tasks added here will wait until you move them to a project.</p>
           <button class="btn btn-primary" onclick="promptAddBacklogTask()">
@@ -1031,7 +1053,11 @@ function renderActivityView(searchQuery = '') {
           </button>
         </div>
         <div class="empty-state">
-          <div class="empty-state-icon">📂</div>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
           <h3 class="empty-state-title">No projects yet</h3>
           <p class="empty-state-text">Get started by creating your first project</p>
           <button class="btn btn-primary" onclick="openCreateProjectModal()">
@@ -1091,7 +1117,14 @@ function renderTeamView() {
   return `
     <div class="team-container">
       <div class="empty-state">
-        <div class="empty-state-icon">👥</div>
+        <div class="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
         <h3 class="empty-state-title">Team collaboration coming soon</h3>
         <p class="empty-state-text">Invite team members and collaborate on projects together</p>
       </div>
