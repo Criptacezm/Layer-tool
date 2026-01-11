@@ -2255,60 +2255,133 @@ function renderProjectDetailView(projectIndex) {
   const progressHistory = project.progressHistory || generateMockProgressHistory();
 
   return `
-    <div class="project-detail">
+    <div class="project-detail linear-layout">
+      <!-- Main Content Area -->
       <div class="project-detail-main">
-        <div class="project-detail-header">
-          <button class="back-btn" onclick="closeProjectDetail()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <!-- Header with Icon and Title -->
+        <div class="project-detail-header-linear">
+          <button class="back-btn-minimal" onclick="closeProjectDetail()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <div class="project-detail-info">
-            <div class="project-detail-title-row">
-              <div>
-                <h1 class="project-detail-title" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
-                <div class="project-detail-badges">
-                  <span class="badge" style="background-color: ${statusColor}20; color: ${statusColor};">${capitalizeStatus(dynamicStatus)}</span>
-                </div>
+          <div class="project-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="project-title-section">
+            <h1 class="project-name-linear" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
+            <p class="project-summary-placeholder" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
+          </div>
+          <button class="project-detail-delete-minimal" onclick="handleDeleteProjectFromDetail(${projectIndex})" title="Delete project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+
+        <!-- Properties Tags Row -->
+        <div class="project-properties-row">
+          <div class="property-tag status">
+            <span class="property-tag-dot" style="background: ${statusColor};"></span>
+            <span>${capitalizeStatus(dynamicStatus)}</span>
+          </div>
+          <div class="property-tag priority">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span>${project.priority?.charAt(0).toUpperCase() + project.priority?.slice(1) || 'Medium'}</span>
+          </div>
+          <div class="property-tag member">
+            <div class="property-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+            <span>${teamMembers[0] || 'You'}</span>
+          </div>
+          <div class="property-tag date">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span>${formatDate(project.startDate || new Date().toISOString())}</span>
+            <span class="date-arrow">→</span>
+            <span>${formatDate(project.targetDate)}</span>
+          </div>
+          <button class="whiteboard-btn-compact" onclick="openGripDiagram(${projectIndex})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span>Whiteboard</span>
+          </button>
+        </div>
+
+        <!-- Latest Update Card -->
+        <div class="latest-update-card">
+          <div class="update-header">
+            <span class="update-label">Latest update</span>
+            <button class="new-update-btn" onclick="openNewUpdateModal(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>New update</span>
+            </button>
+          </div>
+          <div class="update-content">
+            <div class="update-status-row">
+              <span class="update-status-badge ${percentage === 100 ? 'completed' : percentage >= 50 ? 'on-track' : 'in-progress'}">
+                <span class="status-check">✓</span>
+                ${percentage === 100 ? 'Completed' : percentage >= 50 ? 'On track' : 'In progress'}
+              </span>
+              <div class="update-author-info">
+                <div class="update-author-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+                <span class="update-author-name">${teamMembers[0] || 'You'}</span>
+                <span class="update-time">${project.updates?.[0]?.time || '1d ago'}</span>
               </div>
-              <button class="project-detail-delete" onclick="handleDeleteProjectFromDetail(${projectIndex})">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </div>
+            <p class="update-text">${project.updates?.[0]?.text || 'Starting the project'}</p>
+            <div class="update-actions">
+              <button class="update-action-btn" onclick="event.stopPropagation(); openUpdateCommentsModal(${projectIndex})" title="View Comments">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+              </button>
+              <button class="update-action-btn" onclick="event.stopPropagation(); viewUpdateHistory(${projectIndex})" title="View History">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
               </button>
             </div>
           </div>
         </div>
 
-        <div class="project-update-card">
-          <div class="project-update-badge">
-            <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-            ${percentage === 100 ? 'Completed!' : percentage >= 50 ? 'On track' : 'In progress'}
+        <!-- Description Section -->
+        <div class="section-block">
+          <h3 class="section-label">Description</h3>
+          <textarea class="description-textarea" placeholder="Add description..." onblur="handleUpdateProjectDescription(${projectIndex}, this.value)">${project.description || ''}</textarea>
+        </div>
+
+        <!-- Milestones Section -->
+        <div class="section-block">
+          <h3 class="section-label">Milestones</h3>
+          <div class="milestones-list">
+            ${(project.milestones || []).map((milestone, mIndex) => {
+              const milestoneProgress = milestone.total > 0 ? Math.round((milestone.completed || 0) / milestone.total * 100) : 0;
+              return `
+              <div class="milestone-item" data-milestone="${mIndex}">
+                <span class="milestone-icon ${milestone.completed >= milestone.total && milestone.total > 0 ? 'completed' : ''}">◇</span>
+                <span class="milestone-name" contenteditable="true" onblur="updateMilestoneName(${projectIndex}, ${mIndex}, this.textContent)">${milestone.name}</span>
+                <div class="milestone-progress-bar">
+                  <div class="milestone-progress-fill" style="width: ${milestoneProgress}%"></div>
+                </div>
+                <span class="milestone-progress">${milestone.completed || 0}/${milestone.total || 0}</span>
+                <button class="milestone-menu-btn" onclick="event.stopPropagation(); openMilestoneMenu(${projectIndex}, ${mIndex}, event)">⋯</button>
+              </div>
+            `}).join('')}
+            ${(project.milestones || []).length === 0 ? `
+              <div class="milestones-empty">
+                <span>No milestones yet</span>
+              </div>
+            ` : ''}
+            <button class="add-milestone-btn" onclick="addMilestone(${projectIndex})">
+              <span>+</span> Add Milestone
+            </button>
           </div>
-          <p class="project-update-meta">${project.updates?.[0]?.actor || 'You'} · ${project.updates?.[0]?.time || 'just now'}</p>
-          <p class="project-update-text">${project.updates?.[0]?.action || 'Project created'}</p>
         </div>
 
-        <div class="project-description-section">
-          <h3 class="section-title">Notes</h3>
-          <textarea class="form-textarea note-input" placeholder="Add notes..." onblur="handleUpdateProjectDescription(${projectIndex}, this.value)">${project.description || ''}</textarea>
-        </div>
-
-        <!-- Grip Diagram Button -->
-        <div style="margin-bottom: 24px;">
-          <button class="btn btn-primary" onclick="openGripDiagram(${projectIndex})" style="display: inline-flex; align-items: center; gap: 8px;">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-              <path d="M10 6.5h4M10 17.5h4M6.5 10v4M17.5 10v4"/>
-            </svg>
-            Open Whiteboard
-          </button>
-        </div>
-
-        <div>
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-            <h3 class="section-title" style="margin: 0;">Tasks</h3>
-            <button class="btn btn-secondary btn-sm" onclick="handleAddColumn(${projectIndex})" style="display: inline-flex; align-items: center; gap: 6px;">
-              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <!-- Tasks Kanban -->
+        <div class="section-block tasks-section">
+          <div class="section-header-row">
+            <h3 class="section-label">Tasks</h3>
+            <button class="btn btn-secondary btn-sm" onclick="handleAddColumn(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
               Add Column
             </button>
           </div>
@@ -2319,23 +2392,23 @@ function renderProjectDetailView(projectIndex) {
                   <h4 class="kanban-column-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="kanban-column-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
-                    <button class="kanban-column-delete" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column" style="background: transparent; border: none; padding: 4px; cursor: pointer; color: var(--muted-foreground); opacity: 0.6; transition: all 0.15s;">
-                      <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <button class="kanban-column-delete" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
                 </div>
                 <div class="kanban-tasks">
                   ${column.tasks.map((task, taskIndex) => `
                     <div class="kanban-task ${task.done ? 'done' : ''}">
-                      <label class="checkbox-container" style="width: 16px; height: 16px;">
+                      <label class="checkbox-container">
                         <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
-                        <div class="checkbox-custom" style="width: 16px; height: 16px; border-radius: 3px;">
-                          <svg class="check-icon" style="width: 10px; height: 10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                        <div class="checkbox-custom">
+                          <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
                         </div>
                       </label>
                       <span class="kanban-task-title">${task.title}</span>
                       <button class="kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
-                        <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                       </button>
                     </div>
                   `).join('')}
@@ -2347,382 +2420,450 @@ function renderProjectDetailView(projectIndex) {
             `).join('')}
           </div>
         </div>
-        
-        <!-- Progress Chart Section -->
-        <div style="margin-top: 40px;">
-          <h3 class="section-title" style="margin-bottom: 20px;">Progress Over Time</h3>
-          <div class="progress-chart-container" style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-            <div class="progress-chart" id="progressChart-${projectIndex}" style="position: relative; height: 200px;">
-              ${renderProgressChart(progressHistory, projectIndex)}
-            </div>
-          </div>
-        </div>
       </div>
 
-      <aside class="project-detail-sidebar">
-        <h3 class="project-sidebar-title">Properties</h3>
-        
-        <div class="progress-circle-container">
-          <div class="progress-circle">
-            <svg viewBox="0 0 140 140">
-              <circle class="progress-circle-bg" cx="70" cy="70" r="60"/>
-              <circle class="progress-circle-fill" cx="70" cy="70" r="60" 
-                style="stroke: ${getProgressColor(percentage)}; stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"/>
-            </svg>
-            <div class="progress-circle-value">${percentage}</div>
-          </div>
-          <p class="progress-circle-label">Project Progress</p>
+      <!-- Sidebar with Properties -->
+      <aside class="project-sidebar-linear">
+        <div class="sidebar-section-header">
+          <span>Properties</span>
+          <button class="sidebar-add-btn">+</button>
         </div>
-
-        <div class="properties-list">
-          <div class="property-item">
-            <span class="property-label">Status</span>
-            <span class="badge badge-sm" style="background-color: ${statusColor}20; color: ${statusColor};">${capitalizeStatus(dynamicStatus)}</span>
-          </div>
-          <div class="property-item">
-            <span class="property-label">Priority</span>
-            <div class="priority-selector" onclick="openPrioritySelector(${projectIndex}, event)">
-              <span class="badge badge-sm badge-priority-${projectPriority}" style="cursor: pointer;">
-                ${projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1)}
-              </span>
-            </div>
-          </div>
-          <div class="property-item">
-            <span class="property-label">Lead</span>
-            <span class="property-value property-link" onclick="showComingSoonToast()">Choose leader</span>
-          </div>
-          <div class="property-item">
-            <span class="property-label">Target date</span>
-            <span class="property-value" style="cursor: pointer;" onclick="openEditTargetDateModal(${projectIndex})">
-              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              ${formatDate(project.targetDate)}
-              <svg class="icon" style="width: 12px; height: 12px; margin-left: 4px; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        
+        <div class="sidebar-properties-list">
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Status</span>
+            <span class="sidebar-prop-value status" style="color: ${statusColor};">
+              <span class="status-dot-mini" style="background: ${statusColor};"></span>
+              ${capitalizeStatus(dynamicStatus)}
             </span>
           </div>
-          <div class="property-item">
-            <span class="property-label">Team Members</span>
-            <div style="display: flex; align-items: center;">
-              <div style="display: flex;">
-                ${teamMembers.slice(0, 5).map((member, i) => {
-                  const initials = member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                  const isOnline = Math.random() > 0.4; // Simulate online status
-                  return `
-                    <div style="
-                      width: 28px;
-                      height: 28px;
-                      border-radius: 50%;
-                      background: ${getTeamColor(i)};
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      color: white;
-                      font-size: 10px;
-                      font-weight: 600;
-                      margin-left: ${i > 0 ? '-8px' : '0'};
-                      border: 2px solid var(--card);
-                      position: relative;
-                      z-index: ${5 - i};
-                    " title="${member}${isOnline ? ' (Online)' : ' (Offline)'}">
-                      ${initials}
-                      ${isOnline ? `
-                        <div style="
-                          position: absolute;
-                          bottom: -2px;
-                          right: -2px;
-                          width: 10px;
-                          height: 10px;
-                          background: #22c55e;
-                          border-radius: 50%;
-                          border: 2px solid var(--card);
-                        "></div>
-                      ` : ''}
-                    </div>
-                  `;
-                }).join('')}
-                ${teamMembers.length > 5 ? `
-                  <div style="
-                    width: 28px;
-                    height: 28px;
-                    border-radius: 50%;
-                    background: var(--muted);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: var(--muted-foreground);
-                    font-size: 9px;
-                    font-weight: 600;
-                    margin-left: -8px;
-                    border: 2px solid var(--card);
-                  ">+${teamMembers.length - 5}</div>
-                ` : ''}
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Priority</span>
+            <span class="sidebar-prop-value clickable" onclick="openPrioritySelector(${projectIndex}, event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
+              ${projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1)}
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Lead</span>
+            <span class="sidebar-prop-value clickable" onclick="showComingSoonToast()">
+              <div class="mini-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+              ${teamMembers[0] || 'You'}
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Members</span>
+            <span class="sidebar-prop-value clickable" onclick="openInviteMemberModal(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+              Add members
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Start date</span>
+            <span class="sidebar-prop-value">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              ${formatDate(project.startDate || new Date().toISOString())}
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Target date</span>
+            <span class="sidebar-prop-value clickable" style="color: var(--destructive);" onclick="openEditTargetDateModal(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              ${formatDate(project.targetDate)}
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Teams</span>
+            <span class="sidebar-prop-value">
+              <span class="team-badge">✦ ${project.team || 'Default'}</span>
+            </span>
+          </div>
+          
+          <div class="sidebar-property-row">
+            <span class="sidebar-prop-label">Labels</span>
+            <span class="sidebar-prop-value clickable muted" onclick="showComingSoonToast()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Add label
+            </span>
+          </div>
+        </div>
+        
+        <!-- Milestones in Sidebar -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <span>Milestones</span>
+            <button class="sidebar-add-btn" onclick="addMilestone(${projectIndex})">+</button>
+          </div>
+          <div class="sidebar-milestones">
+            ${(project.milestones || []).map((m, i) => {
+              const mProgress = m.total > 0 ? Math.round((m.completed || 0) / m.total * 100) : 0;
+              return `
+              <div class="sidebar-milestone-item" onclick="openMilestoneDetail(${projectIndex}, ${i})">
+                <span class="milestone-diamond ${m.completed >= m.total && m.total > 0 ? 'completed' : ''}">◇</span>
+                <span class="milestone-name">${m.name}</span>
+                <span class="milestone-stat">${m.completed || 0}/${m.total || 0}</span>
+                <button class="milestone-menu" onclick="event.stopPropagation(); openMilestoneMenu(${projectIndex}, ${i}, event)">⋯</button>
               </div>
-              <button class="btn btn-ghost btn-sm" onclick="openInviteMemberModal(${projectIndex})" style="padding: 4px; margin-left: 8px;">
-                <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            </div>
+            `}).join('')}
+            ${(project.milestones || []).length === 0 ? `<p class="activity-empty">No milestones</p>` : ''}
           </div>
         </div>
         
-        <!-- Document Upload Section -->
-        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
-          <h4 style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 12px;">Share Document</h4>
-          <div class="document-upload-area" onclick="document.getElementById('projectDocUpload-${projectIndex}').click()" style="
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-          " onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--surface-hover)'" onmouseout="this.style.borderColor='var(--border)'; this.style.background='transparent'">
-            <svg style="width: 24px; height: 24px; color: var(--muted-foreground); margin-bottom: 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/>
-            </svg>
-            <p style="font-size: 12px; color: var(--muted-foreground); margin: 0;">Upload PDF to share with team</p>
-          </div>
-          <input type="file" id="projectDocUpload-${projectIndex}" accept=".pdf,.doc,.docx" style="display: none;" onchange="handleProjectDocUpload(event, ${projectIndex})">
-          ${project.sharedDocuments && project.sharedDocuments.length > 0 ? `
-            <div style="margin-top: 12px;">
-              ${project.sharedDocuments.map((doc, docIndex) => `
-                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border-radius: 6px; margin-bottom: 6px;">
-                  <svg style="width: 16px; height: 16px; color: var(--muted-foreground);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <path d="M14 2v6h6"/>
-                  </svg>
-                  <span style="font-size: 12px; color: var(--foreground); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.name}</span>
-                  <button onclick="removeProjectDoc(${projectIndex}, ${docIndex})" style="background: transparent; border: none; cursor: pointer; color: var(--muted-foreground); padding: 2px;">
-                    <svg style="width: 12px; height: 12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-        
-        <!-- Team Comments & Updates Section -->
-        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
-          <h4 style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 12px;">Team Comments & Updates</h4>
-          
-          <!-- Add Comment Form - Simplified -->
-          <div style="margin-bottom: 16px;">
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="projectComment-${projectIndex}" placeholder="Add update..." style="
-                flex: 1;
-                padding: 8px 12px;
-                border: 1px solid var(--border);
-                border-radius: 6px;
-                background: var(--surface);
-                color: var(--foreground);
-                font-size: 12px;
-              " onkeypress="if(event.key==='Enter') addProjectComment(${projectIndex})">
-              <button onclick="addProjectComment(${projectIndex})" style="
-                padding: 8px 12px;
-                border: none;
-                border-radius: 6px;
-                background: var(--primary);
-                color: var(--primary-foreground);
-                cursor: pointer;
-                font-size: 12px;
-              ">Post</button>
+        <!-- Activity Feed with Progress -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <span>Activity</span>
+            <div class="activity-progress-indicator">
+              <svg class="activity-progress-ring" width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="var(--border)" stroke-width="2"/>
+                <circle cx="12" cy="12" r="10" fill="none" stroke="var(--primary)" stroke-width="2" 
+                  stroke-dasharray="${2 * Math.PI * 10}"
+                  stroke-dashoffset="${2 * Math.PI * 10 * (1 - percentage/100)}"
+                  transform="rotate(-90 12 12)"
+                  stroke-linecap="round"/>
+              </svg>
+              <span class="activity-progress-text">${percentage}%</span>
             </div>
           </div>
-          
-          <!-- Comments List -->
-          <div class="comments-list" style="max-height: 300px; overflow-y: auto;">
-            ${projectComments.length === 0 ? `
-              <p style="font-size: 12px; color: var(--muted-foreground); text-align: center; padding: 16px 0;">No comments yet</p>
-            ` : projectComments.map((comment, cIdx) => `
-              <div class="project-comment" style="
-                padding: 10px;
-                background: ${comment.isImportant ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface)'};
-                border: 1px solid ${comment.isImportant ? 'rgba(239, 68, 68, 0.3)' : 'var(--border)'};
-                border-radius: 8px;
-                margin-bottom: 8px;
-                position: relative;
-              " onmouseenter="this.querySelector('.comment-actions').style.opacity='1'" onmouseleave="this.querySelector('.comment-actions').style.opacity='0'">
-                <!-- Delete and Type Toggle buttons on hover -->
-                <div class="comment-actions" style="
-                  position: absolute;
-                  top: 8px;
-                  right: 8px;
-                  display: flex;
-                  gap: 4px;
-                  opacity: 0;
-                  transition: opacity 0.15s;
-                ">
-                  <button onclick="event.stopPropagation(); toggleCommentImportant(${projectIndex}, ${cIdx})" title="${comment.isImportant ? 'Mark as normal' : 'Mark as important'}" style="
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 4px;
-                    border: none;
-                    background: ${comment.isImportant ? '#ef4444' : 'var(--surface-hover)'};
-                    color: ${comment.isImportant ? 'white' : 'var(--muted-foreground)'};
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                  ">⚠</button>
-                  <button onclick="event.stopPropagation(); deleteProjectComment(${projectIndex}, ${cIdx})" title="Delete comment" style="
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 4px;
-                    border: none;
-                    background: var(--surface-hover);
-                    color: var(--destructive);
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                  ">
-                    <svg style="width: 12px; height: 12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
+          <div class="sidebar-activity-feed">
+            ${projectComments.length === 0 && (!project.activityLog || project.activityLog.length === 0) ? `
+              <p class="activity-empty">No activity yet</p>
+            ` : (project.activityLog || [
+              { type: 'status', actor: teamMembers[0] || 'You', action: 'changed status from Backlog to In Progress', time: 'Dec 29' },
+              { type: 'date', actor: teamMembers[0] || 'You', action: 'set start date to ' + formatDate(project.startDate || new Date().toISOString()), time: 'Dec 29' }
+            ]).slice(0, 5).map(activity => `
+              <div class="activity-item">
+                <div class="activity-icon ${activity.type}">
+                  ${activity.type === 'status' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>' : 
+                    activity.type === 'priority' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>' :
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'}
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <div style="
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: ${getTeamColor(0)};
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 8px;
-                    font-weight: 600;
-                  ">${(comment.author || 'You').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
-                  <span style="font-size: 11px; font-weight: 500; color: var(--foreground);">${comment.author || 'You'}</span>
-                  ${comment.isImportant ? '<span style="font-size: 9px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">Important</span>' : ''}
-                  <span style="font-size: 10px; color: var(--muted-foreground); margin-left: auto; margin-right: 56px;">${formatTimeAgo(comment.time)}</span>
+                <div class="activity-content">
+                  <span class="activity-actor">${activity.actor}</span> ${activity.action}
+                  <span class="activity-time">· ${activity.time}</span>
                 </div>
-                <p style="font-size: 12px; color: var(--foreground); margin: 0 0 8px 0; line-height: 1.4;">${comment.message}</p>
-                <div style="display: flex; gap: 8px;">
-                  <button onclick="replyToComment(${projectIndex}, ${cIdx})" style="
-                    font-size: 10px;
-                    color: var(--muted-foreground);
-                    background: transparent;
-                    border: none;
-                    cursor: pointer;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                  " onmouseover="this.style.background='var(--surface-hover)'" onmouseout="this.style.background='transparent'">↩ Reply</button>
-                  <button onclick="reactToComment(${projectIndex}, ${cIdx})" style="
-                    font-size: 10px;
-                    color: var(--muted-foreground);
-                    background: transparent;
-                    border: none;
-                    cursor: pointer;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                  " onmouseover="this.style.background='var(--surface-hover)'" onmouseout="this.style.background='transparent'">👍 ${comment.reactions || 0}</button>
-                </div>
-                ${comment.replies && comment.replies.length > 0 ? `
-                  <div style="margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--border);">
-                    ${comment.replies.map(reply => `
-                      <div style="padding: 6px 0;">
-                        <span style="font-size: 10px; font-weight: 500; color: var(--foreground);">${reply.author}</span>
-                        <span style="font-size: 10px; color: var(--muted-foreground);"> · ${formatTimeAgo(reply.time)}</span>
-                        <p style="font-size: 11px; color: var(--foreground); margin: 4px 0 0 0;">${reply.message}</p>
-                      </div>
-                    `).join('')}
-                  </div>
-                ` : ''}
               </div>
             `).join('')}
           </div>
         </div>
+        
+        <!-- Progress Chart in Sidebar -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <span>Progress</span>
+          </div>
+          ${renderProgressChart(progressHistory, projectIndex)}
+        </div>
       </aside>
-      
-      ${typeof renderProjectDetailAiChat === 'function' ? renderProjectDetailAiChat() : ''}
     </div>
   `;
 }
 
-// Progress chart rendering - Modern Bar Chart Style
+// Progress chart rendering - Linear-style Professional Chart (Minimalistic)
 function renderProgressChart(progressHistory, projectIndex) {
-  const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-  const maxTasks = Math.max(...progressHistory.map(w => w.completed), 10);
-  const chartHeight = 160;
-  const barColors = ['#6366f1', '#8b5cf6', '#a855f7', '#22c55e'];
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const { total, completed, percentage } = calculateProgress(project?.columns || []);
   
+  const chartWidth = 280;
+  const chartHeight = 120;
+  const padding = { top: 8, right: 8, bottom: 24, left: 8 };
+  const graphWidth = chartWidth - padding.left - padding.right;
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  
+  // Generate Linear-style data points based on actual project progress
+  const dataPoints = generateLinearStyleData(project);
+  const maxScope = Math.max(...dataPoints.map(d => d.scope), 1);
+  
+  // Stats for display - matching Linear's exact layout
+  const currentData = dataPoints[dataPoints.length - 1];
+  const firstData = dataPoints[0];
+  const scopeTotal = currentData?.scope || total || 0;
+  const scopeChange = firstData.scope > 0 ? 
+    Math.round(((currentData.scope - firstData.scope) / firstData.scope) * 100) : 0;
+  const startedCount = currentData?.started || 0;
+  const startedPercent = scopeTotal > 0 ? Math.round((startedCount / scopeTotal) * 100) : 0;
+  const completedCount = currentData?.completed || completed || 0;
+  const completedPercent = scopeTotal > 0 ? Math.round((completedCount / scopeTotal) * 100) : percentage;
+  
+  // Generate stepped/area paths for cleaner look
+  const scopePath = generateSteppedLinePath(dataPoints, 'scope', graphWidth, graphHeight, maxScope, padding);
+  const startedAreaPath = generateSteppedAreaPath(dataPoints, 'started', graphWidth, graphHeight, maxScope, padding);
+  const completedAreaPath = generateSteppedAreaPath(dataPoints, 'completed', graphWidth, graphHeight, maxScope, padding);
+  
+  // Date labels
+  const firstDate = dataPoints[0]?.date || '';
+  const midDate = dataPoints[Math.floor(dataPoints.length/2)]?.date || '';
+  const lastDate = dataPoints[dataPoints.length - 1]?.date || '';
+
   return `
-    <div class="progress-chart-modern">
-      <!-- Chart Header -->
-      <div class="chart-header">
-        <div class="chart-legend">
-          <span class="legend-dot" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);"></span>
-          <span>Tasks Completed</span>
-        </div>
-        <div class="chart-total">
-          <span class="total-label">Total</span>
-          <span class="total-value">${progressHistory.reduce((sum, w) => sum + w.completed, 0)}</span>
-        </div>
-      </div>
-      
-      <!-- Bar Chart Container -->
-      <div class="bar-chart-container" style="height: ${chartHeight}px; position: relative; display: flex; align-items: flex-end; gap: 16px; padding: 0 8px;">
-        <!-- Y-axis labels -->
-        <div class="y-axis" style="position: absolute; left: 0; top: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0;">
-          <span class="y-label" style="font-size: 10px; color: var(--muted-foreground);">${maxTasks}</span>
-          <span class="y-label" style="font-size: 10px; color: var(--muted-foreground);">${Math.round(maxTasks / 2)}</span>
-          <span class="y-label" style="font-size: 10px; color: var(--muted-foreground);">0</span>
-        </div>
-        
-        <!-- Grid lines -->
-        <div class="chart-grid" style="position: absolute; left: 30px; right: 0; top: 0; height: 100%; pointer-events: none;">
-          <div style="position: absolute; left: 0; right: 0; top: 0; border-top: 1px dashed var(--border);"></div>
-          <div style="position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--border);"></div>
-          <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid var(--border);"></div>
-        </div>
-        
-        <!-- Bars -->
-        <div class="bars-wrapper" style="display: flex; flex: 1; align-items: flex-end; gap: 20px; margin-left: 40px; height: 100%;">
-          ${progressHistory.map((week, i) => {
-            const barHeight = Math.max((week.completed / maxTasks) * chartHeight, 8);
-            const percentage = maxTasks > 0 ? Math.round((week.completed / maxTasks) * 100) : 0;
-            return `
-              <div class="bar-item" style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
-                <div class="bar-value" style="font-size: 12px; font-weight: 600; color: ${barColors[i]}; margin-bottom: 6px; opacity: 0; transition: opacity 0.3s;">
-                  ${week.completed}
-                </div>
-                <div class="bar" 
-                     style="width: 100%; max-width: 60px; height: ${barHeight}px; 
-                            background: linear-gradient(180deg, ${barColors[i]}, ${barColors[i]}99);
-                            border-radius: 8px 8px 0 0;
-                            position: relative;
-                            cursor: pointer;
-                            transition: all 0.3s ease;
-                            box-shadow: 0 -4px 20px ${barColors[i]}30;"
-                     onmouseover="this.style.transform='scaleY(1.02)'; this.previousElementSibling.style.opacity='1';"
-                     onmouseout="this.style.transform='scaleY(1)'; this.previousElementSibling.style.opacity='0';">
-                  <div class="bar-glow" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%); border-radius: 8px 8px 0 0;"></div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-      
-      <!-- X-axis labels -->
-      <div class="x-axis" style="display: flex; margin-top: 12px; margin-left: 40px; gap: 20px;">
-        ${weeks.map((w, i) => `
-          <div style="flex: 1; text-align: center;">
-            <span style="font-size: 12px; font-weight: 500; color: var(--muted-foreground);">${w}</span>
+    <div class="linear-progress-chart" id="progressChart-${projectIndex}">
+      <!-- Stats Header - Linear Style (Horizontal) -->
+      <div class="chart-stats-row">
+        <div class="chart-stat-block">
+          <div class="stat-label-row">
+            <span class="stat-dot scope-dot"></span>
+            <span class="stat-label">Scope</span>
           </div>
-        `).join('')}
+          <div class="stat-value-row">
+            <span class="stat-number">${scopeTotal}</span>
+            <span class="stat-badge ${scopeChange >= 0 ? 'positive' : 'negative'}">${scopeChange >= 0 ? '+' : ''}${scopeChange}%</span>
+          </div>
+        </div>
+        <div class="chart-stat-block">
+          <div class="stat-label-row">
+            <span class="stat-dot started-dot"></span>
+            <span class="stat-label">Started</span>
+          </div>
+          <div class="stat-value-row">
+            <span class="stat-number">${startedCount}</span>
+            <span class="stat-percent">· ${startedPercent}%</span>
+          </div>
+        </div>
+        <div class="chart-stat-block">
+          <div class="stat-label-row">
+            <span class="stat-dot completed-dot"></span>
+            <span class="stat-label">Completed</span>
+          </div>
+          <div class="stat-value-row">
+            <span class="stat-number">${completedCount}</span>
+            <span class="stat-percent">· ${completedPercent}%</span>
+          </div>
+        </div>
       </div>
       
-      <!-- Stats Row -->
-      <div class="chart-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
-        ${progressHistory.map((week, i) => `
-          <div class="stat-card" style="background: var(--surface); border-radius: 10px; padding: 14px; text-align: center; transition: all 0.2s;">
-            <div style="font-size: 22px; font-weight: 700; color: ${barColors[i]}; margin-bottom: 4px;">${week.completed}</div>
-            <div style="font-size: 11px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.5px;">Week ${i + 1}</div>
-          </div>
-        `).join('')}
+      <!-- SVG Chart - Clean Stacked Area Style -->
+      <div class="chart-svg-container">
+        <svg width="100%" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="xMidYMid meet" class="linear-chart-svg">
+          <defs>
+            <linearGradient id="scopeGradient-${projectIndex}" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.08)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0.02)"/>
+            </linearGradient>
+            <linearGradient id="startedGradient-${projectIndex}" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.1"/>
+            </linearGradient>
+            <linearGradient id="completedGradient-${projectIndex}" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.2"/>
+            </linearGradient>
+          </defs>
+          
+          <!-- Scope area (bottom layer - subtle) -->
+          <path d="${generateSteppedAreaPath(dataPoints, 'scope', graphWidth, graphHeight, maxScope, padding)}" fill="url(#scopeGradient-${projectIndex})" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          
+          <!-- Started area (middle layer - yellow) -->
+          <path d="${startedAreaPath}" fill="url(#startedGradient-${projectIndex})" stroke="#fbbf24" stroke-width="1.5"/>
+          
+          <!-- Completed area (top layer - purple) -->
+          <path d="${completedAreaPath}" fill="url(#completedGradient-${projectIndex})" stroke="#8b5cf6" stroke-width="1.5"/>
+          
+          <!-- X-axis labels -->
+          <text x="${padding.left}" y="${chartHeight - 4}" text-anchor="start" class="chart-date-label">${firstDate}</text>
+          <text x="${chartWidth / 2}" y="${chartHeight - 4}" text-anchor="middle" class="chart-date-label">${midDate}</text>
+          <text x="${chartWidth - padding.right}" y="${chartHeight - 4}" text-anchor="end" class="chart-date-label">${lastDate}</text>
+        </svg>
       </div>
     </div>
   `;
+}
+
+// Generate stepped line path (no curves, just steps)
+function generateSteppedLinePath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
+  if (dataPoints.length < 2) return '';
+  
+  let path = '';
+  dataPoints.forEach((d, i) => {
+    const x = padding.left + (i / (dataPoints.length - 1)) * graphWidth;
+    const y = padding.top + graphHeight - ((d[key] || 0) / maxValue) * graphHeight;
+    
+    if (i === 0) {
+      path = `M ${x} ${y}`;
+    } else {
+      const prevX = padding.left + ((i - 1) / (dataPoints.length - 1)) * graphWidth;
+      path += ` H ${x} V ${y}`;
+    }
+  });
+  
+  return path;
+}
+
+// Generate stepped area path for gradient fill
+function generateSteppedAreaPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
+  if (dataPoints.length < 2) return '';
+  
+  const bottomY = padding.top + graphHeight;
+  let path = `M ${padding.left} ${bottomY}`;
+  
+  dataPoints.forEach((d, i) => {
+    const x = padding.left + (i / (dataPoints.length - 1)) * graphWidth;
+    const y = padding.top + graphHeight - ((d[key] || 0) / maxValue) * graphHeight;
+    
+    if (i === 0) {
+      path += ` L ${x} ${y}`;
+    } else {
+      path += ` H ${x} V ${y}`;
+    }
+  });
+  
+  // Close the path back to baseline
+  const endX = padding.left + graphWidth;
+  path += ` H ${endX} V ${bottomY} Z`;
+  
+  return path;
+}
+
+// Generate Linear-style data from project tasks
+function generateLinearStyleData(project) {
+  const points = [];
+  const today = new Date();
+  const columns = project?.columns || [];
+  
+  // Calculate current totals from columns
+  let totalTasks = 0;
+  let inProgressTasks = 0;
+  let doneTasks = 0;
+  
+  columns.forEach((col, idx) => {
+    const colTasks = col.tasks?.length || 0;
+    totalTasks += colTasks;
+    
+    const title = (col.title || '').toLowerCase();
+    if (title.includes('progress') || title.includes('doing') || title.includes('review')) {
+      inProgressTasks += colTasks;
+    }
+    if (title.includes('done') || title.includes('complete') || title.includes('finished')) {
+      doneTasks += colTasks;
+    }
+  });
+  
+  // If no "done" column detected, use last column
+  if (doneTasks === 0 && columns.length > 0) {
+    const lastCol = columns[columns.length - 1];
+    doneTasks = lastCol.tasks?.length || 0;
+  }
+  
+  // Ensure minimum values for visualization
+  const baseScope = Math.max(totalTasks, 8);
+  const baseStarted = inProgressTasks + doneTasks;
+  const baseCompleted = doneTasks;
+  
+  // Generate 14 days of realistic progress data
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 13 + i);
+    const progress = i / 13;
+    
+    // Scope grows slightly over time
+    const scope = Math.floor(baseScope * (0.8 + progress * 0.2));
+    
+    // Started and completed grow more progressively
+    const started = Math.floor(baseStarted * Math.pow(progress, 0.7));
+    const completed = Math.floor(baseCompleted * Math.pow(progress, 0.8));
+    
+    points.push({
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      scope: scope,
+      started: Math.min(started, scope),
+      completed: Math.min(completed, started, scope)
+    });
+  }
+  
+  return points.length > 0 ? points : [{ date: 'Today', scope: 1, started: 0, completed: 0 }];
+}
+
+// Generate smooth data points from progress history (fallback)
+function generateSmoothDataPoints(progressHistory) {
+  const points = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 13 + i);
+    const progress = i / 13;
+    const scopeBase = 200 + Math.floor(progress * 84);
+    const completedBase = Math.floor(progress * 193 * 0.85);
+    
+    points.push({
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      scope: scopeBase,
+      completed: Math.min(completedBase, scopeBase)
+    });
+  }
+  
+  return points;
+}
+
+// Generate smooth bezier curve path
+function generateSmoothPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
+  if (dataPoints.length < 2) return '';
+  
+  const points = dataPoints.map((d, i) => ({
+    x: padding.left + (i / (dataPoints.length - 1)) * graphWidth,
+    y: padding.top + graphHeight - (d[key] / maxValue) * graphHeight
+  }));
+  
+  let path = `M ${points[0].x} ${points[0].y}`;
+  
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const tension = 0.3;
+    
+    const cp1x = prev.x + (curr.x - prev.x) * tension;
+    const cp1y = prev.y;
+    const cp2x = curr.x - (curr.x - prev.x) * tension;
+    const cp2y = curr.y;
+    
+    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
+  }
+  
+  return path;
+}
+
+// Generate area path for gradient fill
+function generateAreaPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding, chartHeight) {
+  const linePath = generateSmoothPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding);
+  const startX = padding.left;
+  const endX = padding.left + graphWidth;
+  const bottomY = padding.top + graphHeight;
+  
+  return `${linePath} L ${endX} ${bottomY} L ${startX} ${bottomY} Z`;
+}
+
+// Generate grid lines
+function generateGridLines(graphHeight, padding, chartWidth) {
+  const lines = [];
+  const numLines = 4;
+  
+  for (let i = 0; i <= numLines; i++) {
+    const y = padding.top + (graphHeight / numLines) * i;
+    lines.push(`<line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`);
+  }
+  
+  return lines.join('');
+}
+
+// Generate date labels
+function generateDateLabels(numPoints) {
+  const labels = [];
+  const today = new Date();
+  const positions = [0, Math.floor(numPoints / 2), numPoints - 1];
+  
+  positions.forEach(i => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (numPoints - 1 - i));
+    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  });
+  
+  return labels;
 }
 
 function generateMockProgressHistory() {
@@ -2734,12 +2875,50 @@ function generateMockProgressHistory() {
   ];
 }
 
-function showChartTooltip(event, tasksCompleted, weekLabel) {
-  // Legacy tooltip - no longer needed with new design
+// Tooltip functions for the chart
+function showChartTooltip(event, scope, completed, dateLabel) {
+  const tooltip = event.target.closest('.chart-svg-container')?.querySelector('.chart-tooltip');
+  if (!tooltip) return;
+  
+  const rect = event.target.closest('.chart-svg-container').getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  
+  tooltip.querySelector('.tooltip-date').textContent = dateLabel;
+  tooltip.querySelector('.scope-value').textContent = scope;
+  tooltip.querySelector('.completed-value').textContent = completed;
+  
+  // Position tooltip
+  const tooltipWidth = 140;
+  let tooltipX = x + 10;
+  if (tooltipX + tooltipWidth > rect.width) {
+    tooltipX = x - tooltipWidth - 10;
+  }
+  
+  tooltip.style.left = `${tooltipX}px`;
+  tooltip.style.top = `${Math.max(10, y - 40)}px`;
+  tooltip.classList.add('visible');
+  
+  // Show indicator line
+  const chartId = tooltip.id.replace('chartTooltip-', 'chartIndicator-');
+  const indicator = document.getElementById(chartId);
+  if (indicator) {
+    const point = event.target.closest('.chart-point-group');
+    if (point) {
+      const circle = point.querySelector('.scope-point');
+      const cx = circle?.getAttribute('cx');
+      if (cx) {
+        indicator.setAttribute('x1', cx);
+        indicator.setAttribute('x2', cx);
+        indicator.style.display = 'block';
+      }
+    }
+  }
 }
 
 function hideChartTooltip() {
-  // Legacy tooltip - no longer needed with new design
+  document.querySelectorAll('.chart-tooltip').forEach(t => t.classList.remove('visible'));
+  document.querySelectorAll('[id^="chartIndicator-"]').forEach(i => i.style.display = 'none');
 }
 
 // Priority selector
@@ -4471,12 +4650,6 @@ function openDocEditor(docId = null) {
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
-          </button>
-          <button class="notion-action-btn" onclick="showComingSoonToast()" title="Ask AI">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-4.5h-2v-1c0-1.1.9-2 2-2a2 2 0 0 0 0-4 2 2 0 0 0-2 2h-2a4 4 0 1 1 6 3.46v1.54z"/>
-            </svg>
-            Ask AI
           </button>
           <button class="notion-action-btn" onclick="openInEditorSharePanel('doc')" title="Share">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
@@ -7511,4 +7684,330 @@ function confirmInEditorShare() {
   showToast('Shared with ' + inEditorShareEmails.length + ' people!');
   inEditorShareEmails = [];
   closeInEditorSharePanel();
+}
+
+/* ============================================
+   Milestone Functions
+   ============================================ */
+
+function addMilestone(projectIndex) {
+  const content = `
+    <form id="addMilestoneForm" onsubmit="handleAddMilestoneSubmit(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Milestone Name <span class="required">*</span></label>
+        <input type="text" name="name" class="form-input" placeholder="e.g., Phase 1, MVP, Beta Release..." required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Tasks</label>
+        <input type="number" name="total" class="form-input" placeholder="0" min="0" value="0">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Milestone</button>
+      </div>
+    </form>
+  `;
+  openModal('Add Milestone', content);
+}
+
+function handleAddMilestoneSubmit(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const name = formData.get('name')?.trim();
+  const total = parseInt(formData.get('total') || '0');
+  
+  if (!name) return;
+  
+  const projects = loadProjects();
+  if (!projects[projectIndex]) return;
+  
+  if (!projects[projectIndex].milestones) {
+    projects[projectIndex].milestones = [];
+  }
+  
+  projects[projectIndex].milestones.push({
+    id: Date.now(),
+    name: name,
+    total: total,
+    completed: 0,
+    createdAt: new Date().toISOString()
+  });
+  
+  saveProjects(projects);
+  closeModal();
+  renderCurrentView();
+}
+
+function updateMilestoneName(projectIndex, milestoneIndex, newName) {
+  const projects = loadProjects();
+  if (projects[projectIndex]?.milestones?.[milestoneIndex]) {
+    projects[projectIndex].milestones[milestoneIndex].name = newName.trim() || 'Untitled Milestone';
+    saveProjects(projects);
+  }
+}
+
+function openMilestoneMenu(projectIndex, milestoneIndex, event) {
+  event.stopPropagation();
+  
+  // Remove any existing menu
+  const existingMenu = document.getElementById('milestoneContextMenu');
+  if (existingMenu) existingMenu.remove();
+  
+  const projects = loadProjects();
+  const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
+  if (!milestone) return;
+  
+  const menu = document.createElement('div');
+  menu.id = 'milestoneContextMenu';
+  menu.className = 'task-context-menu';
+  menu.innerHTML = `
+    <button class="context-menu-item" onclick="editMilestone(${projectIndex}, ${milestoneIndex}); hideMilestoneMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Edit
+    </button>
+    <button class="context-menu-item" onclick="updateMilestoneProgress(${projectIndex}, ${milestoneIndex}); hideMilestoneMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M12 20V10"/>
+        <path d="M18 20V4"/>
+        <path d="M6 20v-4"/>
+      </svg>
+      Update Progress
+    </button>
+    <button class="context-menu-item delete" onclick="deleteMilestone(${projectIndex}, ${milestoneIndex}); hideMilestoneMenu();">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+      </svg>
+      Delete
+    </button>
+  `;
+  
+  menu.style.left = event.clientX + 'px';
+  menu.style.top = event.clientY + 'px';
+  
+  document.body.appendChild(menu);
+  
+  setTimeout(() => {
+    document.addEventListener('click', hideMilestoneMenu, { once: true });
+  }, 10);
+}
+
+function hideMilestoneMenu() {
+  const menu = document.getElementById('milestoneContextMenu');
+  if (menu) menu.remove();
+}
+
+function editMilestone(projectIndex, milestoneIndex) {
+  const projects = loadProjects();
+  const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
+  if (!milestone) return;
+  
+  const content = `
+    <form onsubmit="handleEditMilestoneSubmit(event, ${projectIndex}, ${milestoneIndex})">
+      <div class="form-group">
+        <label class="form-label">Milestone Name</label>
+        <input type="text" name="name" class="form-input" value="${milestone.name}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Tasks</label>
+        <input type="number" name="total" class="form-input" value="${milestone.total || 0}" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Completed Tasks</label>
+        <input type="number" name="completed" class="form-input" value="${milestone.completed || 0}" min="0">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  `;
+  openModal('Edit Milestone', content);
+}
+
+function handleEditMilestoneSubmit(event, projectIndex, milestoneIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const projects = loadProjects();
+  if (!projects[projectIndex]?.milestones?.[milestoneIndex]) return;
+  
+  projects[projectIndex].milestones[milestoneIndex] = {
+    ...projects[projectIndex].milestones[milestoneIndex],
+    name: formData.get('name')?.trim() || 'Untitled',
+    total: parseInt(formData.get('total') || '0'),
+    completed: parseInt(formData.get('completed') || '0')
+  };
+  
+  saveProjects(projects);
+  closeModal();
+  renderCurrentView();
+}
+
+function updateMilestoneProgress(projectIndex, milestoneIndex) {
+  const projects = loadProjects();
+  const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
+  if (!milestone) return;
+  
+  const newCompleted = prompt(`Update completed tasks for "${milestone.name}" (current: ${milestone.completed}/${milestone.total}):`, milestone.completed);
+  if (newCompleted !== null) {
+    const completed = parseInt(newCompleted);
+    if (!isNaN(completed) && completed >= 0) {
+      projects[projectIndex].milestones[milestoneIndex].completed = Math.min(completed, milestone.total);
+      saveProjects(projects);
+      renderCurrentView();
+    }
+  }
+}
+
+function deleteMilestone(projectIndex, milestoneIndex) {
+  if (!confirm('Delete this milestone?')) return;
+  
+  const projects = loadProjects();
+  if (projects[projectIndex]?.milestones) {
+    projects[projectIndex].milestones.splice(milestoneIndex, 1);
+    saveProjects(projects);
+    renderCurrentView();
+  }
+}
+
+function openMilestoneDetail(projectIndex, milestoneIndex) {
+  const projects = loadProjects();
+  const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
+  if (!milestone) return;
+  
+  const progress = milestone.total > 0 ? Math.round((milestone.completed / milestone.total) * 100) : 0;
+  
+  const content = `
+    <div style="padding: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <span style="font-size: 24px; color: var(--primary);">◇</span>
+        <h3 style="margin: 0; font-size: 18px; font-weight: 600;">${milestone.name}</h3>
+      </div>
+      <div style="background: var(--surface); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span style="color: var(--muted-foreground);">Progress</span>
+          <span style="font-weight: 600;">${progress}%</span>
+        </div>
+        <div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+          <div style="width: ${progress}%; height: 100%; background: var(--primary); border-radius: 4px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted-foreground);">
+          <span>${milestone.completed} completed</span>
+          <span>${milestone.total - milestone.completed} remaining</span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="closeModal(); editMilestone(${projectIndex}, ${milestoneIndex})">Edit</button>
+      </div>
+    </div>
+  `;
+  openModal('Milestone Details', content);
+}
+
+/* ============================================
+   Update Card Functions
+   ============================================ */
+
+function openNewUpdateModal(projectIndex) {
+  const content = `
+    <form id="newUpdateForm" onsubmit="handleNewUpdateSubmit(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="in-progress">In Progress</option>
+          <option value="on-track">On Track</option>
+          <option value="at-risk">At Risk</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Update Message <span class="required">*</span></label>
+        <textarea name="text" class="form-textarea" placeholder="What's the latest progress on this project?" rows="3" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Post Update</button>
+      </div>
+    </form>
+  `;
+  openModal('New Project Update', content);
+}
+
+function handleNewUpdateSubmit(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const status = formData.get('status');
+  const text = formData.get('text')?.trim();
+  
+  if (!text) return;
+  
+  const projects = loadProjects();
+  if (!projects[projectIndex]) return;
+  
+  if (!projects[projectIndex].updates) {
+    projects[projectIndex].updates = [];
+  }
+  
+  projects[projectIndex].updates.unshift({
+    id: Date.now(),
+    status: status,
+    text: text,
+    author: 'You',
+    time: 'just now',
+    createdAt: new Date().toISOString()
+  });
+  
+  saveProjects(projects);
+  closeModal();
+  showToast('Update posted!');
+  renderCurrentView();
+}
+
+function openUpdateCommentsModal(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const updates = project.updates || [];
+  
+  const content = `
+    <div style="max-height: 400px; overflow-y: auto;">
+      ${updates.length === 0 ? `
+        <div style="text-align: center; padding: 32px; color: var(--muted-foreground);">
+          <p>No updates yet</p>
+          <button class="btn btn-primary" onclick="closeModal(); openNewUpdateModal(${projectIndex})">Add First Update</button>
+        </div>
+      ` : updates.map((update, idx) => `
+        <div style="padding: 16px; background: var(--surface); border-radius: 10px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span class="update-status-badge ${update.status || 'in-progress'}">${(update.status || 'in-progress').replace('-', ' ')}</span>
+            <span style="font-size: 11px; color: var(--muted-foreground);">${update.time || 'recently'}</span>
+          </div>
+          <p style="margin: 0; font-size: 14px; color: var(--foreground);">${update.text}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  openModal('Project Updates', content);
+}
+
+function viewUpdateHistory(projectIndex) {
+  openUpdateCommentsModal(projectIndex);
+}
+
+function handleUpdateProjectSummary(projectIndex, summary) {
+  const projects = loadProjects();
+  if (projects[projectIndex]) {
+    projects[projectIndex].summary = summary?.trim() || '';
+    saveProjects(projects);
+  }
 }
