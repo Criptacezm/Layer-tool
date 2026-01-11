@@ -562,7 +562,7 @@
 .grip-header-left h2 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--foreground);
+  color: rgb(255, 255, 255);
   margin: 0;
 }
 
@@ -3082,4 +3082,121 @@
   .toolbar-tool.toolbar-tool-task .toolbar-label {
     display: none;
   }
+}
+
+/* ============================================
+   Minimap Styles
+   ============================================ */
+.grip-minimap {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  width: 200px;
+  background: rgba(20, 20, 22, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  z-index: 90;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.grip-minimap.minimized {
+  width: 100px;
+  height: 32px;
+}
+
+.grip-minimap.minimized .minimap-content {
+  display: none;
+}
+
+.minimap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.minimap-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.minimap-toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #71717a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.minimap-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fafafa;
+}
+
+.minimap-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.minimap-content {
+  position: relative;
+  padding: 8px;
+}
+
+#minimapCanvas {
+  width: 100%;
+  height: 120px;
+  border-radius: 6px;
+  cursor: crosshair;
+}
+
+.minimap-viewport {
+  position: absolute;
+  border: 2px solid rgba(59, 130, 246, 0.8);
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  pointer-events: none;
+  transition: all 0.1s ease;
+}
+
+@media (max-width: 768px) {
+  .grip-minimap {
+    bottom: 70px;
+    right: 12px;
+    width: 150px;
+  }
+  
+  #minimapCanvas {
+    height: 90px;
+  }
+  
+  .grip-minimap.minimized {
+    width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .grip-minimap {
+    display: none;
+  }
+}
+
+/* Multi-select visual feedback */
+.grip-cell.multi-selected {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.6), 0 4px 16px rgba(0, 0, 0, 0.3);
 }
