@@ -93,24 +93,54 @@ function renderInboxView() {
               </div>
             </div>
             
-            <!-- Progress Widget -->
-            <div class="dashboard-widget">
-              <div class="widget-header">
-                <span class="widget-title">
-                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                  </svg>
-                  Task Completion
-                </span>
-                <span style="font-size: 24px; font-weight: 700; color: var(--foreground);">${completionRate}%</span>
-              </div>
-              <div class="widget-progress-bar">
-                <div class="widget-progress-fill" style="width: ${completionRate}%;"></div>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted-foreground);">
-                <span>${completedTasks} completed</span>
-                <span>${totalTasks - completedTasks} remaining</span>
+            <!-- Progress Widget - Flippable with Backlog -->
+            <div class="dashboard-widget task-completion-widget" id="taskCompletionWidget" onclick="flipTaskCompletionWidget()">
+              <div class="widget-flip-container">
+                <!-- Front Side -->
+                <div class="widget-flip-front">
+                  <div class="widget-header">
+                    <span class="widget-title">
+                      <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                      </svg>
+                      Task Completion
+                    </span>
+                    <span style="font-size: 24px; font-weight: 700; color: var(--foreground);">${completionRate}%</span>
+                  </div>
+                  <div class="widget-progress-bar">
+                    <div class="widget-progress-fill" style="width: ${completionRate}%;"></div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted-foreground);">
+                    <span>${completedTasks} completed</span>
+                    <span>${totalTasks - completedTasks} remaining</span>
+                  </div>
+                  <div class="widget-flip-hint">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                      <path d="M17 1l4 4-4 4"/>
+                      <path d="M3 11V9a4 4 0 014-4h14"/>
+                    </svg>
+                    Click to view backlog
+                  </div>
+                </div>
+                <!-- Back Side - Backlog Tasks -->
+                <div class="widget-flip-back">
+                  <div class="widget-header">
+                    <span class="widget-title">
+                      <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                        <rect x="9" y="3" width="6" height="4" rx="1"/>
+                      </svg>
+                      Backlog
+                    </span>
+                    <span class="widget-back-close" onclick="event.stopPropagation(); flipTaskCompletionWidget()">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </span>
+                  </div>
+                  <div class="widget-backlog-list" id="widgetBacklogList">
+                    ${renderWidgetBacklogTasks()}
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -542,61 +572,152 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
   }
 
   return `
-    <div class="issues-container">
-      <div class="view-header">
-        <div class="filter-tabs">
-          ${filters.map(f => `
-            <button class="filter-tab ${filter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.label}</button>
-          `).join('')}
+    <div class="issues-container-modern">
+      <div class="issues-header">
+        <div class="issues-header-left">
+          <h2 class="issues-title">My Issues</h2>
+          <div class="issues-count">${issues.length} issue${issues.length !== 1 ? 's' : ''}</div>
         </div>
-        <button class="btn btn-primary" onclick="openCreateIssueModal()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          New Issue
-        </button>
+        <div class="issues-header-right">
+          <div class="filter-tabs">
+            ${filters.map(f => `
+              <button class="filter-tab ${filter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.label}</button>
+            `).join('')}
+          </div>
+          <button class="btn btn-primary" onclick="openCreateIssueModal()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Issue
+          </button>
+        </div>
       </div>
-      <div style="padding: 16px;">
-        <div class="card">
-          <div class="table-header issues-grid">
-            <div></div>
-            <div>Issue</div>
-            <div>Status</div>
-            <div>Priority</div>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Updated</span>
-              <span style="width: 32px;"></span> <!-- Spacer for delete button -->
+      
+      <div class="issues-list">
+        ${issues.map((issue, index) => `
+          <div class="issue-card" onclick="openIssueDetailModal(${index})">
+            <div class="issue-card-left">
+              <div class="issue-status-indicator ${issue.status}"></div>
+              <div class="issue-main-info">
+                <div class="issue-id-badge">${issue.id}</div>
+                <div class="issue-title-text">${issue.title}</div>
+              </div>
+            </div>
+            <div class="issue-card-right">
+              <div class="issue-meta-badges">
+                <span class="issue-status-badge ${getStatusBadgeClass(issue.status)}">${capitalizeStatus(issue.status)}</span>
+                ${issue.priority ? `<span class="issue-priority-badge ${getPriorityBadgeClass(issue.priority)}">${issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)}</span>` : ''}
+              </div>
+              <div class="issue-updated-text">${issue.updated}</div>
+              <button class="issue-delete-btn" onclick="event.stopPropagation(); handleDeleteIssue(${index})" title="Delete issue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
             </div>
           </div>
-          ${issues.map((issue, index) => `
-            <div class="table-row issues-grid" style="align-items: center;">
-              <div class="issue-id">${issue.id}</div>
-              <div>
-                <div class="issue-title">${issue.title}</div>
-                ${issue.description ? `<div class="issue-description">${issue.description}</div>` : ''}
-              </div>
-              <div>
-                <span class="badge ${getStatusBadgeClass(issue.status)}">${capitalizeStatus(issue.status)}</span>
-              </div>
-              <div>
-                <span class="badge badge-sm ${getPriorityBadgeClass(issue.priority)}">
-                  ${issue.priority ? issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1) : '—'}
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <div class="issue-updated">${issue.updated}</div>
-                <button class="project-delete-btn" style="opacity: 0.7; padding: 6px; margin-left: 12px;"
-                        onclick="event.stopPropagation(); handleDeleteIssue(${index})"
-                        title="Delete issue">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          `).join('')}
-        </div>
+        `).join('')}
       </div>
     </div>
   `;
+}
+
+function openIssueDetailModal(index) {
+  const issues = loadIssues();
+  const issue = issues[index];
+  if (!issue) return;
+  
+  const content = `
+    <div class="issue-detail-modal">
+      <div class="issue-detail-header">
+        <span class="issue-detail-id">${issue.id}</span>
+        <span class="badge ${getStatusBadgeClass(issue.status)}">${capitalizeStatus(issue.status)}</span>
+      </div>
+      <h3 class="issue-detail-title">${issue.title}</h3>
+      ${issue.description ? `<p class="issue-detail-description">${issue.description}</p>` : '<p class="issue-detail-description muted">No description provided</p>'}
+      <div class="issue-detail-meta">
+        <div class="issue-meta-item">
+          <span class="issue-meta-label">Priority</span>
+          <span class="badge ${getPriorityBadgeClass(issue.priority)}">${issue.priority ? issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1) : 'None'}</span>
+        </div>
+        <div class="issue-meta-item">
+          <span class="issue-meta-label">Assignee</span>
+          <span class="issue-meta-value">${issue.assignee || 'Unassigned'}</span>
+        </div>
+        <div class="issue-meta-item">
+          <span class="issue-meta-label">Last Updated</span>
+          <span class="issue-meta-value">${issue.updated}</span>
+        </div>
+      </div>
+      <div class="issue-detail-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="closeModal(); openEditIssueModal(${index})">Edit Issue</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Issue Details', content);
+}
+
+function openEditIssueModal(index) {
+  const issues = loadIssues();
+  const issue = issues[index];
+  if (!issue) return;
+
+  const content = `
+    <form id="editIssueForm" onsubmit="handleEditIssueSubmit(event, ${index})">
+      <div class="form-group">
+        <label class="form-label">Title <span class="required">*</span></label>
+        <input type="text" name="title" class="form-input" value="${issue.title}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-textarea">${issue.description || ''}</textarea>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select name="priority" class="form-select">
+            <option value="low" ${issue.priority === 'low' ? 'selected' : ''}>Low</option>
+            <option value="medium" ${issue.priority === 'medium' ? 'selected' : ''}>Medium</option>
+            <option value="high" ${issue.priority === 'high' ? 'selected' : ''}>High</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="todo" ${issue.status === 'todo' ? 'selected' : ''}>To Do</option>
+            <option value="in-progress" ${issue.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+            <option value="review" ${issue.status === 'review' ? 'selected' : ''}>Review</option>
+            <option value="done" ${issue.status === 'done' ? 'selected' : ''}>Done</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  `;
+
+  openModal('Edit Issue', content);
+}
+
+function handleEditIssueSubmit(event, index) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const issues = loadIssues();
+  if (issues[index]) {
+    issues[index] = {
+      ...issues[index],
+      title: formData.get('title').trim(),
+      description: formData.get('description').trim(),
+      priority: formData.get('priority'),
+      status: formData.get('status'),
+      updated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+    saveIssues(issues);
+    closeModal();
+    renderCurrentView();
+  }
 }
 
 // ========================
@@ -4381,14 +4502,8 @@ function openDocEditor(docId = null) {
         </div>
       </div>
       
-      <!-- Minimalistic Sidebar -->
-      <div class="notion-sidebar">
-        <button class="notion-sidebar-btn" onclick="showComingSoonToast()" title="Add page">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Add page
-        </button>
+      <!-- Minimalistic Sidebar - Hidden -->
+      <div class="notion-sidebar" style="display: none;">
       </div>
       
       <!-- Right Action Bar -->
@@ -4461,8 +4576,19 @@ function openDocEditor(docId = null) {
   // Set up placeholder and autosave
   setupNotionEditor();
   
-  // Focus on title if new doc
+  // Auto-create the document immediately if new
   if (!doc) {
+    const docs = loadDocs();
+    docs.unshift({
+      id: currentDocId,
+      title: 'Untitled',
+      content: '',
+      spaceId: currentSpaceId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    saveDocs(docs);
+    
     setTimeout(() => {
       document.getElementById('docTitleInput')?.focus();
     }, 100);
@@ -4471,6 +4597,7 @@ function openDocEditor(docId = null) {
 
 function setupNotionEditor() {
   const contentDiv = document.getElementById('docEditorContent');
+  const titleInput = document.getElementById('docTitleInput');
   if (!contentDiv) return;
   
   // Placeholder behavior
@@ -4486,21 +4613,104 @@ function setupNotionEditor() {
     }
   });
   
-  // Auto-save on input
+  // Debounced auto-save function
   let saveTimeout;
-  contentDiv.addEventListener('input', function() {
+  function triggerAutoSave() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
       autoSaveDoc();
-    }, 2000);
+      showAutoSaveIndicator();
+    }, 500); // Reduced to 500ms for faster saves
+  }
+  
+  // Auto-save on multiple events for comprehensive coverage
+  contentDiv.addEventListener('input', triggerAutoSave);
+  contentDiv.addEventListener('keyup', triggerAutoSave);
+  contentDiv.addEventListener('paste', function() {
+    setTimeout(triggerAutoSave, 100); // Delay slightly after paste
   });
+  contentDiv.addEventListener('cut', function() {
+    setTimeout(triggerAutoSave, 100);
+  });
+  contentDiv.addEventListener('blur', function() {
+    // Save immediately on blur
+    autoSaveDoc();
+  });
+  
+  // Use MutationObserver for reliable change detection (catches formatting changes too)
+  const observer = new MutationObserver(function(mutations) {
+    triggerAutoSave();
+  });
+  observer.observe(contentDiv, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true
+  });
+  
+  // Auto-save on title change
+  if (titleInput) {
+    titleInput.addEventListener('input', triggerAutoSave);
+    titleInput.addEventListener('blur', function() {
+      autoSaveDoc();
+    });
+  }
   
   // Handle keyboard shortcuts
   contentDiv.addEventListener('keydown', function(e) {
     if (e.key === '/' && contentDiv.textContent.trim() === '') {
       // Show slash command menu (coming soon)
     }
+    // Ctrl+S / Cmd+S to force save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      autoSaveDoc();
+      showAutoSaveIndicator();
+    }
   });
+}
+
+function showAutoSaveIndicator() {
+  // Show a subtle auto-save indicator
+  let indicator = document.getElementById('autoSaveIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'autoSaveIndicator';
+    indicator.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 8px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    indicator.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--status-done);">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      Auto-saved
+    `;
+    document.body.appendChild(indicator);
+  }
+  
+  indicator.style.opacity = '1';
+  indicator.style.transform = 'translateX(-50%) translateY(0)';
+  
+  setTimeout(() => {
+    indicator.style.opacity = '0';
+    indicator.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 2000);
 }
 
 function autoSaveDoc() {
@@ -4522,6 +4732,17 @@ function autoSaveDoc() {
       content,
       updatedAt: new Date().toISOString()
     };
+    saveDocs(docs);
+  } else {
+    // Save new document
+    docs.unshift({
+      id: currentDocId,
+      title,
+      content,
+      spaceId: currentSpaceId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
     saveDocs(docs);
   }
 }
@@ -4644,10 +4865,67 @@ function printDoc() {
 }
 
 function saveCurrentDoc() {
+  // Show inline save panel in the doc editor instead of modal
+  showInDocSavePanel();
+}
+
+function showInDocSavePanel() {
+  const spaces = loadSpaces();
+  
+  // Remove existing panel if any
+  const existingPanel = document.getElementById('inDocSavePanel');
+  if (existingPanel) existingPanel.remove();
+  
+  if (spaces.length === 0) {
+    showToast('Create a space first to organize your documents');
+    return;
+  }
+  
+  const panel = document.createElement('div');
+  panel.id = 'inDocSavePanel';
+  panel.className = 'in-doc-save-panel';
+  panel.innerHTML = `
+    <div class="in-doc-save-header">
+      <span>Save to Space</span>
+      <button class="in-doc-save-close" onclick="closeInDocSavePanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="in-doc-save-list">
+      ${spaces.map(space => `
+        <button class="in-doc-save-space-btn" onclick="confirmSaveDocToSpace(${space.id}); closeInDocSavePanel();">
+          <div class="in-doc-save-space-icon">${getSpaceIconSVGById(space.icon)}</div>
+          <span>${space.name}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+  
+  const container = document.querySelector('.doc-editor-container');
+  if (container) {
+    container.appendChild(panel);
+    setTimeout(() => panel.classList.add('show'), 10);
+  }
+}
+
+function closeInDocSavePanel() {
+  const panel = document.getElementById('inDocSavePanel');
+  if (panel) {
+    panel.classList.remove('show');
+    setTimeout(() => panel.remove(), 200);
+  }
+}
+
+function confirmSaveDocToSpace(spaceId) {
   const titleInput = document.getElementById('docTitleInput');
   const contentDiv = document.getElementById('docEditorContent');
   
-  if (!titleInput || !contentDiv) return;
+  if (!titleInput || !contentDiv) {
+    closeModal();
+    return;
+  }
   
   const title = titleInput.value.trim() || 'Untitled Document';
   const content = contentDiv.innerHTML;
@@ -4660,6 +4938,7 @@ function saveCurrentDoc() {
       ...docs[existingIndex],
       title,
       content,
+      spaceId: spaceId,
       updatedAt: new Date().toISOString()
     };
   } else {
@@ -4667,32 +4946,21 @@ function saveCurrentDoc() {
       id: currentDocId,
       title,
       content,
-      spaceId: currentSpaceId, // Associate with current space
+      spaceId: spaceId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
   }
   
   saveDocs(docs);
-  
-  // Show saved indicator
-  const indicator = document.getElementById('docSavedIndicator');
-  if (indicator) {
-    indicator.style.display = 'flex';
-    setTimeout(() => indicator.style.display = 'none', 2000);
-  }
-  
-  // Update last saved
-  const lastSaved = document.getElementById('lastSaved');
-  if (lastSaved) {
-    lastSaved.textContent = 'Saved just now';
-  }
+  closeModal();
   
   // Refresh favorites sidebar
   renderFavoritesInSidebar();
   
-  // Show success notification
-  showToast('Document saved successfully!');
+  const spaces = loadSpaces();
+  const space = spaces.find(s => s.id === spaceId);
+  showToast('Document saved to "' + (space ? space.name : 'Space') + '"!');
 }
 
 // ============================================
@@ -4865,8 +5133,19 @@ function openExcelEditor(excelId = null) {
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   
-  // Focus on title if new sheet
+  // Auto-create the spreadsheet immediately if new
   if (!excel) {
+    const excels = loadExcels();
+    excels.unshift({
+      id: currentExcelId,
+      title: 'Untitled Spreadsheet',
+      data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
+      spaceId: currentSpaceId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    saveExcels(excels);
+    
     setTimeout(() => {
       document.getElementById('excelTitleInput')?.focus();
     }, 100);
@@ -4911,8 +5190,35 @@ function renderExcelGrid(data) {
   return html;
 }
 
+let excelSaveTimeout = null;
 function updateExcelCell(row, col, value) {
-  // Update happens on save
+  // Auto-save on cell change
+  clearTimeout(excelSaveTimeout);
+  excelSaveTimeout = setTimeout(() => {
+    autoSaveExcel();
+    showAutoSaveIndicator();
+  }, 1000);
+}
+
+function autoSaveExcel() {
+  const titleInput = document.getElementById('excelTitleInput');
+  if (!titleInput) return;
+  
+  const title = titleInput.value.trim() || 'Untitled Spreadsheet';
+  const data = getExcelData();
+  
+  const excels = loadExcels();
+  const existingIndex = excels.findIndex(e => e.id === currentExcelId);
+  
+  if (existingIndex !== -1) {
+    excels[existingIndex] = {
+      ...excels[existingIndex],
+      title,
+      data,
+      updatedAt: new Date().toISOString()
+    };
+    saveExcels(excels);
+  }
 }
 
 function getExcelData() {
@@ -4975,8 +5281,65 @@ function closeExcelEditor() {
 }
 
 function saveCurrentExcel() {
+  // Show inline save panel in the excel editor instead of modal
+  showInExcelSavePanel();
+}
+
+function showInExcelSavePanel() {
+  const spaces = loadSpaces();
+  
+  // Remove existing panel if any
+  const existingPanel = document.getElementById('inExcelSavePanel');
+  if (existingPanel) existingPanel.remove();
+  
+  if (spaces.length === 0) {
+    showToast('Create a space first to organize your spreadsheets');
+    return;
+  }
+  
+  const panel = document.createElement('div');
+  panel.id = 'inExcelSavePanel';
+  panel.className = 'in-doc-save-panel';
+  panel.innerHTML = `
+    <div class="in-doc-save-header">
+      <span>Save to Space</span>
+      <button class="in-doc-save-close" onclick="closeInExcelSavePanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="in-doc-save-list">
+      ${spaces.map(space => `
+        <button class="in-doc-save-space-btn" onclick="confirmSaveExcelToSpace(${space.id}); closeInExcelSavePanel();">
+          <div class="in-doc-save-space-icon">${getSpaceIconSVGById(space.icon)}</div>
+          <span>${space.name}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+  
+  const container = document.querySelector('.excel-editor-container');
+  if (container) {
+    container.appendChild(panel);
+    setTimeout(() => panel.classList.add('show'), 10);
+  }
+}
+
+function closeInExcelSavePanel() {
+  const panel = document.getElementById('inExcelSavePanel');
+  if (panel) {
+    panel.classList.remove('show');
+    setTimeout(() => panel.remove(), 200);
+  }
+}
+
+function confirmSaveExcelToSpace(spaceId) {
   const titleInput = document.getElementById('excelTitleInput');
-  if (!titleInput) return;
+  if (!titleInput) {
+    closeModal();
+    return;
+  }
   
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
@@ -4989,6 +5352,7 @@ function saveCurrentExcel() {
       ...excels[existingIndex],
       title,
       data,
+      spaceId: spaceId,
       updatedAt: new Date().toISOString()
     };
   } else {
@@ -4996,29 +5360,21 @@ function saveCurrentExcel() {
       id: currentExcelId,
       title,
       data,
-      spaceId: currentSpaceId, // Associate with current space
+      spaceId: spaceId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
   }
   
   saveExcels(excels);
-  showToast('Spreadsheet saved successfully!');
+  closeModal();
   
   // Refresh favorites sidebar
   renderFavoritesInSidebar();
   
-  // If we're in a space, re-render the space view
-  if (currentSpaceId) {
-    const spaces = loadSpaces();
-    const space = spaces.find(s => s.id === currentSpaceId);
-    if (space) {
-      const viewsContainer = document.getElementById('viewsContainer');
-      if (viewsContainer) {
-        viewsContainer.innerHTML = renderSpaceDetailView(space);
-      }
-    }
-  }
+  const spaces = loadSpaces();
+  const space = spaces.find(s => s.id === spaceId);
+  showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
 }
 
 function exportExcelAsCSV() {
@@ -6552,32 +6908,290 @@ function renderSpaceWidgets() {
           }
           
           const colorVar = space.colorTag && space.colorTag !== 'none' ? 'var(--event-' + space.colorTag + ')' : 'var(--primary)';
+          const spaceWidgetTodos = getSpaceWidgetTodos(space.id);
+          const spaceWidgetNote = getSpaceWidgetNote(space.id);
           
-          return '<div class="space-widget" style="--space-accent: ' + colorVar + ';" onclick="openSpaceView(' + space.id + ')">' +
-            '<div class="space-widget-header">' +
-              '<div class="space-widget-icon">' + getSpaceIconSVGById(space.icon) + '</div>' +
-              '<h4 class="space-widget-title">' + space.name + '</h4>' +
-            '</div>' +
-            (space.description ? '<p class="space-widget-description">' + space.description + '</p>' : '') +
-            '<div class="space-widget-stats">' +
-              '<div class="space-widget-stat">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
-                '<span>' + docs.length + ' docs</span>' +
-              '</div>' +
-              '<div class="space-widget-stat">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>' +
-                '<span>' + excels.length + ' sheets</span>' +
-              '</div>' +
-            '</div>' +
-            (dueDate ? '<div class="space-widget-due ' + dueDateClass + '">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
-              '<span>' + dueDateText + '</span>' +
-            '</div>' : '') +
-          '</div>';
+          return `<div class="space-widget" style="--space-accent: ${colorVar};">
+            <!-- Hover Actions Bar -->
+            <div class="space-widget-hover-actions">
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetTodo(${space.id})" title="Create To-Do">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>To-Do</span>
+              </button>
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetNote(${space.id})" title="Add Note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span>Note</span>
+              </button>
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); openEditSpaceModal(${space.id})" title="Edit Space">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>Edit</span>
+              </button>
+            </div>
+            
+            <!-- To-Do Overlay -->
+            <div class="space-widget-overlay space-widget-todo-overlay" id="spaceTodoOverlay-${space.id}">
+              <div class="space-overlay-header">
+                <span>To-Do List</span>
+                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay(${space.id}, 'todo')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="space-todo-list" id="spaceTodoList-${space.id}">
+                ${spaceWidgetTodos.map((todo, idx) => `
+                  <div class="space-todo-item ${todo.done ? 'done' : ''}">
+                    <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo(${space.id}, ${idx})">
+                      ${todo.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                    </div>
+                    <span class="space-todo-text">${todo.text}</span>
+                    <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo(${space.id}, ${idx})">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="space-todo-add">
+                <input type="text" class="space-todo-input" id="spaceTodoInput-${space.id}" placeholder="Add a task..." 
+                       onclick="event.stopPropagation();"
+                       onkeypress="if(event.key==='Enter'){event.stopPropagation(); addSpaceWidgetTodo(${space.id}, this.value); this.value='';}" />
+              </div>
+            </div>
+            
+            <!-- Note Overlay -->
+            <div class="space-widget-overlay space-widget-note-overlay" id="spaceNoteOverlay-${space.id}">
+              <div class="space-overlay-header">
+                <span>Quick Note</span>
+                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay(${space.id}, 'note')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <textarea class="space-note-textarea" id="spaceNoteTextarea-${space.id}" placeholder="Write a quick note..." 
+                        onclick="event.stopPropagation();"
+                        oninput="autoSaveSpaceWidgetNote(${space.id}, this.value)">${spaceWidgetNote}</textarea>
+              <div class="space-note-saved" id="spaceNoteSaved-${space.id}">Auto-saved</div>
+            </div>
+            
+            <!-- Default Content -->
+            <div class="space-widget-content" onclick="openSpaceView(${space.id})">
+              <div class="space-widget-header">
+                <div class="space-widget-icon">${getSpaceIconSVGById(space.icon)}</div>
+                <h4 class="space-widget-title">${space.name}</h4>
+              </div>
+              ${space.description ? '<p class="space-widget-description">' + space.description + '</p>' : ''}
+              <div class="space-widget-stats">
+                <div class="space-widget-stat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span>${docs.length} docs</span>
+                </div>
+                <div class="space-widget-stat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                  <span>${excels.length} sheets</span>
+                </div>
+              </div>
+              ${dueDate ? '<div class="space-widget-due ' + dueDateClass + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>' + dueDateText + '</span></div>' : ''}
+            </div>
+          </div>`;
         }).join('')}
       </div>
     </div>
   `;
+}
+
+// Space Widget To-Do & Note Storage
+const SPACE_WIDGET_TODOS_KEY = 'layerSpaceWidgetTodos';
+const SPACE_WIDGET_NOTES_KEY = 'layerSpaceWidgetNotes';
+
+function getSpaceWidgetTodos(spaceId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(SPACE_WIDGET_TODOS_KEY)) || {};
+    return all[spaceId] || [];
+  } catch { return []; }
+}
+
+function saveSpaceWidgetTodos(spaceId, todos) {
+  const all = JSON.parse(localStorage.getItem(SPACE_WIDGET_TODOS_KEY) || '{}');
+  all[spaceId] = todos;
+  localStorage.setItem(SPACE_WIDGET_TODOS_KEY, JSON.stringify(all));
+}
+
+function getSpaceWidgetNote(spaceId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(SPACE_WIDGET_NOTES_KEY)) || {};
+    return all[spaceId] || '';
+  } catch { return ''; }
+}
+
+function saveSpaceWidgetNote(spaceId, note) {
+  const all = JSON.parse(localStorage.getItem(SPACE_WIDGET_NOTES_KEY) || '{}');
+  all[spaceId] = note;
+  localStorage.setItem(SPACE_WIDGET_NOTES_KEY, JSON.stringify(all));
+}
+
+function showSpaceWidgetTodo(spaceId) {
+  const overlay = document.getElementById('spaceTodoOverlay-' + spaceId);
+  if (overlay) {
+    overlay.classList.add('active');
+    setTimeout(() => {
+      document.getElementById('spaceTodoInput-' + spaceId)?.focus();
+    }, 100);
+  }
+}
+
+function showSpaceWidgetNote(spaceId) {
+  const overlay = document.getElementById('spaceNoteOverlay-' + spaceId);
+  if (overlay) {
+    overlay.classList.add('active');
+    setTimeout(() => {
+      document.getElementById('spaceNoteTextarea-' + spaceId)?.focus();
+    }, 100);
+  }
+}
+
+function hideSpaceWidgetOverlay(spaceId, type) {
+  const overlayId = type === 'todo' ? 'spaceTodoOverlay-' + spaceId : 'spaceNoteOverlay-' + spaceId;
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.classList.remove('active');
+}
+
+function addSpaceWidgetTodo(spaceId, text) {
+  if (!text || !text.trim()) return;
+  const todos = getSpaceWidgetTodos(spaceId);
+  todos.push({ text: text.trim(), done: false });
+  saveSpaceWidgetTodos(spaceId, todos);
+  refreshSpaceWidgetTodoList(spaceId);
+}
+
+function toggleSpaceWidgetTodo(spaceId, idx) {
+  const todos = getSpaceWidgetTodos(spaceId);
+  if (todos[idx]) {
+    todos[idx].done = !todos[idx].done;
+    saveSpaceWidgetTodos(spaceId, todos);
+    refreshSpaceWidgetTodoList(spaceId);
+  }
+}
+
+function deleteSpaceWidgetTodo(spaceId, idx) {
+  const todos = getSpaceWidgetTodos(spaceId);
+  todos.splice(idx, 1);
+  saveSpaceWidgetTodos(spaceId, todos);
+  refreshSpaceWidgetTodoList(spaceId);
+}
+
+function refreshSpaceWidgetTodoList(spaceId) {
+  const container = document.getElementById('spaceTodoList-' + spaceId);
+  if (!container) return;
+  const todos = getSpaceWidgetTodos(spaceId);
+  container.innerHTML = todos.map((todo, idx) => `
+    <div class="space-todo-item ${todo.done ? 'done' : ''}">
+      <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo(${spaceId}, ${idx})">
+        ${todo.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>
+      <span class="space-todo-text">${todo.text}</span>
+      <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo(${spaceId}, ${idx})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+let spaceWidgetNoteSaveTimeout = null;
+function autoSaveSpaceWidgetNote(spaceId, value) {
+  clearTimeout(spaceWidgetNoteSaveTimeout);
+  spaceWidgetNoteSaveTimeout = setTimeout(() => {
+    saveSpaceWidgetNote(spaceId, value);
+    const savedIndicator = document.getElementById('spaceNoteSaved-' + spaceId);
+    if (savedIndicator) {
+      savedIndicator.classList.add('show');
+      setTimeout(() => savedIndicator.classList.remove('show'), 1500);
+    }
+  }, 500);
+}
+
+function openEditSpaceModal(spaceId) {
+  const spaces = loadSpaces();
+  const space = spaces.find(s => s.id === spaceId);
+  if (!space) return;
+  
+  const content = `
+    <form id="editSpaceForm" onsubmit="handleEditSpace(event, ${spaceId})">
+      <div class="form-group">
+        <label class="form-label">Space Name <span class="required">*</span></label>
+        <input type="text" name="name" class="form-input" required value="${space.name}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-textarea" rows="2">${space.description || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due Date</label>
+        <input type="date" name="dueDate" class="form-input" value="${space.dueDate || ''}" />
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  `;
+  openModal('Edit Space', content);
+}
+
+function handleEditSpace(event, spaceId) {
+  event.preventDefault();
+  const form = event.target;
+  const name = form.name.value.trim();
+  const description = form.description.value.trim();
+  const dueDate = form.dueDate.value || null;
+  
+  if (!name) return;
+  
+  const spaces = loadSpaces();
+  const idx = spaces.findIndex(s => s.id === spaceId);
+  if (idx !== -1) {
+    spaces[idx] = { ...spaces[idx], name, description, dueDate };
+    saveSpaces(spaces);
+  }
+  
+  closeModal();
+  renderSpacesInSidebar();
+  renderCurrentView();
+  showToast('Space updated!');
+}
+
+// Widget Backlog Functions for Task Completion Widget
+function renderWidgetBacklogTasks() {
+  const tasks = loadBacklogTasks();
+  const activeTasks = tasks.filter(t => !t.done).slice(0, 5);
+  
+  if (activeTasks.length === 0) {
+    return '<div class="widget-backlog-empty">No tasks in backlog</div>';
+  }
+  
+  return activeTasks.map((task, idx) => {
+    const originalIdx = tasks.findIndex(t => t.id === task.id);
+    return `
+      <div class="widget-backlog-item">
+        <div class="widget-backlog-checkbox" onclick="event.stopPropagation(); handleToggleWidgetBacklogTask(${originalIdx})"></div>
+        <span class="widget-backlog-text">${task.title}</span>
+      </div>
+    `;
+  }).join('') + (tasks.filter(t => !t.done).length > 5 ? '<div class="widget-backlog-more">+' + (tasks.filter(t => !t.done).length - 5) + ' more tasks</div>' : '');
+}
+
+function handleToggleWidgetBacklogTask(index) {
+  toggleBacklogTask(index);
+  const listEl = document.getElementById('widgetBacklogList');
+  if (listEl) listEl.innerHTML = renderWidgetBacklogTasks();
+}
+
+function flipTaskCompletionWidget() {
+  const widget = document.getElementById('taskCompletionWidget');
+  if (widget) {
+    widget.classList.toggle('flipped');
+    // Update backlog list when flipping to back
+    if (widget.classList.contains('flipped')) {
+      const listEl = document.getElementById('widgetBacklogList');
+      if (listEl) listEl.innerHTML = renderWidgetBacklogTasks();
+    }
+  }
 }
 
 /* ============================================
