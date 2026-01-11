@@ -5767,7 +5767,7 @@ body {
 }
 
 .notion-editor-content:empty::before {
-  content: "+ Write or type '/' for commands and AI actions";
+  content: "Type here...";
   display: flex;
   align-items: center;
   gap: 8px;
