@@ -1,6 +1,5 @@
 /* ============================================
    Layer - Main Application Logic
-   With Supabase Authentication
    ============================================ */
 
 // ============================================
@@ -71,7 +70,7 @@ function init() {
   // Set up theme toggle
   setupThemeToggle();
 
-  // Check for existing user session (Supabase)
+  // Check for existing user session
   checkExistingSession();
 
   // Render initial view
@@ -367,10 +366,9 @@ function closeModal() {
 }
 
 // ============================================
-// Authentication Modal (Supabase)
+// Authentication Modal
 // ============================================
 let authMode = 'signin'; // 'signin' or 'signup'
-let authLoading = false;
 
 function openAuthModal() {
   authMode = 'signin';
@@ -414,11 +412,10 @@ function renderAuthModal() {
         ` : ''}
         
         <div id="authError" class="auth-error" style="display: none;"></div>
-        <div id="authSuccess" class="auth-success" style="display: none; color: #22c55e; padding: 12px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; margin-bottom: 16px;"></div>
         
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="authSubmitBtn">${isSignIn ? 'Sign In' : 'Create Account'}</button>
+          <button type="submit" class="btn btn-primary">${isSignIn ? 'Sign In' : 'Create Account'}</button>
         </div>
       </form>
       
@@ -441,25 +438,15 @@ function switchAuthMode(mode) {
   renderAuthModal();
 }
 
-async function handleAuthSubmit(event) {
+function handleAuthSubmit(event) {
   event.preventDefault();
-  
-  if (authLoading) return;
   
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const errorEl = document.getElementById('authError');
-  const successEl = document.getElementById('authSuccess');
-  const submitBtn = document.getElementById('authSubmitBtn');
   
-  // Clear previous messages
+  // Clear previous errors
   errorEl.style.display = 'none';
-  successEl.style.display = 'none';
-  
-  // Set loading state
-  authLoading = true;
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Loading...';
   
   if (authMode === 'signup') {
     const username = document.getElementById('authUsername').value.trim();
@@ -468,72 +455,62 @@ async function handleAuthSubmit(event) {
     // Validation
     if (!email || !username || !password || !confirmPassword) {
       showAuthError('Please fill in all fields');
-      resetAuthButton();
       return;
     }
     
     if (password !== confirmPassword) {
       showAuthError('Passwords do not match');
-      resetAuthButton();
       return;
     }
     
     if (password.length < 6) {
       showAuthError('Password must be at least 6 characters');
-      resetAuthButton();
       return;
     }
     
-    // Sign up with Supabase
-    const result = await supabaseSignUp(email, password, username);
+    // Store user data (localStorage simulation)
+    const users = JSON.parse(localStorage.getItem('layerUsers') || '[]');
     
-    if (result.success) {
-      if (result.needsConfirmation) {
-        successEl.textContent = 'Account created! Please check your email to confirm your account.';
-        successEl.style.display = 'block';
-        resetAuthButton();
-      } else {
-        closeModal();
-        updateUserDisplay({
-          username: username,
-          email: email
-        });
-      }
-    } else {
-      showAuthError(result.error || 'Failed to create account');
-      resetAuthButton();
+    // Check if email already exists
+    if (users.find(u => u.email === email)) {
+      showAuthError('An account with this email already exists');
+      return;
     }
+    
+    // Add new user
+    const newUser = {
+      id: Date.now().toString(),
+      email,
+      username,
+      password, // Note: In production, never store plain passwords
+      createdAt: new Date().toISOString()
+    };
+    
+    users.push(newUser);
+    localStorage.setItem('layerUsers', JSON.stringify(users));
+    localStorage.setItem('layerCurrentUser', JSON.stringify(newUser));
+    
+    closeModal();
+    updateUserDisplay(newUser);
     
   } else {
     // Sign In
     if (!email || !password) {
       showAuthError('Please enter your email and password');
-      resetAuthButton();
       return;
     }
     
-    const result = await supabaseSignIn(email, password);
+    const users = JSON.parse(localStorage.getItem('layerUsers') || '[]');
+    const user = users.find(u => u.email === email && u.password === password);
     
-    if (result.success) {
-      closeModal();
-      const user = result.data.user;
-      updateUserDisplay({
-        username: user.user_metadata?.username || user.email.split('@')[0],
-        email: user.email
-      });
-    } else {
-      showAuthError(result.error || 'Invalid email or password');
-      resetAuthButton();
+    if (!user) {
+      showAuthError('Invalid email or password');
+      return;
     }
-  }
-}
-
-function resetAuthButton() {
-  authLoading = false;
-  const submitBtn = document.getElementById('authSubmitBtn');
-  if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+    
+    localStorage.setItem('layerCurrentUser', JSON.stringify(user));
+    closeModal();
+    updateUserDisplay(user);
   }
 }
 
@@ -546,11 +523,11 @@ function showAuthError(message) {
 function updateUserDisplay(user) {
   const signInBtn = document.getElementById('signInBtn');
   if (signInBtn && user) {
-    const initials = (user.username || user.email || 'U').slice(0, 2).toUpperCase();
+    const initials = user.username.slice(0, 2).toUpperCase();
     signInBtn.outerHTML = `
       <div class="user-info" id="userInfo">
         <div class="user-avatar">${initials}</div>
-        <span class="user-name">${user.username || user.email}</span>
+        <span class="user-name">${user.username}</span>
         <button class="sign-out-btn" onclick="signOut()" title="Sign Out">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -563,35 +540,27 @@ function updateUserDisplay(user) {
   }
 }
 
-async function signOut() {
-  const result = await supabaseSignOut();
-  
-  if (result.success) {
-    const userInfo = document.getElementById('userInfo');
-    if (userInfo) {
-      userInfo.outerHTML = `
-        <button class="sign-in-btn" id="signInBtn" onclick="openAuthModal()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
-          </svg>
-          <span>Sign In</span>
-        </button>
-      `;
-    }
+function signOut() {
+  localStorage.removeItem('layerCurrentUser');
+  const userInfo = document.getElementById('userInfo');
+  if (userInfo) {
+    userInfo.outerHTML = `
+      <button class="sign-in-btn" id="signInBtn" onclick="openAuthModal()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span>Sign In</span>
+      </button>
+    `;
   }
 }
 
-async function checkExistingSession() {
-  const result = await supabaseGetSession();
-  
-  if (result.success && result.session) {
-    const user = result.session.user;
-    updateUserDisplay({
-      username: user.user_metadata?.username || user.email.split('@')[0],
-      email: user.email
-    });
+function checkExistingSession() {
+  const currentUser = localStorage.getItem('layerCurrentUser');
+  if (currentUser) {
+    updateUserDisplay(JSON.parse(currentUser));
   }
 }
 
@@ -676,7 +645,7 @@ function handleCreateIssueSubmit(event) {
       description: description.trim(),
       priority,
       status,
-      assignee: getCurrentUser()?.user_metadata?.username || 'User'
+      assignee: 'Zeyad Maher'
     });
     closeModal();
     renderCurrentView();
