@@ -71,6 +71,13 @@ let gripBacklogOpen = false;
 let gripBacklogItems = [];
 let gripBacklogFilter = 'all'; // 'all', 'todo', 'in_progress', 'done'
 
+// Minimap state
+let gripMinimapMinimized = false;
+
+// Multi-select dragging state
+let gripIsMultiDragging = false;
+let gripMultiDragStartPositions = {};
+
 const GRIP_COLORS = [
   '#3b82f6', // Blue
   '#10b981', // Green
@@ -90,6 +97,69 @@ const MIN_CELL_HEIGHT = 80;
 // ============================================
 // Grip Diagram Core Functions
 // ============================================
+
+// Lightweight update function that preserves scroll position
+function updateGripUI() {
+  renderGripCells();
+  renderGripConnections();
+  renderGripTextBoxes();
+  renderGripImages();
+  renderMinimap();
+  updateToolbarState();
+}
+
+// Update toolbar visual state without full re-render
+function updateToolbarState() {
+  // Update tool buttons
+  document.querySelectorAll('.grip-tool-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tool === gripActiveTool);
+  });
+  
+  // Update eraser button
+  const eraserBtn = document.getElementById('eraserModeBtn');
+  if (eraserBtn) {
+    eraserBtn.classList.toggle('active', gripEraserMode);
+  }
+  
+  // Update connect button
+  const connectBtn = document.getElementById('connectModeBtn');
+  if (connectBtn) {
+    connectBtn.classList.toggle('active', gripConnectMode);
+  }
+  
+  // Update canvas classes
+  const canvas = document.getElementById('gripCanvas');
+  if (canvas) {
+    canvas.classList.toggle('pan-mode', gripActiveTool === 'pan');
+    canvas.classList.toggle('eraser-mode', gripEraserMode);
+  }
+}
+
+// Open the cell editor panel without full re-render
+function openCellEditor(cellId) {
+  const cell = gripCells.find(c => c.id === cellId);
+  if (!cell) return;
+  
+  // Check if editor already exists
+  let editor = document.getElementById('gripCellEditor');
+  if (!editor) {
+    // Create editor container in sidebar
+    const sidebar = document.querySelector('.grip-diagram-sidebar');
+    if (sidebar) {
+      const editorHtml = renderGripCellEditor();
+      sidebar.insertAdjacentHTML('afterbegin', editorHtml);
+    }
+  }
+  setTimeout(setupEditorEventListeners, 0);
+}
+
+// Close the cell editor panel without full re-render
+function closeCellEditor() {
+  const editor = document.getElementById('gripCellEditor');
+  if (editor) {
+    editor.remove();
+  }
+}
 
 function openGripDiagram(projectIndex) {
   gripProjectIndex = projectIndex;
@@ -314,8 +384,24 @@ function renderGripDiagramOverlay() {
               <div class="grip-images-layer" id="gripImagesContainer"></div>
               <div class="grip-textboxes-layer" id="gripTextBoxesContainer"></div>
             </div>
-            ${gripIsDraggingConnection ? '<div class="grip-connect-hint">Release on another cell to connect</div>' : ''}
+          ${gripIsDraggingConnection ? '<div class="grip-connect-hint">Release on another cell to connect</div>' : ''}
             ${gripEraserMode ? '<div class="grip-eraser-hint">Click on connections to delete them • Press E or Esc to exit</div>' : ''}
+          </div>
+          
+          <!-- Minimap -->
+          <div class="grip-minimap ${gripMinimapMinimized ? 'minimized' : ''}" id="gripMinimap">
+            <div class="minimap-header">
+              <span class="minimap-title">Minimap</span>
+              <button class="minimap-toggle" id="minimapToggleBtn" title="${gripMinimapMinimized ? 'Expand' : 'Minimize'}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  ${gripMinimapMinimized ? '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>' : '<path d="M4 14h6v6M14 4h6v6M20 10l-6 6M4 14l6-6"/>'}
+                </svg>
+              </button>
+            </div>
+            <div class="minimap-content" id="minimapContent">
+              <canvas id="minimapCanvas" width="180" height="120"></canvas>
+              <div class="minimap-viewport" id="minimapViewport"></div>
+            </div>
           </div>
           
           <!-- Selection info bar -->
@@ -558,6 +644,171 @@ function renderGripDiagramOverlay() {
   renderGripImages();
   setupImageListeners();
   applyZoom();
+  renderMinimap();
+  setupMinimapListeners();
+}
+
+// ============================================
+// Minimap Functions
+// ============================================
+
+function renderMinimap() {
+  const canvas = document.getElementById('minimapCanvas');
+  const minimapContent = document.getElementById('minimapContent');
+  if (!canvas || !minimapContent || gripMinimapMinimized) return;
+  
+  const ctx = canvas.getContext('2d');
+  const canvasEl = document.getElementById('gripCanvas');
+  if (!canvasEl) return;
+  
+  // Clear canvas
+  ctx.fillStyle = '#1a1a1b';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  if (gripCells.length === 0) {
+    ctx.fillStyle = '#3f3f46';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No cells', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+  
+  // Find bounds of all cells
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  gripCells.forEach(cell => {
+    minX = Math.min(minX, cell.x);
+    minY = Math.min(minY, cell.y);
+    maxX = Math.max(maxX, cell.x + (cell.width || 200));
+    maxY = Math.max(maxY, cell.y + (cell.height || 120));
+  });
+  
+  // Add padding
+  const padding = 50;
+  minX = Math.max(0, minX - padding);
+  minY = Math.max(0, minY - padding);
+  maxX += padding;
+  maxY += padding;
+  
+  const contentWidth = maxX - minX || 1;
+  const contentHeight = maxY - minY || 1;
+  
+  // Calculate scale to fit in minimap
+  const scaleX = canvas.width / contentWidth;
+  const scaleY = canvas.height / contentHeight;
+  const scale = Math.min(scaleX, scaleY, 0.15);
+  
+  // Store scale for viewport calculation
+  canvas.dataset.scale = scale;
+  canvas.dataset.offsetX = minX;
+  canvas.dataset.offsetY = minY;
+  canvas.dataset.contentWidth = contentWidth;
+  canvas.dataset.contentHeight = contentHeight;
+  
+  // Draw connections
+  ctx.strokeStyle = '#4b5563';
+  ctx.lineWidth = 1;
+  gripConnections.forEach(conn => {
+    const fromCell = gripCells.find(c => c.id === conn.fromId);
+    const toCell = gripCells.find(c => c.id === conn.toId);
+    if (fromCell && toCell) {
+      const fromX = (fromCell.x + (fromCell.width || 200) / 2 - minX) * scale;
+      const fromY = (fromCell.y + (fromCell.height || 120) / 2 - minY) * scale;
+      const toX = (toCell.x + (toCell.width || 200) / 2 - minX) * scale;
+      const toY = (toCell.y + (toCell.height || 120) / 2 - minY) * scale;
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+    }
+  });
+  
+  // Draw cells
+  gripCells.forEach(cell => {
+    const x = (cell.x - minX) * scale;
+    const y = (cell.y - minY) * scale;
+    const w = (cell.width || 200) * scale;
+    const h = (cell.height || 120) * scale;
+    
+    // Draw cell
+    ctx.fillStyle = cell.headerColor || '#3b82f6';
+    ctx.fillRect(x, y, Math.max(w, 3), Math.max(h, 3));
+    
+    // Highlight selected cells
+    if (gripSelectedCellIds.includes(cell.id) || gripSelectedCellId === cell.id) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, Math.max(w, 3), Math.max(h, 3));
+    }
+  });
+  
+  // Update viewport rectangle
+  updateMinimapViewport();
+}
+
+function updateMinimapViewport() {
+  const viewport = document.getElementById('minimapViewport');
+  const canvas = document.getElementById('minimapCanvas');
+  const canvasEl = document.getElementById('gripCanvas');
+  
+  if (!viewport || !canvas || !canvasEl) return;
+  
+  const scale = parseFloat(canvas.dataset.scale) || 0.1;
+  const offsetX = parseFloat(canvas.dataset.offsetX) || 0;
+  const offsetY = parseFloat(canvas.dataset.offsetY) || 0;
+  
+  // Calculate viewport position and size
+  const viewX = (canvasEl.scrollLeft / gripZoomLevel - offsetX) * scale;
+  const viewY = (canvasEl.scrollTop / gripZoomLevel - offsetY) * scale;
+  const viewW = (canvasEl.clientWidth / gripZoomLevel) * scale;
+  const viewH = (canvasEl.clientHeight / gripZoomLevel) * scale;
+  
+  viewport.style.left = Math.max(0, viewX) + 'px';
+  viewport.style.top = Math.max(0, viewY) + 'px';
+  viewport.style.width = Math.min(viewW, canvas.width - Math.max(0, viewX)) + 'px';
+  viewport.style.height = Math.min(viewH, canvas.height - Math.max(0, viewY)) + 'px';
+}
+
+function setupMinimapListeners() {
+  const toggleBtn = document.getElementById('minimapToggleBtn');
+  const minimapCanvas = document.getElementById('minimapCanvas');
+  const canvasEl = document.getElementById('gripCanvas');
+  
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      gripMinimapMinimized = !gripMinimapMinimized;
+      renderGripDiagramOverlay();
+    });
+  }
+  
+  // Click on minimap to navigate
+  if (minimapCanvas) {
+    minimapCanvas.addEventListener('click', (e) => {
+      if (!canvasEl) return;
+      
+      const rect = minimapCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      
+      const scale = parseFloat(minimapCanvas.dataset.scale) || 0.1;
+      const offsetX = parseFloat(minimapCanvas.dataset.offsetX) || 0;
+      const offsetY = parseFloat(minimapCanvas.dataset.offsetY) || 0;
+      
+      // Calculate target scroll position
+      const targetX = (clickX / scale + offsetX) * gripZoomLevel - canvasEl.clientWidth / 2;
+      const targetY = (clickY / scale + offsetY) * gripZoomLevel - canvasEl.clientHeight / 2;
+      
+      canvasEl.scrollTo({
+        left: Math.max(0, targetX),
+        top: Math.max(0, targetY),
+        behavior: 'smooth'
+      });
+    });
+  }
+  
+  // Update viewport on scroll
+  if (canvasEl) {
+    canvasEl.addEventListener('scroll', updateMinimapViewport);
+  }
 }
 
 function renderBacklogItem(item) {
@@ -687,7 +938,8 @@ function toggleGripEraserMode() {
     gripConnectFromId = null;
     gripConnectFromPosition = null;
   }
-  renderGripDiagramOverlay();
+  updateToolbarState();
+  updateGripUI();
 }
 
 // Center canvas view
@@ -741,8 +993,10 @@ function renderGripCells() {
       </div>
     `).join('') : '';
     
+    const isMultiSelected = gripSelectedCellIds.includes(cell.id);
+    
     return `
-    <div class="grip-cell ${isDrawer ? 'grip-cell-drawer' : ''} ${gripSelectedCellId === cell.id ? 'selected' : ''} ${gripConnectMode ? 'connect-mode' : ''} ${gripConnectFromId === cell.id ? 'connect-from' : ''}"
+    <div class="grip-cell ${isDrawer ? 'grip-cell-drawer' : ''} ${gripSelectedCellId === cell.id ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${gripConnectMode ? 'connect-mode' : ''} ${gripConnectFromId === cell.id ? 'connect-from' : ''}"
          id="gripCell-${cell.id}"
          data-cell-id="${cell.id}"
          data-is-drawer="${isDrawer}"
@@ -886,7 +1140,8 @@ function renderGripCells() {
         editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           gripSelectedCellId = cell.id;
-          renderGripDiagramOverlay();
+          updateGripUI();
+          openCellEditor(cell.id);
           setTimeout(setupEditorEventListeners, 0);
         });
         editBtn.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -1303,15 +1558,59 @@ function handleGripCellMouseDown(event, cellId) {
   const cell = gripCells.find(c => c.id === cellId);
   if (!cell) return;
 
-  gripDraggingCellId = cellId;
-  gripIsDragging = false;
-  
   const canvas = document.getElementById('gripCanvas');
   const canvasRect = canvas.getBoundingClientRect();
   
+  // Handle Shift+Click for multi-select
+  if (event.shiftKey) {
+    if (gripSelectedCellIds.includes(cellId)) {
+      gripSelectedCellIds = gripSelectedCellIds.filter(id => id !== cellId);
+    } else {
+      gripSelectedCellIds.push(cellId);
+    }
+    gripSelectedCellId = gripSelectedCellIds.length > 0 ? gripSelectedCellIds[0] : null;
+    renderGripCells();
+    return;
+  }
+  
+  // Check if clicking on a cell that's part of multi-selection
+  if (gripSelectedCellIds.includes(cellId) && gripSelectedCellIds.length > 1) {
+    // Start multi-drag
+    gripIsMultiDragging = true;
+    gripDraggingCellId = cellId;
+    gripIsDragging = false;
+    
+    // Store starting positions of all selected cells
+    gripMultiDragStartPositions = {};
+    gripSelectedCellIds.forEach(id => {
+      const c = gripCells.find(cell => cell.id === id);
+      if (c) {
+        gripMultiDragStartPositions[id] = { x: c.x, y: c.y };
+      }
+    });
+    
+    // Calculate offset from click to the dragged cell position, accounting for zoom
+    gripDragOffset = {
+      x: (event.clientX - canvasRect.left + canvas.scrollLeft) / gripZoomLevel - cell.x,
+      y: (event.clientY - canvasRect.top + canvas.scrollTop) / gripZoomLevel - cell.y
+    };
+    
+    // Add dragging class to all selected cells
+    gripSelectedCellIds.forEach(id => {
+      const el = document.getElementById(`gripCell-${id}`);
+      if (el) el.classList.add('dragging');
+    });
+    return;
+  }
+
+  gripDraggingCellId = cellId;
+  gripIsDragging = false;
+  gripIsMultiDragging = false;
+  
+  // Calculate drag offset accounting for zoom level
   gripDragOffset = {
-    x: event.clientX - canvasRect.left + canvas.scrollLeft - cell.x,
-    y: event.clientY - canvasRect.top + canvas.scrollTop - cell.y
+    x: (event.clientX - canvasRect.left + canvas.scrollLeft) / gripZoomLevel - cell.x,
+    y: (event.clientY - canvasRect.top + canvas.scrollTop) / gripZoomLevel - cell.y
   };
   
   // Add dragging class
@@ -1338,9 +1637,41 @@ function handleGripMouseMove(event) {
   
   const canvasRect = canvas.getBoundingClientRect();
   
-  const newX = Math.max(0, event.clientX - canvasRect.left + canvas.scrollLeft - gripDragOffset.x);
-  const newY = Math.max(0, event.clientY - canvasRect.top + canvas.scrollTop - gripDragOffset.y);
+  // Calculate new position accounting for zoom level
+  const newX = Math.max(0, (event.clientX - canvasRect.left + canvas.scrollLeft) / gripZoomLevel - gripDragOffset.x);
+  const newY = Math.max(0, (event.clientY - canvasRect.top + canvas.scrollTop) / gripZoomLevel - gripDragOffset.y);
   
+  // Handle multi-select dragging
+  if (gripIsMultiDragging && gripSelectedCellIds.length > 1) {
+    const primaryCell = gripCells.find(c => c.id === gripDraggingCellId);
+    if (!primaryCell) return;
+    
+    const deltaX = newX - gripMultiDragStartPositions[gripDraggingCellId].x;
+    const deltaY = newY - gripMultiDragStartPositions[gripDraggingCellId].y;
+    
+    // Move all selected cells by the same delta
+    gripSelectedCellIds.forEach(id => {
+      const cellIndex = gripCells.findIndex(c => c.id === id);
+      if (cellIndex !== -1 && gripMultiDragStartPositions[id]) {
+        const nx = Math.max(0, gripMultiDragStartPositions[id].x + deltaX);
+        const ny = Math.max(0, gripMultiDragStartPositions[id].y + deltaY);
+        gripCells[cellIndex].x = nx;
+        gripCells[cellIndex].y = ny;
+        
+        const cellElement = document.getElementById(`gripCell-${id}`);
+        if (cellElement) {
+          cellElement.style.left = `${nx}px`;
+          cellElement.style.top = `${ny}px`;
+        }
+      }
+    });
+    
+    renderGripConnections();
+    renderMinimap();
+    return;
+  }
+  
+  // Single cell drag
   const cellIndex = gripCells.findIndex(c => c.id === gripDraggingCellId);
   if (cellIndex !== -1) {
     gripCells[cellIndex].x = newX;
@@ -1353,6 +1684,7 @@ function handleGripMouseMove(event) {
     }
     
     renderGripConnections();
+    renderMinimap();
   }
 }
 
@@ -1364,19 +1696,30 @@ function handleGripMouseUp(event) {
   }
   
   if (gripDraggingCellId) {
-    const cellElement = document.getElementById(`gripCell-${gripDraggingCellId}`);
-    if (cellElement) {
-      cellElement.classList.remove('dragging');
+    // Remove dragging class from all selected cells if multi-dragging
+    if (gripIsMultiDragging) {
+      gripSelectedCellIds.forEach(id => {
+        const el = document.getElementById(`gripCell-${id}`);
+        if (el) el.classList.remove('dragging');
+      });
+    } else {
+      const cellElement = document.getElementById(`gripCell-${gripDraggingCellId}`);
+      if (cellElement) {
+        cellElement.classList.remove('dragging');
+      }
     }
     
     if (gripIsDragging) {
       // Update connection positions dynamically after dragging
       updateConnectionPositions();
       saveGripDiagramData(gripProjectIndex);
+      renderMinimap();
     }
     
     gripDraggingCellId = null;
     gripIsDragging = false;
+    gripIsMultiDragging = false;
+    gripMultiDragStartPositions = {};
   }
 }
 
@@ -1617,7 +1960,8 @@ function handleGripCellClick(event, cellId) {
       gripConnectFromId = null;
       gripConnectFromPosition = null;
       gripConnectMode = false;
-      renderGripDiagramOverlay();
+      updateToolbarState();
+      updateGripUI();
     } else if (!gripConnectFromId) {
       gripConnectFromId = cellId;
       renderGripCells();
@@ -1629,7 +1973,8 @@ function handleGripCellClick(event, cellId) {
   // Just deselect if clicking on a different cell
   if (gripSelectedCellId && gripSelectedCellId !== cellId) {
     gripSelectedCellId = null;
-    renderGripDiagramOverlay();
+    closeCellEditor();
+    updateGripUI();
   }
 }
 
@@ -1645,7 +1990,8 @@ function handleConnectionPointClick(cellId, position) {
     gripConnectMode = true;
     gripConnectFromId = cellId;
     gripConnectFromPosition = position;
-    renderGripDiagramOverlay();
+    updateToolbarState();
+    updateGripUI();
     return;
   }
   
@@ -1656,7 +2002,8 @@ function handleConnectionPointClick(cellId, position) {
     gripConnectMode = false;
     gripConnectFromId = null;
     gripConnectFromPosition = null;
-    renderGripDiagramOverlay();
+    updateToolbarState();
+    updateGripUI();
   }
 }
 
@@ -2268,12 +2615,14 @@ function deleteGripCell(cellId) {
   gripSelectedCellId = null;
   
   saveGripDiagramData(gripProjectIndex);
-  renderGripDiagramOverlay();
+  closeCellEditor();
+  updateGripUI();
 }
 
 function deselectGripCell() {
   gripSelectedCellId = null;
-  renderGripDiagramOverlay();
+  closeCellEditor();
+  updateGripUI();
 }
 
 function updateGripCellTitle(cellId, title) {
@@ -2364,7 +2713,8 @@ function toggleGripConnectMode() {
   gripConnectMode = !gripConnectMode;
   gripConnectFromId = null;
   gripConnectFromPosition = null;
-  renderGripDiagramOverlay();
+  updateToolbarState();
+  updateGripUI();
 }
 
 function createGripConnection(fromId, fromPosition, toId, toPosition) {
