@@ -1,117 +1,8 @@
 /* ============================================
    Layer - Data Store & Persistence
-   With Supabase Integration
    ============================================ */
 
-// ============================================
-// Supabase Configuration
-// ============================================
-const SUPABASE_URL = 'https://uqfnadlyrbprzxgjkvtc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZm5hZGx5cmJwcnp4Z2prdnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzkxNzAsImV4cCI6MjA4Mjk1NTE3MH0.12PfMd0vnsWvCXSNdkc3E02KDn46xi9XTyZ8rXNiVHs';
-
-// Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Current user state
-let currentUser = null;
-
-// ============================================
-// Auth Functions
-// ============================================
-async function supabaseSignUp(email, password, username) {
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          username: username
-        }
-      }
-    });
-    
-    if (error) throw error;
-    
-    return { success: true, data: data, needsConfirmation: !data.session };
-  } catch (error) {
-    console.error('Sign up error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function supabaseSignIn(email, password) {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
-    
-    if (error) throw error;
-    
-    currentUser = data.user;
-    return { success: true, data: data };
-  } catch (error) {
-    console.error('Sign in error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function supabaseSignOut() {
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    
-    currentUser = null;
-    return { success: true };
-  } catch (error) {
-    console.error('Sign out error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function supabaseGetSession() {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    
-    if (session) {
-      currentUser = session.user;
-    }
-    return { success: true, session: session };
-  } catch (error) {
-    console.error('Get session error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Listen for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth state changed:', event);
-  if (session) {
-    currentUser = session.user;
-    // Update UI when user signs in
-    if (typeof updateUserDisplay === 'function') {
-      updateUserDisplay({
-        username: session.user.user_metadata?.username || session.user.email.split('@')[0],
-        email: session.user.email
-      });
-    }
-  } else {
-    currentUser = null;
-  }
-});
-
-function getCurrentUser() {
-  return currentUser;
-}
-
-function isLoggedIn() {
-  return currentUser !== null;
-}
-
-// ============================================
-// Storage keys (for offline/fallback)
-// ============================================
+// Storage keys
 const PROJECTS_KEY = 'layerProjectsData';
 const BACKLOG_KEY = 'layerBacklogTasks';
 const ISSUES_KEY = 'layerMyIssues';
@@ -150,6 +41,8 @@ function loadProjects() {
               data: { label: project.description.trim(), headerColor: '#89b4fa' }
             });
           }
+          // Clear old description if desired
+          // project.description = '';
         }
         project.columns = project.columns || [
           { title: 'To Do', tasks: [] },
@@ -189,7 +82,7 @@ function addProject(projectData) {
     ],
     updates: [
       {
-        actor: currentUser?.user_metadata?.username || 'You',
+        actor: 'You',
         action: 'Project created',
         time: 'just now'
       }
@@ -377,7 +270,7 @@ function addIssue(issueData) {
     description: issueData.description || '',
     status: issueData.status || 'todo',
     priority: issueData.priority || 'medium',
-    assignee: currentUser?.user_metadata?.username || issueData.assignee || 'User',
+    assignee: issueData.assignee || 'Zeyad Maher',
     dueDate: issueData.dueDate,
     updated: 'just now'
   };
@@ -588,6 +481,13 @@ async function handleCreateAssignmentSubmit(event) {
   renderCurrentView();
 }
 
+function deleteAssignment(index) {
+  if (confirm('Delete this assignment permanently?')) {
+    deleteAssignment(index);
+    renderCurrentView();
+  }
+}
+
 // ============================================
 // PDF Viewer Functions
 // ============================================
@@ -778,7 +678,7 @@ function addProjectUpdate(projectIndex, message) {
   if (!projects[projectIndex]) return;
 
   const newUpdate = {
-    actor: currentUser?.user_metadata?.username || 'User',
+    actor: 'Zeyad Maher',  // Hardcoded for single-user; extend later for multi-user
     message: message.trim(),
     time: new Date().toISOString()
   };
