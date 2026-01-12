@@ -5,7 +5,7 @@
 
 // Gemini API Configuration - Hardcoded API key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const GEMINI_API_KEY = 'AIzaSyAEiofNhi5YeNlFcC7R3R-FHYgyLMtUERQ';
+const GEMINI_API_KEY = 'AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 // Get API key - always returns the hardcoded key
 function getGeminiApiKey() {
