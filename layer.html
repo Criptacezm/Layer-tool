@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="components.css" />
   <link rel="stylesheet" href="themes.css" />
   <link rel="stylesheet" href="grid-diagram.css" />
+  <!-- Source Code Pro font for AI Sidebar -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xyflow/react@1/dist/style.css" />
@@ -18,20 +20,51 @@
   <script src="https://cdn.jsdelivr.net/npm/@xyflow/react@1/dist/umd/index.js"></script>
 </head>
 <body>
-  <!-- Loading Screen -->
+  <!-- Enhanced Loading Screen - Motion Graphic Style -->
   <div class="loading-screen" id="loadingScreen">
-    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="loading-logo">
-      <path class="logo-bg" d="M4 4h16v16H4V4z" fill="url(#loading-gradient)" opacity="0.2"></path>
-      <path class="logo-line logo-line-1" d="M7 7h10v2H7V7z" fill="url(#loading-gradient)"></path>
-      <path class="logo-line logo-line-2" d="M7 11h10v2H7v-2z" fill="url(#loading-gradient)"></path>
-      <path class="logo-line logo-line-3" d="M7 15h6v2H7v-2z" fill="url(#loading-gradient)"></path>
-      <defs>
-        <linearGradient id="loading-gradient" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#5e6ad2"></stop>
-          <stop offset="1" stop-color="#8b5cf6"></stop>
-        </linearGradient>
-      </defs>
-    </svg>
+    <div class="loading-container">
+      <!-- Animated Logo Container -->
+      <div class="loading-logo-wrapper">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="loading-logo">
+          <path class="logo-bg" d="M4 4h16v16H4V4z" fill="url(#loading-gradient)" opacity="0.2"></path>
+          <path class="logo-line logo-line-1" d="M7 7h10v2H7V7z" fill="url(#loading-gradient)"></path>
+          <path class="logo-line logo-line-2" d="M7 11h10v2H7v-2z" fill="url(#loading-gradient)"></path>
+          <path class="logo-line logo-line-3" d="M7 15h6v2H7v-2z" fill="url(#loading-gradient)"></path>
+          <defs>
+            <linearGradient id="loading-gradient" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#5e6ad2"></stop>
+              <stop offset="1" stop-color="#8b5cf6"></stop>
+            </linearGradient>
+          </defs>
+        </svg>
+        <!-- Orbiting Particles -->
+        <div class="loading-orbit">
+          <div class="loading-particle particle-1"></div>
+          <div class="loading-particle particle-2"></div>
+          <div class="loading-particle particle-3"></div>
+        </div>
+      </div>
+      <!-- Progress Ring -->
+      <svg class="loading-progress-ring" width="120" height="120" viewBox="0 0 120 120">
+        <circle class="progress-ring-bg" cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+        <circle class="progress-ring-fill" cx="60" cy="60" r="54" fill="none" stroke="url(#progress-gradient)" stroke-width="2" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#5e6ad2"/>
+            <stop offset="100%" stop-color="#8b5cf6"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <!-- Loading Text -->
+      <div class="loading-text">
+        <span class="loading-text-main">Layer</span>
+        <div class="loading-dots">
+          <span class="dot dot-1"></span>
+          <span class="dot dot-2"></span>
+          <span class="dot dot-3"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="app" style="opacity: 0;">
@@ -106,7 +139,7 @@
 
       <nav class="sidebar-nav">
         <button class="nav-item" data-view="inbox">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           <span>Dashboard</span>
         </button>
         <button class="nav-item active" data-view="my-issues">
@@ -230,8 +263,8 @@
   <nav class="mobile-bottom-nav" id="mobileBottomNav">
     <button class="mobile-nav-item" data-view="inbox">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
-        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
       </svg>
       <span>Dashboard</span>
     </button>
@@ -346,6 +379,7 @@
   <script src="app.js"></script>
   <script src="functionality.js"></script>
   <script src="grid-diagram.js"></script>
+  <script src="gemini-api.js"></script>
 </body>
 
 <script>
