@@ -1,50 +1,26 @@
-/* ============================================
-   Layer - Gemini AI API Integration
-   Compatibility Mode: Stable v1 + Manual System Prompt
-   ============================================ */
+import { GoogleGenAI } from "@google/genai";
 
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
-
-// 1. YOUR API KEY
-const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
-
-// 2. Initialize the API
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-
-// 3. Setup the model without the 'systemInstruction' field to avoid 400 errors
-const model = genAI.getGenerativeModel(
-    { model: "gemini-1.5-flash" }, 
-    { apiVersion: "v1" }
-);
+// Initialize the API key directly to avoid SyntaxErrors with process.env in browser
+const API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 /**
  * Core API Call to Gemini
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        // We manually combine the instructions and context into the prompt
-        // This is the most compatible method for the v1 stable API
-        const finalPrompt = `
-            INSTRUCTIONS: You are the AI assistant for 'Layer', a project management app. 
-            Help the user manage tasks, write docs, and fix code. 
-            Be professional, concise, and stay under 150 words.
-
-            CONTEXT: ${context}
-
-            USER QUESTION: ${userPrompt}
-        `;
+        const fullPrompt = `Context: ${context}\n\nUser Question: ${userPrompt}`;
         
-        const result = await model.generateContent(finalPrompt);
-        const response = await result.response;
-        const text = response.text();
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-latest',
+            contents: fullPrompt
+        });
         
+        const text = response.text;
         if (text) return text;
         throw new Error('AI returned an empty response.');
     } catch (error) {
         console.error('Gemini SDK Error:', error);
-        if (error.message.includes('quota')) {
-            return "Rate limit reached. Please wait 60 seconds.";
-        }
         return `Error: ${error.message}`;
     }
 }
@@ -80,7 +56,6 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
     input.value = '';
     input.disabled = true;
 
-    // Show Typing Indicator
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'grip-ai-message assistant typing';
     typingIndicator.id = typingId;
@@ -102,29 +77,27 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// ATTACH TO WINDOW OBJECT
-// Required because this script is a 'module'
+// ATTACH TO WINDOW
 // ============================================
 
 window.handleProjectAiSend = function() {
     let ctx = "Global dashboard view.";
-    if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
-        const projects = loadProjects();
-        const p = projects[gripProjectIndex];
-        if (p) ctx = `Working on Project: ${p.name}. Notes: ${p.description}`;
+    // Ensure accessing global variable safely
+    if (typeof window.loadProjects === 'function' && typeof window.gripProjectIndex !== 'undefined' && window.gripProjectIndex !== null) {
+        const projects = window.loadProjects();
+        const p = projects[window.gripProjectIndex];
+        if (p) ctx = `Working on Project: ${p.name}.`;
     }
     processGenericAiChat('projectAiInput', 'projectAiMessages', 'projectAiTyping', ctx);
 };
 
-window.handleAiSend = function() {
-    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is using a flowchart whiteboard.');
+window.handleWhiteboardAiSendWithGemini = function() {
+    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is using a flowchart whiteboard. Help with cells, connections, and layout.');
 };
 
 window.handleDocContentAiSend = function() {
     const editor = document.getElementById('docEditorContent');
     const docText = editor ? editor.innerText.substring(0, 500) : '';
-    const ctx = `Editing a document. Content: ${docText}`;
+    const ctx = `Editing a document. Existing content: ${docText}`;
     processGenericAiChat('docContentAiInput', 'docContentAiMessages', 'docContentAiTyping', ctx);
 };
-
-window.handleDocAiSend = window.handleProjectAiSend;
