@@ -756,16 +756,24 @@
 
 .kanban-column-delete {
   opacity: 0;
-  transition: all 0.15s ease;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .kanban-column-header:hover .kanban-column-delete {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .kanban-column-delete:hover {
-  color: var(--destructive) !important;
-  opacity: 1 !important;
+  color: var(--destructive);
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .kanban-tasks {
