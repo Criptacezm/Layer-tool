@@ -1,61 +1,40 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Model: Gemini 1.5 Flash (Stable Free Tier)
+   Using Official Google SDK (Stable v1)
    ============================================ */
 
-// 1. YOUR API KEY
+// 1. Import the SDK from the CDN
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+// 2. YOUR API KEY
 const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
 
-// 2. STABLE MODEL URL
-// Switched from 2.0-flash to 1.5-flash to avoid the "Limit: 0" quota error.
-const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+// 3. Initialize the API
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
+});
 
 /**
  * Core API Call to Gemini
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        // Professional system prompt to keep AI on track
-        const systemInstruction = `You are the AI assistant for "Layer", a project management app. 
-        Context: ${context}. Help the user manage tasks, write documents, and fix code. 
-        Keep responses helpful, professional, and under 150 words.`;
-
-        const requestBody = {
-            contents: [
-                {
-                    role: "user",
-                    parts: [{ text: `SYSTEM INSTRUCTION: ${systemInstruction}\n\nUSER PROMPT: ${userPrompt}` }]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 1024,
-            }
-        };
-
-        const response = await fetch(`${GEMINI_API_BASE_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            // Handle specific quota errors with a friendly message
-            if (data.error?.message.includes('quota')) {
-                throw new Error("The AI is busy (Rate Limit). Please wait 60 seconds and try again.");
-            }
-            throw new Error(data.error?.message || 'Gemini API Error');
-        }
+        // We include context in the prompt for 1.5-flash
+        const fullPrompt = `Context about the user's current work: ${context}\n\nUser Question: ${userPrompt}`;
         
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text;
-        }
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const text = response.text();
         
-        throw new Error('AI returned an empty response. Try rephrasing.');
+        if (text) return text;
+        throw new Error('AI returned an empty response.');
     } catch (error) {
-        console.error('AI Error:', error);
+        console.error('Gemini SDK Error:', error);
+        if (error.message.includes('quota')) {
+            throw new Error("Rate limit reached. Please wait 60 seconds.");
+        }
         throw error;
     }
 }
@@ -69,8 +48,6 @@ function appendAiMessage(containerId, role, text) {
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `grip-ai-message ${role}`;
-    
-    // Simple formatting for line breaks
     msgDiv.style.whiteSpace = "pre-wrap";
     msgDiv.textContent = text;
     
@@ -80,7 +57,7 @@ function appendAiMessage(containerId, role, text) {
 }
 
 /**
- * Handles AI Chat for all contexts (Project, Whiteboard, Docs)
+ * Handles AI Chat for all contexts
  */
 async function processGenericAiChat(inputId, messagesId, typingId, contextData = '') {
     const input = document.getElementById(inputId);
@@ -90,12 +67,10 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
     const message = input.value.trim();
     if (!message) return;
 
-    // 1. Add User Message
     appendAiMessage(messagesId, 'user', message);
     input.value = '';
     input.disabled = true;
 
-    // 2. Show Typing Indicator
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'grip-ai-message assistant typing';
     typingIndicator.id = typingId;
@@ -105,8 +80,6 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 
     try {
         const response = await callGeminiAPI(message, contextData);
-        
-        // 3. Remove Typing & Add AI Response
         if (document.getElementById(typingId)) document.getElementById(typingId).remove();
         appendAiMessage(messagesId, 'assistant', response);
     } catch (error) {
@@ -119,7 +92,7 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// UI Specific Overrides (Mapped to your HTML)
+// UI Specific Overrides
 // ============================================
 
 window.handleProjectAiSend = function() {
