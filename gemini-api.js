@@ -1,8 +1,25 @@
-import { GoogleGenAI } from "@google/genai";
+/* ============================================
+   Layer - Gemini AI API Integration
+   Forcing Stable v1 API to avoid 404 errors
+   ============================================ */
 
-// Initialize the API key directly to avoid SyntaxErrors with process.env in browser
-const API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+// 1. YOUR API KEY
+const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
+
+// 2. Initialize the API with the STABLE v1 version
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+// We specify 'v1' here to avoid the v1beta 404 error
+const model = genAI.getGenerativeModel(
+    { 
+        model: "gemini-1.5-flash",
+        systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
+    }, 
+    { apiVersion: "v1" } 
+);
 
 /**
  * Core API Call to Gemini
@@ -11,16 +28,17 @@ async function callGeminiAPI(userPrompt, context = '') {
     try {
         const fullPrompt = `Context: ${context}\n\nUser Question: ${userPrompt}`;
         
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-latest',
-            contents: fullPrompt
-        });
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const text = response.text();
         
-        const text = response.text;
         if (text) return text;
         throw new Error('AI returned an empty response.');
     } catch (error) {
         console.error('Gemini SDK Error:', error);
+        if (error.message.includes('quota')) {
+            return "Rate limit reached. Please wait 60 seconds.";
+        }
         return `Error: ${error.message}`;
     }
 }
@@ -78,21 +96,22 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 
 // ============================================
 // ATTACH TO WINDOW
+// Since this is a module, we MUST manually attach 
+// functions to the window object so the HTML can see them.
 // ============================================
 
 window.handleProjectAiSend = function() {
     let ctx = "Global dashboard view.";
-    // Ensure accessing global variable safely
-    if (typeof window.loadProjects === 'function' && typeof window.gripProjectIndex !== 'undefined' && window.gripProjectIndex !== null) {
-        const projects = window.loadProjects();
-        const p = projects[window.gripProjectIndex];
+    if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
+        const projects = loadProjects();
+        const p = projects[gripProjectIndex];
         if (p) ctx = `Working on Project: ${p.name}.`;
     }
     processGenericAiChat('projectAiInput', 'projectAiMessages', 'projectAiTyping', ctx);
 };
 
-window.handleWhiteboardAiSendWithGemini = function() {
-    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is using a flowchart whiteboard. Help with cells, connections, and layout.');
+window.handleAiSend = function() {
+    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is using a flowchart whiteboard.');
 };
 
 window.handleDocContentAiSend = function() {
@@ -101,3 +120,5 @@ window.handleDocContentAiSend = function() {
     const ctx = `Editing a document. Existing content: ${docText}`;
     processGenericAiChat('docContentAiInput', 'docContentAiMessages', 'docContentAiTyping', ctx);
 };
+
+window.handleDocAiSend = window.handleProjectAiSend;
