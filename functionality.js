@@ -4703,6 +4703,48 @@ function openDocEditor(docId = null) {
           
           <!-- Content Editor -->
           <div class="notion-editor-content" id="docEditorContent" contenteditable="true" spellcheck="true">${doc ? doc.content : ''}</div>
+          
+          <!-- AI Chat Toggle Button -->
+          <button class="doc-ai-toggle-btn" onclick="toggleDocContentAiChat()" title="Ask AI">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+              <path d="M8 10h.01M12 10h.01M16 10h.01"/>
+            </svg>
+          </button>
+          
+          <!-- AI Chat Box for Doc Content Area -->
+          <div class="doc-content-ai-chat" id="docContentAiChat" style="display: none;">
+            <div class="doc-content-ai-header">
+              <h4>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                  <line x1="9" y1="9" x2="9.01" y2="9"/>
+                  <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+                Document Assistant
+              </h4>
+              <div style="display:flex;gap:4px;">
+                <button onclick="showGeminiKeyModal()" title="Configure AI" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted-foreground);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                  </svg>
+                </button>
+                <button onclick="toggleDocContentAiChat()" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted-foreground);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="doc-content-ai-messages" id="docContentAiMessages">
+              <div class="grip-ai-message assistant">Hi! I can help with your document. Ask me anything about writing, editing, or your content.</div>
+            </div>
+            <div class="doc-content-ai-input">
+              <input type="text" id="docContentAiInput" placeholder="Ask about your document..." onkeydown="if(event.key==='Enter')handleDocContentAiSend()"/>
+              <button onclick="handleDocContentAiSend()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
