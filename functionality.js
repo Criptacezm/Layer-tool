@@ -63,10 +63,20 @@ function renderInboxView() {
       <!-- Main Dashboard Content -->
       <div class="dashboard-main">
         <div class="inbox-container" style="padding: 32px 24px;">
-          <h2 class="view-title" style="margin-bottom: 32px; font-size: 28px; font-weight: 700;">Dashboard</h2>
+          <!-- Dashboard Header with Edit Toggle -->
+          <div class="dashboard-header-row">
+            <h2 class="view-title" style="margin-bottom: 0; font-size: 28px; font-weight: 700;">Dashboard</h2>
+            <button class="dashboard-edit-toggle" id="dashboardEditToggle" onclick="toggleDashboardEditMode()" title="Customize widget layout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span>Edit Layout</span>
+            </button>
+          </div>
           
           <!-- Enhanced Dashboard Widgets Grid -->
-          <div class="dashboard-widgets-grid">
+          <div class="dashboard-widgets-grid" id="dashboardWidgetsGrid">
             <!-- Stats Widget -->
             <div class="dashboard-widget">
               <div class="widget-header">
@@ -455,7 +465,7 @@ function startAITypingAnimation() {
   if (!typingEl || !fullText) return;
   
   let charIndex = 0;
-  const typingSpeed = 30; // ms per character
+  const typingSpeed = 12; // ms per character - fast and professional
   
   function typeChar() {
     if (charIndex < fullText.length) {
@@ -2080,142 +2090,119 @@ function renderActivityView(searchQuery = '') {
       </div>
       <input type="file" id="projectImportInput" accept=".json" style="display: none;" onchange="handleProjectImport(event)" />
       
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+      <div class="workspace-projects-grid">
         ${projects.map((project, index) => {
           const { total, completed, percentage } = calculateProgress(project.columns);
           const statusColor = getStatusColor(project.status);
           const isStarted = project.status !== 'todo' || percentage > 0;
-          const teamMembers = project.teamMembers || ['You'];
-          const onlineMembers = teamMembers.filter(() => Math.random() > 0.5); // Simulate online status
+          
+          // Get linked space docs/excels
+          const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
+          const spaceDocs = linkedSpace ? loadDocs().filter(d => d.spaceId === linkedSpace.id) : [];
+          const spaceExcels = linkedSpace ? loadExcels().filter(e => e.spaceId === linkedSpace.id) : [];
           
           return `
-            <div class="project-card" style="
-              background: var(--card);
-              border: 1px solid var(--border);
-              border-radius: 12px;
-              padding: 20px;
-              cursor: pointer;
-              transition: all 0.15s ease;
-            " onclick="openProjectDetail(${index})"
-               onmouseenter="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'"
-               onmouseleave="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
-              
-              <!-- Header -->
-              <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;">
-                <div style="flex: 1;">
-                  <h3 style="font-size: 16px; font-weight: 600; color: var(--foreground); margin: 0 0 6px 0;">${project.name}</h3>
-                  <span class="badge" style="
-                    font-size: 10px;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                    background-color: ${statusColor}15;
-                    color: ${statusColor};
-                    font-weight: 500;
-                  ">${capitalizeStatus(project.status)}</span>
+            <div class="workspace-project-card" onclick="openProjectDetail(${index})">
+              <!-- Card Header -->
+              <div class="workspace-card-header">
+                <div class="workspace-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
                 </div>
-                <div style="display: flex; gap: 4px;">
+                <div class="workspace-card-title-area">
+                  <h3 class="workspace-card-title">${project.name}</h3>
+                  ${project.description ? `<p class="workspace-card-description">${project.description}</p>` : ''}
+                </div>
+                <div class="workspace-card-status ${project.status}">${capitalizeStatus(project.status)}</div>
+                <div class="workspace-card-actions">
                   ${!isStarted ? `
-                    <button class="btn btn-sm" onclick="event.stopPropagation(); startProject(${index})" style="
-                      padding: 6px 12px;
-                      font-size: 11px;
-                      background: var(--primary);
-                      color: var(--primary-foreground);
-                      border: none;
-                      border-radius: 6px;
-                      cursor: pointer;
-                    " title="Start Project">
-                      <svg style="width: 12px; height: 12px; margin-right: 4px;" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <button class="workspace-card-action-btn" onclick="event.stopPropagation(); startProject(${index})" title="Start Project">
+                      <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:14px;height:14px;">
                         <polygon points="5 3 19 12 5 21 5 3"/>
                       </svg>
-                      Start
                     </button>
                   ` : ''}
-                  <button class="project-delete-btn" onclick="event.stopPropagation(); handleDeleteProject(${index})" style="
-                    opacity: 0;
-                    transition: opacity 0.15s;
-                    background: transparent;
-                    border: none;
-                    padding: 6px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    color: var(--muted-foreground);
-                  ">
-                    <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  <button class="workspace-card-action-btn delete" onclick="event.stopPropagation(); handleDeleteProject(${index})" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
                   </button>
                 </div>
               </div>
               
-              ${project.description ? `<p style="font-size: 13px; color: var(--muted-foreground); margin: 0 0 16px 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${project.description}</p>` : '<div style="margin-bottom: 16px;"></div>'}
-              
-              <!-- Progress -->
-              <div style="margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                  <span style="font-size: 11px; color: var(--muted-foreground);">${completed}/${total} tasks</span>
-                  <span style="font-size: 11px; font-weight: 500; color: var(--foreground);">${percentage}%</span>
+              <!-- Card Body -->
+              <div class="workspace-card-body">
+                <div class="workspace-card-meta">
+                  <div class="workspace-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                      <rect x="9" y="3" width="6" height="4" rx="1"/>
+                    </svg>
+                    <span>${total} tasks</span>
+                  </div>
+                  <div class="workspace-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M8 12l2 2 4-4"/>
+                    </svg>
+                    <span>${completed} done</span>
+                  </div>
+                  ${linkedSpace ? `
+                    <div class="workspace-meta-item" style="color: var(--primary);">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                      </svg>
+                      <span>${linkedSpace.name}</span>
+                    </div>
+                  ` : ''}
                 </div>
-                <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
-                  <div style="width: ${percentage}%; height: 100%; background: ${getProgressColor(percentage)}; border-radius: 2px; transition: width 0.3s;"></div>
+                
+                <!-- Progress -->
+                <div class="workspace-card-progress">
+                  <div class="workspace-progress-header">
+                    <span class="workspace-progress-label">Progress</span>
+                    <span class="workspace-progress-value">${percentage}%</span>
+                  </div>
+                  <div class="workspace-progress-bar">
+                    <div class="workspace-progress-fill" style="width: ${percentage}%; background: ${getProgressColor(percentage)};"></div>
+                  </div>
                 </div>
               </div>
               
-              <!-- Footer -->
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; color: var(--muted-foreground);">
-                  <svg style="width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                  ${formatDate(project.targetDate)}
-                </span>
-                
-                <!-- Online Team Members -->
-                <div style="display: flex; align-items: center;">
-                  ${onlineMembers.slice(0, 3).map((member, i) => {
-                    const initials = member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                    return `
-                      <div style="
-                        width: 24px;
-                        height: 24px;
-                        border-radius: 50%;
-                        background: ${getTeamColor(i)};
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-size: 9px;
-                        font-weight: 600;
-                        margin-left: ${i > 0 ? '-6px' : '0'};
-                        border: 2px solid var(--card);
-                        position: relative;
-                      " title="${member}">
-                        ${initials}
-                        <div style="
-                          position: absolute;
-                          bottom: -1px;
-                          right: -1px;
-                          width: 8px;
-                          height: 8px;
-                          background: #22c55e;
-                          border-radius: 50%;
-                          border: 2px solid var(--card);
-                        "></div>
-                      </div>
-                    `;
-                  }).join('')}
-                  ${onlineMembers.length > 3 ? `
-                    <div style="
-                      width: 24px;
-                      height: 24px;
-                      border-radius: 50%;
-                      background: var(--muted);
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      font-size: 9px;
-                      font-weight: 600;
-                      color: var(--muted-foreground);
-                      margin-left: -6px;
-                      border: 2px solid var(--card);
-                    ">+${onlineMembers.length - 3}</div>
-                  ` : ''}
+              <!-- Card Footer -->
+              <div class="workspace-card-footer">
+                <div class="workspace-card-date">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  <span>${formatDate(project.targetDate)}</span>
                 </div>
+                ${(spaceDocs.length > 0 || spaceExcels.length > 0) ? `
+                  <div class="workspace-card-linked-docs">
+                    ${spaceDocs.length > 0 ? `
+                      <span class="linked-doc-badge doc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        ${spaceDocs.length}
+                      </span>
+                    ` : ''}
+                    ${spaceExcels.length > 0 ? `
+                      <span class="linked-doc-badge excel">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <line x1="3" y1="9" x2="21" y2="9"/>
+                          <line x1="9" y1="3" x2="9" y2="21"/>
+                        </svg>
+                        ${spaceExcels.length}
+                      </span>
+                    ` : ''}
+                  </div>
+                ` : ''}
               </div>
             </div>
           `;
@@ -2248,7 +2235,7 @@ function renderProjectDetailView(projectIndex) {
   const offset = circumference - (percentage / 100) * circumference;
   
   const teamMembers = project.teamMembers || ['You'];
-  const projectPriority = project.priority || 'medium';
+  const projectPriority = project.priority; // Don't default - allow null for "No priority"
   const projectComments = project.comments || [];
 
   // Generate progress history data for the chart (past 4 weeks)
@@ -2264,10 +2251,7 @@ function renderProjectDetailView(projectIndex) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <div class="project-icon-wrapper">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="3"/>
-              <path d="M9 12l2 2 4-4"/>
-            </svg>
+            <span style="font-size: 24px; color: var(--primary-foreground);">◇</span>
           </div>
           <div class="project-title-section">
             <h1 class="project-name-linear" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
@@ -2284,9 +2268,27 @@ function renderProjectDetailView(projectIndex) {
             <span class="property-tag-dot" style="background: ${statusColor};"></span>
             <span>${capitalizeStatus(dynamicStatus)}</span>
           </div>
-          <div class="property-tag priority">
+          <div class="property-tag priority" onclick="togglePriorityDropdown(${projectIndex}, event)" style="cursor: pointer; position: relative;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-            <span>${project.priority?.charAt(0).toUpperCase() + project.priority?.slice(1) || 'Medium'}</span>
+            <span>${project.priority ? project.priority.charAt(0).toUpperCase() + project.priority.slice(1) : 'No priority'}</span>
+            <div class="priority-dropdown" id="priorityDropdown-${projectIndex}" onclick="event.stopPropagation();">
+              <div class="priority-dropdown-header">Change priority...<span class="priority-shortcuts"></div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, null); closePriorityDropdown();">
+                <span class="priority-dots">---</span> No priority <span class="priority-key">0</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'urgent'); closePriorityDropdown();">
+                <span class="priority-icon urgent">!</span> Urgent <span class="priority-key">1</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'high'); closePriorityDropdown();">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="4" width="3" height="10"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="8" width="3" height="6"/></svg> High <span class="priority-key">2</span>
+              </div>
+              <div class="priority-option ${projectPriority === 'medium' ? 'selected' : ''}" onclick="setProjectPriority(${projectIndex}, 'medium'); closePriorityDropdown();">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-check">✓</span> <span class="priority-key">3</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'low'); closePriorityDropdown();">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="11" width="3" height="3"/><rect x="11" y="12" width="3" height="2"/></svg> Low <span class="priority-key">4</span>
+              </div>
+            </div>
           </div>
           <div class="property-tag member">
             <div class="property-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
@@ -2335,9 +2337,6 @@ function renderProjectDetailView(projectIndex) {
               <button class="update-action-btn" onclick="event.stopPropagation(); openUpdateCommentsModal(${projectIndex})" title="View Comments">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
               </button>
-              <button class="update-action-btn" onclick="event.stopPropagation(); viewUpdateHistory(${projectIndex})" title="View History">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              </button>
             </div>
           </div>
         </div>
@@ -2346,34 +2345,6 @@ function renderProjectDetailView(projectIndex) {
         <div class="section-block">
           <h3 class="section-label">Description</h3>
           <textarea class="description-textarea" placeholder="Add description..." onblur="handleUpdateProjectDescription(${projectIndex}, this.value)">${project.description || ''}</textarea>
-        </div>
-
-        <!-- Milestones Section -->
-        <div class="section-block">
-          <h3 class="section-label">Milestones</h3>
-          <div class="milestones-list">
-            ${(project.milestones || []).map((milestone, mIndex) => {
-              const milestoneProgress = milestone.total > 0 ? Math.round((milestone.completed || 0) / milestone.total * 100) : 0;
-              return `
-              <div class="milestone-item" data-milestone="${mIndex}">
-                <span class="milestone-icon ${milestone.completed >= milestone.total && milestone.total > 0 ? 'completed' : ''}">◇</span>
-                <span class="milestone-name" contenteditable="true" onblur="updateMilestoneName(${projectIndex}, ${mIndex}, this.textContent)">${milestone.name}</span>
-                <div class="milestone-progress-bar">
-                  <div class="milestone-progress-fill" style="width: ${milestoneProgress}%"></div>
-                </div>
-                <span class="milestone-progress">${milestone.completed || 0}/${milestone.total || 0}</span>
-                <button class="milestone-menu-btn" onclick="event.stopPropagation(); openMilestoneMenu(${projectIndex}, ${mIndex}, event)">⋯</button>
-              </div>
-            `}).join('')}
-            ${(project.milestones || []).length === 0 ? `
-              <div class="milestones-empty">
-                <span>No milestones yet</span>
-              </div>
-            ` : ''}
-            <button class="add-milestone-btn" onclick="addMilestone(${projectIndex})">
-              <span>+</span> Add Milestone
-            </button>
-          </div>
         </div>
 
         <!-- Tasks Kanban -->
@@ -2440,10 +2411,28 @@ function renderProjectDetailView(projectIndex) {
           
           <div class="sidebar-property-row">
             <span class="sidebar-prop-label">Priority</span>
-            <span class="sidebar-prop-value clickable" onclick="openPrioritySelector(${projectIndex}, event)">
+            <span class="sidebar-prop-value clickable" onclick="openSidebarPriorityDropdown(${projectIndex}, event)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
-              ${projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1)}
+              ${projectPriority ? projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1) : 'No priority'}
             </span>
+            <div class="sidebar-priority-dropdown" id="sidebarPriorityDropdown-${projectIndex}" onclick="event.stopPropagation();">
+              <div class="priority-dropdown-header">Change priority...</div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, null); closeSidebarPriorityDropdown(${projectIndex});">
+                <span class="priority-dots">---</span> No priority <span class="priority-key">0</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'urgent'); closeSidebarPriorityDropdown(${projectIndex});">
+                <span class="priority-icon urgent">!</span> Urgent <span class="priority-key">1</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'high'); closeSidebarPriorityDropdown(${projectIndex});">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="4" width="3" height="10"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="8" width="3" height="6"/></svg> High <span class="priority-key">2</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'medium'); closeSidebarPriorityDropdown(${projectIndex});">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-key">3</span>
+              </div>
+              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'low'); closeSidebarPriorityDropdown(${projectIndex});">
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="11" width="3" height="3"/><rect x="11" y="12" width="3" height="2"/></svg> Low <span class="priority-key">4</span>
+              </div>
+            </div>
           </div>
           
           <div class="sidebar-property-row">
@@ -2492,35 +2481,31 @@ function renderProjectDetailView(projectIndex) {
               Add label
             </span>
           </div>
-        </div>
-        
-        <!-- Milestones in Sidebar -->
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <span>Milestones</span>
-            <button class="sidebar-add-btn" onclick="addMilestone(${projectIndex})">+</button>
-          </div>
-          <div class="sidebar-milestones">
-            ${(project.milestones || []).map((m, i) => {
-              const mProgress = m.total > 0 ? Math.round((m.completed || 0) / m.total * 100) : 0;
-              return `
-              <div class="sidebar-milestone-item" onclick="openMilestoneDetail(${projectIndex}, ${i})">
-                <span class="milestone-diamond ${m.completed >= m.total && m.total > 0 ? 'completed' : ''}">◇</span>
-                <span class="milestone-name">${m.name}</span>
-                <span class="milestone-stat">${m.completed || 0}/${m.total || 0}</span>
-                <button class="milestone-menu" onclick="event.stopPropagation(); openMilestoneMenu(${projectIndex}, ${i}, event)">⋯</button>
+          
+          ${(() => {
+            const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
+            return linkedSpace ? `
+              <div class="sidebar-property-row">
+                <span class="sidebar-prop-label">Linked Space</span>
+                <span class="sidebar-prop-value" style="color: var(--primary);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                  ${linkedSpace.name}
+                </span>
               </div>
-            `}).join('')}
-            ${(project.milestones || []).length === 0 ? `<p class="activity-empty">No milestones</p>` : ''}
-          </div>
+            ` : '';
+          })()}
         </div>
         
-        <!-- Activity Feed with Progress -->
-        <div class="sidebar-section">
+        
+        <!-- Activity Feed with Progress - Compact -->
+        <div class="sidebar-section activity-compact">
           <div class="sidebar-section-header">
             <span>Activity</span>
             <div class="activity-progress-indicator">
-              <svg class="activity-progress-ring" width="24" height="24" viewBox="0 0 24 24">
+              <svg class="activity-progress-ring" width="20" height="20" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" fill="none" stroke="var(--border)" stroke-width="2"/>
                 <circle cx="12" cy="12" r="10" fill="none" stroke="var(--primary)" stroke-width="2" 
                   stroke-dasharray="${2 * Math.PI * 10}"
@@ -2530,26 +2515,6 @@ function renderProjectDetailView(projectIndex) {
               </svg>
               <span class="activity-progress-text">${percentage}%</span>
             </div>
-          </div>
-          <div class="sidebar-activity-feed">
-            ${projectComments.length === 0 && (!project.activityLog || project.activityLog.length === 0) ? `
-              <p class="activity-empty">No activity yet</p>
-            ` : (project.activityLog || [
-              { type: 'status', actor: teamMembers[0] || 'You', action: 'changed status from Backlog to In Progress', time: 'Dec 29' },
-              { type: 'date', actor: teamMembers[0] || 'You', action: 'set start date to ' + formatDate(project.startDate || new Date().toISOString()), time: 'Dec 29' }
-            ]).slice(0, 5).map(activity => `
-              <div class="activity-item">
-                <div class="activity-icon ${activity.type}">
-                  ${activity.type === 'status' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>' : 
-                    activity.type === 'priority' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>' :
-                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'}
-                </div>
-                <div class="activity-content">
-                  <span class="activity-actor">${activity.actor}</span> ${activity.action}
-                  <span class="activity-time">· ${activity.time}</span>
-                </div>
-              </div>
-            `).join('')}
           </div>
         </div>
         
@@ -2921,38 +2886,38 @@ function hideChartTooltip() {
   document.querySelectorAll('[id^="chartIndicator-"]').forEach(i => i.style.display = 'none');
 }
 
-// Priority selector
-function openPrioritySelector(projectIndex, event) {
+// Priority dropdown functions
+function togglePriorityDropdown(projectIndex, event) {
   event.stopPropagation();
-  const content = `
-    <div style="padding: 16px;">
-      <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 600;">Select Priority</h3>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <button onclick="setProjectPriority(${projectIndex}, 'high')" class="btn" style="justify-content: flex-start; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; margin-right: 8px;"></span>
-          High Priority
-        </button>
-        <button onclick="setProjectPriority(${projectIndex}, 'medium')" class="btn" style="justify-content: flex-start; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-right: 8px;"></span>
-          Medium Priority
-        </button>
-        <button onclick="setProjectPriority(${projectIndex}, 'low')" class="btn" style="justify-content: flex-start; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 8px;"></span>
-          Low Priority
-        </button>
-      </div>
-    </div>
-  `;
-  openModal('Set Priority', content);
+  const dropdown = document.getElementById('priorityDropdown-' + projectIndex);
+  if (!dropdown) return;
+  
+  // Close other dropdowns
+  document.querySelectorAll('.priority-dropdown.show').forEach(d => {
+    if (d !== dropdown) d.classList.remove('show');
+  });
+  
+  dropdown.classList.toggle('show');
+  
+  // Close on outside click
+  if (dropdown.classList.contains('show')) {
+    setTimeout(() => {
+      document.addEventListener('click', closePriorityDropdown, { once: true });
+    }, 10);
+  }
+}
+
+function closePriorityDropdown() {
+  document.querySelectorAll('.priority-dropdown.show').forEach(d => d.classList.remove('show'));
 }
 
 function setProjectPriority(projectIndex, priority) {
   const projects = loadProjects();
   if (projects[projectIndex]) {
+    // Allow null/undefined for "No priority" - don't default to 'medium'
     projects[projectIndex].priority = priority;
     saveProjects(projects);
   }
-  closeModal();
   renderCurrentView();
 }
 
@@ -5957,47 +5922,53 @@ function renderFavoritesInSidebar() {
   // Create favorites section
   const favoritesSection = document.createElement('div');
   favoritesSection.id = 'favoritesSection';
+  
+  const totalFavorites = favoriteDocs.length + favoriteExcels.length;
+  const needsScroll = totalFavorites > 3;
+  
   favoritesSection.innerHTML = `
     <div class="spaces-divider"></div>
     <div class="spaces-section-label">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:-1px;">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
       </svg>
-      Favorites
+      Favorites ${totalFavorites > 3 ? `(${totalFavorites})` : ''}
     </div>
-    ${favoriteDocs.map(doc => `
-      <div class="custom-space-item-wrapper favorite-doc-item">
-        <button class="custom-space-item" onclick="openDocEditor(${doc.id})">
-          <div class="favorite-item-layout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon doc-icon">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <span class="favorite-text-truncate" title="${doc.title}">${truncateTitle(doc.title)}</span>
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </div>
-        </button>
-      </div>
-    `).join('')}
-    ${favoriteExcels.map(excel => `
-      <div class="custom-space-item-wrapper favorite-excel-item">
-        <button class="custom-space-item" onclick="openExcelEditor(${excel.id})">
-          <div class="favorite-item-layout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon excel-icon">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <line x1="3" y1="9" x2="21" y2="9"/>
-              <line x1="9" y1="3" x2="9" y2="21"/>
-            </svg>
-            <span class="favorite-text-truncate" title="${excel.title}">${truncateTitle(excel.title)}</span>
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </div>
-        </button>
-      </div>
-    `).join('')}
+    <div class="${needsScroll ? 'favorites-scroll-container' : ''}">
+      ${favoriteDocs.map(doc => `
+        <div class="custom-space-item-wrapper favorite-doc-item">
+          <button class="custom-space-item" onclick="openDocEditor(${doc.id})">
+            <div class="favorite-item-layout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon doc-icon">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span class="favorite-text-truncate" title="${doc.title}">${truncateTitle(doc.title)}</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+      `).join('')}
+      ${favoriteExcels.map(excel => `
+        <div class="custom-space-item-wrapper favorite-excel-item">
+          <button class="custom-space-item" onclick="openExcelEditor(${excel.id})">
+            <div class="favorite-item-layout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon excel-icon">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+              <span class="favorite-text-truncate" title="${excel.title}">${truncateTitle(excel.title)}</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="favorite-star-right">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+      `).join('')}
+    </div>
   `;
   
   sidebar.appendChild(favoritesSection);
@@ -6223,7 +6194,7 @@ function renderSpaceDetailView(space) {
                       </button>
                       <div onclick="openDocEditor(${doc.id})">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                          <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                               <polyline points="14 2 14 8 20 8"/>
@@ -8009,5 +7980,40 @@ function handleUpdateProjectSummary(projectIndex, summary) {
   if (projects[projectIndex]) {
     projects[projectIndex].summary = summary?.trim() || '';
     saveProjects(projects);
+  }
+}
+
+/* ============================================
+   Sidebar Priority Dropdown Functions
+   ============================================ */
+
+function openSidebarPriorityDropdown(projectIndex, event) {
+  event.stopPropagation();
+  
+  // Close any other open dropdowns
+  document.querySelectorAll('.sidebar-priority-dropdown.open').forEach(d => {
+    d.classList.remove('open');
+  });
+  
+  const dropdown = document.getElementById(`sidebarPriorityDropdown-${projectIndex}`);
+  if (dropdown) {
+    dropdown.classList.add('open');
+    
+    // Close when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!e.target.closest('.sidebar-priority-dropdown')) {
+          dropdown.classList.remove('open');
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 10);
+  }
+}
+
+function closeSidebarPriorityDropdown(projectIndex) {
+  const dropdown = document.getElementById(`sidebarPriorityDropdown-${projectIndex}`);
+  if (dropdown) {
+    dropdown.classList.remove('open');
   }
 }
