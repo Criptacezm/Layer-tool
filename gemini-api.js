@@ -1,33 +1,30 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Fixed & Optimized
+   Model: Gemini 1.5 Flash (Stable Free Tier)
    ============================================ */
 
-// Gemini API Configuration
+// 1. YOUR API KEY
 const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
-// FIX: Key is only appended once during the fetch call
-const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-// AI Chat State
-let aiChatHistory = [];
+// 2. STABLE MODEL URL
+// Switched from 2.0-flash to 1.5-flash to avoid the "Limit: 0" quota error.
+const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 /**
  * Core API Call to Gemini
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        const systemInstruction = `You are a helpful AI assistant for "Layer", a project management app. 
-        Context: ${context}. Help with tasks, docs, and code. Be concise (under 150 words).`;
+        // Professional system prompt to keep AI on track
+        const systemInstruction = `You are the AI assistant for "Layer", a project management app. 
+        Context: ${context}. Help the user manage tasks, write documents, and fix code. 
+        Keep responses helpful, professional, and under 150 words.`;
 
-        // FIX: Construct request body to include official system_instruction for v1beta
         const requestBody = {
-            system_instruction: {
-                parts: [{ text: systemInstruction }]
-            },
             contents: [
                 {
                     role: "user",
-                    parts: [{ text: userPrompt }]
+                    parts: [{ text: `SYSTEM INSTRUCTION: ${systemInstruction}\n\nUSER PROMPT: ${userPrompt}` }]
                 }
             ],
             generationConfig: {
@@ -42,18 +39,21 @@ async function callGeminiAPI(userPrompt, context = '') {
             body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'Gemini API Error');
-        }
-
         const data = await response.json();
+
+        if (!response.ok) {
+            // Handle specific quota errors with a friendly message
+            if (data.error?.message.includes('quota')) {
+                throw new Error("The AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+            }
+            throw new Error(data.error?.message || 'Gemini API Error');
+        }
         
         if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
             return data.candidates[0].content.parts[0].text;
         }
         
-        throw new Error('Empty response from AI');
+        throw new Error('AI returned an empty response. Try rephrasing.');
     } catch (error) {
         console.error('AI Error:', error);
         throw error;
@@ -69,7 +69,11 @@ function appendAiMessage(containerId, role, text) {
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `grip-ai-message ${role}`;
+    
+    // Simple formatting for line breaks
+    msgDiv.style.whiteSpace = "pre-wrap";
     msgDiv.textContent = text;
+    
     container.appendChild(msgDiv);
     container.scrollTop = container.scrollHeight;
     return msgDiv;
@@ -115,71 +119,28 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// UI Specific Overrides
+// UI Specific Overrides (Mapped to your HTML)
 // ============================================
 
-// 1. Project Assistant (Main Dashboard/Project View)
 window.handleProjectAiSend = function() {
-    let ctx = "Global project view.";
+    let ctx = "Global dashboard view.";
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
         const projects = loadProjects();
         const p = projects[gripProjectIndex];
-        if (p) ctx = `Project: ${p.name}. Description: ${p.description}`;
+        if (p) ctx = `Working on Project: ${p.name}.`;
     }
     processGenericAiChat('projectAiInput', 'projectAiMessages', 'projectAiTyping', ctx);
 };
 
-// 2. Whiteboard Assistant (Grip Diagram)
 window.handleAiSend = function() {
-    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is on a visual whiteboard creating flowcharts.');
+    processGenericAiChat('gripAiInput', 'gripAiMessages', 'aiTyping', 'User is using a flowchart whiteboard.');
 };
 
-// 3. Document Editor Assistant (Notion-style)
 window.handleDocContentAiSend = function() {
     const editor = document.getElementById('docEditorContent');
-    const docText = editor ? editor.innerText.substring(0, 1000) : '';
-    const ctx = `User is editing a document. Content: ${docText}`;
+    const docText = editor ? editor.innerText.substring(0, 500) : '';
+    const ctx = `Editing a document. Existing content: ${docText}`;
     processGenericAiChat('docContentAiInput', 'docContentAiMessages', 'docContentAiTyping', ctx);
 };
 
-/**
- * Code Validation with Gemini
- */
-async function validateCodeWithGemini(code, language) {
-    const prompt = `Review this ${language} code for bugs. If clean, explain it briefly. Code:\n${code}`;
-    try {
-        const res = await callGeminiAPI(prompt, "Code Reviewer Mode");
-        return { success: true, message: res };
-    } catch (e) {
-        return { success: false, message: e.message };
-    }
-}
-
-/**
- * Enhanced Code Runner (Called from Grip Cells)
- */
-async function runCodeWithValidation(cellId) {
-    const cell = typeof gripCells !== 'undefined' ? gripCells.find(c => c.id === cellId) : null;
-    if (!cell) return;
-
-    const outputEl = document.getElementById(`codeOutput-${cellId}`);
-    const contentEl = document.getElementById(`codeOutputContent-${cellId}`);
-    if (!outputEl || !contentEl) return;
-
-    outputEl.style.display = 'block';
-    contentEl.textContent = '⏳ AI is reviewing and executing...';
-
-    const code = cell.content || '';
-    const lang = typeof detectCodeLanguage === 'function' ? detectCodeLanguage(code) : 'JavaScript';
-
-    try {
-        const validation = await validateCodeWithGemini(code, lang);
-        contentEl.textContent = validation.message;
-        outputEl.style.borderColor = validation.success ? '#22c55e' : '#ef4444';
-    } catch (e) {
-        contentEl.textContent = "Error connecting to AI.";
-    }
-}
-
-// Export for global access
-window.runCodeWithValidation = runCodeWithValidation;
+window.handleDocAiSend = window.handleProjectAiSend;
