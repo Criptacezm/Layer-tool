@@ -1,28 +1,31 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Using Official Google SDK (Stable v1)
+   Forcing Stable v1 API to avoid 404 errors
    ============================================ */
 
-// 1. Import the SDK from the CDN
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-// 2. YOUR API KEY
+// 1. YOUR API KEY
 const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
 
-// 3. Initialize the API
+// 2. Initialize the API with the STABLE v1 version
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash",
-    systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
-});
+
+// We specify 'v1' here to avoid the v1beta 404 error
+const model = genAI.getGenerativeModel(
+    { 
+        model: "gemini-1.5-flash",
+        systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
+    }, 
+    { apiVersion: "v1" } 
+);
 
 /**
  * Core API Call to Gemini
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        // We include context in the prompt for 1.5-flash
-        const fullPrompt = `Context about the user's current work: ${context}\n\nUser Question: ${userPrompt}`;
+        const fullPrompt = `Context: ${context}\n\nUser Question: ${userPrompt}`;
         
         const result = await model.generateContent(fullPrompt);
         const response = await result.response;
@@ -33,9 +36,9 @@ async function callGeminiAPI(userPrompt, context = '') {
     } catch (error) {
         console.error('Gemini SDK Error:', error);
         if (error.message.includes('quota')) {
-            throw new Error("Rate limit reached. Please wait 60 seconds.");
+            return "Rate limit reached. Please wait 60 seconds.";
         }
-        throw error;
+        return `Error: ${error.message}`;
     }
 }
 
@@ -53,7 +56,6 @@ function appendAiMessage(containerId, role, text) {
     
     container.appendChild(msgDiv);
     container.scrollTop = container.scrollHeight;
-    return msgDiv;
 }
 
 /**
@@ -92,7 +94,9 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// UI Specific Overrides
+// ATTACH TO WINDOW
+// Since this is a module, we MUST manually attach 
+// functions to the window object so the HTML can see them.
 // ============================================
 
 window.handleProjectAiSend = function() {
