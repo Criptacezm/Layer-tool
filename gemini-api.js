@@ -1,6 +1,6 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Forcing Stable v1 API to avoid 404 errors
+   Compatibility Mode: Stable v1 + Manual System Prompt
    ============================================ */
 
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
@@ -8,16 +8,13 @@ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 // 1. YOUR API KEY
 const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
 
-// 2. Initialize the API with the STABLE v1 version
+// 2. Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// We specify 'v1' here to avoid the v1beta 404 error
+// 3. Setup the model without the 'systemInstruction' field to avoid 400 errors
 const model = genAI.getGenerativeModel(
-    { 
-        model: "gemini-1.5-flash",
-        systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
-    }, 
-    { apiVersion: "v1" } 
+    { model: "gemini-1.5-flash" }, 
+    { apiVersion: "v1" }
 );
 
 /**
@@ -25,9 +22,19 @@ const model = genAI.getGenerativeModel(
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        const fullPrompt = `Context: ${context}\n\nUser Question: ${userPrompt}`;
+        // We manually combine the instructions and context into the prompt
+        // This is the most compatible method for the v1 stable API
+        const finalPrompt = `
+            INSTRUCTIONS: You are the AI assistant for 'Layer', a project management app. 
+            Help the user manage tasks, write docs, and fix code. 
+            Be professional, concise, and stay under 150 words.
+
+            CONTEXT: ${context}
+
+            USER QUESTION: ${userPrompt}
+        `;
         
-        const result = await model.generateContent(fullPrompt);
+        const result = await model.generateContent(finalPrompt);
         const response = await result.response;
         const text = response.text();
         
@@ -73,6 +80,7 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
     input.value = '';
     input.disabled = true;
 
+    // Show Typing Indicator
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'grip-ai-message assistant typing';
     typingIndicator.id = typingId;
@@ -94,9 +102,8 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// ATTACH TO WINDOW
-// Since this is a module, we MUST manually attach 
-// functions to the window object so the HTML can see them.
+// ATTACH TO WINDOW OBJECT
+// Required because this script is a 'module'
 // ============================================
 
 window.handleProjectAiSend = function() {
@@ -104,7 +111,7 @@ window.handleProjectAiSend = function() {
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
         const projects = loadProjects();
         const p = projects[gripProjectIndex];
-        if (p) ctx = `Working on Project: ${p.name}.`;
+        if (p) ctx = `Working on Project: ${p.name}. Notes: ${p.description}`;
     }
     processGenericAiChat('projectAiInput', 'projectAiMessages', 'projectAiTyping', ctx);
 };
@@ -116,7 +123,7 @@ window.handleAiSend = function() {
 window.handleDocContentAiSend = function() {
     const editor = document.getElementById('docEditorContent');
     const docText = editor ? editor.innerText.substring(0, 500) : '';
-    const ctx = `Editing a document. Existing content: ${docText}`;
+    const ctx = `Editing a document. Content: ${docText}`;
     processGenericAiChat('docContentAiInput', 'docContentAiMessages', 'docContentAiTyping', ctx);
 };
 
