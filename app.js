@@ -5,7 +5,7 @@
 // ============================================
 // State
 // ============================================
-let currentView = 'my-issues';
+let currentView = 'inbox';
 let currentFilter = 'all';
 let searchQuery = '';
 let selectedProjectIndex = null;
@@ -1349,4 +1349,478 @@ function renderCreateProjectModalContent() {
       </div>
     </form>
   `;
+}
+
+// ============================================
+// Dashboard Widget Edit Mode
+// ============================================
+let dashboardEditMode = false;
+
+function toggleDashboardEditMode() {
+  dashboardEditMode = !dashboardEditMode;
+  
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  const btn = document.getElementById('dashboardEditToggle');
+  
+  if (grid) {
+    grid.classList.toggle('edit-mode', dashboardEditMode);
+    
+    if (dashboardEditMode) {
+      initWidgetDragDrop();
+    }
+  }
+  
+  if (btn) {
+    btn.classList.toggle('active', dashboardEditMode);
+    btn.querySelector('span').textContent = dashboardEditMode ? 'Done' : 'Edit Layout';
+  }
+}
+
+function initWidgetDragDrop() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+  
+  const widgets = grid.querySelectorAll('.dashboard-widget');
+  let draggedWidget = null;
+  
+  widgets.forEach(widget => {
+    widget.setAttribute('draggable', 'true');
+    
+    widget.addEventListener('dragstart', (e) => {
+      draggedWidget = widget;
+      widget.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    widget.addEventListener('dragend', () => {
+      widget.classList.remove('dragging');
+      draggedWidget = null;
+      saveWidgetOrder();
+    });
+    
+    widget.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedWidget && draggedWidget !== widget) {
+        const rect = widget.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        
+        if (e.clientX < midX) {
+          widget.parentNode.insertBefore(draggedWidget, widget);
+        } else {
+          widget.parentNode.insertBefore(draggedWidget, widget.nextSibling);
+        }
+      }
+    });
+  });
+}
+
+function saveWidgetOrder() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+  
+  const widgets = grid.querySelectorAll('.dashboard-widget');
+  const order = Array.from(widgets).map((w, i) => i);
+  
+  localStorage.setItem('layerWidgetOrder', JSON.stringify(order));
+}
+
+// ============================================
+// Whiteboard Document Sidebar
+// ============================================
+let whiteboardDocSidebarOpen = false;
+let whiteboardSplitViewDocId = null;
+let whiteboardSplitViewType = null; // 'doc' or 'excel'
+
+function toggleWhiteboardDocSidebar() {
+  whiteboardDocSidebarOpen = !whiteboardDocSidebarOpen;
+  
+  const sidebar = document.getElementById('whiteboardDocSidebar');
+  const toggleBtn = document.getElementById('whiteboardDocToggleBtn');
+  const splitContainer = document.getElementById('whiteboardSplitContainer');
+  
+  if (sidebar) {
+    sidebar.classList.toggle('open', whiteboardDocSidebarOpen && !whiteboardSplitViewDocId);
+    // Remove split-view class when closing
+    if (!whiteboardDocSidebarOpen) {
+      sidebar.classList.remove('split-view');
+      if (splitContainer) {
+        splitContainer.classList.remove('split-mode');
+      }
+      whiteboardSplitViewDocId = null;
+      whiteboardSplitViewType = null;
+      updateSplitViewPanel();
+    }
+  }
+  
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', whiteboardDocSidebarOpen);
+  }
+  
+  if (whiteboardDocSidebarOpen) {
+    updateWhiteboardDocSidebar();
+  }
+}
+
+function updateWhiteboardDocSidebar() {
+  const container = document.getElementById('whiteboardDocContent');
+  if (!container) return;
+  
+  const projects = loadProjects();
+  const project = projects[gripProjectIndex];
+  
+  if (!project) {
+    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted-foreground);">No project loaded</div>';
+    return;
+  }
+  
+  // Get ALL docs and excels from the system
+  const allDocs = loadDocs();
+  const allExcels = loadExcels();
+  
+  // Get linked space docs/excels if a space is linked
+  const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
+  const spaceDocs = linkedSpace ? allDocs.filter(d => d.spaceId === linkedSpace.id) : [];
+  const spaceExcels = linkedSpace ? allExcels.filter(e => e.spaceId === linkedSpace.id) : [];
+  
+  // Also get docs that might be directly linked to this project
+  const projectDocs = allDocs.filter(d => d.projectId === project.id);
+  const projectExcels = allExcels.filter(e => e.projectId === project.id);
+  
+  // Combine and deduplicate
+  const docsMap = new Map();
+  [...spaceDocs, ...projectDocs].forEach(d => docsMap.set(d.id, d));
+  const docs = Array.from(docsMap.values());
+  
+  const excelsMap = new Map();
+  [...spaceExcels, ...projectExcels].forEach(e => excelsMap.set(e.id, e));
+  const excels = Array.from(excelsMap.values());
+  
+  // If no linked space and no docs, show all available docs
+  const showAllDocs = !linkedSpace && docs.length === 0 && excels.length === 0;
+  const displayDocs = showAllDocs ? allDocs.slice(0, 10) : docs;
+  const displayExcels = showAllDocs ? allExcels.slice(0, 10) : excels;
+  
+  if (displayDocs.length === 0 && displayExcels.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 24px; text-align: center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; color: #71717a; margin-bottom: 12px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p style="color: #71717a; font-size: 13px; margin: 0 0 12px 0;">
+          No documents found
+        </p>
+        <button onclick="openDocEditor()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer;">
+          Create a Document
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  // Check if we're in split view mode
+  const isSplitView = whiteboardSplitViewDocId !== null;
+  const listClass = isSplitView ? 'whiteboard-doc-list compact' : 'whiteboard-doc-list';
+  
+  container.innerHTML = `
+    ${showAllDocs ? '<div style="padding: 8px 12px; font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px;">Recent Documents</div>' : ''}
+    <div class="${listClass}">
+      ${displayDocs.map(doc => `
+        <div class="whiteboard-doc-item ${whiteboardSplitViewDocId === doc.id && whiteboardSplitViewType === 'doc' ? 'active' : ''}" 
+             onclick="openDocInSplitView('${doc.id}')" 
+             title="Click to view in split screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="whiteboard-doc-icon doc">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span class="whiteboard-doc-title">${doc.title || 'Untitled'}</span>
+          <span class="whiteboard-doc-date">${formatTimeAgo(doc.updatedAt || doc.createdAt)}</span>
+        </div>
+      `).join('')}
+      ${displayExcels.map(excel => `
+        <div class="whiteboard-doc-item ${whiteboardSplitViewDocId === excel.id && whiteboardSplitViewType === 'excel' ? 'active' : ''}" 
+             onclick="openExcelInSplitView('${excel.id}')"
+             title="Click to view in split screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="whiteboard-doc-icon excel">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+          <span class="whiteboard-doc-title">${excel.title || 'Untitled'}</span>
+          <span class="whiteboard-doc-date">${formatTimeAgo(excel.updatedAt || excel.createdAt)}</span>
+        </div>
+      `).join('')}
+    </div>
+    ${isSplitView ? renderSplitViewPreview() : ''}
+  `;
+}
+
+function renderSplitViewPreview() {
+  if (!whiteboardSplitViewDocId) return '';
+  
+  let doc = null;
+  let docType = whiteboardSplitViewType;
+  
+  if (docType === 'doc') {
+    const docs = loadDocs();
+    doc = docs.find(d => d.id === whiteboardSplitViewDocId);
+  } else if (docType === 'excel') {
+    const excels = loadExcels();
+    doc = excels.find(e => e.id === whiteboardSplitViewDocId);
+  }
+  
+  if (!doc) return '';
+  
+  return `
+    <div class="whiteboard-doc-preview">
+      <div class="whiteboard-doc-preview-header">
+        <span class="whiteboard-doc-preview-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:${docType === 'excel' ? '#22c55e' : '#3b82f6'};">
+            ${docType === 'excel' ? 
+              '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>' :
+              '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+            }
+          </svg>
+          ${doc.title || 'Untitled'}
+        </span>
+        <div class="whiteboard-doc-preview-actions">
+          <button class="whiteboard-doc-preview-btn" onclick="${docType === 'excel' ? 'openExcelFromWhiteboard' : 'openDocFromWhiteboard'}('${doc.id}')">
+            Open Full
+          </button>
+          <button class="whiteboard-doc-preview-btn" onclick="closeSplitView()">
+            Close
+          </button>
+        </div>
+      </div>
+      <div class="whiteboard-doc-preview-content">
+        ${docType === 'doc' ? 
+          `<div style="background:#fff;color:#000;padding:20px;border-radius:4px;height:100%;overflow:auto;font-family:serif;line-height:1.8;">${doc.content || '<p style="color:#999;">Empty document</p>'}</div>` :
+          renderExcelPreviewGrid(doc)
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderExcelPreviewGrid(excel) {
+  if (!excel || !excel.data) {
+    return '<div style="padding:20px;color:#999;text-align:center;">No data</div>';
+  }
+  
+  const rows = excel.data.slice(0, 20); // Limit preview rows
+  if (rows.length === 0) return '<div style="padding:20px;color:#999;text-align:center;">Empty spreadsheet</div>';
+  
+  let html = '<table style="width:100%;border-collapse:collapse;background:#fff;color:#000;font-size:12px;">';
+  rows.forEach((row, i) => {
+    html += '<tr>';
+    (row || []).slice(0, 10).forEach(cell => { // Limit columns
+      const tag = i === 0 ? 'th' : 'td';
+      html += `<${tag} style="border:1px solid #e0e0e0;padding:6px 8px;text-align:left;${i === 0 ? 'background:#f5f5f5;font-weight:600;' : ''}">${cell || ''}</${tag}>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  return html;
+}
+
+function openDocInSplitView(docId) {
+  const sidebar = document.getElementById('whiteboardDocSidebar');
+  const splitContainer = document.getElementById('whiteboardSplitContainer');
+  
+  if (sidebar) {
+    sidebar.classList.remove('open');
+  }
+  if (splitContainer) {
+    splitContainer.classList.add('split-mode');
+  }
+  
+  whiteboardSplitViewDocId = docId;
+  whiteboardSplitViewType = 'doc';
+  updateSplitViewPanel();
+}
+
+function openExcelInSplitView(excelId) {
+  const sidebar = document.getElementById('whiteboardDocSidebar');
+  const splitContainer = document.getElementById('whiteboardSplitContainer');
+  
+  if (sidebar) {
+    sidebar.classList.remove('open');
+  }
+  if (splitContainer) {
+    splitContainer.classList.add('split-mode');
+  }
+  
+  whiteboardSplitViewDocId = excelId;
+  whiteboardSplitViewType = 'excel';
+  updateSplitViewPanel();
+}
+
+function closeSplitView() {
+  const sidebar = document.getElementById('whiteboardDocSidebar');
+  const splitContainer = document.getElementById('whiteboardSplitContainer');
+  
+  if (splitContainer) {
+    splitContainer.classList.remove('split-mode');
+  }
+  
+  whiteboardSplitViewDocId = null;
+  whiteboardSplitViewType = null;
+  whiteboardDocSidebarOpen = false;
+  updateSplitViewPanel();
+  
+  // Update toggle button state
+  const toggleBtn = document.getElementById('whiteboardDocToggleBtn');
+  if (toggleBtn) {
+    toggleBtn.classList.remove('active');
+  }
+}
+
+function updateSplitViewPanel() {
+  const panel = document.getElementById('whiteboardDocPanel');
+  if (!panel) return;
+  
+  if (!whiteboardSplitViewDocId) {
+    panel.innerHTML = '';
+    panel.classList.add('hidden');
+    return;
+  }
+  
+  panel.classList.remove('hidden');
+  
+  let doc = null;
+  let docType = whiteboardSplitViewType;
+  
+  if (docType === 'doc') {
+    const docs = loadDocs();
+    doc = docs.find(d => d.id === whiteboardSplitViewDocId);
+  } else if (docType === 'excel') {
+    const excels = loadExcels();
+    doc = excels.find(e => e.id === whiteboardSplitViewDocId);
+  }
+  
+  if (!doc) {
+    panel.innerHTML = `
+      <div class="whiteboard-doc-content-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>Document not found</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Get all docs and excels for the document list
+  const allDocs = loadDocs();
+  const allExcels = loadExcels();
+  const projects = loadProjects();
+  const project = projects[gripProjectIndex];
+  
+  // Filter relevant docs
+  const linkedSpace = project?.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
+  const spaceDocs = linkedSpace ? allDocs.filter(d => d.spaceId === linkedSpace.id) : [];
+  const spaceExcels = linkedSpace ? allExcels.filter(e => e.spaceId === linkedSpace.id) : [];
+  const projectDocs = project ? allDocs.filter(d => d.projectId === project.id) : [];
+  const projectExcels = project ? allExcels.filter(e => e.projectId === project.id) : [];
+  
+  const docsMap = new Map();
+  [...spaceDocs, ...projectDocs, ...allDocs.slice(0, 10)].forEach(d => docsMap.set(d.id, d));
+  const displayDocs = Array.from(docsMap.values()).slice(0, 15);
+  
+  const excelsMap = new Map();
+  [...spaceExcels, ...projectExcels, ...allExcels.slice(0, 10)].forEach(e => excelsMap.set(e.id, e));
+  const displayExcels = Array.from(excelsMap.values()).slice(0, 15);
+  
+  panel.innerHTML = `
+    <div class="whiteboard-doc-panel-header">
+      <div class="whiteboard-doc-panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${docType === 'excel' ? 
+            '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>' :
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+          }
+        </svg>
+        ${doc.title || 'Untitled'}
+      </div>
+      <div class="whiteboard-doc-panel-actions">
+        <button class="whiteboard-doc-panel-btn" onclick="${docType === 'excel' ? 'openExcelFromWhiteboard' : 'openDocFromWhiteboard'}('${doc.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Open Full
+        </button>
+        <button class="whiteboard-doc-panel-btn close-btn" onclick="closeSplitView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Document List (compact) -->
+    <div class="whiteboard-doc-list-compact">
+      ${displayDocs.map(d => `
+        <div class="whiteboard-doc-list-item ${whiteboardSplitViewDocId === d.id && whiteboardSplitViewType === 'doc' ? 'active' : ''}" 
+             onclick="openDocInSplitView('${d.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#3b82f6;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>${d.title || 'Untitled'}</span>
+        </div>
+      `).join('')}
+      ${displayExcels.map(e => `
+        <div class="whiteboard-doc-list-item ${whiteboardSplitViewDocId === e.id && whiteboardSplitViewType === 'excel' ? 'active' : ''}" 
+             onclick="openExcelInSplitView('${e.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#22c55e;">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+          <span>${e.title || 'Untitled'}</span>
+        </div>
+      `).join('')}
+    </div>
+    
+    <!-- Document Content -->
+    <div class="whiteboard-doc-content-area">
+      ${docType === 'doc' ? 
+        `<div class="whiteboard-doc-rendered">${doc.content || '<p style="color:#999;">Empty document</p>'}</div>` :
+        renderExcelPreviewGrid(doc)
+      }
+    </div>
+  `;
+}
+
+function openDocFromWhiteboard(docId) {
+  // Close whiteboard temporarily and open doc
+  const overlay = document.getElementById('gripDiagramOverlay');
+  if (overlay) overlay.style.display = 'none';
+  
+  openDocEditor(docId);
+  
+  // Re-show whiteboard when doc is closed
+  const checkDocClosed = setInterval(() => {
+    if (!document.getElementById('docEditorOverlay')) {
+      clearInterval(checkDocClosed);
+      if (overlay) overlay.style.display = '';
+    }
+  }, 500);
+}
+
+function openExcelFromWhiteboard(excelId) {
+  const overlay = document.getElementById('gripDiagramOverlay');
+  if (overlay) overlay.style.display = 'none';
+  
+  openExcelEditor(excelId);
+  
+  const checkExcelClosed = setInterval(() => {
+    if (!document.getElementById('excelEditorOverlay')) {
+      clearInterval(checkExcelClosed);
+      if (overlay) overlay.style.display = '';
+    }
+  }, 500);
 }
