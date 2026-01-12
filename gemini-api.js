@@ -1,84 +1,39 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Browser-based with user-provided API key
+   With hardcoded API key - No modal required
    ============================================ */
 
-// Gemini API Configuration - User provides their own key
+// Gemini API Configuration - Hardcoded API key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const GEMINI_API_KEY_STORAGE = 'AIzaSyAEiofNhi5YeNlFcC7R3R-FHYgyLMtUERQ';
+const GEMINI_API_KEY = 'AIzaSyAEiofNhi5YeNlFcC7R3R-FHYgyLMtUERQ';
 
-// Get API key from localStorage
+// Get API key - always returns the hardcoded key
 function getGeminiApiKey() {
-  return localStorage.getItem(GEMINI_API_KEY_STORAGE) || '';
+  return GEMINI_API_KEY;
 }
 
-// Set API key in localStorage
+// Set API key - no-op since we use hardcoded key
 function setGeminiApiKey(key) {
-  localStorage.setItem(GEMINI_API_KEY_STORAGE, key);
+  // No-op - using hardcoded key
 }
 
-// Check if API key is configured
+// Check if API key is configured - always true
 function isGeminiConfigured() {
-  const key = getGeminiApiKey();
-  return key && key.length > 10;
+  return true;
 }
 
-// Show API key configuration modal
+// Show API key configuration modal - no longer needed, just run callback
 function showGeminiKeyModal(callback) {
-  const existingKey = getGeminiApiKey();
-  const content = `
-    <div class="gemini-key-modal">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 12px;">
-          <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"/>
-          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-          <circle cx="9" cy="9" r="1" fill="currentColor"/>
-          <circle cx="15" cy="9" r="1" fill="currentColor"/>
-        </svg>
-        <h3 style="margin: 0; font-size: 18px; color: var(--foreground);">Configure Gemini AI</h3>
-        <p style="color: var(--muted-foreground); font-size: 13px; margin-top: 8px;">
-          Enter your Google Gemini API key to enable AI features.
-        </p>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">API Key</label>
-        <input type="password" class="form-input" id="geminiApiKeyInput" 
-               value="${existingKey}" 
-               placeholder="AIzaSy..." 
-               style="font-family: monospace;" />
-        <p style="font-size: 11px; color: var(--muted-foreground); margin-top: 6px;">
-          Get your free API key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--primary);">aistudio.google.com/apikey</a>
-        </p>
-      </div>
-      
-      <div class="form-actions" style="margin-top: 20px;">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="saveGeminiKey(${callback ? `'${callback}'` : 'null'})">
-          Save API Key
-        </button>
-      </div>
-    </div>
-  `;
-  
-  openModal('AI Configuration', content);
+  // Skip modal, just execute callback if provided
+  if (callback && typeof window[callback] === 'function') {
+    setTimeout(() => window[callback](), 100);
+  }
 }
 
 function saveGeminiKey(callbackName) {
-  const input = document.getElementById('geminiApiKeyInput');
-  const key = input ? input.value.trim() : '';
-  
-  if (key && key.length > 10) {
-    setGeminiApiKey(key);
-    closeModal();
-    showToast('API key saved successfully!');
-    
-    // Execute callback if provided
-    if (callbackName && typeof window[callbackName] === 'function') {
-      setTimeout(() => window[callbackName](), 100);
-    }
-  } else {
-    showToast('Please enter a valid API key');
+  // No-op - using hardcoded key
+  if (callbackName && typeof window[callbackName] === 'function') {
+    setTimeout(() => window[callbackName](), 100);
   }
 }
 
@@ -92,10 +47,6 @@ let isAiTyping = false;
 
 async function callGeminiAPI(prompt, context = '') {
   const apiKey = getGeminiApiKey();
-  
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured. Please set your API key in Settings.');
-  }
   
   try {
     const systemPrompt = `You are a helpful AI assistant integrated into Layer, a project management application. 
@@ -135,9 +86,8 @@ ${context ? `Context: ${context}` : ''}`;
       const errorData = await response.json();
       console.error('Gemini API Error:', errorData);
       
-      // Check for quota exceeded
       if (errorData.error?.message?.includes('quota') || errorData.error?.message?.includes('limit')) {
-        throw new Error('API quota exceeded. Please check your API key or try again later.');
+        throw new Error('API quota exceeded. Please try again later.');
       }
       
       throw new Error(errorData.error?.message || 'Failed to get AI response');
@@ -161,13 +111,6 @@ ${context ? `Context: ${context}` : ''}`;
 // ============================================
 
 async function validateCodeWithGemini(code, language) {
-  if (!isGeminiConfigured()) {
-    return {
-      success: false,
-      message: 'AI validation unavailable. Configure your API key in Settings > AI Configuration.'
-    };
-  }
-  
   const prompt = `Analyze this ${language} code and check for errors. 
 If there are errors, explain them briefly. If the code is correct, say "Code looks correct!" and briefly describe what it does.
 Keep your response under 100 words.
@@ -198,10 +141,6 @@ ${code}
 async function handleAiChatMessage(message, projectContext = null) {
   if (!message || message.trim() === '') return null;
   
-  if (!isGeminiConfigured()) {
-    return 'AI is not configured. Please set your Gemini API key in Settings (⚙️) > AI Configuration, or click the gear icon in this chat.';
-  }
-  
   isAiTyping = true;
   
   let context = '';
@@ -227,12 +166,6 @@ Status: ${projectContext.status || 'In Progress'}.`;
     return response;
   } catch (error) {
     isAiTyping = false;
-    
-    // Check if it's an API key issue
-    if (error.message.includes('API key') || error.message.includes('quota')) {
-      return `⚠️ ${error.message}\n\nClick the ⚙️ icon to configure your API key.`;
-    }
-    
     return `Sorry, I encountered an error: ${error.message}. Please try again.`;
   }
 }
@@ -249,12 +182,6 @@ async function handleProjectAiSendWithGemini() {
   
   const message = input.value.trim();
   if (!message) return;
-  
-  // Check if AI is configured
-  if (!isGeminiConfigured()) {
-    showGeminiKeyModal('handleProjectAiSendWithGemini');
-    return;
-  }
   
   // Add user message
   const userMsg = document.createElement('div');
@@ -379,23 +306,15 @@ async function runCodeWithValidation(cellId) {
       }
     }
     
-    // Then validate with Gemini AI (if configured)
+    // Then validate with Gemini AI
     let finalOutput = '';
     
-    if (isGeminiConfigured()) {
-      const validation = await validateCodeWithGemini(code, lang);
-      
-      if (lang === 'JavaScript') {
-        finalOutput = `📊 Execution Output:\n${localOutput}\n\n🤖 AI Analysis:\n${validation.message}`;
-      } else {
-        finalOutput = `🤖 AI Analysis (${lang}):\n${validation.message}`;
-      }
+    const validation = await validateCodeWithGemini(code, lang);
+    
+    if (lang === 'JavaScript') {
+      finalOutput = `📊 Execution Output:\n${localOutput}\n\n🤖 AI Analysis:\n${validation.message}`;
     } else {
-      if (lang === 'JavaScript') {
-        finalOutput = `📊 Execution Output:\n${localOutput}\n\n💡 Tip: Configure your Gemini API key in Settings for AI-powered code analysis.`;
-      } else {
-        finalOutput = `💡 Configure your Gemini API key in Settings to get AI analysis for ${lang} code.`;
-      }
+      finalOutput = `🤖 AI Analysis (${lang}):\n${validation.message}`;
     }
     
     contentEl.innerHTML = `<pre style="white-space: pre-wrap; margin: 0; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.5;">${escapeHtml(finalOutput)}</pre>`;
@@ -439,12 +358,6 @@ async function handleWhiteboardAiSendWithGemini() {
   
   const message = input.value.trim();
   if (!message) return;
-  
-  // Check if AI is configured
-  if (!isGeminiConfigured()) {
-    showGeminiKeyModal('handleWhiteboardAiSendWithGemini');
-    return;
-  }
   
   // Add user message
   const userMsg = document.createElement('div');
@@ -516,12 +429,6 @@ async function handleDocAiSendWithGemini() {
   const message = input.value.trim();
   if (!message) return;
   
-  // Check if AI is configured
-  if (!isGeminiConfigured()) {
-    showGeminiKeyModal('handleDocAiSendWithGemini');
-    return;
-  }
-  
   // Add user message
   const userMsg = document.createElement('div');
   userMsg.className = 'grip-ai-message user';
@@ -591,12 +498,6 @@ async function handleDocContentAiSend() {
   
   const message = input.value.trim();
   if (!message) return;
-  
-  // Check if AI is configured
-  if (!isGeminiConfigured()) {
-    showGeminiKeyModal('handleDocContentAiSend');
-    return;
-  }
   
   // Add user message
   const userMsg = document.createElement('div');
