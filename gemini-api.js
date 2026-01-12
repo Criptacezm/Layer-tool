@@ -1,9 +1,9 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   With hardcoded API key - No modal required
+   Direct API call with hardcoded API key
    ============================================ */
 
-// Gemini API Configuration - Hardcoded API key
+// Gemini API Configuration - Using your new API key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const GEMINI_API_KEY = 'AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM';
 
@@ -42,19 +42,19 @@ let aiChatHistory = [];
 let isAiTyping = false;
 
 // ============================================
-// Gemini API Functions
+// Main API Call - Direct to Gemini API
 // ============================================
 
 async function callGeminiAPI(prompt, context = '') {
-  const apiKey = getGeminiApiKey();
-  
   try {
     const systemPrompt = `You are a helpful AI assistant integrated into Layer, a project management application. 
 You help users with their projects, answer questions, provide suggestions, and assist with task management.
 Be concise, helpful, and friendly. Keep responses under 150 words unless more detail is needed.
 ${context ? `Context: ${context}` : ''}`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const fullPrompt = systemPrompt + '\n\nUser: ' + prompt;
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -63,7 +63,9 @@ ${context ? `Context: ${context}` : ''}`;
         contents: [
           {
             parts: [
-              { text: systemPrompt + '\n\nUser: ' + prompt }
+              {
+                text: fullPrompt
+              }
             ]
           }
         ],
@@ -72,31 +74,22 @@ ${context ? `Context: ${context}` : ''}`;
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 1024,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        ]
+        }
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Gemini API Error:', errorData);
-      
-      if (errorData.error?.message?.includes('quota') || errorData.error?.message?.includes('limit')) {
-        throw new Error('API quota exceeded. Please try again later.');
-      }
-      
       throw new Error(errorData.error?.message || 'Failed to get AI response');
     }
 
     const data = await response.json();
     
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-      return data.candidates[0].content.parts[0].text;
+    // Extract text from Gemini response format
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      const text = data.candidates[0].content.parts.map(part => part.text).join('');
+      return text;
     }
     
     throw new Error('Invalid response format from Gemini API');
