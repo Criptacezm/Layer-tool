@@ -20,41 +20,35 @@
   <script src="https://cdn.jsdelivr.net/npm/@xyflow/react@1/dist/umd/index.js"></script>
 </head>
 <body>
-  <!-- Enhanced Loading Screen - Motion Graphic Style -->
+  <!-- Professional Loading Screen - Minimalist Motion Graphics -->
   <div class="loading-screen" id="loadingScreen">
     <div class="loading-container">
-      <!-- Animated Logo Container -->
+      <!-- Minimal Logo Container -->
       <div class="loading-logo-wrapper">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="loading-logo">
-          <path class="logo-bg" d="M4 4h16v16H4V4z" fill="url(#loading-gradient)" opacity="0.2"></path>
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="loading-logo">
+          <path class="logo-bg" d="M4 4h16v16H4V4z" fill="url(#loading-gradient)" opacity="0.15"></path>
           <path class="logo-line logo-line-1" d="M7 7h10v2H7V7z" fill="url(#loading-gradient)"></path>
           <path class="logo-line logo-line-2" d="M7 11h10v2H7v-2z" fill="url(#loading-gradient)"></path>
           <path class="logo-line logo-line-3" d="M7 15h6v2H7v-2z" fill="url(#loading-gradient)"></path>
           <defs>
             <linearGradient id="loading-gradient" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#5e6ad2"></stop>
-              <stop offset="1" stop-color="#8b5cf6"></stop>
+              <stop stop-color="#3b82f6"></stop>
+              <stop offset="1" stop-color="#6366f1"></stop>
             </linearGradient>
           </defs>
         </svg>
-        <!-- Orbiting Particles -->
-        <div class="loading-orbit">
-          <div class="loading-particle particle-1"></div>
-          <div class="loading-particle particle-2"></div>
-          <div class="loading-particle particle-3"></div>
-        </div>
+        <!-- Progress Ring -->
+        <svg class="loading-progress-ring" width="96" height="96" viewBox="0 0 96 96">
+          <circle class="progress-ring-bg" cx="48" cy="48" r="44" fill="none" stroke-width="1.5"/>
+          <circle class="progress-ring-fill" cx="48" cy="48" r="44" fill="none" stroke="url(#progress-gradient)" stroke-width="1.5" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#3b82f6"/>
+              <stop offset="100%" stop-color="#6366f1"/>
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
-      <!-- Progress Ring -->
-      <svg class="loading-progress-ring" width="120" height="120" viewBox="0 0 120 120">
-        <circle class="progress-ring-bg" cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-        <circle class="progress-ring-fill" cx="60" cy="60" r="54" fill="none" stroke="url(#progress-gradient)" stroke-width="2" stroke-linecap="round"/>
-        <defs>
-          <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#5e6ad2"/>
-            <stop offset="100%" stop-color="#8b5cf6"/>
-          </linearGradient>
-        </defs>
-      </svg>
       <!-- Loading Text -->
       <div class="loading-text">
         <span class="loading-text-main">Layer</span>
