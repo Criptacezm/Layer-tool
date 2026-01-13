@@ -8294,7 +8294,7 @@ function handleWhiteboardAiSidebarSend() {
 }
 
 // ============================================
-// Doc AI Inline Command - ** trigger
+// Doc AI Inline Command - **prompt** trigger
 // ============================================
 let isAiWriting = false;
 
@@ -8302,86 +8302,116 @@ function setupDocAiCommand() {
   const editor = document.getElementById('docEditorContent');
   if (!editor) return;
   
-  editor.addEventListener('keydown', async function(e) {
-    if (e.key === ' ' && !isAiWriting) {
-      // Get current text content to check for ** pattern
-      const selection = window.getSelection();
-      if (!selection.rangeCount) return;
+  editor.addEventListener('input', async function(e) {
+    if (isAiWriting) return;
+    
+    // Get current text content to check for **prompt** pattern
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const textNode = range.startContainer;
+    
+    if (textNode.nodeType === Node.TEXT_NODE) {
+      const text = textNode.textContent;
+      const cursorPos = range.startOffset;
       
-      const range = selection.getRangeAt(0);
-      const textNode = range.startContainer;
+      // Check for complete **prompt** pattern (starts and ends with **)
+      const beforeCursor = text.substring(0, cursorPos);
+      const match = beforeCursor.match(/\*\*(.+?)\*\*$/);
       
-      if (textNode.nodeType === Node.TEXT_NODE) {
-        const text = textNode.textContent;
-        const cursorPos = range.startOffset;
+      if (match && match[1] && match[1].trim().length > 0) {
+        const prompt = match[1].trim();
         
-        // Check if there's a ** pattern before cursor
-        const beforeCursor = text.substring(0, cursorPos);
-        const match = beforeCursor.match(/\*\*\s*(.+)$/);
+        // Find the full match position
+        const fullMatch = match[0];
+        const startPos = beforeCursor.lastIndexOf(fullMatch);
+        const beforeCommand = text.substring(0, startPos);
+        const afterCursor = text.substring(cursorPos);
         
-        if (match && match[1] && match[1].trim().length > 0) {
-          e.preventDefault();
-          const prompt = match[1].trim();
-          
-          // Remove the ** command from text
-          const startPos = beforeCursor.lastIndexOf('**');
-          const beforeCommand = text.substring(0, startPos);
-          const afterCursor = text.substring(cursorPos);
-          
-          // Show loading indicator at cursor
-          textNode.textContent = beforeCommand + afterCursor;
-          
-          // Create inline loading indicator
-          const loadingSpan = document.createElement('span');
-          loadingSpan.className = 'ai-inline-loading';
-          loadingSpan.innerHTML = '<span class="ai-loading-dots-loop"><span></span><span></span><span></span></span> Writing...';
-          
-          // Insert loading at cursor position
-          const newRange = document.createRange();
-          newRange.setStart(textNode, beforeCommand.length);
-          newRange.collapse(true);
-          newRange.insertNode(loadingSpan);
-          
-          isAiWriting = true;
-          
-          try {
-            // Call AI to generate content
-            if (typeof window.callGeminiAPI === 'function') {
-              const response = await window.callGeminiAPI(prompt, 'Write content directly. No explanation needed. Just provide the content the user requested.');
-              
-              // Remove loading indicator
-              loadingSpan.remove();
-              
-              // Insert AI response
-              const responseSpan = document.createElement('span');
-              responseSpan.className = 'ai-generated-content';
-              responseSpan.textContent = response;
-              
-              // Insert at the same position
-              const insertRange = document.createRange();
-              insertRange.setStart(textNode, beforeCommand.length);
-              insertRange.collapse(true);
-              insertRange.insertNode(responseSpan);
-              
-              // Move cursor to end of inserted content
-              const finalRange = document.createRange();
-              finalRange.setStartAfter(responseSpan);
-              finalRange.collapse(true);
-              selection.removeAllRanges();
-              selection.addRange(finalRange);
-              
-              // Trigger auto-save
-              if (typeof autoSaveDoc === 'function') {
-                autoSaveDoc();
-              }
-            }
-          } catch (error) {
+        // Remove the **prompt** command from text
+        textNode.textContent = beforeCommand + afterCursor;
+        
+        // Create inline loading indicator with smooth animation
+        const loadingSpan = document.createElement('span');
+        loadingSpan.className = 'ai-inline-loading';
+        loadingSpan.innerHTML = `
+          <span class="ai-writing-indicator">
+            <svg class="ai-writing-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+            <span class="ai-writing-text">AI is writing</span>
+            <span class="ai-writing-dots"><span></span><span></span><span></span></span>
+          </span>
+        `;
+        
+        // Insert loading at cursor position
+        const newRange = document.createRange();
+        newRange.setStart(textNode, beforeCommand.length);
+        newRange.collapse(true);
+        newRange.insertNode(loadingSpan);
+        
+        isAiWriting = true;
+        
+        try {
+          // Call AI to generate formatted document content
+          if (typeof window.callGeminiAPI === 'function') {
+            const systemPrompt = `You are a document writer. Generate well-structured content based on the user's request.
+Format the output as HTML with proper structure:
+- Use <h1> for main titles (only one per document)
+- Use <h2> for section headings
+- Use <h3> for subsection headings
+- Use <p> for paragraphs
+- Use <ul> or <ol> for lists
+- Use <strong> for emphasis
+- Keep the content professional and well-organized
+Do not include any explanation, just output the formatted HTML content directly.`;
+            
+            const response = await window.callGeminiAPI(prompt, systemPrompt);
+            
+            // Remove loading indicator
             loadingSpan.remove();
-            console.error('AI writing error:', error);
+            
+            // Create a container for the AI-generated content
+            const responseContainer = document.createElement('div');
+            responseContainer.className = 'ai-generated-content';
+            responseContainer.innerHTML = response;
+            
+            // Insert with smooth typewriter animation
+            const insertRange = document.createRange();
+            insertRange.setStart(textNode, beforeCommand.length);
+            insertRange.collapse(true);
+            
+            // Animate the content appearing
+            responseContainer.style.opacity = '0';
+            responseContainer.style.transform = 'translateY(10px)';
+            insertRange.insertNode(responseContainer);
+            
+            // Trigger reflow and animate in
+            requestAnimationFrame(() => {
+              responseContainer.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+              responseContainer.style.opacity = '1';
+              responseContainer.style.transform = 'translateY(0)';
+            });
+            
+            // Move cursor to end of inserted content
+            const finalRange = document.createRange();
+            finalRange.setStartAfter(responseContainer);
+            finalRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(finalRange);
+            
+            // Trigger auto-save
+            if (typeof autoSaveDoc === 'function') {
+              autoSaveDoc();
+            }
           }
-          
-          isAiWriting = false;
+        } catch (error) {
+          loadingSpan.remove();
+          console.error('AI writing error:', error);
         }
+        
+        isAiWriting = false;
       }
     }
   });
