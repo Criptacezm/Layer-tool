@@ -9,16 +9,15 @@ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 // 1. YOUR API KEY
 const GEMINI_API_KEY = "AIzaSyDj-SWFRGDFEzw10ueBUOCgn3UE8qLrYaM";
 
-// 2. Initialize the API with the STABLE v1 version
+// 2. Initialize the API using v1beta to support system instructions
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// We specify 'v1' here to avoid the v1beta 404 error
 const model = genAI.getGenerativeModel(
     { 
         model: "gemini-1.5-flash",
         systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
     }, 
-    { apiVersion: "v1" } 
+    { apiVersion: "v1beta" } // <--- Change this to v1beta
 );
 
 /**
