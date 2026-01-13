@@ -2968,15 +2968,19 @@ async function runCode(cellId) {
   if (!outputEl || !contentEl) return;
   
   outputEl.style.display = 'block';
-  contentEl.textContent = '⏳ Running...';
+  contentEl.innerHTML = '<span class="code-running-animation">⏳ Running...</span>';
   
   // Clear previous error highlights
   clearCodeErrorHighlights(cellId);
   
   // Run the code first
   let hasError = false;
+  let runtimeError = null;
+  
   if (lang === 'JavaScript') {
-    hasError = runJavaScript(code, contentEl, outputEl);
+    const result = runJavaScript(code, contentEl, outputEl);
+    hasError = result.hasError;
+    runtimeError = result.error;
   } else if (lang === 'Python') {
     runPythonSimulated(code, contentEl, outputEl);
   } else if (lang === 'C++' || lang === 'C') {
@@ -2985,12 +2989,31 @@ async function runCode(cellId) {
     contentEl.textContent = `⚠️ Code execution not supported for ${lang}.\n\nSupported languages: JavaScript, Python, C++`;
   }
   
-  // If error, use AI to analyze
-  if (hasError && typeof window.analyzeCodeErrors === 'function') {
+  // ALWAYS use AI to analyze code for potential issues
+  if (typeof window.analyzeCodeErrors === 'function') {
     try {
+      // Show analyzing indicator
+      if (hasError) {
+        contentEl.innerHTML += '\n\n<span class="ai-analyzing">🤖 AI analyzing errors...</span>';
+      }
+      
       const analysis = await window.analyzeCodeErrors(code, lang.toLowerCase());
+      
+      // Remove analyzing indicator
+      const analyzingEl = contentEl.querySelector('.ai-analyzing');
+      if (analyzingEl) analyzingEl.remove();
+      
       if (analysis.errors && analysis.errors.length > 0) {
         highlightCodeErrors(cellId, analysis.errors, codeEl);
+        
+        // Add AI insights to output if there were errors
+        if (hasError) {
+          contentEl.innerHTML += `\n\n<div class="ai-error-summary">
+            <strong>🤖 AI Found ${analysis.errors.length} issue${analysis.errors.length > 1 ? 's' : ''}:</strong>
+            <ul>${analysis.errors.map(e => `<li>Line ${e.line}: ${e.message}</li>`).join('')}</ul>
+            <small>Hover over highlighted lines for fix suggestions</small>
+          </div>`;
+        }
       }
     } catch (e) {
       console.log('AI code analysis unavailable:', e);
@@ -3076,12 +3099,12 @@ function runJavaScript(code, contentEl, outputEl) {
     contentEl.textContent = output || '✅ Code executed successfully (no output)';
     outputEl.style.borderColor = '#22c55e';
     outputEl.style.background = 'rgba(34, 197, 94, 0.1)';
-    return false; // No error
+    return { hasError: false, error: null };
   } catch (error) {
     contentEl.textContent = `❌ Error: ${error.message}`;
     outputEl.style.borderColor = '#ef4444';
     outputEl.style.background = 'rgba(239, 68, 68, 0.1)';
-    return true; // Has error
+    return { hasError: true, error: error };
   }
 }
 
