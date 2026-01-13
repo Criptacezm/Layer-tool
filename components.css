@@ -2398,60 +2398,490 @@
 }
 
 /* ============================================
-   DOC AI Sidebar - Right side overlay
+   DOC AI Sidebar - LEFT side, minimalistic ClickUp Brain style
    ============================================ */
 .doc-ai-sidebar {
   position: fixed;
   top: 0;
-  right: 0;
-  width: 400px;
+  left: 0;
+  width: 420px;
   height: 100vh;
-  background: linear-gradient(180deg, rgba(12, 12, 14, 0.98) 0%, rgba(8, 8, 10, 0.99) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card, #0a0a0b);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   z-index: 3000;
-  transform: translateX(100%);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: -4px 0 40px rgba(0, 0, 0, 0.5);
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
 }
 
 .doc-ai-sidebar.open {
   transform: translateX(0);
 }
 
-/* Make doc-ai-sidebar use the same internal styles */
+/* Minimalistic AI Sidebar Header - ClickUp Brain Style */
 .doc-ai-sidebar .ai-sidebar-header,
-.doc-ai-sidebar .ai-sidebar-messages,
-.doc-ai-sidebar .ai-sidebar-input-area {
-  /* Inherit all styles from the base ai-sidebar classes */
+.whiteboard-ai-sidebar .ai-sidebar-header,
+.ai-sidebar-overlay .ai-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.doc-ai-sidebar .ai-sidebar-brand,
+.whiteboard-ai-sidebar .ai-sidebar-brand,
+.ai-sidebar-overlay .ai-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Animated Brain/AI Icon */
+.ai-sidebar-brain-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ai-sidebar-brain-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.ai-brain-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.15;
+  animation: brainPulse 2s ease-in-out infinite;
+}
+
+@keyframes brainPulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.2;
+  }
+}
+
+.ai-sidebar-title-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-sidebar-title-text span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+/* Minimalistic Close Button */
+.ai-sidebar-close-minimal {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ai-sidebar-close-minimal:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.ai-sidebar-close-minimal svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Minimalist Welcome Message - ClickUp Brain Style */
+.ai-welcome-message {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-welcome-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ai-welcome-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary) 0%, hsl(271, 91%, 65%) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-welcome-avatar svg {
+  width: 16px;
+  height: 16px;
+  color: white;
+}
+
+.ai-welcome-content {
+  flex: 1;
+}
+
+.ai-welcome-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 6px;
+}
+
+.ai-welcome-text {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+/* Message Bubbles - Minimalist */
+.ai-message-bubble {
+  padding: 16px 20px;
+  margin: 0 16px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ai-message-bubble.user {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.15);
+  margin-left: 40px;
+}
+
+.ai-message-bubble .ai-message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ai-message-bubble .ai-avatar-mini {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--primary) 0%, hsl(271, 91%, 65%) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-message-bubble .ai-avatar-mini svg {
+  width: 10px;
+  height: 10px;
+  color: white;
+}
+
+.ai-message-bubble .ai-message-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* AI Loading Animation - Smooth Loop */
+.ai-loading-loop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  margin: 0 16px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ai-loading-dots-loop {
+  display: flex;
+  gap: 4px;
+}
+
+.ai-loading-dots-loop span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: dotLoop 1.4s ease-in-out infinite;
+}
+
+.ai-loading-dots-loop span:nth-child(1) { animation-delay: 0s; }
+.ai-loading-dots-loop span:nth-child(2) { animation-delay: 0.16s; }
+.ai-loading-dots-loop span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dotLoop {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ai-loading-text-loop {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  animation: textPulse 2s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Action Items Button - Like ClickUp */
+.ai-action-items-btn {
+  position: absolute;
+  top: 56px;
+  right: -100px;
+  padding: 10px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ai-action-items-btn:hover {
+  background: var(--muted);
+}
+
+/* Minimalist Input Area */
+.ai-sidebar-input-minimal {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.ai-input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.2s;
+}
+
+.ai-input-container:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.ai-input-container input,
+.ai-input-container textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  font-family: inherit;
+}
+
+.ai-input-container input::placeholder,
+.ai-input-container textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+.ai-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-input-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ai-input-action-btn:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.ai-input-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-send-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-send-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.ai-send-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Page Context Selector */
+.ai-page-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: fit-content;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ai-page-context:hover {
+  border-color: var(--primary);
+}
+
+.ai-page-context-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.ai-page-context-icon svg {
+  width: 10px;
+  height: 10px;
+  color: white;
+}
+
+.ai-page-context-text {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-page-context-name {
+  color: var(--foreground);
+  font-weight: 500;
 }
 
 /* ============================================
-   Whiteboard AI Sidebar
+   Whiteboard AI Sidebar - LEFT side, same minimalistic style
    ============================================ */
 .whiteboard-ai-sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 380px;
+  width: 420px;
   height: 100vh;
-  background: linear-gradient(180deg, rgba(12, 12, 14, 0.98) 0%, rgba(8, 8, 10, 0.99) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card, #0a0a0b);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   z-index: 3000;
   transform: translateX(-100%);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.5);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
 }
 
 .whiteboard-ai-sidebar.open {
   transform: translateX(0);
+}
+
+/* AI Sidebar Overlay (unified style for all AI panels) */
+.ai-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 420px;
+  height: 100vh;
+  background: var(--card, #0a0a0b);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+}
+
+.ai-sidebar-overlay.open {
+  transform: translateX(0);
+}
+
+/* AI Sidebar Backdrop */
+.ai-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 2999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.ai-sidebar-backdrop.open {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* ============================================
@@ -3140,7 +3570,8 @@ h4.ai-heading { font-size: 14px; }
 @media (max-width: 768px) {
   .ai-sidebar,
   .doc-ai-sidebar,
-  .whiteboard-ai-sidebar {
+  .whiteboard-ai-sidebar,
+  .ai-sidebar-overlay {
     width: 100%;
   }
   
@@ -3151,4 +3582,53 @@ h4.ai-heading { font-size: 14px; }
   .ai-code-pre {
     padding: 12px;
   }
+}
+
+/* ============================================
+   AI Inline Loading - For ** command
+   ============================================ */
+.ai-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--primary);
+  margin: 0 4px;
+  animation: inlineLoadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes inlineLoadingPulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.ai-inline-loading .ai-loading-dots-loop {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.ai-inline-loading .ai-loading-dots-loop span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* AI Generated Content Highlight */
+.ai-generated-content {
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 2px;
+  transition: background 0.5s ease;
+}
+
+.ai-generated-content:hover {
+  background: rgba(99, 102, 241, 0.1);
 }
