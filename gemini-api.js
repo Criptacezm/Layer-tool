@@ -15,7 +15,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 // REPLACE YOUR EXISTING model DEFINITION WITH THIS:
 const model = genAI.getGenerativeModel(
     { 
-        model: "gemini-1.5-flash", // Use this exact name
+        model: "gemini-2.5-flash", // Use this exact name
         systemInstruction: "You are the AI assistant for 'Layer', a project management app. Help the user manage tasks, write docs, and fix code. Be professional and concise."
     }
     // REMOVE the { apiVersion: "v1beta" } part entirely
