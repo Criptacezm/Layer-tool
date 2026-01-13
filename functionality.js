@@ -4649,31 +4649,53 @@ function openDocEditor(docId = null) {
       
       <!-- AI Sidebar - LEFT Side -->
       <div class="doc-ai-sidebar" id="docAiSidebar">
-        <div class="doc-ai-sidebar-header">
-          <h4>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
-            </svg>
-            AI Assistant
-          </h4>
-          <button class="doc-ai-sidebar-close" onclick="toggleDocAiSidebar()" title="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <div class="ai-sidebar-header">
+          <div class="ai-sidebar-brand">
+            <div class="ai-sidebar-logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+                <path d="M8 10h.01M12 10h.01M16 10h.01"/>
+              </svg>
+            </div>
+            <div class="ai-sidebar-title">
+              <h3>AI Assistant</h3>
+              <span>Universal Knowledge</span>
+            </div>
+          </div>
+          <button class="ai-sidebar-close" onclick="toggleDocAiSidebar()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           </button>
         </div>
-        <div class="doc-ai-sidebar-messages" id="docAiSidebarMessages">
-          <div class="doc-ai-sidebar-message assistant">
-            Hello! I'm your document assistant. How can I help you today?
+        <div class="ai-sidebar-messages" id="docAiMessages">
+          <div class="ai-sidebar-message assistant">
+            <div class="ai-message-content">
+              <p class="ai-paragraph"><strong>Hello!</strong> I'm your AI assistant with universal knowledge.</p>
+              <p class="ai-paragraph">I can help you with:</p>
+              <ul class="ai-bullet-list">
+                <li class="ai-bullet">Writing and editing documents</li>
+                <li class="ai-bullet">Code assistance and debugging</li>
+                <li class="ai-bullet">Research and explanations</li>
+                <li class="ai-bullet">Creative ideas and brainstorming</li>
+              </ul>
+            </div>
           </div>
         </div>
-        <div class="doc-ai-sidebar-input">
-          <input type="text" id="docAiSidebarInput" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')handleDocAiSidebarSend()" />
-          <button onclick="handleDocAiSidebarSend()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-            </svg>
-          </button>
+        <div class="ai-sidebar-input-area">
+          <div class="ai-input-wrapper">
+            <textarea id="docAiInput" class="ai-sidebar-input" placeholder="Ask me anything..." rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleDocAiSend()}"></textarea>
+            <button class="ai-sidebar-send" onclick="handleDocAiSend()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="ai-suggestions">
+            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Help me improve this text';handleDocAiSend()">Improve writing</button>
+            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Explain this simply';handleDocAiSend()">Simplify</button>
+            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Write code for...';document.getElementById('docAiInput').focus()">Write code</button>
+          </div>
         </div>
       </div>
       
@@ -8066,7 +8088,7 @@ function toggleDocAiSidebar() {
       sidebar.classList.add('open');
       // Focus input
       setTimeout(() => {
-        document.getElementById('docAiSidebarInput')?.focus();
+        document.getElementById('docAiInput')?.focus();
       }, 300);
     } else {
       sidebar.classList.remove('open');
@@ -8074,16 +8096,16 @@ function toggleDocAiSidebar() {
   }
 }
 
-function handleDocAiSidebarSend() {
+function handleDocAiSend() {
   if (typeof window.processAISidebarChat === 'function') {
     const editor = document.getElementById('docEditorContent');
     const docText = editor ? editor.innerText.substring(0, 1000) : '';
-    const ctx = `User is editing a document. Current content preview: ${docText}`;
-    window.processAISidebarChat('docAiSidebarInput', 'docAiSidebarMessages', ctx);
+    const ctx = `User is editing a document. Current content preview: ${docText}. You have universal knowledge - help with anything.`;
+    window.processAISidebarChat('docAiInput', 'docAiMessages', ctx);
   } else {
-    // Fallback
-    const input = document.getElementById('docAiSidebarInput');
-    const container = document.getElementById('docAiSidebarMessages');
+    // Fallback when gemini-api not loaded
+    const input = document.getElementById('docAiInput');
+    const container = document.getElementById('docAiMessages');
     if (input && container && input.value.trim()) {
       const userMsg = document.createElement('div');
       userMsg.className = 'ai-sidebar-message user';
@@ -8099,6 +8121,11 @@ function handleDocAiSidebarSend() {
       container.appendChild(loading);
     }
   }
+}
+
+// Legacy function name for backward compatibility
+function handleDocAiSidebarSend() {
+  handleDocAiSend();
 }
 
 function escapeHtmlForAI(text) {
