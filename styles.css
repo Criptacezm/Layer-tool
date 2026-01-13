@@ -5906,7 +5906,7 @@ body {
 }
 
 .notion-editor-content:empty::before {
-  content: "Type here...";
+  content: "Type here or to ask AI, type '**' for commands and end with '**'";
   display: flex;
   align-items: center;
   gap: 8px;
@@ -10995,3 +10995,4 @@ body {
   .project-detail.linear-layout { grid-template-columns: 1fr; }
   .project-sidebar-linear { height: auto; position: relative; border-top: 1px solid var(--border); }
 }
+
