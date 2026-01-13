@@ -2996,9 +2996,16 @@ async function runCode(cellId) {
   // ALWAYS use AI to analyze code for potential issues
   if (typeof window.analyzeCodeErrors === 'function') {
     try {
-      // Show analyzing indicator
+      // Show analyzing indicator with smooth animation
       if (hasError) {
-        contentEl.innerHTML += '\n\n<span class="ai-analyzing">🤖 AI analyzing errors...</span>';
+        contentEl.innerHTML += `\n\n<span class="ai-analyzing">
+          <svg class="ai-analyzing-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span class="ai-analyzing-text">AI analyzing errors</span>
+          <span class="ai-analyzing-dots"><span></span><span></span><span></span></span>
+        </span>`;
       }
       
       const analysis = await window.analyzeCodeErrors(code, lang.toLowerCase());
@@ -3013,7 +3020,14 @@ async function runCode(cellId) {
         // Add AI insights to output if there were errors
         if (hasError) {
           contentEl.innerHTML += `\n\n<div class="ai-error-summary">
-            <strong>🤖 AI Found ${analysis.errors.length} issue${analysis.errors.length > 1 ? 's' : ''}:</strong>
+            <div class="ai-error-summary-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <strong>AI Found ${analysis.errors.length} issue${analysis.errors.length > 1 ? 's' : ''}</strong>
+            </div>
             <ul>${analysis.errors.map(e => `<li>Line ${e.line}: ${e.message}</li>`).join('')}</ul>
             <small>Hover over highlighted lines for fix suggestions</small>
           </div>`;
