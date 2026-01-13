@@ -14,7 +14,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Universal AI Model with broad knowledge - CONCISE responses
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
 RESPONSE RULES:
