@@ -8,7 +8,7 @@ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 // -----------------------------------------------------------------------
 // API Configuration
 // -----------------------------------------------------------------------
-const GEMINI_API_KEY = "AIzaSyB3zV3x0SvaEA8dguMy38K3sDENQDUEt1w";
+const GEMINI_API_KEY = "AIzaSyAHQ3lI9as0lPG7CK8DALQ3Odgh93HkYDc";
 
 // Check if key is missing to prevent vague errors
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_OWN_API_KEY_HERE" || GEMINI_API_KEY === "") {
