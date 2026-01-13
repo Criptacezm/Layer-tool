@@ -4625,6 +4625,13 @@ function openDocEditor(docId = null) {
             </svg>
             Share
           </button>
+          <button class="notion-action-btn doc-ask-ai-header-btn" onclick="toggleDocAiSidebar()" title="Ask AI">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+              <path d="M8 10h.01M12 10h.01M16 10h.01"/>
+            </svg>
+            Ask AI
+          </button>
           <button class="notion-action-btn" title="More options">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
               <circle cx="12" cy="12" r="1"/>
@@ -4640,8 +4647,34 @@ function openDocEditor(docId = null) {
         </div>
       </div>
       
-      <!-- Minimalistic Sidebar - Hidden -->
-      <div class="notion-sidebar" style="display: none;">
+      <!-- AI Sidebar - LEFT Side -->
+      <div class="doc-ai-sidebar" id="docAiSidebar">
+        <div class="doc-ai-sidebar-header">
+          <h4>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+            </svg>
+            AI Assistant
+          </h4>
+          <button class="doc-ai-sidebar-close" onclick="toggleDocAiSidebar()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="doc-ai-sidebar-messages" id="docAiSidebarMessages">
+          <div class="doc-ai-sidebar-message assistant">
+            Hello! I'm your document assistant. How can I help you today?
+          </div>
+        </div>
+        <div class="doc-ai-sidebar-input">
+          <input type="text" id="docAiSidebarInput" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')handleDocAiSidebarSend()" />
+          <button onclick="handleDocAiSidebarSend()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
       </div>
       
       <!-- Right Action Bar -->
@@ -4703,48 +4736,6 @@ function openDocEditor(docId = null) {
           
           <!-- Content Editor -->
           <div class="notion-editor-content" id="docEditorContent" contenteditable="true" spellcheck="true">${doc ? doc.content : ''}</div>
-          
-          <!-- AI Chat Toggle Button -->
-          <button class="doc-ai-toggle-btn" onclick="toggleDocContentAiChat()" title="Ask AI">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
-              <path d="M8 10h.01M12 10h.01M16 10h.01"/>
-            </svg>
-          </button>
-          
-          <!-- AI Chat Box for Doc Content Area -->
-          <div class="doc-content-ai-chat" id="docContentAiChat" style="display: none;">
-            <div class="doc-content-ai-header">
-              <h4>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                  <line x1="9" y1="9" x2="9.01" y2="9"/>
-                  <line x1="15" y1="9" x2="15.01" y2="9"/>
-                </svg>
-                Document Assistant
-              </h4>
-              <div style="display:flex;gap:4px;">
-                <button onclick="showGeminiKeyModal()" title="Configure AI" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted-foreground);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
-                  </svg>
-                </button>
-                <button onclick="toggleDocContentAiChat()" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted-foreground);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="doc-content-ai-messages" id="docContentAiMessages">
-              <div class="grip-ai-message assistant">Hi! I can help with your document. Ask me anything about writing, editing, or your content.</div>
-            </div>
-            <div class="doc-content-ai-input">
-              <input type="text" id="docContentAiInput" placeholder="Ask about your document..." onkeydown="if(event.key==='Enter')handleDocContentAiSend()"/>
-              <button onclick="handleDocContentAiSend()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -8059,3 +8050,183 @@ function closeSidebarPriorityDropdown(projectIndex) {
     dropdown.classList.remove('open');
   }
 }
+
+/* ============================================
+   Enhanced AI Sidebar Functions
+   ============================================ */
+
+// Doc AI Sidebar State
+let docAiSidebarOpen = false;
+
+function toggleDocAiSidebar() {
+  docAiSidebarOpen = !docAiSidebarOpen;
+  const sidebar = document.getElementById('docAiSidebar');
+  if (sidebar) {
+    if (docAiSidebarOpen) {
+      sidebar.classList.add('open');
+      // Focus input
+      setTimeout(() => {
+        document.getElementById('docAiSidebarInput')?.focus();
+      }, 300);
+    } else {
+      sidebar.classList.remove('open');
+    }
+  }
+}
+
+function handleDocAiSidebarSend() {
+  if (typeof window.processAISidebarChat === 'function') {
+    const editor = document.getElementById('docEditorContent');
+    const docText = editor ? editor.innerText.substring(0, 1000) : '';
+    const ctx = `User is editing a document. Current content preview: ${docText}`;
+    window.processAISidebarChat('docAiSidebarInput', 'docAiSidebarMessages', ctx);
+  } else {
+    // Fallback
+    const input = document.getElementById('docAiSidebarInput');
+    const container = document.getElementById('docAiSidebarMessages');
+    if (input && container && input.value.trim()) {
+      const userMsg = document.createElement('div');
+      userMsg.className = 'ai-sidebar-message user';
+      userMsg.innerHTML = `<div class="ai-message-content">${escapeHtmlForAI(input.value)}</div>`;
+      container.appendChild(userMsg);
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+      
+      // Show loading
+      const loading = document.createElement('div');
+      loading.className = 'ai-sidebar-message assistant ai-loading';
+      loading.innerHTML = '<div class="ai-loading-animation"><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><span class="ai-loading-text">Thinking</span></div>';
+      container.appendChild(loading);
+    }
+  }
+}
+
+function escapeHtmlForAI(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Open AI Sidebar from button
+function openAISidebar(type = 'doc') {
+  if (type === 'doc') {
+    toggleDocAiSidebar();
+  }
+}
+
+/* ============================================
+   Whiteboard AI Sidebar Functions  
+   ============================================ */
+
+let whiteboardAiSidebarOpen = false;
+
+function toggleWhiteboardAiSidebar() {
+  whiteboardAiSidebarOpen = !whiteboardAiSidebarOpen;
+  const sidebar = document.getElementById('whiteboardAiSidebar');
+  const backdrop = document.getElementById('whiteboardAiBackdrop');
+  
+  if (sidebar) {
+    if (whiteboardAiSidebarOpen) {
+      // Create sidebar if not exists
+      createWhiteboardAiSidebar();
+      setTimeout(() => {
+        document.getElementById('whiteboardAiSidebar')?.classList.add('open');
+        document.getElementById('whiteboardAiBackdrop')?.classList.add('open');
+        document.getElementById('whiteboardAiInput')?.focus();
+      }, 10);
+    } else {
+      sidebar.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('open');
+    }
+  } else {
+    createWhiteboardAiSidebar();
+    setTimeout(() => {
+      document.getElementById('whiteboardAiSidebar')?.classList.add('open');
+      document.getElementById('whiteboardAiBackdrop')?.classList.add('open');
+      document.getElementById('whiteboardAiInput')?.focus();
+    }, 10);
+    whiteboardAiSidebarOpen = true;
+  }
+}
+
+function createWhiteboardAiSidebar() {
+  // Remove existing
+  document.getElementById('whiteboardAiSidebar')?.remove();
+  document.getElementById('whiteboardAiBackdrop')?.remove();
+  
+  const backdrop = document.createElement('div');
+  backdrop.id = 'whiteboardAiBackdrop';
+  backdrop.className = 'ai-sidebar-backdrop';
+  backdrop.onclick = () => toggleWhiteboardAiSidebar();
+  document.body.appendChild(backdrop);
+  
+  const sidebar = document.createElement('div');
+  sidebar.id = 'whiteboardAiSidebar';
+  sidebar.className = 'ai-sidebar-overlay';
+  sidebar.innerHTML = `
+    <div class="ai-sidebar-header">
+      <div class="ai-sidebar-title">
+        <div class="ai-sidebar-title-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+          </svg>
+        </div>
+        <div>
+          <h3>AI Assistant</h3>
+          <span>Ask anything</span>
+        </div>
+      </div>
+      <button class="ai-sidebar-close" onclick="toggleWhiteboardAiSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="ai-sidebar-messages" id="whiteboardAiMessages">
+      <div class="ai-sidebar-welcome">
+        <div class="ai-sidebar-welcome-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </div>
+        <h4>Hi! I'm your AI assistant</h4>
+        <p>I can help with anything - coding, writing, ideas, debugging, or just answering questions.</p>
+      </div>
+    </div>
+    <div class="ai-sidebar-input-area">
+      <div class="ai-sidebar-input-wrapper">
+        <input type="text" class="ai-sidebar-input" id="whiteboardAiInput" 
+               placeholder="Ask me anything..." 
+               onkeydown="if(event.key==='Enter')handleWhiteboardAiSidebarSend()"/>
+        <button class="ai-sidebar-send" onclick="handleWhiteboardAiSidebarSend()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(sidebar);
+}
+
+function handleWhiteboardAiSidebarSend() {
+  if (typeof window.processAISidebarChat === 'function') {
+    let ctx = 'User is on the whiteboard canvas for visual planning.';
+    if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
+      const projects = loadProjects();
+      const p = projects[gripProjectIndex];
+      if (p) ctx = `Working on whiteboard for project: ${p.name}. The whiteboard has ${gripCells?.length || 0} cells.`;
+    }
+    window.processAISidebarChat('whiteboardAiInput', 'whiteboardAiMessages', ctx);
+  }
+}
+
+// Make functions globally available
+window.toggleDocAiSidebar = toggleDocAiSidebar;
+window.handleDocAiSidebarSend = handleDocAiSidebarSend;
+window.openAISidebar = openAISidebar;
+window.toggleWhiteboardAiSidebar = toggleWhiteboardAiSidebar;
+window.handleWhiteboardAiSidebarSend = handleWhiteboardAiSidebarSend;
