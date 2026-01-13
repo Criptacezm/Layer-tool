@@ -639,18 +639,22 @@ function renderGripDiagramOverlay() {
       
       ${gripSelectedCellId ? renderGripCellEditor() : ''}
       
-      <!-- AI Chat Box -->
-      <div class="grip-ai-chat" id="gripAiChat" style="display: none;">
+      <!-- AI Chat Backdrop -->
+      <div class="grip-ai-chat-backdrop" id="gripAiChatBackdrop"></div>
+      
+      <!-- AI Chat Sidebar (Left) -->
+      <div class="grip-ai-chat" id="gripAiChat">
         <div class="grip-ai-chat-header">
-          <h4>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-              <line x1="9" y1="9" x2="9.01" y2="9"/>
-              <line x1="15" y1="9" x2="15.01" y2="9"/>
+          <div class="grip-ai-chat-brand">
+            <svg class="grip-ai-brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2a4 4 0 0 1 4 4c0 1.1-.9 2-2 2h-4a2 2 0 0 1-2-2 4 4 0 0 1 4-4z"/>
+              <path d="M8 8v1a4 4 0 0 0 8 0V8"/>
+              <path d="M12 12v10"/>
+              <path d="M8 17h8"/>
+              <circle cx="12" cy="5" r="1"/>
             </svg>
-            Project Assistant
-          </h4>
+            <h4>Project Assistant</h4>
+          </div>
           <button type="button" class="grip-ai-chat-close" id="gripAiChatClose">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
@@ -658,8 +662,8 @@ function renderGripDiagramOverlay() {
           </button>
         </div>
         <div class="grip-ai-chat-messages" id="gripAiMessages">
-          <div class="grip-ai-message assistant">
-            Hey! I'm here to help with your project. What do you need?
+          <div class="grip-ai-welcome">
+            Hi! I'm your project assistant. Ask me anything about your diagram, tasks, or let me help you brainstorm ideas.
           </div>
         </div>
         <div class="grip-ai-chat-input">
@@ -3330,6 +3334,7 @@ let aiChatMessages = [];
 function setupAiChatListeners() {
   const toggleBtn = document.getElementById('gripAiChatToggle');
   const closeBtn = document.getElementById('gripAiChatClose');
+  const backdrop = document.getElementById('gripAiChatBackdrop');
   const sendBtn = document.getElementById('gripAiSend');
   const input = document.getElementById('gripAiInput');
   
@@ -3338,10 +3343,11 @@ function setupAiChatListeners() {
   }
   
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      const chat = document.getElementById('gripAiChat');
-      if (chat) chat.style.display = 'none';
-    });
+    closeBtn.addEventListener('click', closeAiChat);
+  }
+  
+  if (backdrop) {
+    backdrop.addEventListener('click', closeAiChat);
   }
   
   if (sendBtn) {
@@ -3357,9 +3363,26 @@ function setupAiChatListeners() {
 
 function toggleAiChat() {
   const chat = document.getElementById('gripAiChat');
+  const backdrop = document.getElementById('gripAiChatBackdrop');
   if (chat) {
-    chat.style.display = chat.style.display === 'none' ? 'flex' : 'none';
+    const isOpen = chat.classList.contains('open');
+    if (isOpen) {
+      closeAiChat();
+    } else {
+      chat.classList.add('open');
+      if (backdrop) backdrop.classList.add('open');
+      // Focus input
+      const input = document.getElementById('gripAiInput');
+      if (input) setTimeout(() => input.focus(), 100);
+    }
   }
+}
+
+function closeAiChat() {
+  const chat = document.getElementById('gripAiChat');
+  const backdrop = document.getElementById('gripAiChatBackdrop');
+  if (chat) chat.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
 }
 
 function handleAiSend() {
@@ -3378,6 +3401,10 @@ function handleAiSend() {
   const message = input.value.trim();
   if (!message) return;
   
+  // Clear welcome message if exists
+  const welcomeMsg = messagesContainer.querySelector('.grip-ai-welcome');
+  if (welcomeMsg) welcomeMsg.remove();
+  
   // Add user message
   const userMsg = document.createElement('div');
   userMsg.className = 'grip-ai-message user';
@@ -3389,12 +3416,17 @@ function handleAiSend() {
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
   
-  // Show typing indicator
-  const typingMsg = document.createElement('div');
-  typingMsg.className = 'grip-ai-message assistant typing';
-  typingMsg.id = 'aiTyping';
-  typingMsg.innerHTML = '<span></span><span></span><span></span>';
-  messagesContainer.appendChild(typingMsg);
+  // Show looping AI loading indicator
+  const loadingMsg = document.createElement('div');
+  loadingMsg.className = 'grip-ai-loading-loop';
+  loadingMsg.id = 'aiTyping';
+  loadingMsg.innerHTML = `
+    <div class="grip-ai-loading-dots-loop">
+      <span></span><span></span><span></span>
+    </div>
+    <span class="grip-ai-loading-text-loop">Thinking...</span>
+  `;
+  messagesContainer.appendChild(loadingMsg);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
   
   // Simulate AI response after delay
