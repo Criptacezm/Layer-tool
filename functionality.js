@@ -4647,54 +4647,70 @@ function openDocEditor(docId = null) {
         </div>
       </div>
       
-      <!-- AI Sidebar - LEFT Side -->
+      <!-- AI Sidebar - LEFT Side - Minimalistic ClickUp Brain Style -->
       <div class="doc-ai-sidebar" id="docAiSidebar">
         <div class="ai-sidebar-header">
           <div class="ai-sidebar-brand">
-            <div class="ai-sidebar-logo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
-                <path d="M8 10h.01M12 10h.01M16 10h.01"/>
+            <div class="ai-sidebar-brain-icon">
+              <div class="ai-brain-pulse"></div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
+                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
               </svg>
             </div>
-            <div class="ai-sidebar-title">
-              <h3>AI Assistant</h3>
-              <span>Universal Knowledge</span>
-            </div>
+            <span class="ai-sidebar-title-text">Brain</span>
           </div>
-          <button class="ai-sidebar-close" onclick="toggleDocAiSidebar()" title="Close">
+          <button class="ai-sidebar-close-minimal" onclick="toggleDocAiSidebar()" title="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           </button>
         </div>
         <div class="ai-sidebar-messages" id="docAiMessages">
-          <div class="ai-sidebar-message assistant">
-            <div class="ai-message-content">
-              <p class="ai-paragraph"><strong>Hello!</strong> I'm your AI assistant with universal knowledge.</p>
-              <p class="ai-paragraph">I can help you with:</p>
-              <ul class="ai-bullet-list">
-                <li class="ai-bullet">Writing and editing documents</li>
-                <li class="ai-bullet">Code assistance and debugging</li>
-                <li class="ai-bullet">Research and explanations</li>
-                <li class="ai-bullet">Creative ideas and brainstorming</li>
-              </ul>
+          <div class="ai-welcome-message">
+            <div class="ai-welcome-header">
+              <div class="ai-welcome-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
+                  <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+                </svg>
+              </div>
+              <div class="ai-welcome-content">
+                <div class="ai-welcome-name">Brain</div>
+                <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this Doc. How can I help?</div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="ai-sidebar-input-area">
-          <div class="ai-input-wrapper">
-            <textarea id="docAiInput" class="ai-sidebar-input" placeholder="Ask me anything..." rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleDocAiSend()}"></textarea>
-            <button class="ai-sidebar-send" onclick="handleDocAiSend()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-              </svg>
-            </button>
+        <div class="ai-sidebar-input-minimal">
+          <div class="ai-input-container">
+            <textarea id="docAiInput" placeholder="Tell AI what to do next" rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleDocAiSend()}"></textarea>
+            <div class="ai-input-actions">
+              <button class="ai-input-action-btn" title="Attach">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+              <button class="ai-input-action-btn" title="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="1"/>
+                </svg>
+              </button>
+              <button class="ai-send-btn" onclick="handleDocAiSend()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="ai-suggestions">
-            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Help me improve this text';handleDocAiSend()">Improve writing</button>
-            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Explain this simply';handleDocAiSend()">Simplify</button>
-            <button class="ai-suggestion-chip" onclick="document.getElementById('docAiInput').value='Write code for...';document.getElementById('docAiInput').focus()">Write code</button>
+          <div class="ai-page-context">
+            <div class="ai-page-context-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <span class="ai-page-context-text"><span class="ai-page-context-name">Untitled</span> Page</span>
           </div>
         </div>
       </div>
@@ -4769,6 +4785,8 @@ function openDocEditor(docId = null) {
   // Set up placeholder and autosave
   setupNotionEditor();
   
+  // Set up AI command (** trigger)
+  setupDocAiCommand();
   // Auto-create the document immediately if new
   if (!doc) {
     const docs = loadDocs();
@@ -8192,47 +8210,71 @@ function createWhiteboardAiSidebar() {
   sidebar.className = 'ai-sidebar-overlay';
   sidebar.innerHTML = `
     <div class="ai-sidebar-header">
-      <div class="ai-sidebar-title">
-        <div class="ai-sidebar-title-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+      <div class="ai-sidebar-brand">
+        <div class="ai-sidebar-brain-icon">
+          <div class="ai-brain-pulse"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
+            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
           </svg>
         </div>
-        <div>
-          <h3>AI Assistant</h3>
-          <span>Ask anything</span>
-        </div>
+        <span class="ai-sidebar-title-text">Brain</span>
       </div>
-      <button class="ai-sidebar-close" onclick="toggleWhiteboardAiSidebar()">
+      <button class="ai-sidebar-close-minimal" onclick="toggleWhiteboardAiSidebar()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
       </button>
     </div>
     <div class="ai-sidebar-messages" id="whiteboardAiMessages">
-      <div class="ai-sidebar-welcome">
-        <div class="ai-sidebar-welcome-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-            <line x1="9" y1="9" x2="9.01" y2="9"/>
-            <line x1="15" y1="9" x2="15.01" y2="9"/>
-          </svg>
+      <div class="ai-welcome-message">
+        <div class="ai-welcome-header">
+          <div class="ai-welcome-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
+              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+            </svg>
+          </div>
+          <div class="ai-welcome-content">
+            <div class="ai-welcome-name">Brain</div>
+            <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this whiteboard. How can I help?</div>
+          </div>
         </div>
-        <h4>Hi! I'm your AI assistant</h4>
-        <p>I can help with anything - coding, writing, ideas, debugging, or just answering questions.</p>
       </div>
     </div>
-    <div class="ai-sidebar-input-area">
-      <div class="ai-sidebar-input-wrapper">
-        <input type="text" class="ai-sidebar-input" id="whiteboardAiInput" 
-               placeholder="Ask me anything..." 
+    <div class="ai-sidebar-input-minimal">
+      <div class="ai-input-container">
+        <input type="text" id="whiteboardAiInput" 
+               placeholder="Tell AI what to do next" 
                onkeydown="if(event.key==='Enter')handleWhiteboardAiSidebarSend()"/>
-        <button class="ai-sidebar-send" onclick="handleWhiteboardAiSidebarSend()">
+        <div class="ai-input-actions">
+          <button class="ai-input-action-btn" title="Attach">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button class="ai-input-action-btn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/>
+            </svg>
+          </button>
+          <button class="ai-send-btn" onclick="handleWhiteboardAiSidebarSend()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="ai-page-context">
+        <div class="ai-page-context-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
           </svg>
-        </button>
+        </div>
+        <span class="ai-page-context-text">Whiteboard</span>
       </div>
     </div>
   `;
@@ -8251,9 +8293,115 @@ function handleWhiteboardAiSidebarSend() {
   }
 }
 
+// ============================================
+// Doc AI Inline Command - ** trigger
+// ============================================
+let isAiWriting = false;
+
+function setupDocAiCommand() {
+  const editor = document.getElementById('docEditorContent');
+  if (!editor) return;
+  
+  editor.addEventListener('keydown', async function(e) {
+    if (e.key === ' ' && !isAiWriting) {
+      // Get current text content to check for ** pattern
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      
+      const range = selection.getRangeAt(0);
+      const textNode = range.startContainer;
+      
+      if (textNode.nodeType === Node.TEXT_NODE) {
+        const text = textNode.textContent;
+        const cursorPos = range.startOffset;
+        
+        // Check if there's a ** pattern before cursor
+        const beforeCursor = text.substring(0, cursorPos);
+        const match = beforeCursor.match(/\*\*\s*(.+)$/);
+        
+        if (match && match[1] && match[1].trim().length > 0) {
+          e.preventDefault();
+          const prompt = match[1].trim();
+          
+          // Remove the ** command from text
+          const startPos = beforeCursor.lastIndexOf('**');
+          const beforeCommand = text.substring(0, startPos);
+          const afterCursor = text.substring(cursorPos);
+          
+          // Show loading indicator at cursor
+          textNode.textContent = beforeCommand + afterCursor;
+          
+          // Create inline loading indicator
+          const loadingSpan = document.createElement('span');
+          loadingSpan.className = 'ai-inline-loading';
+          loadingSpan.innerHTML = '<span class="ai-loading-dots-loop"><span></span><span></span><span></span></span> Writing...';
+          
+          // Insert loading at cursor position
+          const newRange = document.createRange();
+          newRange.setStart(textNode, beforeCommand.length);
+          newRange.collapse(true);
+          newRange.insertNode(loadingSpan);
+          
+          isAiWriting = true;
+          
+          try {
+            // Call AI to generate content
+            if (typeof window.callGeminiAPI === 'function') {
+              const response = await window.callGeminiAPI(prompt, 'Write content directly. No explanation needed. Just provide the content the user requested.');
+              
+              // Remove loading indicator
+              loadingSpan.remove();
+              
+              // Insert AI response
+              const responseSpan = document.createElement('span');
+              responseSpan.className = 'ai-generated-content';
+              responseSpan.textContent = response;
+              
+              // Insert at the same position
+              const insertRange = document.createRange();
+              insertRange.setStart(textNode, beforeCommand.length);
+              insertRange.collapse(true);
+              insertRange.insertNode(responseSpan);
+              
+              // Move cursor to end of inserted content
+              const finalRange = document.createRange();
+              finalRange.setStartAfter(responseSpan);
+              finalRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(finalRange);
+              
+              // Trigger auto-save
+              if (typeof autoSaveDoc === 'function') {
+                autoSaveDoc();
+              }
+            }
+          } catch (error) {
+            loadingSpan.remove();
+            console.error('AI writing error:', error);
+          }
+          
+          isAiWriting = false;
+        }
+      }
+    }
+  });
+}
+
+// Initialize doc AI command when editor opens
+const origOpenDocEditor = window.openDocEditor;
+if (typeof origOpenDocEditor === 'function') {
+  window.openDocEditor = function(docId) {
+    origOpenDocEditor(docId);
+    setTimeout(() => {
+      setupDocAiCommand();
+    }, 100);
+  };
+}
+
 // Make functions globally available
 window.toggleDocAiSidebar = toggleDocAiSidebar;
 window.handleDocAiSidebarSend = handleDocAiSidebarSend;
 window.openAISidebar = openAISidebar;
 window.toggleWhiteboardAiSidebar = toggleWhiteboardAiSidebar;
 window.handleWhiteboardAiSidebarSend = handleWhiteboardAiSidebarSend;
+window.setupDocAiCommand = setupDocAiCommand;
