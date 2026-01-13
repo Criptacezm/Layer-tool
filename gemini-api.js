@@ -6,13 +6,15 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // -----------------------------------------------------------------------
-// 🔴 IMPORTANT: Replace this with your own API Key from Google AI Studio
-// Get one here: https://aistudio.google.com/app/apikey
+// API Configuration
 // -----------------------------------------------------------------------
-const GEMINI_API_KEY = "AIzaSyB3zV3x0SvaEA8dguMy38K3sDENQDUEt1w"; 
+const GEMINI_API_KEY = "AIzaSyB3zV3x0SvaEA8dguMy38K3sDENQDUEt1w";
 
-// Initialize the API
-// Note: If GEMINI_API_KEY is still the placeholder, this will fail.
+// Check if key is missing to prevent vague errors
+if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_OWN_API_KEY_HERE" || GEMINI_API_KEY === "") {
+    console.error("❌ GEMINI API KEY IS MISSING. Please edit gemini-api.js and add your key.");
+}
+
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
@@ -26,7 +28,7 @@ const model = genAI.getGenerativeModel({
 });
 
 const codeModel = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-001", // Switched to flash-001 for better stability in free tier
+    model: "gemini-2.0-flash-001",
     systemInstruction: `You are an expert code analyzer. Respond ONLY in valid JSON format: { "errors": [] }`
 });
 
@@ -39,6 +41,11 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Core API Call with Retry Logic (Exponential Backoff)
  */
 async function callGeminiAPI(userPrompt, context = '') {
+    // Immediate check for valid key
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_OWN")) {
+        return "⚠️ Error: You haven't added your API Key yet. Please check gemini-api.js";
+    }
+
     const maxRetries = 3;
     let attempt = 0;
 
@@ -72,6 +79,8 @@ async function callGeminiAPI(userPrompt, context = '') {
  * Analyze code for errors with Retry Logic
  */
 async function analyzeCodeErrors(code, language = 'javascript') {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_OWN")) return { errors: [] };
+
     const maxRetries = 3;
     let attempt = 0;
 
@@ -100,8 +109,6 @@ async function analyzeCodeErrors(code, language = 'javascript') {
         }
     }
 }
-
-// ... rest of your formatting functions remain the same ...
 
 /**
  * Escape HTML for safe rendering
@@ -160,8 +167,6 @@ function formatAIResponse(text) {
     
     return html;
 }
-
-// ... existing animation and helper functions ...
 
 async function revealWordsAnimated(container, formattedHtml, speed = 10) {
     return new Promise((resolve) => {
