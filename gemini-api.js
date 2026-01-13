@@ -1,7 +1,7 @@
 /* ============================================
    Layer - Gemini AI API Integration
-   Enhanced with word-by-word streaming, code detection,
-   and universal knowledge capabilities
+   Enhanced with concise responses, professional code blocks,
+   and theme-aware styling
    ============================================ */
 
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
@@ -12,33 +12,39 @@ const GEMINI_API_KEY = "AIzaSyATy2OLRWYDTrjLG4mSuoNZyuaHIDHfOxo";
 // Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// Universal AI Model with broad knowledge
+// Universal AI Model with broad knowledge - CONCISE responses
 const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    systemInstruction: `You are a highly intelligent, professional AI assistant with comprehensive knowledge across all domains. You help users with:
-- General questions on any topic (science, history, technology, coding, etc.)
-- Project management and productivity
-- Writing, editing, and improving documents
-- Code analysis, debugging, and suggestions
-- Problem solving and brainstorming
+    systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
-Format your responses professionally:
-- Use bullet points (•) for lists
-- Use numbered lists (1. 2. 3.) for steps
-- Wrap code in triple backticks with language (e.g., \`\`\`javascript)
-- Use **bold** for emphasis and headings
-- Keep responses clear, helpful, and well-structured
-- Be concise but thorough`
+RESPONSE RULES:
+- Keep responses under 150 words unless specifically asked for detail
+- Get straight to the point - no filler phrases like "Great question!" or "I'd be happy to help"
+- Use bullet points (•) for lists - max 5 items
+- For code: wrap in triple backticks with language name
+- Use **bold** sparingly for key terms only
+- One paragraph max for explanations unless complex
+- Never apologize or use filler language
+
+You have comprehensive knowledge across ALL domains including:
+- Programming, Science, Mathematics, History, Business, Technology, Art, Health, and more
+
+Format code blocks like:
+\`\`\`javascript
+// code here
+\`\`\`
+
+Be helpful, precise, and brief.`
 });
 
 // Code-specific model for error analysis
 const codeModel = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    systemInstruction: `You are a code analysis expert. When given code, analyze it for:
-1. Syntax errors
-2. Logic errors
-3. Best practice violations
-4. Potential runtime issues
+    systemInstruction: `You are an expert code analyzer. When given code, analyze it thoroughly for:
+1. Syntax errors - missing brackets, semicolons, typos
+2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
+3. Runtime errors - null references, type errors, division by zero
+4. Best practice violations - naming conventions, code organization, security issues
 
 For each error found, respond in this exact JSON format:
 {
@@ -47,13 +53,13 @@ For each error found, respond in this exact JSON format:
       "line": <line_number>,
       "type": "syntax|logic|runtime|bestpractice",
       "message": "<short error description>",
-      "fix": "<suggested fix>"
+      "fix": "<suggested fix with code example if applicable>"
     }
   ]
 }
 
-If no errors, return: {"errors": []}
-Only return valid JSON, no other text.`
+If no errors are found, return: {"errors": []}
+Only return valid JSON, no other text or explanation.`
 });
 
 /**
@@ -72,14 +78,14 @@ async function callGeminiAPI(userPrompt, context = '') {
     } catch (error) {
         console.error('Gemini SDK Error:', error);
         if (error.message.includes('quota')) {
-            return "Rate limit reached. Please wait 60 seconds.";
+            return "⚠️ Rate limit reached. Please wait 60 seconds and try again.";
         }
         return `Error: ${error.message}`;
     }
 }
 
 /**
- * Analyze code for errors
+ * Analyze code for errors - Returns structured error data
  */
 async function analyzeCodeErrors(code, language = 'javascript') {
     try {
@@ -92,7 +98,8 @@ async function analyzeCodeErrors(code, language = 'javascript') {
         // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            const parsed = JSON.parse(jsonMatch[0]);
+            return parsed;
         }
         return { errors: [] };
     } catch (error) {
@@ -102,55 +109,8 @@ async function analyzeCodeErrors(code, language = 'javascript') {
 }
 
 /**
- * Format AI response with HTML for professional display
+ * Escape HTML for safe rendering
  */
-function formatAIResponse(text) {
-    let html = text;
-    
-    // Code blocks with syntax highlighting container
-    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-        const language = lang || 'plaintext';
-        return `<div class="ai-code-block">
-            <div class="ai-code-header">
-                <span class="ai-code-lang">${language}</span>
-                <button class="ai-code-copy" onclick="copyAICode(this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                        <rect x="9" y="9" width="13" height="13" rx="2"/>
-                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                    </svg>
-                    Copy
-                </button>
-            </div>
-            <pre class="ai-code-content"><code>${escapeHtml(code.trim())}</code></pre>
-        </div>`;
-    });
-    
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
-    
-    // Bold text
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="ai-bold">$1</strong>');
-    
-    // Bullet points
-    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ai-bullet">$1</li>');
-    html = html.replace(/(<li class="ai-bullet">.*<\/li>\n?)+/g, '<ul class="ai-bullet-list">$&</ul>');
-    
-    // Numbered lists
-    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ai-numbered">$1</li>');
-    html = html.replace(/(<li class="ai-numbered">.*<\/li>\n?)+/g, '<ol class="ai-numbered-list">$&</ol>');
-    
-    // Paragraphs
-    html = html.split('\n\n').map(p => {
-        if (p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<div')) return p;
-        return `<p class="ai-paragraph">${p}</p>`;
-    }).join('');
-    
-    // Line breaks
-    html = html.replace(/\n/g, '<br>');
-    
-    return html;
-}
-
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -158,9 +118,76 @@ function escapeHtml(text) {
 }
 
 /**
- * Word-by-word reveal animation
+ * Format AI response with HTML for professional display
+ * Theme-aware code blocks with copy functionality
  */
-async function revealWordsAnimated(container, formattedHtml, speed = 15) {
+function formatAIResponse(text) {
+    let html = text;
+    
+    // Code blocks with enhanced styling and copy button
+    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        const language = lang || 'plaintext';
+        const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+        return `<div class="ai-code-container" data-lang="${language}">
+            <div class="ai-code-toolbar">
+                <span class="ai-code-language">${language}</span>
+                <button class="ai-code-copy-btn" onclick="copyAICode('${codeId}', this)" data-code-id="${codeId}">
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    <span class="copy-text">Copy</span>
+                </button>
+            </div>
+            <pre class="ai-code-pre" id="${codeId}"><code class="ai-code">${escapeHtml(code.trim())}</code></pre>
+        </div>`;
+    });
+    
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+    
+    // Bold text - handle **text** format
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h4 class="ai-heading">$1</h4>');
+    html = html.replace(/^## (.+)$/gm, '<h3 class="ai-heading">$1</h3>');
+    html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
+    
+    // Bullet points - multiple formats
+    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ai-list-item">$1</li>');
+    html = html.replace(/(<li class="ai-list-item">.*<\/li>\n?)+/g, '<ul class="ai-list">$&</ul>');
+    
+    // Numbered lists
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ai-numbered-item">$1</li>');
+    html = html.replace(/(<li class="ai-numbered-item">.*<\/li>\n?)+/g, '<ol class="ai-numbered-list">$&</ol>');
+    
+    // Paragraphs - split by double newlines
+    html = html.split('\n\n').map(p => {
+        p = p.trim();
+        if (!p) return '';
+        if (p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<div') || 
+            p.startsWith('<h2') || p.startsWith('<h3') || p.startsWith('<h4')) {
+            return p;
+        }
+        return `<p class="ai-text">${p}</p>`;
+    }).join('');
+    
+    // Clean up line breaks
+    html = html.replace(/\n/g, '<br>');
+    // Remove excessive breaks
+    html = html.replace(/(<br>){3,}/g, '<br><br>');
+    
+    return html;
+}
+
+/**
+ * Word-by-word reveal animation - Smooth and fast
+ */
+async function revealWordsAnimated(container, formattedHtml, speed = 10) {
     return new Promise((resolve) => {
         container.innerHTML = '';
         
@@ -173,18 +200,26 @@ async function revealWordsAnimated(container, formattedHtml, speed = 15) {
         const words = textContent.split(/(\s+)/);
         
         let wordIndex = 0;
+        let displayText = '';
+        
         const revealInterval = setInterval(() => {
             if (wordIndex >= words.length) {
                 clearInterval(revealInterval);
-                // Show full formatted HTML at the end
-                container.innerHTML = formattedHtml;
-                container.scrollTop = container.scrollHeight;
-                resolve();
+                // Show full formatted HTML at the end with smooth transition
+                container.style.opacity = '0';
+                setTimeout(() => {
+                    container.innerHTML = formattedHtml;
+                    container.style.opacity = '1';
+                    container.style.transition = 'opacity 0.15s ease';
+                    container.scrollTop = container.scrollHeight;
+                    resolve();
+                }, 50);
                 return;
             }
             
-            // Show words progressively
-            container.textContent = words.slice(0, wordIndex + 1).join('');
+            // Add words progressively
+            displayText += words[wordIndex];
+            container.textContent = displayText;
             container.scrollTop = container.scrollHeight;
             wordIndex++;
         }, speed);
@@ -192,51 +227,19 @@ async function revealWordsAnimated(container, formattedHtml, speed = 15) {
 }
 
 /**
- * Append AI message with formatting and animation
- */
-async function appendAiMessageEnhanced(containerId, role, text, animate = true) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `ai-sidebar-message ${role}`;
-    
-    if (role === 'user') {
-        msgDiv.innerHTML = `<div class="ai-message-content">${escapeHtml(text)}</div>`;
-        container.appendChild(msgDiv);
-        container.scrollTop = container.scrollHeight;
-    } else {
-        const formattedHtml = formatAIResponse(text);
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'ai-message-content';
-        msgDiv.appendChild(contentDiv);
-        container.appendChild(msgDiv);
-        
-        if (animate) {
-            await revealWordsAnimated(contentDiv, formattedHtml, 12);
-        } else {
-            contentDiv.innerHTML = formattedHtml;
-        }
-        container.scrollTop = container.scrollHeight;
-    }
-}
-
-/**
- * Create unique loading animation
+ * Create loading indicator - Modern pulse animation
  */
 function createLoadingIndicator(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return null;
     
     const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'ai-sidebar-message assistant ai-loading';
+    loadingDiv.className = 'ai-response-card ai-loading-state';
     loadingDiv.id = 'aiLoadingIndicator';
     loadingDiv.innerHTML = `
-        <div class="ai-loading-animation">
-            <div class="ai-loading-dot"></div>
-            <div class="ai-loading-dot"></div>
-            <div class="ai-loading-dot"></div>
-            <span class="ai-loading-text">Thinking</span>
+        <div class="ai-loading-content">
+            <div class="ai-loading-orb"></div>
+            <span class="ai-loading-label">Processing</span>
         </div>
     `;
     container.appendChild(loadingDiv);
@@ -244,9 +247,68 @@ function createLoadingIndicator(containerId) {
     return loadingDiv;
 }
 
+/**
+ * Remove loading indicator
+ */
 function removeLoadingIndicator() {
     const loading = document.getElementById('aiLoadingIndicator');
-    if (loading) loading.remove();
+    if (loading) {
+        loading.style.opacity = '0';
+        loading.style.transform = 'translateY(-10px)';
+        loading.style.transition = 'all 0.2s ease';
+        setTimeout(() => loading.remove(), 200);
+    }
+}
+
+/**
+ * Append AI message with professional formatting and word-by-word animation
+ */
+async function appendAiMessageEnhanced(containerId, role, text, animate = true) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `ai-response-card ${role}-card`;
+    
+    if (role === 'user') {
+        msgDiv.innerHTML = `
+            <div class="ai-user-message">
+                <div class="ai-user-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="ai-user-content">${escapeHtml(text)}</div>
+            </div>
+        `;
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+    } else {
+        const formattedHtml = formatAIResponse(text);
+        msgDiv.innerHTML = `
+            <div class="ai-assistant-message">
+                <div class="ai-assistant-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="ai-assistant-content"></div>
+            </div>
+        `;
+        container.appendChild(msgDiv);
+        
+        const contentDiv = msgDiv.querySelector('.ai-assistant-content');
+        
+        if (animate) {
+            await revealWordsAnimated(contentDiv, formattedHtml, 8);
+        } else {
+            contentDiv.innerHTML = formattedHtml;
+        }
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
 /**
@@ -274,7 +336,7 @@ async function processAISidebarChat(inputId, messagesId, contextData = '') {
         await appendAiMessageEnhanced(messagesId, 'assistant', response, true);
     } catch (error) {
         removeLoadingIndicator();
-        await appendAiMessageEnhanced(messagesId, 'assistant error', `Error: ${error.message}`, false);
+        await appendAiMessageEnhanced(messagesId, 'assistant error', `❌ Error: ${error.message}`, false);
     } finally {
         input.disabled = false;
         input.focus();
@@ -293,7 +355,7 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 }
 
 // ============================================
-// ATTACH TO WINDOW
+// ATTACH TO WINDOW - Global access
 // ============================================
 
 window.callGeminiAPI = callGeminiAPI;
@@ -301,50 +363,132 @@ window.analyzeCodeErrors = analyzeCodeErrors;
 window.formatAIResponse = formatAIResponse;
 window.appendAiMessageEnhanced = appendAiMessageEnhanced;
 window.processAISidebarChat = processAISidebarChat;
+window.createLoadingIndicator = createLoadingIndicator;
+window.removeLoadingIndicator = removeLoadingIndicator;
+window.escapeHtml = escapeHtml;
 
-window.copyAICode = function(btn) {
-    const codeBlock = btn.closest('.ai-code-block');
-    const code = codeBlock.querySelector('code').textContent;
+// Copy code button handler - Enhanced with visual feedback
+window.copyAICode = function(codeId, btn) {
+    const codeEl = document.getElementById(codeId);
+    if (!codeEl) return;
+    
+    const code = codeEl.querySelector('code').textContent;
     navigator.clipboard.writeText(code).then(() => {
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"/></svg> Copied!`;
+        const copyIcon = btn.querySelector('.copy-icon');
+        const checkIcon = btn.querySelector('.check-icon');
+        const copyText = btn.querySelector('.copy-text');
+        
+        copyIcon.style.display = 'none';
+        checkIcon.style.display = 'block';
+        copyText.textContent = 'Copied!';
+        btn.classList.add('copied');
+        
         setTimeout(() => {
-            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy`;
+            copyIcon.style.display = 'block';
+            checkIcon.style.display = 'none';
+            copyText.textContent = 'Copy';
+            btn.classList.remove('copied');
         }, 2000);
     });
 };
 
+// Project AI handler
 window.handleProjectAiSend = function() {
-    let ctx = "Global dashboard view.";
+    let ctx = "You are helping with project management. Be concise.";
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
         const projects = loadProjects();
         const p = projects[gripProjectIndex];
-        if (p) ctx = `Working on Project: ${p.name}.`;
+        if (p) ctx = `Working on Project: "${p.name}". Be concise and helpful.`;
     }
     processAISidebarChat('projectAiInput', 'projectAiMessages', ctx);
 };
 
+// Whiteboard AI handler  
 window.handleAiSend = function() {
-    processAISidebarChat('gripAiInput', 'gripAiMessages', 'User is using a flowchart whiteboard for visual planning.');
+    processAISidebarChat('gripAiInput', 'gripAiMessages', 'User is on a whiteboard. Keep answers short and actionable.');
 };
 
+// Doc content AI handler
 window.handleDocContentAiSend = function() {
     const editor = document.getElementById('docEditorContent');
     const docText = editor ? editor.innerText.substring(0, 1000) : '';
-    const ctx = `User is editing a document. Current content preview: ${docText}`;
+    const ctx = `Editing document. Content: "${docText}"\n\nBe concise. Focus on writing help.`;
     processAISidebarChat('docContentAiInput', 'docContentAiMessages', ctx);
 };
 
+// Doc sidebar AI handler
 window.handleDocAiSend = function() {
-    processAISidebarChat('docAiInput', 'docAiMessages', 'User is working in the document editor.');
+    processAISidebarChat('docAiInput', 'docAiMessages', 'Help with document editing. Be brief and helpful.');
 };
 
 // Whiteboard AI handler
 window.handleWhiteboardAiSend = function() {
-    let ctx = 'User is on the whiteboard canvas for visual planning and flowcharts.';
+    let ctx = 'On whiteboard canvas. Keep answers concise.';
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
-        const projects = loadProjects();
+        const projects = typeof loadProjects === 'function' ? loadProjects() : [];
         const p = projects[gripProjectIndex];
-        if (p) ctx = `Working on whiteboard for project: ${p.name}. The whiteboard has ${gripCells?.length || 0} cells and ${gripConnections?.length || 0} connections.`;
+        if (p) ctx = `Whiteboard for: "${p.name}". Be concise.`;
     }
     processAISidebarChat('whiteboardAiInput', 'whiteboardAiMessages', ctx);
 };
+
+// ============================================
+// Code Error Detection for Whiteboard
+// ============================================
+
+/**
+ * Analyze code in whiteboard cell and highlight errors
+ */
+window.analyzeWhiteboardCode = async function(cellId, code, language) {
+    try {
+        const analysis = await analyzeCodeErrors(code, language);
+        if (analysis.errors && analysis.errors.length > 0) {
+            highlightCodeCellErrors(cellId, analysis.errors);
+            return analysis.errors;
+        }
+        return [];
+    } catch (e) {
+        console.error('Code analysis failed:', e);
+        return [];
+    }
+};
+
+/**
+ * Highlight errors in code cell with hover tooltips
+ */
+function highlightCodeCellErrors(cellId, errors) {
+    const codeEl = document.querySelector(`[data-cell-id="${cellId}"].grip-cell-code-content`);
+    if (!codeEl || !errors.length) return;
+    
+    const lines = (codeEl.textContent || '').split('\n');
+    let html = '';
+    
+    lines.forEach((line, idx) => {
+        const lineNum = idx + 1;
+        const error = errors.find(e => e.line === lineNum);
+        
+        if (error) {
+            const escapedLine = escapeHtml(line);
+            const errorType = error.type.charAt(0).toUpperCase() + error.type.slice(1);
+            html += `<span class="code-error-highlight" data-line="${lineNum}">${escapedLine}
+                <div class="code-error-tooltip">
+                    <div class="code-error-tooltip-header">
+                        <div class="code-error-tooltip-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M15 9l-6 6M9 9l6 6"/>
+                            </svg>
+                        </div>
+                        <span class="code-error-tooltip-type">${errorType}</span>
+                    </div>
+                    <div class="code-error-tooltip-message">${escapeHtml(error.message)}</div>
+                    ${error.fix ? `<div class="code-error-tooltip-fix"><strong>Fix:</strong> ${escapeHtml(error.fix)}</div>` : ''}
+                </div>
+            </span>\n`;
+        } else {
+            html += escapeHtml(line) + '\n';
+        }
+    });
+    
+    codeEl.innerHTML = html;
+}
