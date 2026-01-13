@@ -2283,7 +2283,7 @@ function renderProjectDetailView(projectIndex) {
                 <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="4" width="3" height="10"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="8" width="3" height="6"/></svg> High <span class="priority-key">2</span>
               </div>
               <div class="priority-option ${projectPriority === 'medium' ? 'selected' : ''}" onclick="setProjectPriority(${projectIndex}, 'medium'); closePriorityDropdown();">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-check">✓</span> <span class="priority-key">3</span>
+                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-key">3</span>
               </div>
               <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'low'); closePriorityDropdown();">
                 <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="11" width="3" height="3"/><rect x="11" y="12" width="3" height="2"/></svg> Low <span class="priority-key">4</span>
