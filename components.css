@@ -3116,7 +3116,7 @@
 .ai-text {
   font-size: 14px;
   line-height: 1.7;
-  color:#ffffff;
+  color: var(--muted-foreground);
   margin: 0 0 12px 0;
 }
 
@@ -3632,3 +3632,4 @@ h4.ai-heading { font-size: 14px; }
 .ai-generated-content:hover {
   background: rgba(99, 102, 241, 0.1);
 }
+
