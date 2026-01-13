@@ -7,14 +7,14 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // API KEY
-const GEMINI_API_KEY = "AIzaSyATy2OLRWYDTrjLG4mSuoNZyuaHIDHfOxo";
+const GEMINI_API_KEY = "AIzaSyB3zV3x0SvaEA8dguMy38K3sDENQDUEt1w";
 
 // Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Universal AI Model with broad knowledge - CONCISE responses
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash-001",
     systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
 RESPONSE RULES:
