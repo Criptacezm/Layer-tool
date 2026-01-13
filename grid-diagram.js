@@ -2955,13 +2955,7 @@ function updateCodeLanguageDisplay(cellId) {
   }
 }
 
-function runCode(cellId) {
-  // Check if AI validation is available
-  if (typeof runCodeWithValidation === 'function') {
-    runCodeWithValidation(cellId);
-    return;
-  }
-  
+async function runCode(cellId) {
   const cell = gripCells.find(c => c.id === cellId);
   if (!cell || !cell.isCodeContainer) return;
   
@@ -2969,15 +2963,20 @@ function runCode(cellId) {
   const lang = detectCodeLanguage(code);
   const outputEl = document.getElementById(`codeOutput-${cellId}`);
   const contentEl = document.getElementById(`codeOutputContent-${cellId}`);
+  const codeEl = document.querySelector(`[data-cell-id="${cellId}"].grip-cell-code-content`);
   
   if (!outputEl || !contentEl) return;
   
   outputEl.style.display = 'block';
   contentEl.textContent = '⏳ Running...';
   
-  // Only support JavaScript, Python (simulated), and C++ (simulated)
+  // Clear previous error highlights
+  clearCodeErrorHighlights(cellId);
+  
+  // Run the code first
+  let hasError = false;
   if (lang === 'JavaScript') {
-    runJavaScript(code, contentEl, outputEl);
+    hasError = runJavaScript(code, contentEl, outputEl);
   } else if (lang === 'Python') {
     runPythonSimulated(code, contentEl, outputEl);
   } else if (lang === 'C++' || lang === 'C') {
@@ -2985,11 +2984,69 @@ function runCode(cellId) {
   } else {
     contentEl.textContent = `⚠️ Code execution not supported for ${lang}.\n\nSupported languages: JavaScript, Python, C++`;
   }
+  
+  // If error, use AI to analyze
+  if (hasError && typeof window.analyzeCodeErrors === 'function') {
+    try {
+      const analysis = await window.analyzeCodeErrors(code, lang.toLowerCase());
+      if (analysis.errors && analysis.errors.length > 0) {
+        highlightCodeErrors(cellId, analysis.errors, codeEl);
+      }
+    } catch (e) {
+      console.log('AI code analysis unavailable:', e);
+    }
+  }
+}
+
+function clearCodeErrorHighlights(cellId) {
+  const codeEl = document.querySelector(`[data-cell-id="${cellId}"].grip-cell-code-content`);
+  if (codeEl) {
+    // Remove any error tooltips
+    codeEl.querySelectorAll('.code-error-tooltip').forEach(el => el.remove());
+    codeEl.querySelectorAll('.code-error-highlight').forEach(el => {
+      el.classList.remove('code-error-highlight');
+    });
+  }
+}
+
+function highlightCodeErrors(cellId, errors, codeEl) {
+  if (!codeEl || !errors.length) return;
+  
+  const lines = (codeEl.textContent || '').split('\n');
+  let html = '';
+  
+  lines.forEach((line, idx) => {
+    const lineNum = idx + 1;
+    const error = errors.find(e => e.line === lineNum);
+    
+    if (error) {
+      const escapedLine = escapeHtml(line);
+      html += `<span class="code-error-highlight" data-line="${lineNum}">${escapedLine}
+        <div class="code-error-tooltip">
+          <div class="code-error-tooltip-header">
+            <div class="code-error-tooltip-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <span class="code-error-tooltip-type">${error.type}</span>
+          </div>
+          <div class="code-error-tooltip-message">${escapeHtml(error.message)}</div>
+          <div class="code-error-tooltip-fix"><strong>Fix:</strong> ${escapeHtml(error.fix)}</div>
+        </div>
+      </span>\n`;
+    } else {
+      html += escapeHtml(line) + '\n';
+    }
+  });
+  
+  codeEl.innerHTML = html;
 }
 
 function runJavaScript(code, contentEl, outputEl) {
   try {
-    // Capture console.log output
     const logs = [];
     const originalLog = console.log;
     const originalError = console.error;
@@ -3005,15 +3062,12 @@ function runJavaScript(code, contentEl, outputEl) {
       logs.push('⚠️ ' + args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' '));
     };
     
-    // Execute the code
     const result = eval(code);
     
-    // Restore console
     console.log = originalLog;
     console.error = originalError;
     console.warn = originalWarn;
     
-    // Format output
     let output = logs.join('\n');
     if (result !== undefined && logs.length === 0) {
       output = typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
@@ -3022,10 +3076,12 @@ function runJavaScript(code, contentEl, outputEl) {
     contentEl.textContent = output || '✅ Code executed successfully (no output)';
     outputEl.style.borderColor = '#22c55e';
     outputEl.style.background = 'rgba(34, 197, 94, 0.1)';
+    return false; // No error
   } catch (error) {
     contentEl.textContent = `❌ Error: ${error.message}`;
     outputEl.style.borderColor = '#ef4444';
     outputEl.style.background = 'rgba(239, 68, 68, 0.1)';
+    return true; // Has error
   }
 }
 
