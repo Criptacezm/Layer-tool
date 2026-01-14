@@ -76,13 +76,10 @@ async function callGeminiAPI(userPrompt, context = '') {
             }),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Server error');
-        }
-
         const data = await response.json();
-        return data.text;
+        
+        if (response.ok) return data.text;
+        throw new Error(data.error || 'AI Failed');
         
     } catch (error) {
         console.error('Frontend Error:', error);
