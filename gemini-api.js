@@ -39,7 +39,7 @@ Be helpful, precise, and brief.`
 
 // Code-specific model for error analysis
 const codeModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-flash-lite",
     systemInstruction: `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
 2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
