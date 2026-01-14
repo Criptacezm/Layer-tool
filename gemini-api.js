@@ -67,12 +67,9 @@ Only return valid JSON, no other text or explanation.`
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        // This calls the file you created at /api/gemini.js
         const response = await fetch('/api/gemini', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 prompt: userPrompt, 
                 context: context 
@@ -81,16 +78,15 @@ async function callGeminiAPI(userPrompt, context = '') {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || `Server error: ${response.status}`);
+            throw new Error(errorData.error || 'Server error');
         }
 
         const data = await response.json();
+        return data.text;
         
-        if (data.text) return data.text;
-        throw new Error('AI returned an empty response.');
     } catch (error) {
-        console.error('Connection Error:', error);
-        return `❌ Connection Error: ${error.message}. Check Vercel Logs for details.`;
+        console.error('Frontend Error:', error);
+        return `Error: ${error.message}`;
     }
 }
 
