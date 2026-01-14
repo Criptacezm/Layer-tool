@@ -7,7 +7,6 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // API KEY
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
