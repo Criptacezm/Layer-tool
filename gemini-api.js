@@ -67,20 +67,30 @@ Only return valid JSON, no other text or explanation.`
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        // We call OUR server, not Google directly
+        // This calls the file you created at /api/gemini.js
         const response = await fetch('/api/gemini', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: userPrompt, context: context })
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                prompt: userPrompt, 
+                context: context 
+            }),
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
 
         const data = await response.json();
         
         if (data.text) return data.text;
-        throw new Error(data.error || 'AI returned an empty response.');
+        throw new Error('AI returned an empty response.');
     } catch (error) {
-        console.error('Fetch Error:', error);
-        return `Error: ${error.message}`;
+        console.error('Connection Error:', error);
+        return `❌ Connection Error: ${error.message}. Check Vercel Logs for details.`;
     }
 }
 
@@ -89,18 +99,21 @@ async function callGeminiAPI(userPrompt, context = '') {
  */
 async function analyzeCodeErrors(code, language = 'javascript') {
     try {
-        const prompt = `Analyze this ${language} code for errors:\n\`\`\`${language}\n${code}\n\`\`\``;
+        const prompt = `Analyze this ${language} code for errors and return JSON only.`;
+        const context = `Code to analyze:\n\`\`\`${language}\n${code}\n\`\`\``;
         
-        const result = await codeModel.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt, context: context }),
+        });
+
+        const data = await response.json();
+        const text = data.text;
         
-        // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            return parsed;
-        }
+        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        
         return { errors: [] };
     } catch (error) {
         console.error('Code analysis error:', error);
