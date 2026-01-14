@@ -7,14 +7,14 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // API KEY
-const GEMINI_API_KEY = "AIzaSyA7tOZycHfmgXr2y3FswRlVjVaoofCNZo0";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Universal AI Model with broad knowledge - CONCISE responses
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-1.5-flash",
     systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
 RESPONSE RULES:
@@ -39,7 +39,7 @@ Be helpful, precise, and brief.`
 
 // Code-specific model for error analysis
 const codeModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-1.5-flash",
     systemInstruction: `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
 2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
