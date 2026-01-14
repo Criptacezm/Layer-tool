@@ -3585,16 +3585,45 @@ function updateNotificationSetting(key, value) {
 }
 
 // ========================
-// Export Data
+// Export Data - Exports EVERYTHING
 // ========================
 function exportData() {
   const data = {
+    // Core data
     projects: localStorage.getItem('layerProjectsData'),
     backlog: localStorage.getItem('layerBacklogTasks'),
     issues: localStorage.getItem('layerMyIssues'),
     calendar: localStorage.getItem('layerCalendarEvents'),
     expanded: localStorage.getItem('layerCalendarExpandedTask'),
-    theme: localStorage.getItem('layerTheme')
+    theme: localStorage.getItem('layerTheme'),
+    themeMode: localStorage.getItem('layerThemeMode'),
+    
+    // Documents and Spreadsheets
+    docs: localStorage.getItem('layerDocs'),
+    excels: localStorage.getItem('layerExcels'),
+    
+    // Spaces
+    spaces: localStorage.getItem('layerSpaces'),
+    
+    // Assignments
+    assignments: localStorage.getItem('layerAssignments'),
+    
+    // Favorites
+    favoriteDocs: localStorage.getItem('layerFavoriteDocs'),
+    favoriteExcels: localStorage.getItem('layerFavoriteExcels'),
+    
+    // User data
+    users: localStorage.getItem('layerUsers'),
+    currentUser: localStorage.getItem('layerCurrentUser'),
+    
+    // UI state
+    sidebarCollapsed: localStorage.getItem('layerSidebarCollapsed'),
+    hideBetaNotification: localStorage.getItem('hideBetaNotification'),
+    focusTimerPosition: localStorage.getItem('layerFocusTimerPosition'),
+    focusModeState: localStorage.getItem('layerFocusModeState'),
+    
+    // Export timestamp
+    exportedAt: new Date().toISOString()
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -3653,6 +3682,7 @@ function performImport() {
   const data = window.pendingImportData;
   if (!data) return;
 
+  // Core data
   if (data.projects) localStorage.setItem('layerProjectsData', data.projects);
   if (data.backlog) localStorage.setItem('layerBacklogTasks', data.backlog);
   if (data.issues) localStorage.setItem('layerMyIssues', data.issues);
@@ -3662,6 +3692,31 @@ function performImport() {
     localStorage.setItem('layerTheme', data.theme);
     applyTheme(data.theme);
   }
+  if (data.themeMode) localStorage.setItem('layerThemeMode', data.themeMode);
+  
+  // Documents and Spreadsheets
+  if (data.docs) localStorage.setItem('layerDocs', data.docs);
+  if (data.excels) localStorage.setItem('layerExcels', data.excels);
+  
+  // Spaces
+  if (data.spaces) localStorage.setItem('layerSpaces', data.spaces);
+  
+  // Assignments
+  if (data.assignments) localStorage.setItem('layerAssignments', data.assignments);
+  
+  // Favorites
+  if (data.favoriteDocs) localStorage.setItem('layerFavoriteDocs', data.favoriteDocs);
+  if (data.favoriteExcels) localStorage.setItem('layerFavoriteExcels', data.favoriteExcels);
+  
+  // User data
+  if (data.users) localStorage.setItem('layerUsers', data.users);
+  if (data.currentUser) localStorage.setItem('layerCurrentUser', data.currentUser);
+  
+  // UI state
+  if (data.sidebarCollapsed) localStorage.setItem('layerSidebarCollapsed', data.sidebarCollapsed);
+  if (data.hideBetaNotification) localStorage.setItem('hideBetaNotification', data.hideBetaNotification);
+  if (data.focusTimerPosition) localStorage.setItem('layerFocusTimerPosition', data.focusTimerPosition);
+  if (data.focusModeState) localStorage.setItem('layerFocusModeState', data.focusModeState);
 
   delete window.pendingImportData;
   closeModal();
