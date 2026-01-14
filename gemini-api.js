@@ -67,6 +67,7 @@ Only return valid JSON, no other text or explanation.`
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
+        // We are calling your LOCAL api folder, not Google
         const response = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -76,14 +77,17 @@ async function callGeminiAPI(userPrompt, context = '') {
             }),
         });
 
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Server error');
+        }
+
         const data = await response.json();
-        
-        if (response.ok) return data.text;
-        throw new Error(data.error || 'AI Failed');
+        return data.text; // This returns the AI answer to your UI
         
     } catch (error) {
         console.error('Frontend Error:', error);
-        return `Error: ${error.message}`;
+        return `❌ Error: ${error.message}`;
     }
 }
 
