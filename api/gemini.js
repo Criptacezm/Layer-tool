@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-    // ONLY the backend can see process.env
+    // Vercel only makes process.env available on the server
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     try {
