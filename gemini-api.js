@@ -67,19 +67,19 @@ Only return valid JSON, no other text or explanation.`
  */
 async function callGeminiAPI(userPrompt, context = '') {
     try {
-        const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
+        // We call OUR server, not Google directly
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: userPrompt, context: context })
+        });
+
+        const data = await response.json();
         
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        if (text) return text;
-        throw new Error('AI returned an empty response.');
+        if (data.text) return data.text;
+        throw new Error(data.error || 'AI returned an empty response.');
     } catch (error) {
-        console.error('Gemini SDK Error:', error);
-        if (error.message.includes('quota')) {
-            return "⚠️ Rate limit reached. Please wait 60 seconds and try again.";
-        }
+        console.error('Fetch Error:', error);
         return `Error: ${error.message}`;
     }
 }
