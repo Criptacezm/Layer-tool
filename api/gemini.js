@@ -1,11 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-    
-    // Vercel will inject the key here from your dashboard settings
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Vercel sometimes sends a string, sometimes an object
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { prompt, context } = body;
 
     try {
         const { prompt, context } = req.body;
