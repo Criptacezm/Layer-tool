@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Layer - Project Management</title>
   <meta name="description" content="Modern project management with Linear-inspired design. Track issues, manage projects, and stay organized." />
-  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'&gt;&lt;path d='M4 4h16v16H4V4z' fill='url(%23g)' opacity='0.2'/&gt;&lt;path d='M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z' fill='url(%23g)'/&gt;&lt;defs&gt;&lt;linearGradient id='g' x1='4' y1='4' x2='20' y2='20' gradientUnits='userSpaceOnUse'&gt;&lt;stop stop-color='%235e6ad2'/&gt;&lt;stop offset='1' stop-color='%238b5cf6'/&gt;&lt;/linearGradient&gt;&lt;/defs&gt;&lt;/svg&gt;" type="image/svg+xml">
+  <link rel="icon" href="images/Logo.png" type="image/png">
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="components.css" />
   <link rel="stylesheet" href="themes.css" />
@@ -20,44 +20,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@xyflow/react@1/dist/umd/index.js"></script>
 </head>
 <body>
-  <!-- Professional Loading Screen - Minimalist Motion Graphics -->
+  <!-- Minimal Loading Screen -->
   <div class="loading-screen" id="loadingScreen">
     <div class="loading-container">
-      <!-- Minimal Logo Container -->
-      <div class="loading-logo-wrapper">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="loading-logo">
-          <path class="logo-bg" d="M4 4h16v16H4V4z" fill="url(#loading-gradient)" opacity="0.15"></path>
-          <path class="logo-line logo-line-1" d="M7 7h10v2H7V7z" fill="url(#loading-gradient)"></path>
-          <path class="logo-line logo-line-2" d="M7 11h10v2H7v-2z" fill="url(#loading-gradient)"></path>
-          <path class="logo-line logo-line-3" d="M7 15h6v2H7v-2z" fill="url(#loading-gradient)"></path>
-          <defs>
-            <linearGradient id="loading-gradient" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#3b82f6"></stop>
-              <stop offset="1" stop-color="#6366f1"></stop>
-            </linearGradient>
-          </defs>
-        </svg>
-        <!-- Progress Ring -->
-        <svg class="loading-progress-ring" width="96" height="96" viewBox="0 0 96 96">
-          <circle class="progress-ring-bg" cx="48" cy="48" r="44" fill="none" stroke-width="1.5"/>
-          <circle class="progress-ring-fill" cx="48" cy="48" r="44" fill="none" stroke="url(#progress-gradient)" stroke-width="1.5" stroke-linecap="round"/>
-          <defs>
-            <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#3b82f6"/>
-              <stop offset="100%" stop-color="#6366f1"/>
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-      <!-- Loading Text -->
-      <div class="loading-text">
-        <span class="loading-text-main">Layer</span>
-        <div class="loading-dots">
-          <span class="dot dot-1"></span>
-          <span class="dot dot-2"></span>
-          <span class="dot dot-3"></span>
-        </div>
-      </div>
+      <div class="loading-bar"></div>
     </div>
   </div>
 
@@ -66,16 +32,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
-            <rect x="3" y="3" width="18" height="18" rx="5" fill="url(#logo-gradient)"></rect>
-            <path d="M8 8h8v2H8V8zm0 3h8v2H8v-2zm0 3h5v2H8v-2z" fill="white" opacity="0.9"></path>
-            <defs>
-              <linearGradient id="logo-gradient" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#7c3aed"></stop>
-                <stop offset="1" stop-color="#5e6ad2"></stop>
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src="images/Logo.png" alt="Layer Logo" class="logo-icon" width="28" height="28" style="object-fit: contain;">
           <div class="logo-text-container">
             <span class="logo-text">Layer</span>
             <span class="logo-subtitle">WORKSPACE</span>
@@ -198,16 +155,7 @@
     <!-- Mobile Header -->
     <header class="mobile-header" id="mobileHeader">
       <div class="mobile-header-left">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mobile-logo-icon">
-          <path d="M4 4h16v16H4V4z" fill="url(#mobile-logo-gradient)" opacity="0.2"></path>
-          <path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="url(#mobile-logo-gradient)"></path>
-          <defs>
-            <linearGradient id="mobile-logo-gradient" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#5e6ad2"></stop>
-              <stop offset="1" stop-color="#8b5cf6"></stop>
-            </linearGradient>
-          </defs>
-        </svg>
+        <img src="Logo.png" alt="Layer Logo" class="mobile-logo-icon" width="22" height="22" style="object-fit: contain;">
         <span class="mobile-header-logo">Layer</span>
       </div>
       <div class="mobile-header-right">
