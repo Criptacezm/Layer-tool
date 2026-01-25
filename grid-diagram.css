@@ -4240,7 +4240,6 @@
   border-radius: 50%;
   animation: aiDotPulse 1.4s ease-in-out infinite;
 }
-}
 
 .ai-analyzing-dots span:nth-child(1) { animation-delay: 0s; }
 .ai-analyzing-dots span:nth-child(2) { animation-delay: 0.2s; }

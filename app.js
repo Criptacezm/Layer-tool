@@ -26,25 +26,25 @@ const themeToggle = document.getElementById('themeToggle');
 // Initialization
 // ============================================
 function init() {
-  // Show loading screen for 2 seconds then reveal app
+  // Short, smooth loading screen - 0.8s animation + 0.4s fade
   const loadingScreen = document.getElementById('loadingScreen');
   const appContainer = document.getElementById('app');
   
   setTimeout(() => {
     loadingScreen.classList.add('fade-out');
     appContainer.style.opacity = '1';
-    appContainer.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+    appContainer.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
     
-    // Remove loading screen from DOM after animation
+    // Remove loading screen from DOM after fade
     setTimeout(() => {
       loadingScreen.remove();
-    }, 600);
+    }, 400);
     
-    // Show beta notification popup after 1 second
+    // Show beta notification popup after short delay
     setTimeout(() => {
       showBetaNotification();
-    }, 1000);
-  }, 2000);
+    }, 500);
+  }, 900);
 
   // Load theme with mode support
   initTheme();
