@@ -7,7 +7,53 @@ const PROJECTS_KEY = 'layerProjectsData';
 const BACKLOG_KEY = 'layerBacklogTasks';
 const ISSUES_KEY = 'layerMyIssues';
 const THEME_KEY = 'layerTheme';
-const ASSIGNMENTS_KEY = 'layerAssignments';
+const LEFT_PANEL_WIDTH_KEY = 'layerLeftPanelWidth';
+
+// ============================================
+// Left Panel Width Persistence
+// ============================================
+function saveLeftPanelWidth(width) {
+  try {
+    localStorage.setItem(LEFT_PANEL_WIDTH_KEY, width.toString());
+  } catch (e) {
+    console.error('Failed to save left panel width:', e);
+  }
+}
+
+function loadLeftPanelWidth() {
+  try {
+    const width = localStorage.getItem(LEFT_PANEL_WIDTH_KEY);
+    return width ? parseInt(width, 10) : null;
+  } catch (e) {
+    console.error('Failed to load left panel width:', e);
+    return null;
+  }
+}
+
+function initLeftPanelResize() {
+  const savedWidth = loadLeftPanelWidth();
+  if (savedWidth) {
+    document.querySelectorAll('.tl-left-panel-clickup').forEach(panel => {
+      panel.style.width = savedWidth + 'px';
+    });
+  }
+  
+  // Use ResizeObserver to detect manual resizing
+  const observer = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      if (entry.target.classList.contains('tl-left-panel-clickup')) {
+        const width = Math.round(entry.contentRect.width);
+        saveLeftPanelWidth(width);
+      }
+    }
+  });
+  
+  // Observe all left panels
+  document.querySelectorAll('.tl-left-panel-clickup').forEach(panel => {
+    observer.observe(panel);
+  });
+}
+
 
 // ============================================
 // ID Generation
@@ -383,110 +429,6 @@ function calculateProgress(columns) {
   return { total, completed, percentage };
 }
 
-function loadAssignments() {
-  try {
-    const data = localStorage.getItem(ASSIGNMENTS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error('Failed to load assignments:', e);
-    return [];
-  }
-}
-
-function saveAssignments(assignments) {
-  try {
-    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
-  } catch (e) {
-    console.error('Failed to save assignments:', e);
-    alert('Storage full or error saving assignment. Try removing some files.');
-  }
-}
-
-function addAssignment(assignment) {
-  const assignments = loadAssignments();
-  assignments.unshift(assignment); // newest first
-  saveAssignments(assignments);
-}
-
-function deleteAssignment(index) {
-  const assignments = loadAssignments();
-  assignments.splice(index, 1);
-  saveAssignments(assignments);
-}
-
-function openCreateAssignmentModal() {
-  const content = `
-    <form id="createAssignmentForm" onsubmit="handleCreateAssignmentSubmit(event)">
-      <div class="form-group">
-        <label class="form-label">Title <span class="required">*</span></label>
-        <input type="text" name="title" class="form-input" required placeholder="e.g. Math Homework Week 5">
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea name="notes" class="form-textarea" rows="6" placeholder="Add your notes, summaries, answers..."></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Attach files (PDFs, docs, images...)</label>
-        <input type="file" id="assignmentFiles" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
-        <p style="font-size: 13px; color: var(--muted-foreground); margin-top: 8px;">
-          Files will be saved locally. Large files may fill up browser storage.
-        </p>
-      </div>
-      
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create Assignment</button>
-      </div>
-    </form>
-  `;
-  openModal('Create Assignment', content);
-}
-
-async function handleCreateAssignmentSubmit(event) {
-  event.preventDefault();
-  const form = event.target;
-  const title = form.title.value.trim();
-  const notes = form.notes.value.trim();
-
-  if (!title) return;
-
-  const fileInput = document.getElementById('assignmentFiles');
-  const files = [];
-
-  for (const file of fileInput.files) {
-    const dataUrl = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-    files.push({
-      name: file.name,
-      type: file.type || 'application/octet-stream',
-      size: file.size,
-      dataUrl
-    });
-  }
-
-  addAssignment({
-    id: generateId('ASSIGN'),
-    title,
-    notes,
-    files,
-    created: new Date().toISOString()
-  });
-
-  closeModal();
-  renderCurrentView();
-}
-
-function deleteAssignment(index) {
-  if (confirm('Delete this assignment permanently?')) {
-    deleteAssignment(index);
-    renderCurrentView();
-  }
-}
 
 // ============================================
 // PDF Viewer Functions
@@ -667,30 +609,3 @@ function formatFileSize(bytes) {
 // ============================================
 // Project Updates (Comments)
 // ============================================
-function loadProjectUpdates(projectIndex) {
-  const projects = loadProjects();
-  if (!projects[projectIndex]) return [];
-  return projects[projectIndex].updates || [];
-}
-
-function addProjectUpdate(projectIndex, message) {
-  const projects = loadProjects();
-  if (!projects[projectIndex]) return;
-
-  const newUpdate = {
-    actor: 'Zeyad Maher',  // Hardcoded for single-user; extend later for multi-user
-    message: message.trim(),
-    time: new Date().toISOString()
-  };
-
-  if (!projects[projectIndex].updates) {
-    projects[projectIndex].updates = [];
-  }
-  projects[projectIndex].updates.unshift(newUpdate);  // Newest first
-  saveProjects(projects);
-}
-
-function getProjectStatus(projectIndex) {
-  const projects = loadProjects();
-  return projects[projectIndex]?.status || 'todo';
-}

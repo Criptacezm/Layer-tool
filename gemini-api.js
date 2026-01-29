@@ -7,14 +7,14 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // API KEY
-const GEMINI_API_KEY = "AIzaSyBHCxswSxOhzh2Ol560FtkmahRAEGkLxls";
+const GEMINI_API_KEY = "AIzaSyBRhlJuyVjlX9gb-gN475JmyDi-kkU6BTM";
 
 // Initialize the API
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Universal AI Model with broad knowledge - CONCISE responses
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash",
     systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
 RESPONSE RULES:
@@ -39,7 +39,7 @@ Be helpful, precise, and brief.`
 
 // Code-specific model for error analysis
 const codeModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     systemInstruction: `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
 2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
@@ -77,10 +77,24 @@ async function callGeminiAPI(userPrompt, context = '') {
         throw new Error('AI returned an empty response.');
     } catch (error) {
         console.error('Gemini SDK Error:', error);
-        if (error.message.includes('quota')) {
+        const errorMsg = error.message || String(error);
+        
+        // Check for various rate limit / quota errors
+        if (errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
             return "⚠️ Rate limit reached. Please wait 60 seconds and try again.";
         }
-        return `Error: ${error.message}`;
+        
+        // Check for API key issues
+        if (errorMsg.includes('API_KEY') || errorMsg.includes('401') || errorMsg.includes('403')) {
+            return "⚠️ API key issue. Please check your Gemini API key is valid.";
+        }
+        
+        // Check for model not found
+        if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+            return "⚠️ Model not available. Please try again later.";
+        }
+        
+        return `❌ Error: ${errorMsg}`;
     }
 }
 
@@ -476,10 +490,11 @@ function highlightCodeCellErrors(cellId, errors) {
                         <div class="code-error-tooltip-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
-                                <path d="M15 9l-6 6M9 9l6 6"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
                             </svg>
                         </div>
-                        <span class="code-error-tooltip-type">${errorType}</span>
+                        <span class="code-error-tooltip-type">${errorType} Error</span>
                     </div>
                     <div class="code-error-tooltip-message">${escapeHtml(error.message)}</div>
                     ${error.fix ? `<div class="code-error-tooltip-fix"><strong>Fix:</strong> ${escapeHtml(error.fix)}</div>` : ''}

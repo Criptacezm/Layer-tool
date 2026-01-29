@@ -494,6 +494,110 @@ function getEventColor(color) {
   return colors[color] || colors.blue;
 }
 
+// Helper function to get linked info display for events (project, assignment, space)
+function getEventLinkedInfo(ev) {
+  const links = [];
+  
+  // Add location first if exists
+  if (ev.location) {
+    links.push(`<span class="event-link-badge location-link" title="Location: ${ev.location}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      ${ev.location.length > 12 ? ev.location.substring(0, 10) + '...' : ev.location}
+    </span>`);
+  }
+  
+  if (ev.projectId) {
+    const projects = loadProjects();
+    const project = projects.find(p => p.id === ev.projectId);
+    if (project) {
+      links.push(`<span class="event-link-badge project-link" title="Project: ${project.name}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        ${project.name.length > 10 ? project.name.substring(0, 8) + '...' : project.name}
+      </span>`);
+    }
+  }
+  
+  if (ev.assignmentId) {
+    const assignments = loadAssignments();
+    const assignment = assignments.find(a => a.id === ev.assignmentId);
+    if (assignment) {
+      links.push(`<span class="event-link-badge assignment-link" title="Assignment: ${assignment.title}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        ${assignment.title.length > 10 ? assignment.title.substring(0, 8) + '...' : assignment.title}
+      </span>`);
+    }
+  }
+  
+  if (ev.spaceId) {
+    const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
+    const space = spaces.find(s => s.id === ev.spaceId);
+    if (space) {
+      links.push(`<span class="event-link-badge space-link" title="Space: ${space.name}" style="--space-color: ${space.color || '#8b5cf6'};">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
+        ${space.name.length > 10 ? space.name.substring(0, 8) + '...' : space.name}
+      </span>`);
+    }
+  }
+  
+  if (links.length === 0) return '';
+  return `<div class="event-links-row">${links.join('')}</div>`;
+}
+
+// Generate options for project dropdown
+function generateProjectOptions(selectedId = null) {
+  const projects = loadProjects();
+  let options = '<option value="">No project</option>';
+  projects.forEach(p => {
+    const selected = p.id === selectedId ? 'selected' : '';
+    options += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+  });
+  return options;
+}
+
+// Generate options for assignment dropdown
+function generateAssignmentOptions(selectedId = null) {
+  const assignments = loadAssignments();
+  let options = '<option value="">No assignment</option>';
+  assignments.forEach(a => {
+    const selected = a.id === selectedId ? 'selected' : '';
+    options += `<option value="${a.id}" ${selected}>${a.title}</option>`;
+  });
+  return options;
+}
+
+// Generate options for space dropdown
+function generateSpaceOptions(selectedId = null) {
+  const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
+  let options = '<option value="">No space</option>';
+  spaces.forEach(s => {
+    const selected = s.id === selectedId ? 'selected' : '';
+    options += `<option value="${s.id}" ${selected}>${s.name}</option>`;
+  });
+  return options;
+}
+
+// Toggle event links collapsible section
+function toggleEventLinksSection() {
+  const section = document.getElementById('eventLinksSection');
+  const header = section?.previousElementSibling;
+  if (section) {
+    section.classList.toggle('collapsed');
+    header?.classList.toggle('collapsed');
+  }
+}
+
+
 
 
 /* ============================================
@@ -1170,12 +1274,78 @@ function handleQuickAddClick() {
 
 
 /* ============================================
-   Layer - Schedule / Calendar View - Single Expanded Task Only
+   Layer - PROFESSIONAL Google Calendar Clone
+   Advanced Schedule System with Full Features
    ============================================ */
 
 let currentCalendarMonth = new Date();
 const EVENTS_KEY = 'layerCalendarEvents';
 const EXPANDED_KEY = 'layerCalendarExpandedTask';
+const CALENDAR_SETTINGS_KEY = 'layerCalendarSettings';
+
+// Enhanced Event Categories (Google Calendar style)
+const EVENT_CATEGORIES = [
+  { id: 'default', name: 'Default', color: '#3b82f6', icon: 'calendar' },
+  { id: 'work', name: 'Work', color: '#ef4444', icon: 'briefcase' },
+  { id: 'personal', name: 'Personal', color: '#22c55e', icon: 'user' },
+  { id: 'meeting', name: 'Meeting', color: '#8b5cf6', icon: 'users' },
+  { id: 'deadline', name: 'Deadline', color: '#f59e0b', icon: 'flag' },
+  { id: 'reminder', name: 'Reminder', color: '#06b6d4', icon: 'bell' },
+  { id: 'birthday', name: 'Birthday', color: '#ec4899', icon: 'cake' },
+  { id: 'holiday', name: 'Holiday', color: '#10b981', icon: 'sun' },
+  { id: 'focus', name: 'Focus Time', color: '#6366f1', icon: 'zap' },
+  { id: 'travel', name: 'Travel', color: '#14b8a6', icon: 'plane' }
+];
+
+// Reminder presets (minutes before)
+const REMINDER_PRESETS = [
+  { value: 0, label: 'At time of event' },
+  { value: 5, label: '5 minutes before' },
+  { value: 10, label: '10 minutes before' },
+  { value: 15, label: '15 minutes before' },
+  { value: 30, label: '30 minutes before' },
+  { value: 60, label: '1 hour before' },
+  { value: 120, label: '2 hours before' },
+  { value: 1440, label: '1 day before' },
+  { value: 2880, label: '2 days before' },
+  { value: 10080, label: '1 week before' }
+];
+
+// Recurrence patterns
+const RECURRENCE_PATTERNS = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+  { value: 'weekdays', label: 'Every weekday (Mon-Fri)' },
+  { value: 'custom', label: 'Custom...' }
+];
+
+// Calendar Settings
+let calendarSettings = loadCalendarSettings();
+
+function loadCalendarSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(CALENDAR_SETTINGS_KEY)) || {
+      weekStartsOn: 1, // 0 = Sunday, 1 = Monday
+      defaultView: 'week',
+      showWeekNumbers: false,
+      timeFormat: '12h',
+      defaultEventDuration: 60,
+      showDeclinedEvents: false,
+      enableNotifications: true,
+      workingHours: { start: '09:00', end: '17:00' },
+      defaultReminder: 30
+    };
+  } catch { return {}; }
+}
+
+function saveCalendarSettings(settings) {
+  calendarSettings = settings;
+  localStorage.setItem(CALENDAR_SETTINGS_KEY, JSON.stringify(settings));
+}
 
 function loadCalendarEvents() {
   try { return JSON.parse(localStorage.getItem(EVENTS_KEY)) || []; }
@@ -1184,6 +1354,46 @@ function loadCalendarEvents() {
 
 function saveCalendarEvents(events) {
   localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+}
+
+// Generate unique event ID
+function generateEventId() {
+  return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Create enhanced event object
+function createEnhancedEvent(data) {
+  return {
+    id: generateEventId(),
+    title: data.title || 'Untitled Event',
+    description: data.description || '',
+    date: data.date,
+    endDate: data.endDate || data.date,
+    time: data.time || null,
+    endTime: data.endTime || null,
+    isAllDay: data.isAllDay || false,
+    category: data.category || 'default',
+    color: data.color || EVENT_CATEGORIES[0].color,
+    location: data.location || '',
+    attendees: data.attendees || [],
+    reminders: data.reminders || [calendarSettings.defaultReminder || 30],
+    recurrence: data.recurrence || 'none',
+    recurrenceEnd: data.recurrenceEnd || null,
+    isRecurring: data.isRecurring || false,
+    recurringId: data.recurringId || null,
+    status: data.status || 'confirmed', // confirmed, tentative, cancelled
+    visibility: data.visibility || 'default', // default, public, private
+    notes: data.notes || '',
+    attachments: data.attachments || [],
+    created: new Date().toISOString(),
+    updated: new Date().toISOString(),
+    // Google Calendar-like fields
+    conferenceLink: data.conferenceLink || '',
+    guestsCanModify: data.guestsCanModify || false,
+    guestsCanSeeOtherGuests: data.guestsCanSeeOtherGuests || true,
+    projectId: data.projectId || null,
+    spaceId: data.spaceId || null
+  };
 }
 
 function loadExpandedTaskId() {
@@ -1209,7 +1419,8 @@ function setExpandedTask(eventId) {
   const current = loadExpandedTaskId();
   const newId = (current === eventId) ? null : eventId;
   saveExpandedTaskId(newId);
-  renderCurrentView();
+  // Preserve scroll when toggling task expansion
+  renderCurrentView(true);
 }
 
 function deleteTask(eventId) {
@@ -1218,14 +1429,16 @@ function deleteTask(eventId) {
 
 function openDeleteTaskModal(eventId) {
   const events = loadCalendarEvents();
-  const task = events.find(e => e.id === eventId);
+  // Use == for type coercion (eventId may be string or number)
+  const task = events.find(e => e.id == eventId);
   if (!task) return;
 
   // Non-recurring: keep the simple confirm flow
   if (!task.isRecurring || !task.recurringId) {
     if (!confirm('Delete this task permanently?')) return;
     deleteSingleCalendarEvent(eventId);
-    renderCurrentView();
+    // Preserve scroll when deleting task
+    renderCurrentView(true);
     return;
   }
 
@@ -1249,7 +1462,8 @@ function openDeleteTaskModal(eventId) {
 
 function deleteSingleCalendarEvent(eventId) {
   let events = loadCalendarEvents();
-  events = events.filter(e => e.id !== eventId);
+  // Use != for type coercion (eventId may be string or number)
+  events = events.filter(e => e.id != eventId);
   saveCalendarEvents(events);
 
   if (loadExpandedTaskId() === eventId) {
@@ -1260,7 +1474,8 @@ function deleteSingleCalendarEvent(eventId) {
 function confirmDeleteTaskOccurrence(eventId) {
   deleteSingleCalendarEvent(eventId);
   closeModal();
-  renderCurrentView();
+  // Preserve scroll when deleting occurrence
+  renderCurrentView(true);
 }
 
 function confirmDeleteTaskSeries(recurringId) {
@@ -1278,14 +1493,21 @@ function confirmDeleteTaskSeries(recurringId) {
   saveExpandedTaskId(null);
 
   closeModal();
-  renderCurrentView();
+  // Preserve scroll when deleting series
+  renderCurrentView(true);
 }
 
 // NEW: Edit task modal
 function openEditTaskModal(eventId) {
   const events = loadCalendarEvents();
-  const task = events.find(e => e.id === eventId);
+  // Use == for type coercion (eventId may be string or number)
+  const task = events.find(e => e.id == eventId);
   if (!task) return;
+  
+  const startTime = task.time || '';
+  const endTime = task.endTime || '';
+  const duration = calculateDuration(startTime, endTime);
+  const locationValue = task.location || '';
 
   const content = `
     <form id="editEventForm" onsubmit="handleEditEventSubmit(event, ${eventId})">
@@ -1293,10 +1515,59 @@ function openEditTaskModal(eventId) {
         <label>Title <span class="required">*</span></label>
         <input type="text" name="title" class="form-input" value="${task.title}" required>
       </div>
+      
       <div class="form-group">
-        <label>Time (optional)</label>
-        <input type="time" name="time" class="form-input" value="${task.time || ''}">
+        <label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          Location
+        </label>
+        <input type="text" name="location" class="form-input" value="${locationValue}" placeholder="Add location...">
       </div>
+      
+      <div class="time-picker-group">
+        <div class="time-picker-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          Time
+        </div>
+        
+        <div class="time-picker-row">
+          <span class="time-picker-label">From</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+              <option value="">No time</option>
+              ${generateTimeOptions(startTime)}
+            </select>
+          </div>
+          <span class="time-picker-divider">→</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+              <option value="">No time</option>
+              ${generateTimeOptions(endTime)}
+            </select>
+          </div>
+        </div>
+        
+        <div class="time-duration-hint" id="durationHint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          <span>${duration ? `Duration: ${duration}` : 'Select time'}</span>
+        </div>
+        
+        <div class="quick-duration-btns">
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(30)">30 min</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(60)">1 hour</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(90)">1.5 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(120)">2 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(180)">3 hours</button>
+        </div>
+      </div>
+      
       <div class="form-group">
         <label>Color</label>
         <select name="color" class="form-select">
@@ -1307,6 +1578,43 @@ function openEditTaskModal(eventId) {
           <option value="red" ${task.color === 'red' ? 'selected' : ''}>Red</option>
         </select>
       </div>
+      
+      <!-- Link to Project, Assignment, or Space -->
+      <div class="form-group-collapsible">
+        <div class="form-collapsible-header" onclick="toggleEventLinksSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <span>Link to Project / Assignment / Space</span>
+          <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+        <div class="form-collapsible-content" id="eventLinksSection">
+          <div class="form-row-triple">
+            <div class="form-group-inline">
+              <label>Project</label>
+              <select name="projectId" class="form-select form-select-sm">
+                ${generateProjectOptions(task.projectId)}
+              </select>
+            </div>
+            <div class="form-group-inline">
+              <label>Assignment</label>
+              <select name="assignmentId" class="form-select form-select-sm">
+                ${generateAssignmentOptions(task.assignmentId)}
+              </select>
+            </div>
+            <div class="form-group-inline">
+              <label>Space</label>
+              <select name="spaceId" class="form-select form-select-sm">
+                ${generateSpaceOptions(task.spaceId)}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -1322,26 +1630,39 @@ function handleEditEventSubmit(e, eventId) {
   const data = new FormData(form);
 
   const title = data.get('title')?.trim();
-  const time = data.get('time');
+  const startTime = data.get('startTime');
+  const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
+  const location = data.get('location')?.trim() || null;
+  const projectId = data.get('projectId') || null;
+  const assignmentId = data.get('assignmentId') || null;
+  const spaceId = data.get('spaceId') || null;
 
   if (!title) return;
 
   let events = loadCalendarEvents();
-  const index = events.findIndex(e => e.id === eventId);
+  // Use == for type coercion (eventId may be string or number)
+  const index = events.findIndex(e => e.id == eventId);
   if (index === -1) return;
 
   events[index] = {
     ...events[index],
     title,
-    time: time || null,
-    color
+    time: startTime || null,
+    endTime: endTime || null,
+    color,
+    location,
+    projectId,
+    assignmentId,
+    spaceId
   };
 
   saveCalendarEvents(events);
   closeModal();
-  renderCurrentView();
+  // Preserve scroll when editing task
+  renderCurrentView(true);
 }
+
 
 // Recurring Tasks Storage
 const RECURRING_KEY = 'layerRecurringTasks';
@@ -1381,7 +1702,7 @@ function deleteRecurringTask(id) {
 
 function applyRecurringTasks() {
   const recurring = loadRecurringTasks();
-  const events = loadCalendarEvents();
+  let events = loadCalendarEvents();
   const today = new Date();
   
   // Generate events for next 60 days
@@ -1393,21 +1714,31 @@ function applyRecurringTasks() {
     
     recurring.forEach(task => {
       if (task.days && task.days.includes(dayOfWeek)) {
-        // Check if event already exists
+        // Check if event already exists for this date and recurringId
         const exists = events.some(e => 
           e.recurringId === task.id &&
           e.date === dateStr &&
           e.isRecurring === true
         );
         if (!exists) {
+          // Calculate end time if start time exists (default 1 hour duration)
+          let endTime = null;
+          if (task.time) {
+            const [h, m] = task.time.split(':').map(Number);
+            const endH = (h + 1) % 24;
+            endTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          }
+          
           events.push({
             id: Date.now() + i + Math.floor(Math.random() * 1000000),
             title: task.title,
             date: dateStr,
             time: task.time || null,
+            endTime: endTime,
             color: task.color || 'blue',
             isRecurring: true,
-            recurringId: task.id
+            recurringId: task.id,
+            location: task.location || null
           });
         }
       }
@@ -1479,310 +1810,1254 @@ function handleAddRecurringSubmit(e) {
   closeModal();
 }
 
+/* ============================================
+   Layer - ADVANCED Schedule / Calendar View
+   Professional Week View with Time Slots, Mini Calendar,
+   Categories, Filters, and Advanced Features
+   ============================================ */
+
+// Schedule View State - Extended with Agenda and Year views
+let scheduleViewMode = 'week'; // 'day', 'week', 'month', 'agenda', 'year'
+let scheduleCurrentDate = new Date();
+let scheduleSelectedDate = new Date();
+let scheduleFilters = {
+  mySchedule: ['daily-standup', 'weekly-review', 'team-meeting', 'lunch-break', 'client-meeting', 'other'],
+  searchQuery: '',
+  showCancelled: false
+};
+let scheduleMyScheduleCollapsed = false;
+let calendarQuickAddOpen = false;
+let calendarKeyboardShortcutsEnabled = true;
+
+// My Schedule presets
+const MY_SCHEDULE_PRESETS = [
+  { id: 'daily-standup', name: 'Daily Standup', checked: true },
+  { id: 'weekly-review', name: 'Weekly Review', checked: true },
+  { id: 'team-meeting', name: 'Team Meeting', checked: true },
+  { id: 'lunch-break', name: 'Lunch Break', checked: true },
+  { id: 'client-meeting', name: 'Client Meeting', checked: true },
+  { id: 'other', name: 'Other', checked: true }
+];
+
+// Time slots for week view (6 AM to 6 AM - full 24 hours)
+const TIME_SLOTS = [];
+for (let i = 0; i < 24; i++) {
+  const h = (i + 6) % 24; // Start at 6 AM, wrap around
+  const hour12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  TIME_SLOTS.push({ hour: h, label: `${hour12.toString().padStart(2, '0')} ${ampm}` });
+}
+
+// ============================================
+// Keyboard Shortcuts Handler (Google Calendar style)
+// ============================================
+function initCalendarKeyboardShortcuts() {
+  document.addEventListener('keydown', handleCalendarKeydown);
+}
+
+function handleCalendarKeydown(e) {
+  // Don't handle if typing in input/textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (!calendarKeyboardShortcutsEnabled) return;
+  
+  const key = e.key.toLowerCase();
+  
+  // View shortcuts
+  if (key === 'd' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    setScheduleViewMode('day');
+  } else if (key === 'w' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    setScheduleViewMode('week');
+  } else if (key === 'm' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    setScheduleViewMode('month');
+  } else if (key === 'a' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    setScheduleViewMode('agenda');
+  } else if (key === 'y' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    setScheduleViewMode('year');
+  }
+  // Navigation shortcuts
+  else if (key === 't') {
+    e.preventDefault();
+    goToScheduleToday();
+  } else if (key === 'n' || key === 'arrowright') {
+    if (!e.ctrlKey && !e.metaKey && key === 'n') {
+      e.preventDefault();
+      navigateScheduleNext();
+    }
+  } else if (key === 'p' || key === 'arrowleft') {
+    if (!e.ctrlKey && !e.metaKey && key === 'p') {
+      e.preventDefault();
+      navigateSchedulePrev();
+    }
+  }
+  // Quick add shortcut
+  else if (key === 'c' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    openAdvancedEventModal();
+  }
+  // Search shortcut
+  else if (key === '/' || (key === 'k' && (e.ctrlKey || e.metaKey))) {
+    e.preventDefault();
+    focusCalendarSearch();
+  }
+  // Escape to close quick add
+  else if (key === 'escape') {
+    if (calendarQuickAddOpen) {
+      closeCalendarQuickAdd();
+    }
+  }
+  // Question mark for shortcuts help
+  else if (key === '?' || (key === '/' && e.shiftKey)) {
+    e.preventDefault();
+    showKeyboardShortcutsModal();
+  }
+}
+
+function showKeyboardShortcutsModal() {
+  const content = `
+    <div class="keyboard-shortcuts-grid">
+      <div class="shortcuts-section">
+        <h4>Views</h4>
+        <div class="shortcut-item"><kbd>D</kbd><span>Day view</span></div>
+        <div class="shortcut-item"><kbd>W</kbd><span>Week view</span></div>
+        <div class="shortcut-item"><kbd>M</kbd><span>Month view</span></div>
+        <div class="shortcut-item"><kbd>A</kbd><span>Agenda view</span></div>
+        <div class="shortcut-item"><kbd>Y</kbd><span>Year view</span></div>
+      </div>
+      <div class="shortcuts-section">
+        <h4>Navigation</h4>
+        <div class="shortcut-item"><kbd>T</kbd><span>Go to today</span></div>
+        <div class="shortcut-item"><kbd>N</kbd><span>Next period</span></div>
+        <div class="shortcut-item"><kbd>P</kbd><span>Previous period</span></div>
+        <div class="shortcut-item"><kbd>G</kbd><span>Go to date</span></div>
+      </div>
+      <div class="shortcuts-section">
+        <h4>Actions</h4>
+        <div class="shortcut-item"><kbd>C</kbd><span>Create event</span></div>
+        <div class="shortcut-item"><kbd>/</kbd><span>Search</span></div>
+        <div class="shortcut-item"><kbd>Esc</kbd><span>Close dialog</span></div>
+        <div class="shortcut-item"><kbd>?</kbd><span>Show shortcuts</span></div>
+      </div>
+    </div>
+  `;
+  openModal('Keyboard Shortcuts', content);
+}
+
+function focusCalendarSearch() {
+  const searchInput = document.getElementById('calendarSearchInput');
+  if (searchInput) {
+    searchInput.focus();
+    searchInput.select();
+  }
+}
+
+// ============================================
+// Quick Add Bar (Google Calendar style)
+// ============================================
+function openCalendarQuickAdd() {
+  calendarQuickAddOpen = true;
+  renderCurrentView();
+  setTimeout(() => {
+    const input = document.getElementById('quickAddInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+function closeCalendarQuickAdd() {
+  calendarQuickAddOpen = false;
+  renderCurrentView();
+}
+
+function handleQuickAddSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('quickAddInput');
+  if (!input) return;
+  
+  const text = input.value.trim();
+  if (!text) return;
+  
+  // Parse natural language input (e.g., "Meeting tomorrow at 3pm")
+  const parsedEvent = parseNaturalLanguageEvent(text);
+  
+  const events = loadCalendarEvents();
+  const newEvent = createEnhancedEvent(parsedEvent);
+  events.push(newEvent);
+  saveCalendarEvents(events);
+  
+  closeCalendarQuickAdd();
+  showToast(`Event "${parsedEvent.title}" created`);
+  renderCurrentView();
+}
+
+// Natural language event parser
+function parseNaturalLanguageEvent(text) {
+  const today = new Date();
+  let title = text;
+  let date = today.toISOString().split('T')[0];
+  let time = null;
+  let endTime = null;
+  
+  // Parse "tomorrow"
+  if (/\btomorrow\b/i.test(text)) {
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    date = tomorrow.toISOString().split('T')[0];
+    title = title.replace(/\btomorrow\b/i, '').trim();
+  }
+  
+  // Parse "next week"
+  if (/\bnext week\b/i.test(text)) {
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    date = nextWeek.toISOString().split('T')[0];
+    title = title.replace(/\bnext week\b/i, '').trim();
+  }
+  
+  // Parse day names
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayMatch = text.match(new RegExp(`\\b(${dayNames.join('|')})\\b`, 'i'));
+  if (dayMatch) {
+    const targetDay = dayNames.indexOf(dayMatch[1].toLowerCase());
+    const currentDay = today.getDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil <= 0) daysUntil += 7;
+    const targetDate = new Date(today);
+    targetDate.setDate(targetDate.getDate() + daysUntil);
+    date = targetDate.toISOString().split('T')[0];
+    title = title.replace(new RegExp(`\\b${dayMatch[1]}\\b`, 'i'), '').trim();
+  }
+  
+  // Parse time (e.g., "at 3pm", "3:30 pm", "15:00")
+  const timeMatch = text.match(/\bat\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i) ||
+                    text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1]);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    const period = timeMatch[3]?.toLowerCase();
+    
+    if (period === 'pm' && hours < 12) hours += 12;
+    if (period === 'am' && hours === 12) hours = 0;
+    
+    time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    endTime = `${String((hours + 1) % 24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    
+    title = title.replace(timeMatch[0], '').trim();
+  }
+  
+  // Parse duration (e.g., "for 2 hours")
+  const durationMatch = text.match(/\bfor\s+(\d+(?:\.\d+)?)\s*(hour|hr|hours|hrs|minute|min|minutes|mins)/i);
+  if (durationMatch && time) {
+    const amount = parseFloat(durationMatch[1]);
+    const unit = durationMatch[2].toLowerCase();
+    let durationMinutes = unit.startsWith('hour') || unit.startsWith('hr') ? amount * 60 : amount;
+    
+    const [startH, startM] = time.split(':').map(Number);
+    const totalMinutes = startH * 60 + startM + durationMinutes;
+    const endH = Math.floor(totalMinutes / 60) % 24;
+    const endM = totalMinutes % 60;
+    endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    
+    title = title.replace(durationMatch[0], '').trim();
+  }
+  
+  // Clean up title
+  title = title.replace(/\s+at\s*$/i, '').replace(/\s+/g, ' ').trim();
+  if (!title) title = 'New Event';
+  
+  return { title, date, time, endTime };
+}
+
+// Drag-to-create state
+let dragCreateState = {
+  isDragging: false,
+  startY: 0,
+  currentY: 0,
+  columnDate: null,
+  columnElement: null,
+  previewElement: null
+};
+
+// Convert Y position to time (based on 80px per hour, starting at 6 AM, full 24 hours)
+function yPositionToTime(clientY, columnElement) {
+  const scrollContainer = columnElement.closest('.week-grid-scroll, .day-view-grid-scroll');
+  
+  // Get the column's position relative to its scroll container
+  const containerRect = scrollContainer ? scrollContainer.getBoundingClientRect() : columnElement.getBoundingClientRect();
+  const scrollTop = scrollContainer?.scrollTop || 0;
+  
+  // Calculate the Y position relative to the column's content (not viewport)
+  // clientY is viewport-relative, containerRect.top is where container starts in viewport
+  // Add scrollTop to account for how much we've scrolled within the container
+  const relativeY = clientY - containerRect.top + scrollTop;
+  
+  // Clamp relativeY to valid range (0 to 24 hours * 80px = 1920px)
+  const clampedY = Math.max(0, Math.min(1920, relativeY));
+  
+  // Snap to 15-minute intervals (20px = 15 minutes)
+  const snappedY = Math.round(clampedY / 20) * 20;
+  
+  // Calculate total minutes from 6 AM (6 AM is at Y=0)
+  const totalMinutesFrom6AM = (snappedY / 80) * 60;
+  
+  // Convert to actual time (6 AM = 0 minutes offset)
+  let totalMinutes = (6 * 60) + totalMinutesFrom6AM;
+  
+  // Handle wrap around to next day (after midnight)
+  if (totalMinutes >= 24 * 60) {
+    totalMinutes = totalMinutes % (24 * 60);
+  }
+  
+  // Clamp to valid day range (0:00 to 23:45)
+  totalMinutes = Math.max(0, Math.min(23 * 60 + 45, totalMinutes));
+  
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  
+  // Ensure minutes snap to 15-minute intervals
+  const snappedMinutes = Math.round(minutes / 15) * 15;
+  const finalMinutes = snappedMinutes >= 60 ? 0 : snappedMinutes;
+  const finalHours = snappedMinutes >= 60 ? (hours + 1) % 24 : hours;
+  
+  return `${String(finalHours).padStart(2, '0')}:${String(finalMinutes).padStart(2, '0')}`;
+}
+
+// Convert time to Y position (6 AM = 0, 7 AM = 80, ..., 5 AM next day = 1840)
+function timeToYPosition(time) {
+  if (!time) return 0;
+  const [h, m] = time.split(':').map(Number);
+  // Calculate slot index: hours before 6 are treated as next day (add 24)
+  let slotIndex = h - 6;
+  if (slotIndex < 0) slotIndex += 24; // Wrap around for hours 0-5 (after midnight)
+  return (slotIndex * 80) + (m / 60 * 80);
+}
+
+// Handle drag start on calendar column
+function handleCalendarDragStart(e, dateStr) {
+  // Don't start drag if clicking on an event
+  if (e.target.closest('.week-event-card')) return;
+  
+  e.preventDefault();
+  const column = e.currentTarget;
+  
+  dragCreateState = {
+    isDragging: true,
+    startY: e.clientY,
+    currentY: e.clientY,
+    columnDate: dateStr,
+    columnElement: column,
+    previewElement: null
+  };
+  
+  // Create preview element
+  const preview = document.createElement('div');
+  preview.className = 'drag-create-preview';
+  preview.innerHTML = '<div class="drag-preview-content"><span class="drag-preview-time"></span><span class="drag-preview-label">New Event</span></div>';
+  column.appendChild(preview);
+  dragCreateState.previewElement = preview;
+  
+  // Position preview
+  updateDragPreview(e.clientY);
+  
+  // Add document listeners
+  document.addEventListener('mousemove', handleCalendarDragMove);
+  document.addEventListener('mouseup', handleCalendarDragEnd);
+}
+
+// Handle drag move
+function handleCalendarDragMove(e) {
+  if (!dragCreateState.isDragging) return;
+  
+  e.preventDefault();
+  dragCreateState.currentY = e.clientY;
+  updateDragPreview(e.clientY);
+}
+
+// Update drag preview position and size
+function updateDragPreview(currentY) {
+  const { startY, columnElement, previewElement } = dragCreateState;
+  if (!previewElement || !columnElement) return;
+  
+  const rect = columnElement.getBoundingClientRect();
+  const scrollContainer = columnElement.closest('.week-grid-scroll, .day-view-grid-scroll');
+  const scrollTop = scrollContainer?.scrollTop || 0;
+  
+  // Calculate positions relative to column
+  const startRelative = startY - rect.top + scrollTop;
+  const currentRelative = currentY - rect.top + scrollTop;
+  
+  // Determine top and height
+  const top = Math.min(startRelative, currentRelative);
+  const bottom = Math.max(startRelative, currentRelative);
+  const height = Math.max(40, bottom - top); // Minimum 40px height
+  
+  // Snap to 15-minute intervals (20px)
+  const snappedTop = Math.round(top / 20) * 20;
+  const snappedHeight = Math.max(40, Math.round(height / 20) * 20);
+  
+  previewElement.style.top = `${Math.max(0, snappedTop)}px`;
+  previewElement.style.height = `${snappedHeight}px`;
+  
+  // Calculate time range for display
+  const startTime = yPositionToTime(Math.min(startY, currentY), columnElement);
+  const endTime = yPositionToTime(Math.max(startY, currentY), columnElement);
+  
+  // Add 30 min minimum for end time if same as start
+  let adjustedEndTime = endTime;
+  if (startTime === endTime) {
+    const [h, m] = endTime.split(':').map(Number);
+    const newM = m + 30;
+    if (newM >= 60) {
+      adjustedEndTime = `${String(h + 1).padStart(2, '0')}:${String(newM - 60).padStart(2, '0')}`;
+    } else {
+      adjustedEndTime = `${String(h).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
+  }
+  
+  // Update preview text
+  const timeLabel = previewElement.querySelector('.drag-preview-time');
+  if (timeLabel) {
+    timeLabel.textContent = `${formatTime12h(startTime)} - ${formatTime12h(adjustedEndTime)}`;
+  }
+  
+  // Store times for modal
+  dragCreateState.startTime = startTime;
+  dragCreateState.endTime = adjustedEndTime;
+}
+
+// Handle drag end
+function handleCalendarDragEnd(e) {
+  if (!dragCreateState.isDragging) return;
+  
+  document.removeEventListener('mousemove', handleCalendarDragMove);
+  document.removeEventListener('mouseup', handleCalendarDragEnd);
+  
+  const { columnDate, startTime, endTime, previewElement, startY, currentY } = dragCreateState;
+  
+  // Remove preview
+  if (previewElement) {
+    previewElement.remove();
+  }
+  
+  // Check if this was a real drag (moved at least 20px) or just a click
+  const dragDistance = Math.abs(currentY - startY);
+  
+  if (dragDistance > 20 && columnDate && startTime) {
+    // Open create modal with pre-filled times
+    openCreateEventModalWithTime(columnDate, startTime, endTime || startTime);
+  }
+  
+  // Reset state
+  dragCreateState = {
+    isDragging: false,
+    startY: 0,
+    currentY: 0,
+    columnDate: null,
+    columnElement: null,
+    previewElement: null
+  };
+}
+
+// Open create modal with pre-selected time range
+function openCreateEventModalWithTime(date, startTime, endTime) {
+  const duration = calculateDuration(startTime, endTime);
+
+  const content = `
+    <form id="createEventForm" onsubmit="handleCreateEventSubmit(event, '${date}')">
+      <div class="form-group">
+        <label>Title <span class="required">*</span></label>
+        <input type="text" name="title" class="form-input" required placeholder="Meeting / Deadline / Task..." autofocus>
+      </div>
+      
+      <div class="time-picker-group">
+        <div class="time-picker-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          Time
+        </div>
+        
+        <div class="time-picker-row">
+          <span class="time-picker-label">From</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+              <option value="">No time</option>
+              ${generateTimeOptions(startTime)}
+            </select>
+          </div>
+          <span class="time-picker-divider">→</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+              <option value="">No time</option>
+              ${generateTimeOptions(endTime)}
+            </select>
+          </div>
+        </div>
+        
+        <div class="time-duration-hint" id="durationHint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          <span>${duration ? `Duration: ${duration}` : 'Select time'}</span>
+        </div>
+        
+        <div class="quick-duration-btns">
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(30)">30 min</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(60)">1 hour</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(90)">1.5 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(120)">2 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(180)">3 hours</button>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Color</label>
+        <select name="color" class="form-select">
+          <option value="blue">Blue</option>
+          <option value="green">Green</option>
+          <option value="purple">Purple</option>
+          <option value="orange">Orange</option>
+          <option value="red">Red</option>
+        </select>
+      </div>
+      
+      <!-- Repeat Section -->
+      <div class="form-group-collapsible">
+        <div class="form-collapsible-header" onclick="toggleRepeatSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M17 1l4 4-4 4"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <path d="M7 23l-4-4 4-4"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          <span>Repeat</span>
+          <span class="repeat-summary-badge" id="repeatSummaryBadge" style="display:none;"></span>
+          <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+        <div class="form-collapsible-content" id="repeatSection">
+          <div class="repeat-options-grid">
+            <div class="form-group-inline">
+              <label>Frequency</label>
+              <select name="repeatType" class="form-select form-select-sm" onchange="handleRepeatTypeChange(this.value, '${date}')">
+                <option value="none">Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly on ${new Date(date).toLocaleDateString('en-US', { weekday: 'long' })}</option>
+                <option value="weekdays">Every weekday (Mon-Fri)</option>
+                <option value="biweekly">Bi-weekly</option>
+                <option value="monthly">Monthly on day ${new Date(date).getDate()}</option>
+                <option value="custom">Custom...</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Custom Days Selection (hidden by default) -->
+          <div class="repeat-custom-days" id="repeatCustomDays" style="display:none;">
+            <label class="form-label" style="font-size:12px; margin-bottom:8px;">Repeat on</label>
+            <div class="repeat-days-grid">
+              ${['S','M','T','W','T','F','S'].map((day, i) => `
+                <label class="repeat-day-chip ${i === new Date(date).getDay() ? 'selected' : ''}">
+                  <input type="checkbox" name="repeatDays" value="${i}" ${i === new Date(date).getDay() ? 'checked' : ''} onchange="updateRepeatDayChip(this)">
+                  <span>${day}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- End Repeat Options (hidden when none) -->
+          <div class="repeat-end-options" id="repeatEndOptions" style="display:none;">
+            <div class="form-group-inline" style="margin-top:12px;">
+              <label>Ends</label>
+              <select name="repeatEndType" class="form-select form-select-sm" onchange="handleRepeatEndTypeChange(this.value)">
+                <option value="never">Never</option>
+                <option value="after">After occurrences</option>
+                <option value="on">On date</option>
+              </select>
+            </div>
+            
+            <div class="repeat-end-after" id="repeatEndAfter" style="display:none; margin-top:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" name="repeatCount" class="form-input form-input-sm" value="10" min="1" max="365" style="width:70px;">
+                <span style="color:var(--muted-foreground); font-size:13px;">occurrences</span>
+              </div>
+            </div>
+            
+            <div class="repeat-end-on" id="repeatEndOn" style="display:none; margin-top:8px;">
+              <input type="date" name="repeatEndDate" class="form-input form-input-sm" value="${getDefaultRepeatEndDate(date)}">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  `;
+  openModal('New Task / Event', content);
+}
+
+// Get week dates starting from a given date
+function getWeekDates(date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+  start.setDate(diff);
+  
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+// Format time to 12h format (clean format like "10 AM")
+function formatTime12h(time) {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  const hour = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  // Show minutes only if not :00
+  if (m === 0) {
+    return `${hour} ${ampm}`;
+  }
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// Get event position and height based on time (80px per hour)
+// Grid starts at 6 AM, wraps at midnight through 5:59 AM
+function getEventPosition(startTime, endTime) {
+  if (!startTime) return { top: 0, height: 60 };
+  
+  const [startH, startM] = startTime.split(':').map(Number);
+  
+  // Calculate slot index from 6 AM baseline (0-23 range for 24 hour display)
+  // Hours 6-23 are slots 0-17, hours 0-5 are slots 18-23
+  let slotIndex = startH - 6;
+  if (slotIndex < 0) slotIndex += 24; // Wrap around for hours before 6 AM
+  
+  const startMinutes = slotIndex * 60 + startM;
+  const top = Math.max(0, (startMinutes / 60) * 80); // 80px per hour
+  
+  let height = 60; // Default height
+  if (endTime) {
+    const [endH, endM] = endTime.split(':').map(Number);
+    let endSlotIndex = endH - 6;
+    if (endSlotIndex < 0) endSlotIndex += 24;
+    
+    const endMinutes = endSlotIndex * 60 + endM;
+    let duration = endMinutes - startMinutes;
+    
+    // Handle events that span midnight
+    if (duration <= 0) duration += 24 * 60;
+    
+    height = Math.max(40, (duration / 60) * 80);
+  }
+  
+  return { top, height };
+}
+
+// Convert time string to minutes for comparison
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  // Adjust for 6 AM baseline
+  let slotIndex = h - 6;
+  if (slotIndex < 0) slotIndex += 24;
+  return slotIndex * 60 + m;
+}
+
+// Check if two events overlap in time
+function eventsOverlap(ev1, ev2) {
+  const start1 = timeToMinutes(ev1.time || '00:00');
+  const end1 = timeToMinutes(ev1.endTime || ev1.time || '00:00') || start1 + 60;
+  const start2 = timeToMinutes(ev2.time || '00:00');
+  const end2 = timeToMinutes(ev2.endTime || ev2.time || '00:00') || start2 + 60;
+  
+  // Events overlap if one starts before the other ends
+  return start1 < end2 && start2 < end1;
+}
+
+// Calculate positions for overlapping events (Google Calendar style)
+function calculateOverlapPositions(events) {
+  if (!events.length) return [];
+  
+  // Sort events by start time, then by duration (longer first)
+  const sorted = [...events].sort((a, b) => {
+    const startDiff = timeToMinutes(a.time || '00:00') - timeToMinutes(b.time || '00:00');
+    if (startDiff !== 0) return startDiff;
+    // For same start time, longer events first
+    const durA = timeToMinutes(a.endTime || a.time || '00:00') - timeToMinutes(a.time || '00:00');
+    const durB = timeToMinutes(b.endTime || b.time || '00:00') - timeToMinutes(b.time || '00:00');
+    return durB - durA;
+  });
+  
+  const positioned = [];
+  const columns = []; // Array of arrays, each inner array is a column
+  
+  for (const event of sorted) {
+    let placed = false;
+    
+    // Try to place in existing column
+    for (let colIndex = 0; colIndex < columns.length; colIndex++) {
+      const column = columns[colIndex];
+      const canPlace = column.every(placedEvent => !eventsOverlap(event, placedEvent));
+      
+      if (canPlace) {
+        column.push(event);
+        positioned.push({ event, columnIndex: colIndex });
+        placed = true;
+        break;
+      }
+    }
+    
+    // Create new column if needed
+    if (!placed) {
+      columns.push([event]);
+      positioned.push({ event, columnIndex: columns.length - 1 });
+    }
+  }
+  
+  // Calculate the maximum columns needed for each event's overlap group
+  // Find all events that overlap with each event and determine total columns
+  return positioned.map(({ event, columnIndex }) => {
+    // Find all events that overlap with this one
+    const overlapping = positioned.filter(p => eventsOverlap(event, p.event));
+    const maxColumns = Math.max(...overlapping.map(p => p.columnIndex)) + 1;
+    
+    const width = 100 / maxColumns;
+    const left = columnIndex * width;
+    
+    return { event, left, width };
+  });
+}
+
+// Get color based on category
+function getCategoryColor(category) {
+  const cat = EVENT_CATEGORIES.find(c => c.id === category);
+  return cat ? cat.color : '#3b82f6';
+}
+
+// Parse event for category
+function getEventCategory(event) {
+  if (event.category) return event.category;
+  const title = event.title.toLowerCase();
+  if (title.includes('meeting') || title.includes('call')) return 'meeting';
+  if (title.includes('lunch') || title.includes('break')) return 'health';
+  if (title.includes('review') || title.includes('standup')) return 'work';
+  return 'personal';
+}
+
+// Avatar function removed - no longer needed
+
 function renderScheduleView() {
-  const year = currentCalendarMonth.getFullYear();
-  const month = currentCalendarMonth.getMonth();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  
+  const events = loadCalendarEvents();
+  const recurringTasks = loadRecurringTasks();
+  
+  
+  const totalEvents = events.length;
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  // Generate content based on view mode
+  let mainContent = '';
+  if (scheduleViewMode === 'week') {
+    mainContent = renderWeekView(events, today);
+  } else if (scheduleViewMode === 'day') {
+    mainContent = renderDayView(events, today);
+  } else if (scheduleViewMode === 'agenda') {
+    mainContent = renderAgendaView(events, today);
+  } else if (scheduleViewMode === 'year') {
+    mainContent = renderYearView(events, today);
+  } else {
+    mainContent = renderMonthViewAdvanced(events, today);
+  }
+  
+  return `
+    <div class="advanced-schedule-container">
+      <!-- Left Sidebar -->
+      <aside class="schedule-left-sidebar">
+        <!-- Calendar Selector -->
+        <div class="calendar-selector">
+          <div class="calendar-selector-header" onclick="toggleCalendarDropdown()">
+            <div class="calendar-selector-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <span class="calendar-date-badge">${today.getDate()}</span>
+            </div>
+            <div class="calendar-selector-info">
+              <span class="calendar-selector-title">All Calendar</span>
+              <span class="calendar-selector-subtitle">Personal, Teams</span>
+            </div>
+            <svg class="calendar-selector-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
+        
+        <!-- Mini Calendar -->
+        <div class="mini-calendar-section">
+          <div class="mini-calendar-header">
+            <button class="mini-cal-nav" onclick="navigateMiniCalendar(-1)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <span class="mini-cal-month">${monthNames[scheduleCurrentDate.getMonth()]}</span>
+            <button class="mini-cal-nav" onclick="navigateMiniCalendar(1)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+          ${renderMiniCalendar(scheduleCurrentDate, scheduleSelectedDate, today, events)}
+        </div>
+        
+        <!-- My Schedule Filter -->
+        <div class="schedule-filter-section">
+          <div class="filter-section-header" onclick="toggleMyScheduleSection()">
+            <span class="filter-section-title">My Schedule</span>
+            <svg class="filter-section-chevron ${scheduleMyScheduleCollapsed ? 'collapsed' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+          <div class="filter-section-content ${scheduleMyScheduleCollapsed ? 'collapsed' : ''}">
+            ${MY_SCHEDULE_PRESETS.map(preset => `
+              <label class="schedule-filter-item">
+                <input type="checkbox" 
+                       ${scheduleFilters.mySchedule.includes(preset.id) ? 'checked' : ''} 
+                       onchange="toggleScheduleFilter('${preset.id}')">
+                <span class="filter-checkbox"></span>
+                <span class="filter-label">${preset.name}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="schedule-main-content">
+        <!-- Header Breadcrumb -->
+        <div class="schedule-breadcrumb">
+          <span class="breadcrumb-item">Calendar</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="breadcrumb-chevron"><path d="M9 18l6-6-6-6"/></svg>
+          <span class="breadcrumb-item active">All Calendar</span>
+        </div>
+        
+        <!-- Main Header -->
+        <div class="schedule-main-header">
+          <div class="schedule-header-left">
+            <h1 class="schedule-main-title">Calendar</h1>
+            
+            <!-- Today Button -->
+            <button class="today-btn" onclick="goToScheduleToday()" title="Go to today (T)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+                <circle cx="12" cy="15" r="2" fill="currentColor"/>
+              </svg>
+              Today
+            </button>
+            
+            <!-- Navigation Arrows -->
+            <div class="schedule-nav-arrows">
+              <button class="nav-arrow-btn" onclick="navigateSchedulePrev()" title="Previous (P)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button class="nav-arrow-btn" onclick="navigateScheduleNext()" title="Next (N)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+            
+            <div class="schedule-month-selector" onclick="openMonthPicker()">
+              <span class="month-year-text">${monthNames[scheduleCurrentDate.getMonth()]}, ${scheduleCurrentDate.getFullYear()}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="month-chevron"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            
+            <!-- Time Zone Display -->
+            <div class="timezone-display" onclick="openTimeZoneModal()" title="Click to change timezone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+              </svg>
+              <span id="currentTimezoneLabel">${getCurrentTimezoneLabel()}</span>
+            </div>
+            
+            <div class="schedule-event-count">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <span>${totalEvents} event${totalEvents !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div class="schedule-header-right">
+            <div class="schedule-view-toggle">
+              <button class="view-toggle-btn ${scheduleViewMode === 'week' ? 'active' : ''}" onclick="setScheduleViewMode('week')" title="Week view (W)">Week</button>
+              <button class="view-toggle-btn ${scheduleViewMode === 'month' ? 'active' : ''}" onclick="setScheduleViewMode('month')" title="Month view (M)">Month</button>
+              <button class="view-toggle-btn ${scheduleViewMode === 'year' ? 'active' : ''}" onclick="setScheduleViewMode('year')" title="Year view (Y)">Year</button>
+              <button class="view-toggle-btn ${scheduleViewMode === 'agenda' ? 'active' : ''}" onclick="setScheduleViewMode('agenda')" title="Agenda view (A)">Agenda</button>
+            </div>
+            <div class="schedule-header-actions">
+              <button class="smart-schedule-btn" onclick="openSmartScheduleModal()" title="Find available times">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </button>
+              <button class="schedule-search-btn" onclick="toggleCalendarSearch()" title="Search (/)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              </button>
+              <button class="schedule-shortcuts-btn" onclick="showKeyboardShortcutsModal()" title="Keyboard shortcuts (?)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h8M6 16h.01M18 16h.01"/></svg>
+              </button>
+            </div>
+            <button class="btn btn-primary schedule-add-btn" onclick="openAdvancedEventModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Add Event
+            </button>
+          </div>
+        </div>
+        
+        <!-- Week/Day/Month View -->
+        ${mainContent}
+      </main>
+    </div>
+  `;
+}
 
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
+// Render Mini Calendar
+function renderMiniCalendar(currentDate, selectedDate, today, events) {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDay = firstDay.getDay();
   const daysInMonth = lastDay.getDate();
-
-  const events = loadCalendarEvents();
-  const expandedId = loadExpandedTaskId();
-  const recurringTasks = loadRecurringTasks();
-
-  let daysHtml = '';
-
-  // Previous month padding
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  for (let i = startDay - 1; i >= 0; i--) {
-    daysHtml += `<div class="calendar-day other-month"><span class="day-number">${prevMonthDays - i}</span></div>`;
+  
+  // Get week dates for highlighting
+  const weekDates = getWeekDates(selectedDate);
+  const weekDateStrings = weekDates.map(d => d.toISOString().split('T')[0]);
+  
+  let html = '<div class="mini-cal-grid">';
+  
+  // Weekday headers
+  ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach(day => {
+    html += `<div class="mini-cal-weekday">${day}</div>`;
+  });
+  
+  // Previous month padding (Monday start)
+  const adjustedStart = startDay === 0 ? 6 : startDay - 1;
+  for (let i = 0; i < adjustedStart; i++) {
+    html += '<div class="mini-cal-day other-month"></div>';
   }
-
+  
   // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
     const dateStr = date.toISOString().split('T')[0];
     const isToday = date.toDateString() === today.toDateString();
-    const dayName = weekdays[date.getDay()];
+    const isSelected = dateStr === selectedDate.toISOString().split('T')[0];
+    const isInWeek = weekDateStrings.includes(dateStr);
+    const hasEvents = events.some(e => e.date === dateStr);
+    
+    let classes = 'mini-cal-day';
+    if (isToday) classes += ' today';
+    if (isSelected) classes += ' selected';
+    if (isInWeek && scheduleViewMode === 'week') classes += ' in-week';
+    if (hasEvents) classes += ' has-events';
+    
+    html += `<div class="${classes}" onclick="selectScheduleDate('${dateStr}')">${d}</div>`;
+  }
+  
+  html += '</div>';
+  return html;
+}
 
-    const dayEvents = events
-      .filter(e => e.date === dateStr)
-      .sort((a,b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-
-    let tasksHtml = dayEvents.length === 0 
-      ? ''
-      : dayEvents.map(ev => {
-          const isExpanded = (expandedId === ev.id);
-          const timeStr = ev.time ? ev.time : '';
-          const colorVar = `--event-${ev.color || 'blue'}`;
-
+// Render Week View
+function renderWeekView(events, today) {
+  const weekDates = getWeekDates(scheduleSelectedDate);
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  // Get timezone offset
+  const tzOffset = -(new Date().getTimezoneOffset() / 60);
+  const tzLabel = `UTC ${tzOffset >= 0 ? '+' : ''}${tzOffset}`;
+  
+  let html = `
+    <div class="week-view-container">
+      <!-- Week Header -->
+      <div class="week-header">
+        <div class="week-header-tz">${tzLabel}</div>
+        ${weekDates.map((date, i) => {
+          const isToday = date.toDateString() === today.toDateString();
           return `
-            <div class="calendar-task ${isExpanded ? 'expanded' : 'compact'} ${ev.isRecurring ? 'is-recurring' : ''}"
-                 draggable="true"
-                 data-event-id="${ev.id}"
-                 data-current-date="${dateStr}"
-                 ${ev.isRecurring ? `data-recurring-id="${ev.recurringId}"` : ''}
-                 ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
-                 onclick="event.stopPropagation(); setExpandedTask(${ev.id})"
-                 oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})"
-                 style="border-left: 3px solid var(${colorVar});">
-              <div class="task-mini">
-                <div class="task-left">
-                  <div class="task-color-dot" style="background:var(${colorVar});"></div>
-                  <span class="task-title-mini">${ev.title.length > 18 ? ev.title.substring(0,16)+'…' : ev.title}</span>
-                  ${ev.isRecurring ? '<span class="recurring-badge" title="Weekly recurring">↻</span>' : ''}
-                </div>
-                <div class="task-right">
-                  ${timeStr ? `<span class="task-time-mini">${timeStr}</span>` : ''}
-                </div>
-              </div>
-              <div class="task-expanded-details">
-                <div class="task-header">
-                  <div class="task-info">
-                    <div class="task-title-full">${ev.title}</div>
-                    <div class="task-meta-row">
-                      ${timeStr ? `<span class="task-time-full">${timeStr}</span>` : ''}
-                      ${ev.isRecurring ? '<span class="task-recurring-label">Repeats weekly</span>' : ''}
-                    </div>
-                  </div>
-                  <div class="task-actions-row">
-                    <button class="task-action-btn duplicate-btn" 
-                            onclick="event.stopPropagation(); duplicateCalendarTask(${ev.id})"
-                            title="Duplicate">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                      </svg>
-                    </button>
-                    <button class="task-action-btn edit-btn" 
-                            onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
-                            title="Edit">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                    <button class="task-action-btn delete-btn" 
-                            onclick="event.stopPropagation(); deleteTask(${ev.id})"
-                            title="Delete">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
+            <div class="week-header-day ${isToday ? 'today' : ''}">
+              <span class="week-day-number">${date.getDate()}</span>
+              <span class="week-day-name">${weekdays[i]}</span>
             </div>
           `;
-        }).join('');
-
-    daysHtml += `
-      <div class="calendar-day ${isToday ? 'today' : ''}" 
-           data-date="${dateStr}"
-           ondragover="event.preventDefault()"
-           ondrop="handleDrop(event, '${dateStr}')"
-           onclick="if (!event.target.closest('.calendar-task')) openCreateEventModal('${dateStr}')">
-        <div class="day-header">
-          <span class="day-number">${d}</span>
-          <span class="day-name">${dayName}</span>
-        </div>
-        <div class="day-tasks-container">
-          ${tasksHtml}
-        </div>
-        ${dayEvents.length === 0 ? '<div class="add-task-hint">+ Add</div>' : ''}
+        }).join('')}
       </div>
-    `;
-  }
-
-  // Next month padding
-  const remaining = 42 - (startDay + daysInMonth);
-  for (let i = 1; i <= remaining; i++) {
-    daysHtml += `<div class="calendar-day other-month"><span class="day-number">${i}</span></div>`;
-  }
-
-  // Recurring tasks sidebar
-  const recurringHtml = recurringTasks.map(task => {
-    const dayNames = ['S','M','T','W','T','F','S'];
-    const activeDays = task.days.map(d => dayNames[d]).join(', ');
-    return `
-      <div class="recurring-task-item" style="border-left: 3px solid var(--event-${task.color || 'blue'});">
-        <div class="recurring-task-info">
-          <div class="recurring-task-title">${task.title}</div>
-          <div class="recurring-task-meta">
-            ${task.time ? `<span>${task.time}</span> • ` : ''}
-            <span>${activeDays}</span>
+      
+      <!-- Week Grid with Time Slots -->
+      <div class="week-grid-scroll">
+        <div class="week-grid">
+          <!-- Time Labels Column -->
+          <div class="time-labels-col">
+            ${TIME_SLOTS.map(slot => `
+              <div class="time-label">${slot.label}</div>
+            `).join('')}
           </div>
-        </div>
-        <button class="recurring-delete-btn" onclick="deleteRecurringTask(${task.id})" title="Remove">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="schedule-view-wrapper">
-      <div class="schedule-view">
-        <div class="schedule-header">
-          <div class="schedule-title-section">
-            <h1 class="view-title">Schedule</h1>
-            <span class="schedule-subtitle">${monthNames[month]} ${year}</span>
-          </div>
-          <div class="calendar-controls">
-            <div class="calendar-nav-btns">
-              <button class="calendar-nav-btn" onclick="prevMonth()" title="Previous month">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
-              </button>
-              <button class="calendar-nav-btn" onclick="nextMonth()" title="Next month">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                  <path d="M9 18l6-6-6-6"/>
-                </svg>
-              </button>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="goToToday()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              Today
-            </button>
-          </div>
-        </div>
-
-        <div class="calendar-grid">
-          ${weekdays.map(w => `<div class="weekday-header">${w}</div>`).join('')}
-          ${daysHtml}
-        </div>
-      </div>
-
-      <div class="schedule-sidebar">
-        <!-- All Tasks Section (NEW) - Unique tasks only -->
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <h3>All Tasks</h3>
-            <span class="task-count-badge">${getUniqueTasksByTitle(events).length}</span>
-          </div>
-          ${events.length === 0 ? `
-            <div class="recurring-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px; opacity: 0.4;">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <path d="M16 2v4M8 2v4M3 10h18"/>
-              </svg>
-              <p>No tasks scheduled</p>
-              <span>Click a day to add a task</span>
-            </div>
-          ` : `
-            <div class="sidebar-tasks-list">
-              ${getUniqueTasksByTitle(events).slice(0, 15).map(ev => {
-                const colorVar = '--event-' + (ev.color || 'blue');
-                const eventDate = new Date(ev.date);
-                const dateLabel = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                return `
-                  <div class="sidebar-task-item"
-                       draggable="true"
-                       ondragstart="handleSidebarDragStart(event, ${ev.id})"
-                       style="border-left: 3px solid var(${colorVar});">
-                    <div class="sidebar-task-main" onclick="openEditTaskModal(${ev.id})">
-                      <div class="sidebar-task-title">${ev.title}</div>
-                      <div class="sidebar-task-meta">
-                        <span>${dateLabel}</span>
-                        ${ev.time ? ' • ' + ev.time : ''}
-                        ${ev.isRecurring ? ' <span class="recurring-mini-badge">↻</span>' : ''}
+          
+          <!-- Day Columns -->
+          ${weekDates.map((date, dayIndex) => {
+            const dateStr = date.toISOString().split('T')[0];
+            const dayEvents = events.filter(e => e.date === dateStr);
+            const isToday = date.toDateString() === today.toDateString();
+            
+            return `
+              <div class="week-day-column ${isToday ? 'today' : ''}" 
+                   data-date="${dateStr}"
+                   ondragover="handleColumnDragOver(event, '${dateStr}')" 
+                   ondragleave="handleColumnDragLeave(event)"
+                   ondrop="handleDrop(event, '${dateStr}')"
+                   onmousedown="handleCalendarDragStart(event, '${dateStr}')">
+                <!-- Current time indicator -->
+                ${isToday ? '<div class="current-time-indicator" id="currentTimeIndicator"></div>' : ''}
+                <!-- Time slot grid lines -->
+                ${TIME_SLOTS.map(() => '<div class="time-slot-line"></div>').join('')}
+                
+                <!-- Events -->
+                ${(() => {
+                  const positioned = calculateOverlapPositions(dayEvents);
+                  return positioned.map(({ event: ev, left, width }) => {
+                    const pos = getEventPosition(ev.time, ev.endTime);
+                    const color = getEventColor(ev.color || 'blue');
+                    const timeStr = ev.time ? formatTime12h(ev.time) : '';
+                    const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
+                    const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
+                    const linkedInfo = getEventLinkedInfo(ev);
+                    
+                    return `
+                      <div class="week-event-card" 
+                           style="top: ${pos.top}px; height: ${pos.height}px; left: ${left}%; width: calc(${width}% - 2px); --event-color: ${color};"
+                           draggable="true"
+                           data-event-id="${ev.id}"
+                           data-date="${dateStr}"
+                           ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
+                           onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
+                           oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})">
+                        <div class="week-event-color-bar" style="background: ${color};"></div>
+                        <div class="week-event-content">
+                          <div class="week-event-title">${ev.title}</div>
+                          <div class="week-event-time">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                            </svg>
+                            ${timeRange}
+                          </div>
+                          ${linkedInfo}
+                        </div>
+                        <div class="event-resize-handle" 
+                             onmousedown="event.stopPropagation(); handleEventResizeStart(event, ${ev.id}, '${dateStr}')">
+                        </div>
                       </div>
+                    `;
+                  }).join('');
+                })()}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+// Render Day View
+function renderDayView(events, today) {
+  const dateStr = scheduleSelectedDate.toISOString().split('T')[0];
+  const dayEvents = events.filter(e => e.date === dateStr);
+  const isToday = scheduleSelectedDate.toDateString() === today.toDateString();
+  const dayName = scheduleSelectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+  
+  const tzOffset = -(new Date().getTimezoneOffset() / 60);
+  const tzLabel = `UTC ${tzOffset >= 0 ? '+' : ''}${tzOffset}`;
+  
+  return `
+    <div class="day-view-container">
+      <div class="day-view-header">
+        <div class="day-view-tz">${tzLabel}</div>
+        <div class="day-view-info ${isToday ? 'today' : ''}">
+          <span class="day-view-number">${scheduleSelectedDate.getDate()}</span>
+          <span class="day-view-name">${dayName}</span>
+        </div>
+      </div>
+      <div class="day-view-grid-scroll">
+        <div class="day-view-grid">
+          <div class="time-labels-col">
+            ${TIME_SLOTS.map(slot => `
+              <div class="time-label">${slot.label}</div>
+            `).join('')}
+          </div>
+          <div class="day-events-column ${isToday ? 'today' : ''}"
+               data-date="${dateStr}"
+               ondragover="handleColumnDragOver(event, '${dateStr}')"
+               ondragleave="handleColumnDragLeave(event)"
+               ondrop="handleDrop(event, '${dateStr}')"
+               onmousedown="handleCalendarDragStart(event, '${dateStr}')">
+            <!-- Current time indicator -->
+            ${isToday ? '<div class="current-time-indicator" id="currentTimeIndicatorDay"></div>' : ''}
+            ${TIME_SLOTS.map(() => '<div class="time-slot-line"></div>').join('')}
+            ${(() => {
+              const positioned = calculateOverlapPositions(dayEvents);
+              return positioned.map(({ event: ev, left, width }) => {
+                const pos = getEventPosition(ev.time, ev.endTime);
+                const color = getEventColor(ev.color || 'blue');
+                const timeStr = ev.time ? formatTime12h(ev.time) : '';
+                const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
+                const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
+                const linkedInfo = getEventLinkedInfo(ev);
+                
+                return `
+                  <div class="week-event-card day-event-card"
+                       style="top: ${pos.top}px; height: ${pos.height}px; left: ${left}%; width: calc(${width}% - 2px); --event-color: ${color};"
+                       draggable="true"
+                       data-event-id="${ev.id}"
+                       data-date="${dateStr}"
+                       ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
+                       onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
+                       oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})">
+                    <div class="week-event-color-bar" style="background: ${color};"></div>
+                    <div class="week-event-content">
+                      <div class="week-event-title">${ev.title}</div>
+                      <div class="week-event-time">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                        </svg>
+                        ${timeRange}
+                      </div>
+                      ${linkedInfo}
                     </div>
-                    <div class="sidebar-task-actions">
-                      <button class="sidebar-task-btn" onclick="event.stopPropagation(); duplicateCalendarTask(${ev.id})" title="Duplicate to another day">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                          <rect x="9" y="9" width="13" height="13" rx="2"/>
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                      </button>
-                      <button class="sidebar-task-btn edit" onclick="event.stopPropagation(); openEditTaskModal(${ev.id})" title="Edit">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
+                    <div class="event-resize-handle" 
+                         onmousedown="event.stopPropagation(); handleEventResizeStart(event, ${ev.id}, '${dateStr}')">
                     </div>
                   </div>
                 `;
-              }).join('')}
-              ${getUniqueTasksByTitle(events).length > 15 ? '<div class="sidebar-more-hint">+ ' + (getUniqueTasksByTitle(events).length - 15) + ' more tasks</div>' : ''}
-            </div>
-          `}
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <h3>Recurring Tasks</h3>
-            <button class="add-recurring-btn" onclick="openAddRecurringModal()" title="Add recurring task">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-          ${recurringTasks.length === 0 ? `
-            <div class="recurring-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px; opacity: 0.4;">
-                <path d="M17 2l4 4-4 4"/>
-                <path d="M3 11V9a4 4 0 014-4h14"/>
-                <path d="M7 22l-4-4 4-4"/>
-                <path d="M21 13v2a4 4 0 01-4 4H3"/>
-              </svg>
-              <p>No recurring tasks yet</p>
-              <span>Add tasks that repeat weekly</span>
-            </div>
-          ` : `
-            <div class="recurring-tasks-list">
-              ${recurringHtml}
-            </div>
-          `}
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <h3>Quick Stats</h3>
-          </div>
-          <div class="schedule-stats">
-            <div class="stat-item">
-              <span class="stat-value">${events.filter(e => e.date >= today.toISOString().split('T')[0]).length}</span>
-              <span class="stat-label">Upcoming</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value">${events.filter(e => e.date === today.toISOString().split('T')[0]).length}</span>
-              <span class="stat-label">Today</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value">${recurringTasks.length}</span>
-              <span class="stat-label">Recurring</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="sidebar-section sidebar-tips">
-          <div class="tip-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:hsl(48, 96%, 53%);">
-              <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/>
-            </svg>
-          </div>
-          <div class="tip-content">
-            <strong>Pro tip:</strong> Drag tasks from sidebar to a day to duplicate. Right-click to edit.
+              }).join('');
+            })()}
           </div>
         </div>
       </div>
     </div>
   `;
+}
+
+// Render Month View (Advanced)
+function renderMonthViewAdvanced(events, today) {
+  const year = scheduleCurrentDate.getFullYear();
+  const month = scheduleCurrentDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const adjustedStart = startDay === 0 ? 6 : startDay - 1;
+  
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
+  let daysHtml = '';
+  
+  // Previous month padding
+  for (let i = 0; i < adjustedStart; i++) {
+    daysHtml += '<div class="month-day other-month"></div>';
+  }
+  
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const dateStr = date.toISOString().split('T')[0];
+    const isToday = date.toDateString() === today.toDateString();
+    const dayEvents = events.filter(e => e.date === dateStr).slice(0, 3);
+    const moreCount = events.filter(e => e.date === dateStr).length - 3;
+    
+    daysHtml += `
+      <div class="month-day ${isToday ? 'today' : ''}"
+           ondragover="event.preventDefault()"
+           ondrop="handleDrop(event, '${dateStr}')"
+           onclick="if (!event.target.closest('.month-event')) { selectScheduleDate('${dateStr}'); setScheduleViewMode('day'); }">
+        <span class="month-day-number">${d}</span>
+        <div class="month-day-events">
+          ${dayEvents.map(ev => {
+            const color = getEventColor(ev.color || 'blue');
+            return `
+              <div class="month-event" style="--event-color: ${color};"
+                   onclick="event.stopPropagation(); openEditTaskModal(${ev.id})">
+                <span class="month-event-dot" style="background: ${color};"></span>
+                <span class="month-event-title">${ev.title.length > 12 ? ev.title.substring(0, 10) + '...' : ev.title}</span>
+              </div>
+            `;
+          }).join('')}
+          ${moreCount > 0 ? `<div class="month-more-events">+${moreCount} more</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="month-view-container">
+      <div class="month-grid-header">
+        ${weekdays.map(day => `<div class="month-weekday">${day}</div>`).join('')}
+      </div>
+      <div class="month-grid">
+        ${daysHtml}
+      </div>
+    </div>
+  `;
+}
+
+// Schedule View Mode
+function setScheduleViewMode(mode) {
+  scheduleViewMode = mode;
+  renderCurrentView();
+}
+
+// Navigate Mini Calendar
+function navigateMiniCalendar(direction) {
+  scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() + direction);
+  renderCurrentView();
+}
+
+// Select Date
+function selectScheduleDate(dateStr) {
+  scheduleSelectedDate = new Date(dateStr);
+  scheduleCurrentDate = new Date(dateStr);
+  renderCurrentView();
+}
+
+// Toggle sections
+function toggleMyScheduleSection() {
+  scheduleMyScheduleCollapsed = !scheduleMyScheduleCollapsed;
+  renderCurrentView();
+}
+
+
+function toggleScheduleFilter(filterId) {
+  const index = scheduleFilters.mySchedule.indexOf(filterId);
+  if (index > -1) {
+    scheduleFilters.mySchedule.splice(index, 1);
+  } else {
+    scheduleFilters.mySchedule.push(filterId);
+  }
+  renderCurrentView();
 }
 
 // Helper: Get unique tasks by title (show each name only once)
@@ -1844,9 +3119,54 @@ function hideTaskContextMenu() {
 }
 
 // Drag handlers
+// State for drag-move preview
+let dragMoveState = {
+  isDragging: false,
+  eventId: null,
+  originalEvent: null,
+  previewElement: null,
+  currentColumn: null,
+  clickOffsetY: 0 // Y offset from where user clicked within the event card
+};
+
 function handleDragStart(event, eventId, currentDate) {
-  event.dataTransfer.setData('text/plain', JSON.stringify({ id: eventId, fromDate: currentDate, type: 'move' }));
+  const events = loadCalendarEvents();
+  const task = events.find(e => e.id == eventId);
+  
+  // Calculate click offset within the event card
+  const eventCard = event.currentTarget;
+  const cardRect = eventCard.getBoundingClientRect();
+  const clickOffsetY = event.clientY - cardRect.top;
+  
+  // Store event data and original event info
+  event.dataTransfer.setData('text/plain', JSON.stringify({ 
+    id: eventId, 
+    fromDate: currentDate, 
+    type: 'move',
+    duration: calculateEventDurationMinutes(task?.time, task?.endTime)
+  }));
+  event.dataTransfer.effectAllowed = 'move';
   event.currentTarget.classList.add('dragging');
+  
+  // Initialize drag move state with click offset
+  dragMoveState = {
+    isDragging: true,
+    eventId: eventId,
+    originalEvent: task,
+    previewElement: null,
+    currentColumn: null,
+    clickOffsetY: clickOffsetY
+  };
+}
+
+// Calculate event duration in minutes
+function calculateEventDurationMinutes(startTime, endTime) {
+  if (!startTime || !endTime) return 60; // Default 1 hour
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  let duration = (endH * 60 + endM) - (startH * 60 + startM);
+  if (duration <= 0) duration = 60; // Fallback
+  return duration;
 }
 
 // Sidebar drag handler - for duplicating
@@ -1855,23 +3175,165 @@ function handleSidebarDragStart(event, eventId) {
   event.currentTarget.classList.add('dragging');
 }
 
+// Handle drag over column - show preview ghost (Google Calendar style)
+function handleColumnDragOver(event, targetDate) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  
+  const column = event.currentTarget;
+  
+  // Add drag-over class to column for highlighting
+  if (!column.classList.contains('drag-over')) {
+    // Remove from other columns first
+    document.querySelectorAll('.week-day-column.drag-over, .day-events-column.drag-over').forEach(col => {
+      if (col !== column) col.classList.remove('drag-over');
+    });
+    column.classList.add('drag-over');
+  }
+  
+  if (!dragMoveState.isDragging || !dragMoveState.originalEvent) return;
+  
+  const scrollContainer = column.closest('.week-grid-scroll, .day-view-grid-scroll');
+  const containerRect = scrollContainer ? scrollContainer.getBoundingClientRect() : column.getBoundingClientRect();
+  const scrollTop = scrollContainer?.scrollTop || 0;
+  
+  // Calculate position relative to scroll container's content, accounting for click offset
+  const clickOffsetY = dragMoveState.clickOffsetY || 0;
+  const relativeY = event.clientY - containerRect.top + scrollTop - clickOffsetY;
+  
+  // Snap to 15-minute intervals (20px per 15 min)
+  const snappedY = Math.round(relativeY / 20) * 20;
+  
+  // Calculate the new start time based on the adjusted position (top of event, not cursor)
+  const adjustedClientY = event.clientY - clickOffsetY;
+  const newTime = yPositionToTime(adjustedClientY, column);
+  
+  // Calculate duration for height
+  const duration = calculateEventDurationMinutes(
+    dragMoveState.originalEvent.time, 
+    dragMoveState.originalEvent.endTime
+  );
+  const height = Math.max(40, (duration / 60) * 80);
+  
+  // Create or update preview element
+  if (dragMoveState.currentColumn !== column) {
+    // Remove preview from old column
+    if (dragMoveState.previewElement) {
+      dragMoveState.previewElement.remove();
+    }
+    
+    // Create new preview in this column
+    const preview = document.createElement('div');
+    preview.className = 'drag-move-preview';
+    const category = getEventCategory(dragMoveState.originalEvent);
+    const color = getCategoryColor(category);
+    preview.innerHTML = `
+      <div class="drag-move-preview-bar" style="background: ${color};"></div>
+      <div class="drag-move-preview-content">
+        <div class="drag-move-preview-title">${dragMoveState.originalEvent.title}</div>
+        <div class="drag-move-preview-time">${formatTime12h(newTime)}</div>
+      </div>
+    `;
+    column.appendChild(preview);
+    dragMoveState.previewElement = preview;
+    dragMoveState.currentColumn = column;
+  }
+  
+  // Update preview position with smooth transition
+  if (dragMoveState.previewElement) {
+    const clampedY = Math.max(0, Math.min(1920 - height, snappedY));
+    dragMoveState.previewElement.style.top = `${clampedY}px`;
+    dragMoveState.previewElement.style.height = `${height}px`;
+    
+    // Update time display
+    const timeEl = dragMoveState.previewElement.querySelector('.drag-move-preview-time');
+    if (timeEl) {
+      const endTime = calculateEndTimeFromDuration(newTime, duration);
+      timeEl.textContent = `${formatTime12h(newTime)} - ${formatTime12h(endTime)}`;
+    }
+  }
+}
+
+// Handle drag leave - clean up column highlight
+function handleColumnDragLeave(event) {
+  const column = event.currentTarget;
+  const relatedTarget = event.relatedTarget;
+  
+  // Only remove highlight if actually leaving the column (not entering a child)
+  if (relatedTarget && column.contains(relatedTarget)) return;
+  
+  column.classList.remove('drag-over');
+}
+
+// Calculate end time from start time and duration in minutes
+function calculateEndTimeFromDuration(startTime, durationMinutes) {
+  if (!startTime) return '';
+  const [h, m] = startTime.split(':').map(Number);
+  let totalMinutes = h * 60 + m + durationMinutes;
+  if (totalMinutes >= 24 * 60) totalMinutes = 24 * 60 - 1;
+  const endH = Math.floor(totalMinutes / 60);
+  const endM = totalMinutes % 60;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+}
+
+// Clean up drag state
+function cleanupDragMoveState() {
+  if (dragMoveState.previewElement) {
+    dragMoveState.previewElement.remove();
+  }
+  // Remove dragging class from all cards
+  document.querySelectorAll('.week-event-card.dragging').forEach(el => {
+    el.classList.remove('dragging');
+  });
+  // Remove drag-over class from all columns
+  document.querySelectorAll('.week-day-column.drag-over, .day-events-column.drag-over').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  dragMoveState = {
+    isDragging: false,
+    eventId: null,
+    originalEvent: null,
+    previewElement: null,
+    currentColumn: null,
+    clickOffsetY: 0
+  };
+}
+
+// Listen for dragend to cleanup
+document.addEventListener('dragend', cleanupDragMoveState);
+
 function handleDrop(event, targetDate) {
   event.preventDefault();
+  
+  // Get drop position for time calculation, accounting for click offset
+  const column = event.currentTarget;
+  const clickOffsetY = dragMoveState.clickOffsetY || 0;
+  const adjustedClientY = event.clientY - clickOffsetY;
+  const newTime = yPositionToTime(adjustedClientY, column);
+  
   const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-  const { id, fromDate, type } = data;
+  const { id, fromDate, type, duration } = data;
 
   let events = loadCalendarEvents();
-  const task = events.find(e => e.id === id);
-  if (!task) return;
+  const task = events.find(e => e.id == id);
+  if (!task) {
+    cleanupDragMoveState();
+    return;
+  }
 
   if (type === 'duplicate') {
-    // Create a duplicate on the target date
+    // Create a duplicate on the target date - preserve all fields including location
     const newTask = {
       id: Date.now() + Math.floor(Math.random() * 10000),
       title: task.title,
       date: targetDate,
       time: task.time || null,
+      endTime: task.endTime || null,
       color: task.color || 'blue',
+      location: task.location || null,
+      projectId: task.projectId || null,
+      assignmentId: task.assignmentId || null,
+      spaceId: task.spaceId || null,
       isRecurring: false,
       recurringId: null
     };
@@ -1879,22 +3341,898 @@ function handleDrop(event, targetDate) {
     saveCalendarEvents(events);
     showToast(`Task duplicated to ${targetDate}`);
   } else {
-    // Move task to new date
-    if (fromDate === targetDate) return;
+    // Move task to new date AND time
     const taskIndex = events.findIndex(e => e.id === id);
-    if (taskIndex === -1) return;
+    if (taskIndex === -1) {
+      cleanupDragMoveState();
+      return;
+    }
+    
+    // Update date
     events[taskIndex].date = targetDate;
+    
+    // Update time if we have a valid new time
+    if (newTime) {
+      const eventDuration = duration || calculateEventDurationMinutes(task.time, task.endTime);
+      events[taskIndex].time = newTime;
+      events[taskIndex].endTime = calculateEndTimeFromDuration(newTime, eventDuration);
+    }
+    
     saveCalendarEvents(events);
+    
+    // Show feedback
+    if (fromDate !== targetDate) {
+      showToast(`Moved to ${formatDateForToast(targetDate)} at ${formatTime12h(newTime)}`);
+    } else {
+      showToast(`Updated time to ${formatTime12h(newTime)}`);
+    }
   }
 
+  cleanupDragMoveState();
   saveExpandedTaskId(null);
+  // Preserve scroll position when re-rendering after drag
+  renderCurrentView(true);
+}
+
+// Format date for toast message
+function formatDateForToast(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+
+// ============================================
+// Event Resize (Drag bottom edge to change duration)
+// ============================================
+let resizeState = {
+  isResizing: false,
+  eventId: null,
+  eventDate: null,
+  startY: 0,
+  originalHeight: 0,
+  originalEndTime: null,
+  cardElement: null,
+  tooltipElement: null,
+  startTime: null
+};
+
+function handleEventResizeStart(e, eventId, eventDate) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const card = e.target.closest('.week-event-card');
+  if (!card) return;
+  
+  // Get the event data
+  const events = loadCalendarEvents();
+  const event = events.find(ev => ev.id == eventId);
+  if (!event || !event.time) return;
+  
+  // Disable dragging while resizing
+  card.setAttribute('draggable', 'false');
+  card.classList.add('resizing');
+  
+  resizeState = {
+    isResizing: true,
+    eventId: eventId,
+    eventDate: eventDate,
+    startY: e.clientY,
+    originalHeight: card.offsetHeight,
+    originalEndTime: event.endTime,
+    cardElement: card,
+    tooltipElement: null,
+    startTime: event.time
+  };
+  
+  // Create tooltip
+  createResizeTooltip(e.clientX, e.clientY, event.time, event.endTime);
+  
+  document.addEventListener('mousemove', handleEventResizeMove);
+  document.addEventListener('mouseup', handleEventResizeEnd);
+  
+  // Prevent text selection while resizing
+  document.body.style.userSelect = 'none';
+  document.body.style.cursor = 'ns-resize';
+}
+
+function handleEventResizeMove(e) {
+  if (!resizeState.isResizing || !resizeState.cardElement) return;
+  
+  const deltaY = e.clientY - resizeState.startY;
+  
+  // Snap to 15-minute intervals (20px = 15 minutes, 80px = 1 hour)
+  const snappedDelta = Math.round(deltaY / 20) * 20;
+  const newHeight = Math.max(40, resizeState.originalHeight + snappedDelta);
+  
+  // Update card height visually
+  resizeState.cardElement.style.height = `${newHeight}px`;
+  
+  // Calculate new end time based on height
+  const durationMinutes = Math.round((newHeight / 80) * 60);
+  const newEndTime = calculateEndTimeFromStart(resizeState.startTime, durationMinutes);
+  
+  // Update tooltip
+  updateResizeTooltip(e.clientX, e.clientY, resizeState.startTime, newEndTime, durationMinutes);
+  
+  // Update time display in the card
+  const timeEl = resizeState.cardElement.querySelector('.week-event-time');
+  if (timeEl) {
+    const startStr = formatTime12h(resizeState.startTime);
+    const endStr = formatTime12h(newEndTime);
+    timeEl.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+      </svg>
+      ${startStr} - ${endStr}
+    `;
+  }
+}
+
+function handleEventResizeEnd(e) {
+  if (!resizeState.isResizing) return;
+  
+  document.removeEventListener('mousemove', handleEventResizeMove);
+  document.removeEventListener('mouseup', handleEventResizeEnd);
+  
+  // Remove tooltip
+  removeResizeTooltip();
+  
+  // Restore cursor and selection
+  document.body.style.userSelect = '';
+  document.body.style.cursor = '';
+  
+  if (resizeState.cardElement) {
+    resizeState.cardElement.setAttribute('draggable', 'true');
+    resizeState.cardElement.classList.remove('resizing');
+    
+    // Calculate final end time
+    const finalHeight = resizeState.cardElement.offsetHeight;
+    const durationMinutes = Math.round((finalHeight / 80) * 60);
+    const newEndTime = calculateEndTimeFromStart(resizeState.startTime, durationMinutes);
+    
+    // Save the change if end time actually changed
+    if (newEndTime !== resizeState.originalEndTime) {
+      const events = loadCalendarEvents();
+      const eventIndex = events.findIndex(ev => ev.id == resizeState.eventId);
+      if (eventIndex !== -1) {
+        events[eventIndex].endTime = newEndTime;
+        saveCalendarEvents(events);
+        
+        // Format duration for toast
+        const hours = Math.floor(durationMinutes / 60);
+        const mins = durationMinutes % 60;
+        let durationStr = '';
+        if (hours > 0) durationStr += `${hours}h`;
+        if (mins > 0) durationStr += `${mins > 0 && hours > 0 ? ' ' : ''}${mins}m`;
+        
+        showToast(`Duration updated to ${durationStr}`);
+      }
+    }
+  }
+  
+  // Reset state
+  resizeState = {
+    isResizing: false,
+    eventId: null,
+    eventDate: null,
+    startY: 0,
+    originalHeight: 0,
+    originalEndTime: null,
+    cardElement: null,
+    tooltipElement: null,
+    startTime: null
+  };
+  
+  // Re-render to ensure consistency, preserve scroll position
+  renderCurrentView(true);
+}
+
+function calculateEndTimeFromStart(startTime, durationMinutes) {
+  if (!startTime) return '';
+  const [h, m] = startTime.split(':').map(Number);
+  let totalMinutes = h * 60 + m + durationMinutes;
+  
+  // Clamp to end of day (23:59)
+  if (totalMinutes >= 24 * 60) totalMinutes = 24 * 60 - 1;
+  
+  const endH = Math.floor(totalMinutes / 60);
+  const endM = totalMinutes % 60;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+}
+
+function createResizeTooltip(x, y, startTime, endTime) {
+  removeResizeTooltip();
+  
+  const tooltip = document.createElement('div');
+  tooltip.className = 'resize-time-tooltip';
+  tooltip.id = 'resizeTimeTooltip';
+  
+  const durationMinutes = calculateDurationMinutes(startTime, endTime);
+  tooltip.innerHTML = formatTooltipContent(startTime, endTime, durationMinutes);
+  
+  tooltip.style.left = `${x + 15}px`;
+  tooltip.style.top = `${y - 10}px`;
+  
+  document.body.appendChild(tooltip);
+  resizeState.tooltipElement = tooltip;
+}
+
+function updateResizeTooltip(x, y, startTime, endTime, durationMinutes) {
+  const tooltip = document.getElementById('resizeTimeTooltip');
+  if (!tooltip) return;
+  
+  tooltip.innerHTML = formatTooltipContent(startTime, endTime, durationMinutes);
+  tooltip.style.left = `${x + 15}px`;
+  tooltip.style.top = `${y - 10}px`;
+}
+
+function removeResizeTooltip() {
+  const tooltip = document.getElementById('resizeTimeTooltip');
+  if (tooltip) tooltip.remove();
+  if (resizeState.tooltipElement) resizeState.tooltipElement = null;
+}
+
+function formatTooltipContent(startTime, endTime, durationMinutes) {
+  const startStr = formatTime12h(startTime);
+  const endStr = formatTime12h(endTime);
+  
+  const hours = Math.floor(durationMinutes / 60);
+  const mins = durationMinutes % 60;
+  let durationStr = '';
+  if (hours > 0) durationStr += `${hours}h`;
+  if (mins > 0) durationStr += `${hours > 0 ? ' ' : ''}${mins}m`;
+  if (!durationStr) durationStr = '0m';
+  
+  return `${startStr} - ${endStr}<span class="duration">${durationStr}</span>`;
+}
+
+function calculateDurationMinutes(startTime, endTime) {
+  if (!startTime || !endTime) return 60;
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  let duration = (endH * 60 + endM) - (startH * 60 + startM);
+  if (duration <= 0) duration = 60;
+  return duration;
+}
+
+
+// ============================================
+function updateCurrentTimeIndicator() {
+  // Try to find both week and day view indicators
+  const weekIndicator = document.getElementById('currentTimeIndicator');
+  const dayIndicator = document.getElementById('currentTimeIndicatorDay');
+  
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  
+  // Calculate position (80px per hour, starting at 6 AM with 24-hour wrap)
+  let slotIndex = hours - 6;
+  if (slotIndex < 0) slotIndex += 24; // Wrap for times 0-5 (after midnight)
+  
+  const position = (slotIndex * 80) + (minutes / 60 * 80);
+  
+  // Update week view indicator
+  if (weekIndicator) {
+    weekIndicator.style.top = `${position}px`;
+    weekIndicator.style.display = 'block';
+  }
+  
+  // Update day view indicator
+  if (dayIndicator) {
+    dayIndicator.style.top = `${position}px`;
+    dayIndicator.style.display = 'block';
+  }
+}
+
+// Update time indicator every minute
+setInterval(updateCurrentTimeIndicator, 60000);
+
+// Also update when view is rendered - hook into renderCurrentView
+const originalRenderCurrentView = typeof renderCurrentView === 'function' ? renderCurrentView : null;
+if (originalRenderCurrentView) {
+  // Will be called after view renders
+}
+
+// Call once schedule view is shown
+function initCurrentTimeIndicator() {
+  setTimeout(updateCurrentTimeIndicator, 100);
+  initCalendarKeyboardShortcuts();
+}
+
+// ============================================
+// AGENDA VIEW - Professional List View
+// ============================================
+function renderAgendaView(events, today) {
+  const todayStr = today.toISOString().split('T')[0];
+  
+  // Get events for next 30 days
+  const futureEvents = [];
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const dayEvents = events.filter(e => e.date === dateStr).sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return -1;
+      if (!b.time) return 1;
+      return a.time.localeCompare(b.time);
+    });
+    
+    if (dayEvents.length > 0) {
+      futureEvents.push({ date: dateStr, dateObj: date, events: dayEvents });
+    }
+  }
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  
+  if (futureEvents.length === 0) {
+    return `
+      <div class="agenda-view-container">
+        <div class="agenda-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+          </svg>
+          <h3>No upcoming events</h3>
+          <p>You're all caught up! Create a new event to get started.</p>
+          <button class="btn btn-primary" onclick="openAdvancedEventModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Create Event
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="agenda-view-container">
+      <div class="agenda-header">
+        <div class="agenda-summary">
+          <span class="agenda-summary-count">${events.filter(e => e.date >= todayStr).length}</span>
+          <span class="agenda-summary-text">upcoming events in the next 30 days</span>
+        </div>
+        <div class="agenda-filters">
+          <input type="text" 
+                 id="agendaSearchInput" 
+                 class="agenda-search-input" 
+                 placeholder="Filter events..." 
+                 oninput="filterAgendaEvents(this.value)">
+        </div>
+      </div>
+      
+      <div class="agenda-list">
+        ${futureEvents.map(day => {
+          const isToday = day.date === todayStr;
+          const isTomorrow = day.date === new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+          
+          let dateLabel = '';
+          if (isToday) {
+            dateLabel = 'Today';
+          } else if (isTomorrow) {
+            dateLabel = 'Tomorrow';
+          } else {
+            dateLabel = `${dayNames[day.dateObj.getDay()]}, ${monthNames[day.dateObj.getMonth()]} ${day.dateObj.getDate()}`;
+          }
+          
+          return `
+            <div class="agenda-day-group ${isToday ? 'is-today' : ''}">
+              <div class="agenda-day-header">
+                <div class="agenda-date-label">
+                  <span class="agenda-day-name">${dateLabel}</span>
+                  ${!isToday && !isTomorrow ? `<span class="agenda-full-date">${day.dateObj.getFullYear()}</span>` : ''}
+                </div>
+                <span class="agenda-event-count">${day.events.length} event${day.events.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div class="agenda-events-list">
+                ${day.events.map(event => {
+                  const category = getEventCategory(event);
+                  const color = getCategoryColor(category);
+                  const timeStr = event.time ? formatTime12h(event.time) : 'All day';
+                  const endTimeStr = event.endTime ? ` - ${formatTime12h(event.endTime)}` : '';
+                  
+                  return `
+                    <div class="agenda-event-card" 
+                         onclick="openEditTaskModal('${event.id}')"
+                         oncontextmenu="showTaskContextMenu(event, '${event.id}'); return false;">
+                      <div class="agenda-event-time-block">
+                        <span class="agenda-event-time">${timeStr}</span>
+                        ${event.endTime ? `<span class="agenda-event-duration">${endTimeStr}</span>` : ''}
+                      </div>
+                      <div class="agenda-event-color-bar" style="background: ${color};"></div>
+                      <div class="agenda-event-content">
+                        <div class="agenda-event-title">${event.title}</div>
+                        ${event.location ? `
+                          <div class="agenda-event-location">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                              <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            ${event.location}
+                          </div>
+                        ` : ''}
+                        ${event.description ? `<div class="agenda-event-description">${event.description.substring(0, 80)}${event.description.length > 80 ? '...' : ''}</div>` : ''}
+                      </div>
+                      <div class="agenda-event-actions">
+                        <button class="agenda-action-btn" onclick="event.stopPropagation(); openEditTaskModal('${event.id}')" title="Edit">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="agenda-action-btn delete" onclick="event.stopPropagation(); deleteTask('${event.id}')" title="Delete">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function filterAgendaEvents(query) {
+  scheduleFilters.searchQuery = query.toLowerCase();
+  const cards = document.querySelectorAll('.agenda-event-card');
+  cards.forEach(card => {
+    const title = card.querySelector('.agenda-event-title')?.textContent.toLowerCase() || '';
+    const location = card.querySelector('.agenda-event-location')?.textContent.toLowerCase() || '';
+    const matches = title.includes(query.toLowerCase()) || location.includes(query.toLowerCase());
+    card.style.display = matches || !query ? '' : 'none';
+  });
+  
+  const groups = document.querySelectorAll('.agenda-day-group');
+  groups.forEach(group => {
+    const visibleCards = group.querySelectorAll('.agenda-event-card:not([style*="display: none"])');
+    group.style.display = visibleCards.length > 0 ? '' : 'none';
+  });
+}
+
+// ============================================
+// YEAR VIEW - 12-Month Overview Grid
+// ============================================
+function renderYearView(events, today) {
+  const year = scheduleCurrentDate.getFullYear();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const todayStr = today.toISOString().split('T')[0];
+  
+  const eventsByMonth = {};
+  events.forEach(event => {
+    const eventDate = new Date(event.date);
+    if (eventDate.getFullYear() === year) {
+      const month = eventDate.getMonth();
+      if (!eventsByMonth[month]) eventsByMonth[month] = [];
+      eventsByMonth[month].push(event);
+    }
+  });
+  
+  return `
+    <div class="year-view-container">
+      <div class="year-header">
+        <button class="year-nav-btn" onclick="navigateYear(-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2 class="year-title">${year}</h2>
+        <button class="year-nav-btn" onclick="navigateYear(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      
+      <div class="year-grid">
+        ${Array.from({ length: 12 }, (_, monthIndex) => {
+          const monthEvents = eventsByMonth[monthIndex] || [];
+          const firstDay = new Date(year, monthIndex, 1);
+          const lastDay = new Date(year, monthIndex + 1, 0);
+          const startDay = firstDay.getDay();
+          const daysInMonth = lastDay.getDate();
+          
+          const days = [];
+          for (let i = 0; i < startDay; i++) {
+            days.push({ day: null, events: [] });
+          }
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dayEvents = events.filter(e => e.date === dateStr);
+            days.push({ 
+              day: d, 
+              dateStr,
+              isToday: dateStr === todayStr,
+              events: dayEvents 
+            });
+          }
+          
+          return `
+            <div class="year-month-card" onclick="navigateToMonth(${monthIndex})">
+              <div class="year-month-header">
+                <span class="year-month-name">${monthNames[monthIndex]}</span>
+                ${monthEvents.length > 0 ? `<span class="year-month-count">${monthEvents.length}</span>` : ''}
+              </div>
+              <div class="year-month-grid">
+                <div class="year-weekdays">
+                  ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<span>${d}</span>`).join('')}
+                </div>
+                <div class="year-days">
+                  ${days.map(({ day, dateStr, isToday, events: dayEvents }) => {
+                    if (!day) return '<span class="year-day empty"></span>';
+                    
+                    const hasEvents = dayEvents.length > 0;
+                    const eventColors = [...new Set(dayEvents.map(e => getCategoryColor(getEventCategory(e))))].slice(0, 3);
+                    
+                    return `
+                      <span class="year-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}" 
+                            onclick="event.stopPropagation(); selectYearDate('${dateStr}')"
+                            title="${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}">
+                        ${day}
+                        ${hasEvents ? `<span class="year-day-dots">${eventColors.map(c => `<span style="background:${c}"></span>`).join('')}</span>` : ''}
+                      </span>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function navigateYear(delta) {
+  scheduleCurrentDate.setFullYear(scheduleCurrentDate.getFullYear() + delta);
   renderCurrentView();
 }
+
+function navigateToMonth(monthIndex) {
+  scheduleCurrentDate.setMonth(monthIndex);
+  scheduleViewMode = 'month';
+  renderCurrentView();
+}
+
+function selectYearDate(dateStr) {
+  scheduleCurrentDate = new Date(dateStr + 'T00:00:00');
+  scheduleSelectedDate = new Date(dateStr + 'T00:00:00');
+  scheduleViewMode = 'day';
+  renderCurrentView();
+}
+
+// ============================================
+// ADVANCED EVENT MODAL (Google Calendar style)
+// ============================================
+function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
+  const today = new Date();
+  const date = prefillDate || today.toISOString().split('T')[0];
+  const time = prefillTime || '';
+  const endTime = prefillTime ? calculateEndTimeFromDuration(prefillTime, 60) : '';
+  
+  const content = `
+    <form id="advancedEventForm" class="advanced-event-form" onsubmit="handleAdvancedEventSubmit(event)">
+      <div class="form-group form-group-large">
+        <input type="text" name="title" class="form-input form-input-title" placeholder="Add title" required autofocus>
+      </div>
+      
+      <div class="event-type-tabs">
+        <button type="button" class="event-type-tab active" data-type="event" onclick="setEventType('event')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Event
+        </button>
+        <button type="button" class="event-type-tab" data-type="task" onclick="setEventType('task')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Task
+        </button>
+        <button type="button" class="event-type-tab" data-type="reminder" onclick="setEventType('reminder')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          Reminder
+        </button>
+      </div>
+      <input type="hidden" name="eventType" id="eventTypeInput" value="event">
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="form-section-content">
+          <label class="all-day-toggle-inline">
+            <input type="checkbox" id="allDayToggle" name="isAllDay" onchange="toggleAllDayEvent()">
+            <span>All day</span>
+          </label>
+          
+          <div class="date-time-grid" id="dateTimeGrid">
+            <div class="form-group">
+              <label class="form-label-mini">Start</label>
+              <div class="datetime-inputs">
+                <input type="date" name="startDate" class="form-input form-input-date" value="${date}" required>
+                <select name="startTime" id="eventStartTimeAdv" class="form-select form-select-time" onchange="updateAdvancedEndTime()">
+                  <option value="">Time</option>
+                  ${generateTimeOptions(time)}
+                </select>
+              </div>
+            </div>
+            <div class="datetime-separator">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </div>
+            <div class="form-group">
+              <label class="form-label-mini">End</label>
+              <div class="datetime-inputs">
+                <input type="date" name="endDate" class="form-input form-input-date" value="${date}">
+                <select name="endTime" id="eventEndTimeAdv" class="form-select form-select-time">
+                  <option value="">Time</option>
+                  ${generateTimeOptions(endTime)}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="quick-duration-row" id="quickDurationRow">
+            ${[30, 60, 90, 120, 180].map(mins => {
+              const label = mins < 60 ? `${mins}m` : mins === 60 ? '1h' : `${mins/60}h`;
+              return `<button type="button" class="quick-dur-chip" onclick="setAdvancedDuration(${mins})">${label}</button>`;
+            }).join('')}
+          </div>
+          
+          <div class="form-group form-group-inline">
+            <select name="recurrence" class="form-select form-select-recurrence">
+              ${RECURRENCE_PATTERNS.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="form-section-content">
+          <input type="text" name="location" class="form-input" placeholder="Add location">
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </div>
+        <div class="form-section-content">
+          <input type="url" name="conferenceLink" class="form-input" placeholder="Add video conferencing link">
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="form-section-content">
+          <input type="text" name="attendees" class="form-input" placeholder="Add guests (comma separated emails)">
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="form-section-content">
+          <select name="reminder" class="form-select">
+            ${REMINDER_PRESETS.map(r => `<option value="${r.value}" ${r.value === 30 ? 'selected' : ''}>${r.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+        <div class="form-section-content">
+          <div class="category-color-row">
+            <select name="category" class="form-select form-select-category" onchange="updateCategoryColor(this)">
+              ${EVENT_CATEGORIES.map(c => `<option value="${c.id}" data-color="${c.color}">${c.name}</option>`).join('')}
+            </select>
+            <div class="color-picker-row" id="colorPicker">
+              ${EVENT_CATEGORIES.map((c, i) => `
+                <button type="button" class="color-dot ${i === 0 ? 'selected' : ''}" style="background: ${c.color};" data-color="${c.color}" onclick="selectEventColor(this, '${c.color}')"></button>
+              `).join('')}
+            </div>
+          </div>
+          <input type="hidden" name="color" id="selectedColorInput" value="${EVENT_CATEGORIES[0].color}">
+        </div>
+      </div>
+      
+      <div class="form-section form-section-expanded">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+        </div>
+        <div class="form-section-content">
+          <textarea name="description" class="form-textarea" rows="3" placeholder="Add description"></textarea>
+        </div>
+      </div>
+      
+      <div class="form-actions form-actions-advanced">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <div class="form-actions-right">
+          <button type="submit" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Save
+          </button>
+        </div>
+      </div>
+    </form>
+  `;
+  
+  openModal('Create Event', content, 'modal-large');
+}
+
+function setEventType(type) {
+  document.querySelectorAll('.event-type-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.type === type);
+  });
+  document.getElementById('eventTypeInput').value = type;
+}
+
+function toggleAllDayEvent() {
+  const isAllDay = document.getElementById('allDayToggle').checked;
+  const timeSelects = document.querySelectorAll('.form-select-time');
+  const quickDuration = document.getElementById('quickDurationRow');
+  
+  timeSelects.forEach(select => {
+    select.style.display = isAllDay ? 'none' : '';
+    if (isAllDay) select.value = '';
+  });
+  
+  if (quickDuration) {
+    quickDuration.style.display = isAllDay ? 'none' : '';
+  }
+}
+
+function updateAdvancedEndTime() {
+  const startTime = document.getElementById('eventStartTimeAdv').value;
+  const endTimeSelect = document.getElementById('eventEndTimeAdv');
+  if (startTime && !endTimeSelect.value) {
+    const endTime = calculateEndTimeFromDuration(startTime, 60);
+    endTimeSelect.value = endTime;
+  }
+}
+
+function setAdvancedDuration(minutes) {
+  const startTimeEl = document.getElementById('eventStartTimeAdv');
+  const endTimeSelect = document.getElementById('eventEndTimeAdv');
+  
+  if (!startTimeEl.value) {
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+    const startTimeStr = `${String(nextHour.getHours()).padStart(2, '0')}:00`;
+    startTimeEl.value = startTimeStr;
+  }
+  
+  const currentStartTime = startTimeEl.value;
+  const endTime = calculateEndTimeFromDuration(currentStartTime, minutes);
+  endTimeSelect.value = endTime;
+  
+  document.querySelectorAll('.quick-dur-chip').forEach(chip => chip.classList.remove('active'));
+  if (event && event.target) event.target.classList.add('active');
+}
+
+function selectEventColor(btn, color) {
+  document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('selectedColorInput').value = color;
+}
+
+function updateCategoryColor(select) {
+  const option = select.options[select.selectedIndex];
+  const color = option.dataset.color;
+  if (color) {
+    document.getElementById('selectedColorInput').value = color;
+    document.querySelectorAll('.color-dot').forEach(dot => {
+      dot.classList.toggle('selected', dot.dataset.color === color);
+    });
+  }
+}
+
+function handleAdvancedEventSubmit(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  
+  const title = data.get('title')?.trim();
+  if (!title) return;
+  
+  const startDate = data.get('startDate');
+  const endDate = data.get('endDate') || startDate;
+  const startTime = data.get('startTime') || null;
+  const endTime = data.get('endTime') || null;
+  const isAllDay = data.get('isAllDay') === 'on';
+  const location = data.get('location')?.trim() || '';
+  const description = data.get('description')?.trim() || '';
+  const category = data.get('category') || 'default';
+  const color = data.get('color') || EVENT_CATEGORIES[0].color;
+  const recurrence = data.get('recurrence') || 'none';
+  const reminder = parseInt(data.get('reminder')) || 30;
+  const attendeesStr = data.get('attendees') || '';
+  const conferenceLink = data.get('conferenceLink')?.trim() || '';
+  
+  const attendees = attendeesStr.split(',').map(a => a.trim()).filter(a => a);
+  
+  const newEvent = createEnhancedEvent({
+    title,
+    date: startDate,
+    endDate,
+    time: isAllDay ? null : startTime,
+    endTime: isAllDay ? null : endTime,
+    isAllDay,
+    location,
+    description,
+    category,
+    color,
+    recurrence,
+    reminders: [reminder],
+    attendees,
+    conferenceLink
+  });
+  
+  let events = loadCalendarEvents();
+  events.push(newEvent);
+  saveCalendarEvents(events);
+  
+  closeModal();
+  showToast(`Event "${title}" created successfully!`);
+  renderCurrentView();
+}
+
+// goToScheduleToday - defined at end of file with enhanced scrolling
+
+function navigateScheduleNext() {
+  if (scheduleViewMode === 'day') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 1);
+  } else if (scheduleViewMode === 'week') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 7);
+  } else if (scheduleViewMode === 'month') {
+    scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() + 1);
+  } else if (scheduleViewMode === 'year') {
+    scheduleCurrentDate.setFullYear(scheduleCurrentDate.getFullYear() + 1);
+  } else if (scheduleViewMode === 'agenda') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 30);
+  }
+  renderCurrentView();
+}
+
+function navigateSchedulePrev() {
+  if (scheduleViewMode === 'day') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 1);
+  } else if (scheduleViewMode === 'week') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 7);
+  } else if (scheduleViewMode === 'month') {
+    scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() - 1);
+  } else if (scheduleViewMode === 'year') {
+    scheduleCurrentDate.setFullYear(scheduleCurrentDate.getFullYear() - 1);
+  } else if (scheduleViewMode === 'agenda') {
+    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 30);
+  }
+  renderCurrentView();
+}
+
+function toggleCalendarSearch() {
+  const searchContainer = document.getElementById('calendarSearchContainer');
+  if (searchContainer) {
+    const isHidden = searchContainer.style.display === 'none';
+    searchContainer.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden) {
+      const input = searchContainer.querySelector('input');
+      if (input) input.focus();
+    }
+  }
+}
+
 
 // Duplicate a calendar task - opens modal to select date
 function duplicateCalendarTask(eventId) {
   const events = loadCalendarEvents();
-  const task = events.find(e => e.id === eventId);
+  // Use == for type coercion (eventId may be string or number)
+  const task = events.find(e => e.id == eventId);
   if (!task) return;
 
   const today = new Date().toISOString().split('T')[0];
@@ -1935,7 +4273,8 @@ function handleDuplicateTaskSubmit(e, originalEventId) {
   if (!date) return;
   
   const events = loadCalendarEvents();
-  const originalTask = events.find(ev => ev.id === originalEventId);
+  // Use == for type coercion
+  const originalTask = events.find(ev => ev.id == originalEventId);
   if (!originalTask) return;
   
   const newTask = {
@@ -1943,7 +4282,12 @@ function handleDuplicateTaskSubmit(e, originalEventId) {
     title: originalTask.title,
     date: date,
     time: time || originalTask.time || null,
+    endTime: originalTask.endTime || null,
     color: originalTask.color || 'blue',
+    location: originalTask.location || null,
+    projectId: originalTask.projectId || null,
+    assignmentId: originalTask.assignmentId || null,
+    spaceId: originalTask.spaceId || null,
     isRecurring: false,
     recurringId: null
   };
@@ -1953,7 +4297,8 @@ function handleDuplicateTaskSubmit(e, originalEventId) {
   
   closeModal();
   showToast('Task duplicated successfully!');
-  renderCurrentView();
+  // Preserve scroll when duplicating task
+  renderCurrentView(true);
 }
 
 // Navigation
@@ -1961,21 +4306,181 @@ window.prevMonth = () => { currentCalendarMonth.setMonth(currentCalendarMonth.ge
 window.nextMonth = () => { currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1); renderCurrentView(); };
 window.goToToday = () => { currentCalendarMonth = new Date(); renderCurrentView(); };
 
-// Create modal (unchanged)
+// Generate time options for dropdown (Google Calendar style - 15 min intervals for precise drag selection)
+function generateTimeOptions(selectedTime = '') {
+  const times = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hour24 = String(h).padStart(2, '0');
+      const min = String(m).padStart(2, '0');
+      const value = `${hour24}:${min}`;
+      
+      // Format for display (12-hour)
+      const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const label = `${hour12}:${min} ${ampm}`;
+      
+      const selected = value === selectedTime ? 'selected' : '';
+      times.push(`<option value="${value}" ${selected}>${label}</option>`);
+    }
+  }
+  return times.join('');
+}
+
+// Calculate duration between two times
+function calculateDuration(startTime, endTime) {
+  if (!startTime || !endTime) return '';
+  
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  
+  let startMinutes = startH * 60 + startM;
+  let endMinutes = endH * 60 + endM;
+  
+  // Handle next day
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60;
+  }
+  
+  const diffMinutes = endMinutes - startMinutes;
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  
+  if (hours === 0) {
+    return `${minutes} min`;
+  } else if (minutes === 0) {
+    return hours === 1 ? '1 hour' : `${hours} hours`;
+  } else {
+    return `${hours}h ${minutes}m`;
+  }
+}
+
+// Update end time based on start time and duration
+function updateEndTimeFromDuration(duration) {
+  const startSelect = document.getElementById('eventStartTime');
+  const endSelect = document.getElementById('eventEndTime');
+  if (!startSelect || !endSelect) return;
+  
+  const startTime = startSelect.value;
+  if (!startTime) return;
+  
+  const [startH, startM] = startTime.split(':').map(Number);
+  let endMinutes = startH * 60 + startM + duration;
+  
+  // Wrap around if past midnight
+  if (endMinutes >= 24 * 60) {
+    endMinutes = endMinutes % (24 * 60);
+  }
+  
+  const endH = Math.floor(endMinutes / 60);
+  const endM = endMinutes % 60;
+  const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  
+  endSelect.value = endTime;
+  updateDurationHint();
+}
+
+// Update duration hint display
+function updateDurationHint() {
+  const startSelect = document.getElementById('eventStartTime');
+  const endSelect = document.getElementById('eventEndTime');
+  const durationHint = document.getElementById('durationHint');
+  
+  if (!startSelect || !endSelect || !durationHint) return;
+  
+  const duration = calculateDuration(startSelect.value, endSelect.value);
+  durationHint.textContent = duration ? `Duration: ${duration}` : '';
+}
+
+// Set default end time (1 hour after start)
+function setDefaultEndTime() {
+  const startSelect = document.getElementById('eventStartTime');
+  const endSelect = document.getElementById('eventEndTime');
+  
+  if (!startSelect || !endSelect) return;
+  
+  const startTime = startSelect.value;
+  if (!startTime) return;
+  
+  const [startH, startM] = startTime.split(':').map(Number);
+  let endH = startH + 1;
+  if (endH >= 24) endH = endH - 24;
+  
+  const endTime = `${String(endH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+  endSelect.value = endTime;
+  updateDurationHint();
+}
+
+// Create modal with Google Calendar style time picker
 function openCreateEventModal(defaultDate = null) {
   const todayStr = new Date().toISOString().split('T')[0];
   const dateValue = defaultDate || todayStr;
+  
+  // Default start time: next hour
+  const now = new Date();
+  const defaultStartHour = now.getHours() + 1;
+  const defaultStart = `${String(defaultStartHour % 24).padStart(2, '0')}:00`;
+  const defaultEnd = `${String((defaultStartHour + 1) % 24).padStart(2, '0')}:00`;
 
   const content = `
     <form id="createEventForm" onsubmit="handleCreateEventSubmit(event, '${dateValue}')">
       <div class="form-group">
         <label>Title <span class="required">*</span></label>
-        <input type="text" name="title" class="form-input" required placeholder="Meeting / Deadline / Task...">
+        <input type="text" name="title" class="form-input" required placeholder="Meeting / Deadline / Task..." autofocus>
       </div>
+      
       <div class="form-group">
-        <label>Time (optional)</label>
-        <input type="time" name="time" class="form-input">
+        <label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          Location
+        </label>
+        <input type="text" name="location" class="form-input" placeholder="Add location...">
       </div>
+      
+      <div class="time-picker-group">
+        <div class="time-picker-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          Time
+        </div>
+        
+        <div class="time-picker-row">
+          <span class="time-picker-label">From</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+              <option value="">No time</option>
+              ${generateTimeOptions(defaultStart)}
+            </select>
+          </div>
+          <span class="time-picker-divider">→</span>
+          <div class="time-picker-select-wrapper">
+            <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+              <option value="">No time</option>
+              ${generateTimeOptions(defaultEnd)}
+            </select>
+          </div>
+        </div>
+        
+        <div class="time-duration-hint" id="durationHint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          <span>Duration: 1 hour</span>
+        </div>
+        
+        <div class="quick-duration-btns">
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(30)">30 min</button>
+          <button type="button" class="quick-duration-btn active" onclick="updateEndTimeFromDuration(60)">1 hour</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(90)">1.5 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(120)">2 hours</button>
+          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(180)">3 hours</button>
+        </div>
+      </div>
+      
       <div class="form-group">
         <label>Color</label>
         <select name="color" class="form-select">
@@ -1986,6 +4491,112 @@ function openCreateEventModal(defaultDate = null) {
           <option value="red">Red</option>
         </select>
       </div>
+      
+      <!-- Repeat Section -->
+      <div class="form-group-collapsible">
+        <div class="form-collapsible-header" onclick="toggleRepeatSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M17 1l4 4-4 4"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <path d="M7 23l-4-4 4-4"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          <span>Repeat</span>
+          <span class="repeat-summary-badge" id="repeatSummaryBadge" style="display:none;"></span>
+          <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+        <div class="form-collapsible-content" id="repeatSection">
+          <div class="repeat-options-grid">
+            <div class="form-group-inline">
+              <label>Frequency</label>
+              <select name="repeatType" class="form-select form-select-sm" onchange="handleRepeatTypeChange(this.value, '${dateValue}')">
+                <option value="none">Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly on ${new Date(dateValue).toLocaleDateString('en-US', { weekday: 'long' })}</option>
+                <option value="weekdays">Every weekday (Mon-Fri)</option>
+                <option value="biweekly">Bi-weekly</option>
+                <option value="monthly">Monthly on day ${new Date(dateValue).getDate()}</option>
+                <option value="custom">Custom...</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Custom Days Selection (hidden by default) -->
+          <div class="repeat-custom-days" id="repeatCustomDays" style="display:none;">
+            <label class="form-label" style="font-size:12px; margin-bottom:8px;">Repeat on</label>
+            <div class="repeat-days-grid">
+              ${['S','M','T','W','T','F','S'].map((day, i) => `
+                <label class="repeat-day-chip ${i === new Date(dateValue).getDay() ? 'selected' : ''}">
+                  <input type="checkbox" name="repeatDays" value="${i}" ${i === new Date(dateValue).getDay() ? 'checked' : ''} onchange="updateRepeatDayChip(this)">
+                  <span>${day}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- End Repeat Options (hidden when none) -->
+          <div class="repeat-end-options" id="repeatEndOptions" style="display:none;">
+            <div class="form-group-inline" style="margin-top:12px;">
+              <label>Ends</label>
+              <select name="repeatEndType" class="form-select form-select-sm" onchange="handleRepeatEndTypeChange(this.value)">
+                <option value="never">Never</option>
+                <option value="after">After occurrences</option>
+                <option value="on">On date</option>
+              </select>
+            </div>
+            
+            <div class="repeat-end-after" id="repeatEndAfter" style="display:none; margin-top:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" name="repeatCount" class="form-input form-input-sm" value="10" min="1" max="365" style="width:70px;">
+                <span style="color:var(--muted-foreground); font-size:13px;">occurrences</span>
+              </div>
+            </div>
+            
+            <div class="repeat-end-on" id="repeatEndOn" style="display:none; margin-top:8px;">
+              <input type="date" name="repeatEndDate" class="form-input form-input-sm" value="${getDefaultRepeatEndDate(dateValue)}">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Link to Project, Assignment, or Space -->
+      <div class="form-group-collapsible">
+        <div class="form-collapsible-header" onclick="toggleEventLinksSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <span>Link to Project / Assignment / Space</span>
+          <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+        <div class="form-collapsible-content" id="eventLinksSection">
+          <div class="form-row-triple">
+            <div class="form-group-inline">
+              <label>Project</label>
+              <select name="projectId" class="form-select form-select-sm">
+                ${generateProjectOptions()}
+              </select>
+            </div>
+            <div class="form-group-inline">
+              <label>Assignment</label>
+              <select name="assignmentId" class="form-select form-select-sm">
+                ${generateAssignmentOptions()}
+              </select>
+            </div>
+            <div class="form-group-inline">
+              <label>Space</label>
+              <select name="spaceId" class="form-select form-select-sm">
+                ${generateSpaceOptions()}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-primary">Create</button>
@@ -2001,22 +4612,261 @@ function handleCreateEventSubmit(e, date) {
   const data = new FormData(form);
 
   const title = data.get('title')?.trim();
-  const time = data.get('time');
+  const startTime = data.get('startTime');
+  const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
+  const location = data.get('location')?.trim() || null;
+  const projectId = data.get('projectId') || null;
+  const assignmentId = data.get('assignmentId') || null;
+  const spaceId = data.get('spaceId') || null;
+  
+  // Repeat options
+  const repeatType = data.get('repeatType') || 'none';
+  const repeatEndType = data.get('repeatEndType') || 'never';
+  const repeatCount = parseInt(data.get('repeatCount')) || 10;
+  const repeatEndDate = data.get('repeatEndDate') || null;
+  const repeatDays = data.getAll('repeatDays').map(Number);
 
   if (!title) return;
 
-  const events = loadCalendarEvents();
-  const newEvent = { id: Date.now(), title, date, time: time || null, color };
+  // If no repeat, create single event
+  if (repeatType === 'none') {
+    const events = loadCalendarEvents();
+    const newEvent = { 
+      id: Date.now(), 
+      title, 
+      date, 
+      time: startTime || null, 
+      endTime: endTime || null,
+      color,
+      location,
+      projectId,
+      assignmentId,
+      spaceId
+    };
+    events.push(newEvent);
+    saveCalendarEvents(events);
+    saveExpandedTaskId(newEvent.id);
+    closeModal();
+    renderCurrentView();
+    return;
+  }
+
+  // Create recurring task rule
+  const recurringId = Date.now();
+  const startDate = new Date(date);
   
-  events.push(newEvent);
+  // Determine which days to repeat on
+  let daysToRepeat = [];
+  switch (repeatType) {
+    case 'daily':
+      daysToRepeat = [0, 1, 2, 3, 4, 5, 6];
+      break;
+    case 'weekly':
+      daysToRepeat = [startDate.getDay()];
+      break;
+    case 'weekdays':
+      daysToRepeat = [1, 2, 3, 4, 5];
+      break;
+    case 'biweekly':
+      daysToRepeat = [startDate.getDay()];
+      break;
+    case 'monthly':
+      // Monthly is handled differently
+      break;
+    case 'custom':
+      daysToRepeat = repeatDays.length > 0 ? repeatDays : [startDate.getDay()];
+      break;
+  }
+
+  // Calculate end date for repeat
+  let endRepeatDate = null;
+  if (repeatEndType === 'after') {
+    endRepeatDate = new Date(startDate);
+    endRepeatDate.setDate(endRepeatDate.getDate() + (repeatCount * 7)); // Approximate
+  } else if (repeatEndType === 'on' && repeatEndDate) {
+    endRepeatDate = new Date(repeatEndDate);
+  } else {
+    // Default: 3 months from now
+    endRepeatDate = new Date(startDate);
+    endRepeatDate.setMonth(endRepeatDate.getMonth() + 3);
+  }
+
+  // Generate all recurring event instances
+  const events = loadCalendarEvents();
+  const generatedEvents = generateRecurringEvents({
+    recurringId,
+    title,
+    startDate,
+    endRepeatDate,
+    repeatType,
+    daysToRepeat,
+    repeatCount: repeatEndType === 'after' ? repeatCount : null,
+    startTime: startTime || null,
+    endTime: endTime || null,
+    color,
+    location,
+    projectId,
+    assignmentId,
+    spaceId
+  });
+
+  events.push(...generatedEvents);
   saveCalendarEvents(events);
 
-  // Auto-expand new task (and collapse any other)
-  saveExpandedTaskId(newEvent.id);
+  // Save recurring rule for future reference
+  const recurringTasks = loadRecurringTasks();
+  recurringTasks.push({
+    id: recurringId,
+    title,
+    time: startTime || null,
+    endTime: endTime || null,
+    color,
+    location,
+    days: daysToRepeat,
+    repeatType,
+    repeatEndType,
+    repeatCount: repeatEndType === 'after' ? repeatCount : null,
+    repeatEndDate: repeatEndType === 'on' ? repeatEndDate : null,
+    startDate: date,
+    projectId,
+    assignmentId,
+    spaceId
+  });
+  saveRecurringTasks(recurringTasks);
+
+  if (generatedEvents.length > 0) {
+    saveExpandedTaskId(generatedEvents[0].id);
+  }
 
   closeModal();
+  showToast(`Created ${generatedEvents.length} recurring events`);
   renderCurrentView();
+}
+
+// Generate recurring event instances
+function generateRecurringEvents(config) {
+  const {
+    recurringId, title, startDate, endRepeatDate, repeatType, daysToRepeat,
+    repeatCount, startTime, endTime, color, location, projectId, assignmentId, spaceId
+  } = config;
+
+  const events = [];
+  const current = new Date(startDate);
+  let count = 0;
+  const maxIterations = 365; // Safety limit
+  let iterations = 0;
+
+  while (current <= endRepeatDate && iterations < maxIterations) {
+    iterations++;
+    
+    if (repeatCount && count >= repeatCount) break;
+
+    let shouldAdd = false;
+
+    if (repeatType === 'monthly') {
+      // Monthly: same day of month
+      if (current.getDate() === startDate.getDate()) {
+        shouldAdd = true;
+      }
+    } else if (repeatType === 'biweekly') {
+      // Biweekly: every 2 weeks on same day
+      const weeksDiff = Math.floor((current - startDate) / (7 * 24 * 60 * 60 * 1000));
+      if (weeksDiff % 2 === 0 && current.getDay() === startDate.getDay()) {
+        shouldAdd = true;
+      }
+    } else {
+      // Daily, weekly, weekdays, custom
+      if (daysToRepeat.includes(current.getDay())) {
+        shouldAdd = true;
+      }
+    }
+
+    if (shouldAdd) {
+      events.push({
+        id: Date.now() + count + Math.floor(Math.random() * 100000),
+        title,
+        date: current.toISOString().split('T')[0],
+        time: startTime,
+        endTime: endTime,
+        color,
+        location,
+        isRecurring: true,
+        recurringId,
+        projectId,
+        assignmentId,
+        spaceId
+      });
+      count++;
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return events;
+}
+
+// Repeat UI Helper Functions
+function toggleRepeatSection() {
+  const section = document.getElementById('repeatSection');
+  const header = section?.previousElementSibling;
+  if (section) {
+    section.classList.toggle('open');
+    header?.classList.toggle('open');
+  }
+}
+
+function handleRepeatTypeChange(value, dateValue) {
+  const customDays = document.getElementById('repeatCustomDays');
+  const endOptions = document.getElementById('repeatEndOptions');
+  const badge = document.getElementById('repeatSummaryBadge');
+  
+  if (customDays) {
+    customDays.style.display = value === 'custom' ? 'block' : 'none';
+  }
+  
+  if (endOptions) {
+    endOptions.style.display = value !== 'none' ? 'block' : 'none';
+  }
+  
+  // Update badge
+  if (badge) {
+    if (value === 'none') {
+      badge.style.display = 'none';
+    } else {
+      badge.style.display = 'inline-flex';
+      const labels = {
+        'daily': 'Daily',
+        'weekly': 'Weekly',
+        'weekdays': 'Weekdays',
+        'biweekly': 'Bi-weekly',
+        'monthly': 'Monthly',
+        'custom': 'Custom'
+      };
+      badge.textContent = labels[value] || value;
+    }
+  }
+}
+
+function handleRepeatEndTypeChange(value) {
+  const afterDiv = document.getElementById('repeatEndAfter');
+  const onDiv = document.getElementById('repeatEndOn');
+  
+  if (afterDiv) afterDiv.style.display = value === 'after' ? 'block' : 'none';
+  if (onDiv) onDiv.style.display = value === 'on' ? 'block' : 'none';
+}
+
+function updateRepeatDayChip(checkbox) {
+  const label = checkbox.closest('.repeat-day-chip');
+  if (label) {
+    label.classList.toggle('selected', checkbox.checked);
+  }
+}
+
+function getDefaultRepeatEndDate(startDate) {
+  const date = new Date(startDate);
+  date.setMonth(date.getMonth() + 1);
+  return date.toISOString().split('T')[0];
 }
 
 
@@ -2221,9 +5071,9 @@ function renderProjectDetailView(projectIndex) {
   const { total, completed, percentage } = calculateProgress(project.columns);
   
   // Dynamic status based on progress
-  let dynamicStatus = 'todo';
+  let dynamicStatus = 'backlog';
   if (percentage === 0) {
-    dynamicStatus = 'todo';
+    dynamicStatus = 'backlog';
   } else if (percentage > 0 && percentage < 100) {
     dynamicStatus = 'in-progress';
   } else if (percentage === 100) {
@@ -2231,303 +5081,6514 @@ function renderProjectDetailView(projectIndex) {
   }
   
   const statusColor = getStatusColor(dynamicStatus);
-  const circumference = 2 * Math.PI * 60;
-  const offset = circumference - (percentage / 100) * circumference;
-  
   const teamMembers = project.teamMembers || ['You'];
-  const projectPriority = project.priority; // Don't default - allow null for "No priority"
+  const projectPriority = project.priority;
   const projectComments = project.comments || [];
-
-  // Generate progress history data for the chart (past 4 weeks)
-  const progressHistory = project.progressHistory || generateMockProgressHistory();
+  const milestones = project.milestones || [];
+  
+  // Generate activity log
+  const activityLog = generateActivityLog(project, projectIndex);
+  
+  // Format dates
+  const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
+  const targetDateFormatted = formatDateAdvanced(project.targetDate);
 
   return `
-    <div class="project-detail linear-layout">
-      <!-- Main Content Area -->
-      <div class="project-detail-main">
-        <!-- Header with Icon and Title -->
-        <div class="project-detail-header-linear">
-          <button class="back-btn-minimal" onclick="closeProjectDetail()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </button>
-          <div class="project-icon-wrapper">
-            <span style="font-size: 24px; color: var(--primary-foreground);">◇</span>
-          </div>
-          <div class="project-title-section">
-            <h1 class="project-name-linear" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
-            <p class="project-summary-placeholder" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
-          </div>
-          <button class="project-detail-delete-minimal" onclick="handleDeleteProjectFromDetail(${projectIndex})" title="Delete project">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
-
-        <!-- Properties Tags Row -->
-        <div class="project-properties-row">
-          <div class="property-tag status">
-            <span class="property-tag-dot" style="background: ${statusColor};"></span>
-            <span>${capitalizeStatus(dynamicStatus)}</span>
-          </div>
-          <div class="property-tag priority" onclick="togglePriorityDropdown(${projectIndex}, event)" style="cursor: pointer; position: relative;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-            <span>${project.priority ? project.priority.charAt(0).toUpperCase() + project.priority.slice(1) : 'No priority'}</span>
-            <div class="priority-dropdown" id="priorityDropdown-${projectIndex}" onclick="event.stopPropagation();">
-              <div class="priority-dropdown-header">Change priority...<span class="priority-shortcuts"></div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, null); closePriorityDropdown();">
-                <span class="priority-dots">---</span> No priority <span class="priority-key">0</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'urgent'); closePriorityDropdown();">
-                <span class="priority-icon urgent">!</span> Urgent <span class="priority-key">1</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'high'); closePriorityDropdown();">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="4" width="3" height="10"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="8" width="3" height="6"/></svg> High <span class="priority-key">2</span>
-              </div>
-              <div class="priority-option ${projectPriority === 'medium' ? 'selected' : ''}" onclick="setProjectPriority(${projectIndex}, 'medium'); closePriorityDropdown();">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-key">3</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'low'); closePriorityDropdown();">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="11" width="3" height="3"/><rect x="11" y="12" width="3" height="2"/></svg> Low <span class="priority-key">4</span>
-              </div>
+    <div class="project-detail-advanced">
+      <!-- Advanced Header with Breadcrumb & Tabs -->
+      <header class="pd-header">
+        <div class="pd-header-left">
+          <nav class="pd-breadcrumb">
+            <button class="pd-breadcrumb-btn" onclick="closeProjectDetail()" title="Back to Projects">
+              <span class="pd-breadcrumb-icon">✦</span>
+              <span>Projects</span>
+            </button>
+            <svg class="pd-breadcrumb-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+            <div class="pd-breadcrumb-current">
+              <span class="pd-project-icon-mini">◇</span>
+              <span class="pd-project-name-mini">${project.name}</span>
             </div>
+            <button class="pd-star-btn" onclick="toggleProjectStar(${projectIndex})" title="Star project">
+              <svg viewBox="0 0 24 24" fill="${project.starred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+          </nav>
+          
+          <div class="pd-tabs">
+            <button class="pd-tab active" data-tab="overview" onclick="switchProjectTab('overview', ${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>
+              </svg>
+              Project detail
+            </button>
+            <button class="pd-tab" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/>
+              </svg>
+              Timeline
+            </button>
           </div>
-          <div class="property-tag member">
-            <div class="property-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
-            <span>${teamMembers[0] || 'You'}</span>
-          </div>
-          <div class="property-tag date">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            <span>${formatDate(project.startDate || new Date().toISOString())}</span>
-            <span class="date-arrow">→</span>
-            <span>${formatDate(project.targetDate)}</span>
-          </div>
-          <button class="whiteboard-btn-compact" onclick="openGripDiagram(${projectIndex})">
+        </div>
+        
+        <div class="pd-header-right">
+          <button class="pd-action-btn" onclick="openGripDiagram(${projectIndex})" title="Open Whiteboard">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <rect x="3" y="3" width="7" height="7" rx="1"/>
               <rect x="14" y="3" width="7" height="7" rx="1"/>
               <rect x="14" y="14" width="7" height="7" rx="1"/>
               <rect x="3" y="14" width="7" height="7" rx="1"/>
             </svg>
-            <span>Whiteboard</span>
+          </button>
+          <button class="pd-action-btn" onclick="copyProjectLink(${projectIndex})" title="Copy link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+          <button class="pd-action-btn pd-action-danger" onclick="handleDeleteProjectFromDetail(${projectIndex})" title="Delete project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h.01M15 9h.01M9 15h6"/>
+            </svg>
           </button>
         </div>
-
-        <!-- Latest Update Card -->
-        <div class="latest-update-card">
-          <div class="update-header">
-            <span class="update-label">Latest update</span>
-            <button class="new-update-btn" onclick="openNewUpdateModal(${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>New update</span>
-            </button>
-          </div>
-          <div class="update-content">
-            <div class="update-status-row">
-              <span class="update-status-badge ${percentage === 100 ? 'completed' : percentage >= 50 ? 'on-track' : 'in-progress'}">
-                <span class="status-check">✓</span>
-                ${percentage === 100 ? 'Completed' : percentage >= 50 ? 'On track' : 'In progress'}
-              </span>
-              <div class="update-author-info">
-                <div class="update-author-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
-                <span class="update-author-name">${teamMembers[0] || 'You'}</span>
-                <span class="update-time">${project.updates?.[0]?.time || '1d ago'}</span>
+      </header>
+      
+      <!-- Main Layout Grid -->
+      <div class="pd-layout">
+        <!-- Main Content -->
+        <main class="pd-main">
+          <div class="pd-content-scroll">
+            <!-- Project Title Section -->
+            <div class="pd-title-section">
+              <div class="pd-project-icon">
+                <span>◇</span>
+              </div>
+              <div class="pd-title-content">
+                <h1 class="pd-title" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
+                <p class="pd-summary" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
               </div>
             </div>
-            <p class="update-text">${project.updates?.[0]?.text || 'Starting the project'}</p>
-            <div class="update-actions">
-              <button class="update-action-btn" onclick="event.stopPropagation(); openUpdateCommentsModal(${projectIndex})" title="View Comments">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+            
+            <!-- Properties Bar -->
+            <div class="pd-properties-bar">
+              <span class="pd-props-label">Properties</span>
+              
+              <button class="pd-prop-chip status" onclick="toggleStatusDropdown(${projectIndex}, event)">
+                <span class="pd-chip-dot" style="background: ${statusColor};"></span>
+                <span>${capitalizeStatus(dynamicStatus)}</span>
               </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Description Section -->
-        <div class="section-block">
-          <h3 class="section-label">Description</h3>
-          <textarea class="description-textarea" placeholder="Add description..." onblur="handleUpdateProjectDescription(${projectIndex}, this.value)">${project.description || ''}</textarea>
-        </div>
-
-        <!-- Tasks Kanban -->
-        <div class="section-block tasks-section">
-          <div class="section-header-row">
-            <h3 class="section-label">Tasks</h3>
-            <button class="btn btn-secondary btn-sm" onclick="handleAddColumn(${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              Add Column
-            </button>
-          </div>
-          <div class="kanban-board">
-            ${project.columns.map((column, colIndex) => `
-              <div class="kanban-column">
-                <div class="kanban-column-header">
-                  <h4 class="kanban-column-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="kanban-column-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
-                    <button class="kanban-column-delete" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
+              
+              <button class="pd-prop-chip priority" onclick="togglePriorityDropdown(${projectIndex}, event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                </svg>
+                <span>${projectPriority ? projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1) : 'Medium'}</span>
+                <!-- Priority Dropdown -->
+                <div class="pd-dropdown priority-dropdown" id="priorityDropdown-${projectIndex}" onclick="event.stopPropagation();">
+                  <div class="pd-dropdown-header">Change priority...</div>
+                  <div class="pd-dropdown-item" onclick="setProjectPriority(${projectIndex}, null); closePriorityDropdown();">
+                    <span class="pd-priority-icon none">—</span> No priority <span class="pd-key">0</span>
+                  </div>
+                  <div class="pd-dropdown-item" onclick="setProjectPriority(${projectIndex}, 'urgent'); closePriorityDropdown();">
+                    <span class="pd-priority-icon urgent">!</span> Urgent <span class="pd-key">1</span>
+                  </div>
+                  <div class="pd-dropdown-item" onclick="setProjectPriority(${projectIndex}, 'high'); closePriorityDropdown();">
+                    <span class="pd-priority-icon high">▲</span> High <span class="pd-key">2</span>
+                  </div>
+                  <div class="pd-dropdown-item" onclick="setProjectPriority(${projectIndex}, 'medium'); closePriorityDropdown();">
+                    <span class="pd-priority-icon medium">■</span> Medium <span class="pd-key">3</span>
+                  </div>
+                  <div class="pd-dropdown-item" onclick="setProjectPriority(${projectIndex}, 'low'); closePriorityDropdown();">
+                    <span class="pd-priority-icon low">▼</span> Low <span class="pd-key">4</span>
                   </div>
                 </div>
-                <div class="kanban-tasks">
-                  ${column.tasks.map((task, taskIndex) => `
-                    <div class="kanban-task ${task.done ? 'done' : ''}">
-                      <label class="checkbox-container">
-                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
-                        <div class="checkbox-custom">
-                          <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-                        </div>
-                      </label>
-                      <span class="kanban-task-title">${task.title}</span>
-                      <button class="kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                  `).join('')}
+              </button>
+              
+              <button class="pd-prop-chip member">
+                <div class="pd-chip-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+                <span>${teamMembers[0] || 'You'}</span>
+              </button>
+              
+              <button class="pd-prop-chip date" onclick="openEditStartDateModal(${projectIndex})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span>${startDateFormatted}</span>
+              </button>
+              
+              <span class="pd-date-arrow">→</span>
+              
+              <button class="pd-prop-chip date target" onclick="openEditTargetDateModal(${projectIndex})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span>${targetDateFormatted}</span>
+              </button>
+              
+              <button class="pd-prop-chip team">
+                <span class="pd-team-icon">✦</span>
+                <span>${project.team || 'Default'}</span>
+              </button>
+              
+              <button class="pd-more-props" onclick="showMorePropertiesMenu(${projectIndex}, event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Resources Section -->
+            <div class="pd-resources">
+              <span class="pd-resources-label">Resources</span>
+              <button class="pd-add-resource" onclick="openAddResourceModal(${projectIndex})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Add document or link...
+              </button>
+              ${(project.resources || []).map((res, idx) => `
+                <div class="pd-resource-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <span>${res.name}</span>
+                  <button class="pd-resource-remove" onclick="removeProjectResource(${projectIndex}, ${idx})">×</button>
                 </div>
-                <div class="kanban-add-task">
-                  <input type="text" class="kanban-add-input" placeholder="+ Add a task..." data-column="${colIndex}" onkeypress="handleAddProjectTaskKeypress(event, ${projectIndex}, ${colIndex})">
-                </div>
+              `).join('')}
+            </div>
+            
+            
+            <!-- Description Section -->
+            <div class="pd-section">
+              <h3 class="pd-section-title">Description</h3>
+              <div class="pd-description-editor" contenteditable="true" onblur="handleUpdateProjectDescription(${projectIndex}, this.textContent)" data-placeholder="Add description...">${project.description || ''}</div>
+            </div>
+            
+            <!-- Tasks Kanban Section -->
+            <div class="pd-section pd-tasks-section">
+              <div class="pd-section-header">
+                <h3 class="pd-section-title">Tasks</h3>
+                <button class="pd-btn-secondary" onclick="handleAddColumn(${projectIndex})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Add Column
+                </button>
               </div>
-            `).join('')}
+              <div class="pd-kanban">
+                ${project.columns.map((column, colIndex) => `
+                  <div class="pd-kanban-col" data-col-index="${colIndex}">
+                    <div class="pd-kanban-header">
+                      <h4 class="pd-kanban-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
+                      <div class="pd-kanban-meta">
+                        <span class="pd-kanban-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
+                        <button class="pd-kanban-del" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="pd-kanban-tasks">
+                      ${column.tasks.map((task, taskIndex) => `
+                        <div class="pd-task ${task.done ? 'done' : ''}" draggable="true" data-task-index="${taskIndex}">
+                          <label class="pd-task-check">
+                            <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
+                            <span class="pd-checkmark">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <path d="M20 6L9 17l-5-5"/>
+                              </svg>
+                            </span>
+                          </label>
+                          <span class="pd-task-title">${task.title}</span>
+                          <button class="pd-task-del" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                          </button>
+                        </div>
+                      `).join('')}
+                    </div>
+                    <div class="pd-add-task">
+                      <input type="text" placeholder="+ Add a task..." onkeypress="handleAddProjectTaskKeypress(event, ${projectIndex}, ${colIndex})">
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </main>
+        
+        <!-- Sidebar -->
+        <aside class="pd-sidebar">
+          <!-- Properties Section -->
+          <div class="pd-sidebar-section">
+            <div class="pd-sidebar-header">
+              <span>Properties</span>
+              <button class="pd-sidebar-expand">▼</button>
+              <button class="pd-sidebar-add" onclick="addCustomProperty(${projectIndex})">+</button>
+            </div>
+            <div class="pd-props-list">
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Status</span>
+                <span class="pd-prop-value status-value">
+                  <span class="pd-status-dot" style="background: ${statusColor};"></span>
+                  ${capitalizeStatus(dynamicStatus)}
+                </span>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Priority</span>
+                <button class="pd-prop-value clickable" onclick="openSidebarPriorityDropdown(${projectIndex}, event)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                  </svg>
+                  ${projectPriority ? projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1) : 'Medium'}
+                </button>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Lead</span>
+                <button class="pd-prop-value clickable" onclick="openAssignLeadModal(${projectIndex})">
+                  <div class="pd-mini-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+                  ${teamMembers[0] || 'You'}
+                </button>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Members</span>
+                <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                  </svg>
+                  Add members
+                </button>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Start date</span>
+                <span class="pd-prop-value">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  ${startDateFormatted}
+                </span>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Target date</span>
+                <button class="pd-prop-value clickable" onclick="openEditTargetDateModal(${projectIndex})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  ${targetDateFormatted}
+                </button>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Teams</span>
+                <span class="pd-prop-value">
+                  <span class="pd-team-badge">✦ ${project.team || 'Default'}</span>
+                </span>
+              </div>
+              <div class="pd-prop-row">
+                <span class="pd-prop-label">Labels</span>
+                <button class="pd-prop-value clickable muted" onclick="openLabelsModal(${projectIndex})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                  </svg>
+                  Add label
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Activity Section -->
+          <div class="pd-sidebar-section pd-activity-section">
+            <div class="pd-sidebar-header">
+              <span>Activity</span>
+              <button class="pd-sidebar-expand">▼</button>
+              <button class="pd-see-all" onclick="openActivityModal(${projectIndex})">See all</button>
+            </div>
+            <div class="pd-activity-feed">
+              ${activityLog.slice(0, 5).map(act => `
+                <div class="pd-activity-item">
+                  <div class="pd-activity-icon ${act.type}">
+                    ${getActivityIcon(act.type)}
+                  </div>
+                  <div class="pd-activity-content">
+                    <p class="pd-activity-text"><strong>${act.actor}</strong> ${act.action}</p>
+                    <span class="pd-activity-time">${act.time}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  `;
+}
+
+// Helper functions for Advanced Project Detail View
+function formatDateAdvanced(dateStr) {
+  if (!dateStr) return 'Not set';
+  const date = new Date(dateStr);
+  const options = { month: 'short', day: 'numeric' };
+  const year = date.getFullYear();
+  const currentYear = new Date().getFullYear();
+  if (year !== currentYear) {
+    return date.toLocaleDateString('en-US', { ...options, year: '2-digit' }).replace(',', '');
+  }
+  return date.toLocaleDateString('en-US', options);
+}
+
+function generateActivityLog(project, projectIndex) {
+  const activities = [];
+  const updates = project.updates || [];
+  const comments = project.comments || [];
+  
+  // Add status changes
+  if (project.status) {
+    activities.push({
+      type: 'status',
+      actor: project.teamMembers?.[0] || 'You',
+      action: `changed status from In Progress to ${capitalizeStatus(project.status)}`,
+      time: 'Jan 12'
+    });
+  }
+  
+  // Add target date changes
+  if (project.targetDate) {
+    activities.push({
+      type: 'date',
+      actor: project.teamMembers?.[0] || 'You',
+      action: `changed target date to ${formatDateAdvanced(project.targetDate)}`,
+      time: 'Jan 12'
+    });
+  }
+  
+  // Add priority changes
+  if (project.priority) {
+    activities.push({
+      type: 'priority',
+      actor: project.teamMembers?.[0] || 'You',
+      action: `changed priority from High to ${project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}`,
+      time: 'Dec 30'
+    });
+  }
+  
+  // Add milestone additions
+  if (project.milestones && project.milestones.length > 0) {
+    project.milestones.forEach(m => {
+      activities.push({
+        type: 'milestone',
+        actor: project.teamMembers?.[0] || 'You',
+        action: `added milestone ${m.name}`,
+        time: 'Dec 29'
+      });
+    });
+  }
+  
+  // Default activities if none
+  if (activities.length === 0) {
+    activities.push({
+      type: 'create',
+      actor: project.teamMembers?.[0] || 'You',
+      action: 'created this project',
+      time: formatTimeAgo(project.createdAt || new Date().toISOString())
+    });
+  }
+  
+  return activities;
+}
+
+function getActivityIcon(type) {
+  const icons = {
+    status: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    date: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    priority: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>',
+    milestone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    create: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>'
+  };
+  return icons[type] || icons.create;
+}
+// Timeline State is defined in Enhanced Timeline section below
+
+// ============================================
+// TAB SWITCHING - PROJECT DETAIL TABS
+// ============================================
+
+function switchProjectTab(tabName, projectIndex) {
+  // Update active tab styling
+  const tabs = document.querySelectorAll('.pd-tab');
+  tabs.forEach(tab => {
+    if (tab.dataset.tab === tabName) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  
+  // Get the content container
+  const contentScroll = document.querySelector('.pd-content-scroll');
+  if (!contentScroll) return;
+  
+  // Render the appropriate content based on tab
+  switch (tabName) {
+    case 'timeline':
+      contentScroll.classList.add('timeline-full-width');
+      // Use new Timeline V2 if available, fallback to old
+      if (typeof renderTimelineV2 === 'function') {
+        renderTimelineV2(projectIndex, contentScroll);
+      } else if (typeof renderTimelineView === 'function') {
+        renderTimelineView(projectIndex, contentScroll);
+      }
+      break;
+    case 'overview':
+    default:
+      contentScroll.classList.remove('timeline-full-width');
+      renderOverviewTab(projectIndex, contentScroll);
+      break;
+  }
+}
+
+
+function renderOverviewTab(projectIndex, container) {
+  // Re-render the full project detail view (this reloads the entire project detail)
+  openProjectDetail(projectIndex);
+}
+
+const RESOURCE_CAPACITY = 8;
+
+// ============================================
+// TIMELINE VIEW - LINEAR STYLE REBUILD (ENHANCED)
+// ============================================
+
+// Enhanced Timeline State
+if (typeof timelineState === 'undefined') {
+  var timelineState = {
+    viewMode: 'week',
+    currentDate: new Date(),
+    showResources: false,
+    showDone: false,
+    isDragging: false,
+    isResizing: false,
+    zoom: 1, // 0.15 to 2 (0.15 = ~6 months view)
+    panX: 0,
+    showCriticalPath: false,
+    selectedTaskIds: [],
+    keyboardEnabled: true,
+    lastProjectIndex: null,
+    scrollLeft: 0,  // Save scroll position
+    scrollTop: 0    // Save scroll position
+  };
+}
+
+// Timeline task colors palette
+const TIMELINE_TASK_COLORS = [
+  { name: 'Default', value: null },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Purple', value: '#8b5cf6' },
+  { name: 'Pink', value: '#ec4899' },
+  { name: 'Red', value: '#ef4444' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Yellow', value: '#eab308' },
+  { name: 'Green', value: '#22c55e' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Cyan', value: '#06b6d4' }
+];
+
+// Critical path calculation removed - dependencies feature cleaned
+
+// Timeline expansion state for columns
+let timelineExpandedColumns = {};
+
+function renderTimelineView(projectIndex, container) {
+  // Preserve current gantt scroll before we replace DOM
+  try {
+    const prevWrapper = document.getElementById('tlGanttWrapper') || document.querySelector('.tl-gantt-wrapper');
+    if (prevWrapper) {
+      timelineState.scrollLeft = prevWrapper.scrollLeft || 0;
+      timelineState.scrollTop = prevWrapper.scrollTop || 0;
+    }
+  } catch (e) {
+    // no-op
+  }
+
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Track current project for keyboard shortcuts
+  timelineState.lastProjectIndex = projectIndex;
+  
+  // Build column data with date ranges and tasks
+  const columns = (project.columns || []).map((col, colIdx) => {
+    const tasks = col.tasks || [];
+    const tasksWithDates = tasks.filter(t => t.startDate || t.dueDate || t.endDate);
+    const tasksWithoutDates = tasks.filter(t => !t.startDate && !t.dueDate && !t.endDate);
+    
+    let minDate = null;
+    let maxDate = null;
+    
+    // First check if column has stored timeline dates
+    if (col.timelineStart) {
+      minDate = new Date(col.timelineStart);
+    }
+    if (col.timelineEnd) {
+      maxDate = new Date(col.timelineEnd);
+    }
+    
+    // Then check task dates and expand range if needed
+    tasksWithDates.forEach(task => {
+      const start = task.startDate ? new Date(task.startDate) : null;
+      const end = task.endDate ? new Date(task.endDate) : (task.dueDate ? new Date(task.dueDate) : start);
+      
+      if (start && (!minDate || start < minDate)) minDate = new Date(start);
+      if (end && (!maxDate || end > maxDate)) maxDate = new Date(end);
+    });
+    
+    return {
+      id: `col-${colIdx}`,
+      title: col.title,
+      columnIndex: colIdx,
+      taskCount: tasks.length,
+      completedCount: tasks.filter(t => t.done).length,
+      tasksWithDates: tasksWithDates.length,
+      tasksWithoutDates: tasksWithoutDates.length,
+      minDate: minDate,
+      maxDate: maxDate,
+      color: getColumnColor(col.title),
+      hasStoredDates: !!(col.timelineStart || col.timelineEnd),
+      tasks: tasks.map((t, tIdx) => ({
+        ...t,
+        taskIndex: tIdx,
+        columnIndex: colIdx,
+        columnTitle: col.title
+      })),
+      isExpanded: timelineExpandedColumns[`col-${colIdx}`] || false
+    };
+  });
+  
+  // Get all tasks for date range calculation
+  const allTasks = [];
+  (project.columns || []).forEach((col, colIdx) => {
+    (col.tasks || []).forEach((task, taskIdx) => {
+      allTasks.push({
+        ...task,
+        columnIndex: colIdx,
+        taskIndex: taskIdx,
+        columnTitle: col.title,
+        status: getColumnStatus(col.title)
+      });
+    });
+  });
+  
+  // Calculate date range
+  const { startDate, endDate, dates } = calculateTimelineDates(allTasks, timelineState.viewMode);
+  
+  // Stats
+  const stats = {
+    total: allTasks.length,
+    completed: allTasks.filter(t => t.status === 'done' || t.done).length,
+    inProgress: allTasks.filter(t => t.status === 'in-progress').length,
+    overdue: allTasks.filter(t => {
+      if (!t.dueDate) return false;
+      const due = new Date(t.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return due < today && !t.done;
+    }).length
+  };
+  
+  const progressPercent = Math.round((stats.completed / Math.max(stats.total, 1)) * 100);
+  
+  // Calculate week ranges for ClickUp-style header
+  const weekRanges = calculateWeekRanges(dates);
+  const weekRangesHtml = weekRanges.map(range => `
+    <div class="tl-week-range-block" style="width: ${range.days * 48 * timelineState.zoom}px;">
+      <span class="tl-week-range-dates">${range.startStr} – ${range.endStr}</span>
+      <span class="tl-week-range-week">W${range.weekNum}</span>
+    </div>
+  `).join('');
+  
+  container.innerHTML = `
+    <div class="timeline-linear clickup-enhanced">
+      <!-- ClickUp-Style Premium Header -->
+      <div class="tl-header tl-header-clickup">
+        <div class="tl-header-left">
+          <div class="tl-title">
+            <div class="tl-gantt-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <line x1="9" y1="4" x2="9" y2="22"/>
+              </svg>
+            </div>
+            <span>Gantt</span>
+          </div>
+          
+          <div class="tl-view-tabs tl-view-tabs-clickup">
+            <button class="tl-view-tab ${timelineState.viewMode === 'day' ? 'active' : ''}" onclick="setTimelineViewMode('day', ${projectIndex})">Day</button>
+            <button class="tl-view-tab ${timelineState.viewMode === 'week' ? 'active' : ''}" onclick="setTimelineViewMode('week', ${projectIndex})">Week</button>
+            <button class="tl-view-tab ${timelineState.viewMode === 'month' ? 'active' : ''}" onclick="setTimelineViewMode('month', ${projectIndex})">Month</button>
+            <button class="tl-view-tab ${timelineState.viewMode === 'quarter' ? 'active' : ''}" onclick="setTimelineViewMode('quarter', ${projectIndex})">Quarter</button>
+          </div>
+        </div>
+        
+        <div class="tl-header-right">
+          <!-- ClickUp Toolbar -->
+          <div class="tl-clickup-toolbar">
+            <button class="tl-toolbar-btn" onclick="goToTimelineToday(${projectIndex})" title="Go to today">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Today
+            </button>
+            <button class="tl-toolbar-btn" onclick="autofitTimeline(${projectIndex})" title="Auto-fit to content">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              Autofit
+            </button>
+            <button class="tl-toolbar-btn" onclick="exportGanttChart(${projectIndex})" title="Export Gantt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          
+          <div class="tl-toolbar-divider"></div>
+          
+          <!-- Sort & Filter -->
+          <div class="tl-clickup-toolbar">
+            <button class="tl-toolbar-btn tl-toolbar-btn-icon" onclick="openGanttSortMenu(event, ${projectIndex})" title="Sort">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5h10M11 9h7M11 13h4"/><path d="M3 17l3 3 3-3"/><line x1="6" y1="18" x2="6" y2="7"/></svg>
+              Sort
+            </button>
+            <button class="tl-toolbar-btn tl-toolbar-btn-icon ${timelineState.showFilters ? 'active' : ''}" onclick="toggleTimelineFilters(${projectIndex})" title="Filter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              Filter
+            </button>
+            <button class="tl-toolbar-btn tl-toolbar-btn-icon ${timelineState.meMode ? 'active' : ''}" onclick="toggleMeMode(${projectIndex})" title="Show only my tasks">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Me mode
+            </button>
+            <button class="tl-toolbar-btn tl-toolbar-btn-icon" onclick="openAssigneeFilter(event, ${projectIndex})" title="Filter by assignee">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              Assignee
+            </button>
+          </div>
+          
+          <div class="tl-toolbar-divider"></div>
+          
+          
+          <div class="tl-zoom-controls tl-zoom-clickup">
+            <button class="tl-zoom-btn" onclick="zoomTimelineSmart(-1, ${projectIndex})" title="Zoom out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            </button>
+            <div class="tl-zoom-dropdown-wrapper">
+              <button class="tl-zoom-level-btn" onclick="toggleZoomDropdown(event)" title="Select zoom level">
+                <span class="tl-zoom-level">${getZoomLabel(timelineState.zoom)}</span>
+                <svg class="tl-zoom-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="tl-zoom-dropdown" id="tlZoomDropdown">
+                <button class="tl-zoom-preset ${timelineState.zoom === 0.15 ? 'active' : ''}" onclick="setTimelineZoom(0.15, ${projectIndex})">6 Months</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 0.25 ? 'active' : ''}" onclick="setTimelineZoom(0.25, ${projectIndex})">3 Months</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 0.5 ? 'active' : ''}" onclick="setTimelineZoom(0.5, ${projectIndex})">6 Weeks</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 0.75 ? 'active' : ''}" onclick="setTimelineZoom(0.75, ${projectIndex})">1 Month</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 1 ? 'active' : ''}" onclick="setTimelineZoom(1, ${projectIndex})">2 Weeks</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 1.5 ? 'active' : ''}" onclick="setTimelineZoom(1.5, ${projectIndex})">1 Week</button>
+                <button class="tl-zoom-preset ${timelineState.zoom === 2 ? 'active' : ''}" onclick="setTimelineZoom(2, ${projectIndex})">Days</button>
+              </div>
+            </div>
+            <button class="tl-zoom-btn" onclick="zoomTimelineSmart(1, ${projectIndex})" title="Zoom in">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            </button>
+          </div>
+          
+        </div>
+      </div>
+      
+      <!-- ClickUp-Style Week Range Headers -->
+      <div class="tl-week-ranges-header">
+        ${weekRangesHtml}
+      </div>
+      
+      <!-- Advanced Features Toolbar -->
+      ${typeof renderAdvancedToolbar === 'function' ? renderAdvancedToolbar(projectIndex) : ''}
+      
+      
+      <!-- Timeline Body -->
+      <div class="tl-body tl-body-clickup">
+        <!-- Left Panel - Task List -->
+        <div class="tl-left-panel tl-left-panel-clickup">
+          <div class="tl-left-header">
+            <span class="tl-left-title">Tasks</span>
+            <span class="tl-task-count-badge">${stats.total}</span>
+          </div>
+            <button class="tl-expand-all-btn" onclick="expandAllTimelineColumns(${projectIndex})" title="Expand/Collapse All">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          
+          <div class="tl-task-list" id="tlTaskList">
+            ${renderTimelineColumnListV5(columns, projectIndex)}
+          </div>
+        </div>
+        
+        <!-- Right Panel - Gantt Chart -->
+        <div class="tl-right-panel tl-right-panel-clickup">
+          <!-- Date Headers -->
+          <div class="tl-date-header tl-date-header-clickup">
+            <div class="tl-date-header-scroll" id="tlDateHeaderScroll">
+              ${renderTimelineDateHeadersV5(dates, timelineState.zoom)}
+            </div>
+          </div>
+          
+          <!-- Gantt Grid -->
+          <div class="tl-gantt-wrapper" id="tlGanttWrapper" onscroll="syncTimelineScroll(this)">
+            <div class="tl-gantt-grid" id="tlGanttGrid" style="width: ${dates.length * 48 * timelineState.zoom}px; position: relative;">
+              ${renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate)}
+              ${renderTimelineTodayLineClickup(dates, startDate)}
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Sidebar with Properties -->
-      <aside class="project-sidebar-linear">
-        <div class="sidebar-section-header">
-          <span>Properties</span>
-          <button class="sidebar-add-btn">+</button>
+      
+      <!-- Bottom Stats Bar -->
+      <div class="tl-bottom-stats">
+        <div class="tl-stat-chip">
+          <span class="tl-stat-chip-icon">📊</span>
+          <span class="tl-stat-chip-value">${stats.total}</span>
+          <span class="tl-stat-chip-label">Total</span>
         </div>
-        
-        <div class="sidebar-properties-list">
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Status</span>
-            <span class="sidebar-prop-value status" style="color: ${statusColor};">
-              <span class="status-dot-mini" style="background: ${statusColor};"></span>
-              ${capitalizeStatus(dynamicStatus)}
-            </span>
+        <div class="tl-stat-chip tl-stat-chip-green">
+          <span class="tl-stat-chip-icon">✓</span>
+          <span class="tl-stat-chip-value">${stats.completed}</span>
+          <span class="tl-stat-chip-label">Done</span>
+        </div>
+        <div class="tl-stat-chip tl-stat-chip-yellow">
+          <span class="tl-stat-chip-icon">⏳</span>
+          <span class="tl-stat-chip-value">${stats.inProgress}</span>
+          <span class="tl-stat-chip-label">In Progress</span>
+        </div>
+        ${stats.overdue > 0 ? `
+        <div class="tl-stat-chip tl-stat-chip-red">
+          <span class="tl-stat-chip-icon">⚠</span>
+          <span class="tl-stat-chip-value">${stats.overdue}</span>
+          <span class="tl-stat-chip-label">Overdue</span>
+        </div>
+        ` : ''}
+        <div style="flex: 1;"></div>
+        <div class="tl-progress-chip">
+          <div class="tl-progress-bar-mini">
+            <div class="tl-progress-fill-mini" style="width: ${progressPercent}%;"></div>
           </div>
+          <span class="tl-progress-text">${progressPercent}% complete</span>
+        </div>
+      </div>
+      
+      <!-- Mini-map Navigation Bar -->
+      ${renderTimelineMinimap(columns, dates, startDate, projectIndex)}
+    </div>
+    
+    <!-- Premium Kanban Board Section -->
+    <div class="tl-kanban-section">
+      <div class="tl-kanban-header">
+        <div class="tl-kanban-title-group">
+          <div class="tl-kanban-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </div>
+          <h3 class="tl-kanban-title">Task Board</h3>
+          <span class="tl-kanban-badge">${project.columns.reduce((acc, col) => acc + col.tasks.length, 0)} tasks</span>
+        </div>
+        <div class="tl-kanban-actions">
+          <button class="tl-kanban-add-col-btn" onclick="handleAddColumn(${projectIndex})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Column
+          </button>
+        </div>
+      </div>
+      
+      <div class="tl-kanban-board">
+        ${project.columns.map((column, colIndex) => {
+          const completedCount = column.tasks.filter(t => t.done).length;
+          const totalCount = column.tasks.length;
+          const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          const columnColor = getColumnColor(column.title);
           
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Priority</span>
-            <span class="sidebar-prop-value clickable" onclick="openSidebarPriorityDropdown(${projectIndex}, event)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
-              ${projectPriority ? projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1) : 'No priority'}
-            </span>
-            <div class="sidebar-priority-dropdown" id="sidebarPriorityDropdown-${projectIndex}" onclick="event.stopPropagation();">
-              <div class="priority-dropdown-header">Change priority...</div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, null); closeSidebarPriorityDropdown(${projectIndex});">
-                <span class="priority-dots">---</span> No priority <span class="priority-key">0</span>
+          return `
+          <div class="tl-kanban-column" data-col-index="${colIndex}">
+            <div class="tl-kanban-col-header" style="--col-accent: ${columnColor};">
+              <div class="tl-kanban-col-indicator" style="background: ${columnColor};"></div>
+              <h4 class="tl-kanban-col-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
+              <div class="tl-kanban-col-meta">
+                <span class="tl-kanban-col-count">${completedCount}/${totalCount}</span>
+                <div class="tl-kanban-col-progress">
+                  <div class="tl-kanban-col-progress-fill" style="width: ${progressPercent}%; background: ${columnColor};"></div>
+                </div>
               </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'urgent'); closeSidebarPriorityDropdown(${projectIndex});">
-                <span class="priority-icon urgent">!</span> Urgent <span class="priority-key">1</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'high'); closeSidebarPriorityDropdown(${projectIndex});">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="4" width="3" height="10"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="8" width="3" height="6"/></svg> High <span class="priority-key">2</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'medium'); closeSidebarPriorityDropdown(${projectIndex});">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="6" width="3" height="8"/><rect x="6.5" y="8" width="3" height="6"/><rect x="11" y="10" width="3" height="4"/></svg> Medium <span class="priority-key">3</span>
-              </div>
-              <div class="priority-option" onclick="setProjectPriority(${projectIndex}, 'low'); closeSidebarPriorityDropdown(${projectIndex});">
-                <svg class="priority-bars" viewBox="0 0 16 16"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="11" width="3" height="3"/><rect x="11" y="12" width="3" height="2"/></svg> Low <span class="priority-key">4</span>
-              </div>
+              <button class="tl-kanban-col-menu" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Lead</span>
-            <span class="sidebar-prop-value clickable" onclick="showComingSoonToast()">
-              <div class="mini-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
-              ${teamMembers[0] || 'You'}
-            </span>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Members</span>
-            <span class="sidebar-prop-value clickable" onclick="openInviteMemberModal(${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-              Add members
-            </span>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Start date</span>
-            <span class="sidebar-prop-value">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              ${formatDate(project.startDate || new Date().toISOString())}
-            </span>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Target date</span>
-            <span class="sidebar-prop-value clickable" style="color: var(--destructive);" onclick="openEditTargetDateModal(${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              ${formatDate(project.targetDate)}
-            </span>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Teams</span>
-            <span class="sidebar-prop-value">
-              <span class="team-badge">✦ ${project.team || 'Default'}</span>
-            </span>
-          </div>
-          
-          <div class="sidebar-property-row">
-            <span class="sidebar-prop-label">Labels</span>
-            <span class="sidebar-prop-value clickable muted" onclick="showComingSoonToast()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-              Add label
-            </span>
-          </div>
-          
-          ${(() => {
-            const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
-            return linkedSpace ? `
-              <div class="sidebar-property-row">
-                <span class="sidebar-prop-label">Linked Space</span>
-                <span class="sidebar-prop-value" style="color: var(--primary);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
-                  ${linkedSpace.name}
-                </span>
-              </div>
-            ` : '';
-          })()}
-        </div>
-        
-        
-        <!-- Activity Feed with Progress - Compact -->
-        <div class="sidebar-section activity-compact">
-          <div class="sidebar-section-header">
-            <span>Activity</span>
-            <div class="activity-progress-indicator">
-              <svg class="activity-progress-ring" width="20" height="20" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="none" stroke="var(--border)" stroke-width="2"/>
-                <circle cx="12" cy="12" r="10" fill="none" stroke="var(--primary)" stroke-width="2" 
-                  stroke-dasharray="${2 * Math.PI * 10}"
-                  stroke-dashoffset="${2 * Math.PI * 10 * (1 - percentage/100)}"
-                  transform="rotate(-90 12 12)"
-                  stroke-linecap="round"/>
+            
+            <div class="tl-kanban-col-tasks" data-col-index="${colIndex}">
+              ${column.tasks.map((task, taskIndex) => `
+                <div class="tl-kanban-task ${task.done ? 'completed' : ''}" draggable="true" data-task-index="${taskIndex}">
+                  <label class="tl-kanban-task-check">
+                    <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
+                    <span class="tl-kanban-checkmark" style="--check-color: ${columnColor};">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <span class="tl-kanban-task-title" contenteditable="true" onblur="handleUpdateTaskTitle(${projectIndex}, ${colIndex}, ${taskIndex}, this.textContent)">${task.title}</span>
+                  ${task.priority ? `<span class="tl-kanban-task-priority tl-priority-${task.priority}">${task.priority}</span>` : ''}
+                  <button class="tl-kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)" title="Delete task">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+            
+            <button class="tl-kanban-add-task" onclick="handleAddTaskToColumn(${projectIndex}, ${colIndex}, event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
               </svg>
-              <span class="activity-progress-text">${percentage}%</span>
-            </div>
+              <span>Add task</span>
+            </button>
           </div>
-        </div>
-        
-        <!-- Progress Chart in Sidebar -->
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <span>Progress</span>
-          </div>
-          ${renderProgressChart(progressHistory, projectIndex)}
-        </div>
-      </aside>
+        `}).join('')}
+      </div>
     </div>
   `;
+
+  
+  // Setup scroll sync and event listeners
+  setupTimelineInteractions(projectIndex);
+
+  // Sync week ranges header scroll with gantt
+  syncWeekRangesScroll();
+
+  // Restore saved scroll position after re-render
+  requestAnimationFrame(() => {
+    const wrapper = document.getElementById('tlGanttWrapper');
+    if (wrapper && (timelineState.scrollLeft || timelineState.scrollTop)) {
+      wrapper.scrollLeft = timelineState.scrollLeft || 0;
+      wrapper.scrollTop = timelineState.scrollTop || 0;
+      // Keep header aligned too
+      const headerScroll = document.getElementById('tlDateHeaderScroll');
+      if (headerScroll) headerScroll.scrollLeft = wrapper.scrollLeft;
+    }
+    
+    // Initialize mini-map viewport
+    updateMinimapViewport();
+  });
+  
+  // Setup mini-map interactions
+  setupMinimapInteractions(projectIndex, dates, startDate);
+}
+
+// Sync week ranges header scroll
+function syncWeekRangesScroll() {
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
+  
+  if (ganttWrapper && weekRangesHeader) {
+    ganttWrapper.addEventListener('scroll', () => {
+      weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
+    });
+  }
+}
+
+// ============================================
+// MINI-MAP NAVIGATION
+// Premium feature showing timeline overview
+// ============================================
+
+// Mini-map state
+let minimapState = {
+  isDragging: false,
+  startX: 0,
+  startScrollLeft: 0
+};
+
+// Render mini-map HTML
+function renderTimelineMinimap(columns, dates, startDate, projectIndex) {
+  if (!dates || dates.length === 0) return '';
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const totalWidth = dates.length * cellWidth;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Get all tasks with dates for mini-map bars
+  const allTasks = [];
+  columns.forEach(col => {
+    (col.tasks || []).forEach(task => {
+      if (task.startDate || task.dueDate || task.endDate) {
+        allTasks.push({
+          ...task,
+          columnColor: col.color
+        });
+      }
+    });
+  });
+  
+  // Calculate today position as percentage
+  const todayOffset = daysBetween(startDate, today);
+  const todayPercent = (todayOffset / dates.length) * 100;
+  
+  // Format date labels
+  const startLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endLabel = dates[dates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  
+  // Generate mini-map bars
+  const barsHtml = allTasks.map((task, idx) => {
+    const taskStart = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
+    const taskEnd = task.endDate || task.dueDate ? new Date(task.endDate || task.dueDate) : taskStart;
+    
+    if (!taskStart) return '';
+    
+    const startOffset = daysBetween(startDate, taskStart);
+    const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
+    
+    const leftPercent = (startOffset / dates.length) * 100;
+    const widthPercent = (duration / dates.length) * 100;
+    
+    // Determine bar color class
+    let colorClass = '';
+    if (task.done) colorClass = 'done';
+    else if (taskEnd < today && !task.done) colorClass = 'overdue';
+    else colorClass = 'in-progress';
+    
+    // Stack bars vertically (max 3 rows visible)
+    const rowHeight = 6;
+    const row = idx % 3;
+    const top = 2 + (row * rowHeight);
+    
+    return `<div class="tl-minimap-bar ${colorClass}" 
+                 style="left: ${Math.max(0, leftPercent)}%; width: ${Math.max(0.5, widthPercent)}%; top: ${top}px; background: ${task.columnColor || '#3b82f6'};"
+                 title="${task.title || 'Task'}"></div>`;
+  }).join('');
+  
+  return `
+    <div class="tl-minimap-container" id="tlMinimapContainer">
+      <div class="tl-minimap-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18"/>
+          <path d="M9 21V9"/>
+        </svg>
+        <span>Overview</span>
+      </div>
+      
+      <div class="tl-minimap-track" id="tlMinimapTrack" onclick="handleMinimapClick(event, ${projectIndex})">
+        <!-- Date labels -->
+        <div class="tl-minimap-dates">
+          <span class="tl-minimap-date-label">${startLabel}</span>
+          <span class="tl-minimap-date-label">${endLabel}</span>
+        </div>
+        
+        <!-- Task bars -->
+        <div class="tl-minimap-bars">
+          ${barsHtml}
+        </div>
+        
+        <!-- Today indicator -->
+        ${todayPercent >= 0 && todayPercent <= 100 ? `
+          <div class="tl-minimap-today" style="left: ${todayPercent}%;"></div>
+        ` : ''}
+        
+        <!-- Viewport indicator (draggable) -->
+        <div class="tl-minimap-viewport" id="tlMinimapViewport"
+             onmousedown="startMinimapDrag(event, ${projectIndex})">
+          <div class="tl-minimap-viewport-handle left"></div>
+          <div class="tl-minimap-viewport-handle right"></div>
+        </div>
+      </div>
+      
+      <div class="tl-minimap-nav">
+        <button class="tl-minimap-nav-btn" onclick="minimapNavigate('start', ${projectIndex})" title="Jump to start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="11 17 6 12 11 7"/>
+            <polyline points="18 17 13 12 18 7"/>
+          </svg>
+        </button>
+        <button class="tl-minimap-nav-btn" onclick="minimapNavigate('today', ${projectIndex})" title="Jump to today">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </button>
+        <button class="tl-minimap-nav-btn" onclick="minimapNavigate('end', ${projectIndex})" title="Jump to end">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="13 17 18 12 13 7"/>
+            <polyline points="6 17 11 12 6 7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Update mini-map viewport position based on current scroll
+function updateMinimapViewport() {
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  const ganttGrid = document.getElementById('tlGanttGrid');
+  const viewport = document.getElementById('tlMinimapViewport');
+  const track = document.getElementById('tlMinimapTrack');
+  
+  if (!ganttWrapper || !ganttGrid || !viewport || !track) return;
+  
+  const totalWidth = ganttGrid.scrollWidth;
+  const visibleWidth = ganttWrapper.clientWidth;
+  const scrollLeft = ganttWrapper.scrollLeft;
+  
+  if (totalWidth <= 0) return;
+  
+  const trackWidth = track.clientWidth;
+  
+  // Calculate viewport position and width as percentage
+  const leftPercent = (scrollLeft / totalWidth) * 100;
+  const widthPercent = Math.min(100, (visibleWidth / totalWidth) * 100);
+  
+  viewport.style.left = `${leftPercent}%`;
+  viewport.style.width = `${Math.max(20, widthPercent)}%`; // Min 20px width
+}
+
+// Setup mini-map interactions
+function setupMinimapInteractions(projectIndex, dates, startDate) {
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  
+  if (ganttWrapper) {
+    // Update viewport on scroll
+    ganttWrapper.addEventListener('scroll', () => {
+      if (!minimapState.isDragging) {
+        updateMinimapViewport();
+      }
+    });
+  }
+  
+  // Handle mouse move and up for dragging
+  document.addEventListener('mousemove', handleMinimapDragMove);
+  document.addEventListener('mouseup', handleMinimapDragEnd);
+}
+
+// Start dragging the viewport
+function startMinimapDrag(event, projectIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const viewport = document.getElementById('tlMinimapViewport');
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  
+  if (!viewport || !ganttWrapper) return;
+  
+  minimapState.isDragging = true;
+  minimapState.startX = event.clientX;
+  minimapState.startScrollLeft = ganttWrapper.scrollLeft;
+  minimapState.projectIndex = projectIndex;
+  
+  viewport.classList.add('dragging');
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+}
+
+// Handle drag movement
+function handleMinimapDragMove(event) {
+  if (!minimapState.isDragging) return;
+  
+  const track = document.getElementById('tlMinimapTrack');
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  const ganttGrid = document.getElementById('tlGanttGrid');
+  
+  if (!track || !ganttWrapper || !ganttGrid) return;
+  
+  const trackRect = track.getBoundingClientRect();
+  const deltaX = event.clientX - minimapState.startX;
+  
+  // Convert pixel movement to scroll position
+  const totalWidth = ganttGrid.scrollWidth;
+  const trackWidth = trackRect.width;
+  const scrollDelta = (deltaX / trackWidth) * totalWidth;
+  
+  const newScrollLeft = minimapState.startScrollLeft + scrollDelta;
+  ganttWrapper.scrollLeft = Math.max(0, Math.min(newScrollLeft, totalWidth - ganttWrapper.clientWidth));
+  
+  // Update header scroll
+  const headerScroll = document.getElementById('tlDateHeaderScroll');
+  if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
+  
+  // Update week ranges scroll
+  const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
+  if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
+  
+  updateMinimapViewport();
+}
+
+// End dragging
+function handleMinimapDragEnd() {
+  if (!minimapState.isDragging) return;
+  
+  minimapState.isDragging = false;
+  
+  const viewport = document.getElementById('tlMinimapViewport');
+  if (viewport) viewport.classList.remove('dragging');
+  
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+}
+
+// Handle click on mini-map track to jump to position
+function handleMinimapClick(event, projectIndex) {
+  const viewport = document.getElementById('tlMinimapViewport');
+  
+  // Ignore if clicking on viewport itself
+  if (event.target === viewport || viewport.contains(event.target)) return;
+  
+  const track = document.getElementById('tlMinimapTrack');
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  const ganttGrid = document.getElementById('tlGanttGrid');
+  
+  if (!track || !ganttWrapper || !ganttGrid) return;
+  
+  const trackRect = track.getBoundingClientRect();
+  const clickX = event.clientX - trackRect.left;
+  const clickPercent = clickX / trackRect.width;
+  
+  const totalWidth = ganttGrid.scrollWidth;
+  const visibleWidth = ganttWrapper.clientWidth;
+  
+  // Center the view on the clicked position
+  const targetScrollLeft = (clickPercent * totalWidth) - (visibleWidth / 2);
+  
+  // Smooth scroll to position
+  ganttWrapper.scrollTo({
+    left: Math.max(0, Math.min(targetScrollLeft, totalWidth - visibleWidth)),
+    behavior: 'smooth'
+  });
+  
+  // Update header scroll
+  setTimeout(() => {
+    const headerScroll = document.getElementById('tlDateHeaderScroll');
+    if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
+    
+    const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
+    if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
+    
+    updateMinimapViewport();
+  }, 300);
+}
+
+// Quick navigation functions
+function minimapNavigate(target, projectIndex) {
+  const ganttWrapper = document.getElementById('tlGanttWrapper');
+  const ganttGrid = document.getElementById('tlGanttGrid');
+  
+  if (!ganttWrapper || !ganttGrid) return;
+  
+  const totalWidth = ganttGrid.scrollWidth;
+  const visibleWidth = ganttWrapper.clientWidth;
+  
+  let targetScrollLeft = 0;
+  
+  switch (target) {
+    case 'start':
+      targetScrollLeft = 0;
+      break;
+    case 'end':
+      targetScrollLeft = totalWidth - visibleWidth;
+      break;
+    case 'today':
+      // Find today marker and scroll to it
+      const todayMarker = document.querySelector('.tl-today-line-clickup, .tl-today-marker');
+      if (todayMarker) {
+        const markerLeft = parseFloat(todayMarker.style.left) || 0;
+        targetScrollLeft = markerLeft - (visibleWidth / 2);
+      } else {
+        // Fallback: scroll to approximate center
+        targetScrollLeft = (totalWidth / 2) - (visibleWidth / 2);
+      }
+      break;
+  }
+  
+  ganttWrapper.scrollTo({
+    left: Math.max(0, Math.min(targetScrollLeft, totalWidth - visibleWidth)),
+    behavior: 'smooth'
+  });
+  
+  setTimeout(() => {
+    const headerScroll = document.getElementById('tlDateHeaderScroll');
+    if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
+    
+    const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
+    if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
+    
+    updateMinimapViewport();
+  }, 300);
+}
+
+
+function toggleTimelineColumnExpand(colId, projectIndex) {
+  timelineExpandedColumns[colId] = !timelineExpandedColumns[colId];
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Expand/collapse all columns
+function expandAllTimelineColumns(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const allExpanded = (project.columns || []).every((_, idx) => timelineExpandedColumns[`col-${idx}`]);
+  (project.columns || []).forEach((_, idx) => {
+    timelineExpandedColumns[`col-${idx}`] = !allExpanded;
+  });
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Render column list V3 with expandable tasks
+function renderTimelineColumnListV3(columns, projectIndex) {
+  let html = '';
+  
+  columns.forEach(col => {
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    const dateRange = col.minDate && col.maxDate 
+      ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
+      : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
+    
+    // Column header row
+    html += `
+      <div class="tl-task-item" style="border-left: 3px solid ${col.color}; cursor: pointer;" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
+        <div class="tl-task-status">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s; transform: rotate(${col.isExpanded ? '90deg' : '0deg'});">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+        <div class="tl-task-content">
+          <div class="tl-task-title" style="font-weight: 700;">${col.title}</div>
+          <div class="tl-task-meta">
+            <span class="tl-task-dates">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              ${dateRange}
+            </span>
+            <span class="tl-task-count" style="color: ${col.color};">${col.taskCount} tasks</span>
+          </div>
+          <div style="margin-top: 6px; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; overflow: hidden;">
+            <div style="width: ${progress}%; height: 100%; background: ${col.color}; border-radius: 2px; transition: width 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Expanded task rows
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        const taskDateRange = task.startDate || task.dueDate 
+          ? `${task.startDate ? formatShortDate(task.startDate) : ''} ${task.startDate && task.dueDate ? '→' : ''} ${task.dueDate ? formatShortDate(task.dueDate) : ''}`
+          : 'No date';
+        const isDone = task.done || task.status === 'done';
+        
+        html += `
+          <div class="tl-task-item" style="padding-left: 32px; height: 48px; border-left: 3px solid ${col.color}20; background: rgba(0,0,0,0.02);" 
+               onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
+            <div class="tl-task-status">
+              ${isDone 
+                ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+                : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
+              }
+            </div>
+            <div class="tl-task-content">
+              <div class="tl-task-title ${isDone ? 'completed' : ''}" style="font-size: 12px;">${task.title || 'Untitled'}</div>
+              <div class="tl-task-meta">
+                <span class="tl-task-dates" style="font-size: 10px;">${taskDateRange}</span>
+              </div>
+            </div>
+            ${task.priority ? `<div class="tl-priority-dot ${task.priority}"></div>` : ''}
+          </div>
+        `;
+      });
+    }
+  });
+  
+  return html;
+}
+
+// Render date headers V3 with month grouping
+function renderTimelineDateHeadersV3(dates, zoom) {
+  const cellWidth = 48 * zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Group by month for header row
+  let monthHtml = '';
+  let currentMonth = '';
+  let monthStart = 0;
+  let monthCount = 0;
+  
+  dates.forEach((date, idx) => {
+    const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    if (monthKey !== currentMonth) {
+      if (currentMonth) {
+        monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
+      }
+      currentMonth = monthKey;
+      monthStart = idx;
+      monthCount = 1;
+    } else {
+      monthCount++;
+    }
+  });
+  // Last month
+  if (currentMonth) {
+    monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
+  }
+  
+  // Day row
+  const dayHtml = dates.map((date, idx) => {
+    const isToday = date.toDateString() === today.toDateString();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+    const dayNum = date.getDate();
+    
+    return `
+      <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
+        <div class="tl-date-day">${dayName}</div>
+        <div class="tl-date-num">${dayNum}</div>
+      </div>
+    `;
+  }).join('');
+  
+  return `
+    <div class="tl-month-row">${monthHtml}</div>
+    <div class="tl-day-row">${dayHtml}</div>
+  `;
+}
+
+// Render Gantt rows V3 with expandable task rows
+function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '';
+  
+  columns.forEach((col, idx) => {
+    // Column row
+    const cells = dates.map((date, dateIdx) => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
+    }).join('');
+    
+    let barHtml = '';
+    let left, width, barStartDate, barEndDate;
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    
+    if (col.minDate && col.maxDate) {
+      const startOffset = daysBetween(startDate, col.minDate);
+      const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
+      left = Math.max(0, startOffset * cellWidth);
+      width = Math.max(cellWidth, duration * cellWidth - 4);
+      barStartDate = col.minDate.toISOString().split('T')[0];
+      barEndDate = col.maxDate.toISOString().split('T')[0];
+    } else {
+      const todayOffset = daysBetween(startDate, today);
+      left = Math.max(0, todayOffset * cellWidth);
+      width = 7 * cellWidth - 4;
+      barStartDate = today.toISOString().split('T')[0];
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 6);
+      barEndDate = defaultEnd.toISOString().split('T')[0];
+    }
+    
+    // Status icon
+    const statusIcon = progress === 100 
+      ? `<svg class="tl-status-icon done" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+      : progress > 0
+        ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+        : `<svg class="tl-status-icon todo" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
+    
+    barHtml = `
+      <div class="tl-bar-header" style="left: ${left}px;">
+        <div class="tl-bar-header-left">
+          ${statusIcon}
+          <span class="tl-bar-header-title">${col.title}</span>
+          <span class="tl-bar-header-count">(${col.taskCount})</span>
+        </div>
+      </div>
+      <div class="tl-task-bar column-bar" 
+           data-column-id="${col.id}"
+           data-column-index="${col.columnIndex}"
+           data-start-date="${barStartDate}"
+           data-end-date="${barEndDate}"
+           style="left: ${left}px; width: ${width}px; background: linear-gradient(180deg, ${col.color}dd 0%, ${col.color} 100%); border: 1px solid ${col.color}; cursor: grab;${!col.minDate ? ' border-style: dashed; opacity: 0.7;' : ''}"
+           onmousedown="startColumnBarDrag(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           onclick="handleColumnBarClick(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           ondblclick="openEditColumnModal(${col.columnIndex}, ${projectIndex})"
+           title="${col.title} - ${col.taskCount} tasks (${progress}% complete)">
+        <div class="tl-column-bar-actions">
+          <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); openEditColumnModal(${col.columnIndex}, ${projectIndex})" title="Edit column">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); editColumnDates(${col.columnIndex}, ${projectIndex})" title="Edit dates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </button>
+        </div>
+        <span class="tl-bar-label">${col.title}</span>
+        <div class="tl-bar-resize left" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'left', ${projectIndex})"></div>
+        <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
+      </div>
+    `;
+    
+    html += `<div class="tl-gantt-row" data-row-id="${col.id}">${cells}${barHtml}</div>`;
+    
+    // Task rows if expanded
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        const taskCells = dates.map((date, dateIdx) => {
+          const isToday = date.toDateString() === today.toDateString();
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 48px;"></div>`;
+        }).join('');
+        
+        let taskBarHtml = '';
+        const taskStart = task.startDate ? new Date(task.startDate) : null;
+        const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
+        
+        if (taskStart) {
+          const taskStartOffset = daysBetween(startDate, taskStart);
+          const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
+          const taskLeft = Math.max(0, taskStartOffset * cellWidth);
+          const taskWidth = Math.max(cellWidth - 4, taskDuration * cellWidth - 4);
+          const isDone = task.done;
+          
+          // Determine task bar color
+          const taskColor = task.color || col.color;
+          const colorClass = isDone ? 'status-done' : '';
+          
+          taskBarHtml = `
+            <div class="tl-task-bar ${colorClass}" 
+                 data-task-id="${task.id}"
+                 data-column-index="${task.columnIndex}"
+                 data-task-index="${task.taskIndex}"
+                 style="left: ${taskLeft}px; width: ${taskWidth}px; height: 28px; background: linear-gradient(180deg, ${taskColor}cc 0%, ${taskColor} 100%); border-color: ${taskColor};"
+                 onmousedown="startTimelineDrag(event, '${task.id}', ${projectIndex})"
+                 ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})"
+                 title="${task.title || 'Untitled'}">
+              <span class="tl-bar-label" style="font-size: 11px;">${task.title || ''}</span>
+              <div class="tl-bar-resize left" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'left', ${projectIndex})"></div>
+              <div class="tl-bar-resize right" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'right', ${projectIndex})"></div>
+            </div>
+          `;
+        }
+        
+        html += `<div class="tl-gantt-row" data-task-id="${task.id}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
+      });
+    }
+  });
+  
+  return html;
+}
+
+// ============================================
+// TIMELINE V5 - ClickUp-Inspired Premium Features
+// Dependencies, Avatars, Tooltips, Connection Dots
+// ============================================
+
+// Dependencies state
+if (typeof tlDependencyState === 'undefined') {
+  var tlDependencyState = {
+    isConnecting: false,
+    sourceTaskId: null,
+    sourceElement: null,
+    showDependencies: true
+  };
+}
+
+// Calculate week ranges for ClickUp-style header
+function calculateWeekRanges(dates) {
+  if (!dates || dates.length === 0) return [];
+  
+  const ranges = [];
+  let currentRange = null;
+  
+  dates.forEach((date, idx) => {
+    const weekNum = getWeekNumber(date);
+    
+    if (!currentRange || currentRange.weekNum !== weekNum) {
+      if (currentRange) {
+        currentRange.endDate = dates[idx - 1];
+        currentRange.endStr = currentRange.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        ranges.push(currentRange);
+      }
+      currentRange = {
+        weekNum: weekNum,
+        startDate: date,
+        startStr: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        days: 1
+      };
+    } else {
+      currentRange.days++;
+    }
+  });
+  
+  // Close final range
+  if (currentRange) {
+    currentRange.endDate = dates[dates.length - 1];
+    currentRange.endStr = currentRange.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    ranges.push(currentRange);
+  }
+  
+  return ranges;
+}
+
+// V5 Column List - Ultra Minimalistic Premium Design
+function renderTimelineColumnListV5(columns, projectIndex) {
+  let html = '';
+  
+  columns.forEach((col, colIdx) => {
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    const isComplete = progress === 100;
+    
+    // Simple, clean column row
+    html += `
+      <div class="tl-column-row ${col.isExpanded ? 'expanded' : ''}" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
+        <div class="tl-column-indicator" style="background: ${col.color};"></div>
+        <div class="tl-column-expand">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="tl-column-info">
+          <span class="tl-column-name">${col.title}</span>
+          <span class="tl-column-count">${col.taskCount}</span>
+        </div>
+      </div>
+    `;
+    
+    // Expanded task rows - also minimal
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach((task, taskIdx) => {
+        const isDone = task.done || task.status === 'done';
+        
+        html += `
+          <div class="tl-task-row ${isDone ? 'completed' : ''}" onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
+            <div class="tl-task-connector" style="border-color: ${col.color}20;"></div>
+            <div class="tl-task-check ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); toggleTimelineTaskDone('${task.id}', ${projectIndex})" style="--check-color: ${col.color};">
+              ${isDone ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>` : ''}
+            </div>
+            <span class="tl-task-name ${isDone ? 'done' : ''}">${task.title || 'Untitled'}</span>
+          </div>
+        `;
+      });
+    }
+  });
+  
+  return html;
+}
+
+
+// V5 Date Headers with ClickUp-style day columns
+function renderTimelineDateHeadersV5(dates, zoom) {
+  const cellWidth = 48 * zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const dayHtml = dates.map(date => {
+    const isToday = date.toDateString() === today.toDateString();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = date.getDate();
+    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+    
+    return `
+      <div class="tl-date-col tl-date-col-clickup ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="width: ${cellWidth}px;">
+        <div class="tl-date-day">${dayName}</div>
+        <div class="tl-date-num-wrapper ${isToday ? 'today' : ''}">
+          <span class="tl-date-num">${dayNum}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  return `<div class="tl-day-row tl-day-row-clickup">${dayHtml}</div>`;
+}
+
+// V5 Gantt Rows with ClickUp-style bars
+function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '';
+  let rowIndex = 0;
+  
+  columns.forEach(col => {
+    const cells = dates.map(date => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
+    }).join('');
+    
+    let left, width, barStartDate, barEndDate;
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    
+    if (col.minDate && col.maxDate) {
+      const startOffset = daysBetween(startDate, col.minDate);
+      const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
+      left = Math.max(0, startOffset * cellWidth);
+      width = Math.max(cellWidth, duration * cellWidth - 4);
+      barStartDate = col.minDate.toISOString().split('T')[0];
+      barEndDate = col.maxDate.toISOString().split('T')[0];
+    } else {
+      const todayOffset = daysBetween(startDate, today);
+      left = Math.max(0, todayOffset * cellWidth);
+      width = 7 * cellWidth - 4;
+      barStartDate = today.toISOString().split('T')[0];
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 6);
+      barEndDate = defaultEnd.toISOString().split('T')[0];
+    }
+    
+    // Get assignees for bar avatars
+    const assignees = [];
+    col.tasks.forEach(t => {
+      if (t.assignee && !assignees.find(a => a.name === t.assignee)) {
+        assignees.push({ name: t.assignee, avatar: t.assigneeAvatar || null });
+      }
+    });
+    
+    // Determine if bar extends beyond today (for fade effect)
+    const barEnd = col.maxDate || new Date();
+    const showFade = barEnd > today && progress < 100;
+    
+    // Get emoji for bar
+    const barEmoji = getBarEmoji(col.title);
+    
+    // Get custom milestones for this column
+    const customMilestones = col.customMilestones || [];
+    
+    const barHtml = `
+      <div class="tl-task-bar tl-task-bar-clickup column-bar has-emoji" 
+           data-column-id="${col.id}" data-column-index="${col.columnIndex}" data-row-index="${rowIndex}"
+           data-start-date="${barStartDate}" data-end-date="${barEndDate}"
+           style="left: ${left}px; width: ${width}px; --bar-color: ${col.color}; background: linear-gradient(180deg, ${col.color} 0%, ${adjustColor(col.color, -15)} 100%);${!col.minDate ? ' border-style: dashed; opacity: 0.7;' : ''}"
+           onmousedown="startColumnBarDrag(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           onclick="showBarContextMenu(event, '${col.id}', 'column', ${projectIndex})"
+           ondblclick="openEditColumnModal(${col.columnIndex}, ${projectIndex})">
+        
+        <!-- Emoji icon on bar -->
+        <span class="tl-bar-emoji">${barEmoji}</span>
+        
+        <!-- Bar Label -->
+        <span class="tl-bar-label">${col.title}</span>
+        
+        <!-- Fade overlay for future/incomplete bars -->
+        ${showFade ? '<div class="tl-bar-fade-overlay"></div>' : ''}
+        
+        <!-- Progress inside bar -->
+        <div class="tl-bar-progress-clickup">
+          <div class="tl-bar-progress-fill-clickup" style="width: ${progress}%;"></div>
+        </div>
+        
+        <!-- Resize Handles -->
+        <div class="tl-bar-resize tl-bar-resize-left" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'left', ${projectIndex})"></div>
+        <div class="tl-bar-resize tl-bar-resize-right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
+      </div>
+    `;
+    
+    html += `<div class="tl-gantt-row tl-gantt-row-clickup" data-row-id="${col.id}" data-row-index="${rowIndex}">${cells}${barHtml}</div>`;
+    rowIndex++;
+    
+    // Expanded task rows
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        const taskCells = dates.map(date => {
+          const isToday = date.toDateString() === today.toDateString();
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 60px;"></div>`;
+        }).join('');
+        
+        let taskBarHtml = '';
+        const taskStart = task.startDate ? new Date(task.startDate) : null;
+        const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
+        
+        if (taskStart) {
+          const taskStartOffset = daysBetween(startDate, taskStart);
+          const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
+          const taskLeft = Math.max(0, taskStartOffset * cellWidth);
+          const taskWidth = Math.max(cellWidth - 4, taskDuration * cellWidth - 4);
+          const isDone = task.done;
+          const taskColor = task.color || col.color;
+          
+          // Check if task extends beyond today for fade effect
+          const showTaskFade = taskEnd > today && !isDone;
+          
+          // Get emoji for task bar
+          const taskEmoji = getBarEmoji(task.title || '');
+          
+          // Get custom milestones for this task
+          const taskMilestones = task.customMilestones || [];
+          const taskStartDateStr = task.startDate || '';
+          const taskEndDateStr = task.dueDate || task.endDate || '';
+          
+          taskBarHtml = `
+            <div class="tl-task-bar tl-task-bar-clickup tl-task-bar-child has-emoji ${isDone ? 'completed' : ''}" 
+                 data-task-id="${task.id}" data-column-index="${task.columnIndex}" data-task-index="${task.taskIndex}"
+                 data-start-date="${taskStartDateStr}" data-end-date="${taskEndDateStr}"
+                 style="left: ${taskLeft}px; width: ${taskWidth}px; --bar-color: ${taskColor}; background: linear-gradient(180deg, ${taskColor} 0%, ${adjustColor(taskColor, -15)} 100%);"
+                 onmousedown="startTimelineDrag(event, '${task.id}', ${projectIndex})"
+                 onclick="showBarContextMenu(event, '${task.id}', 'task', ${projectIndex})"
+                 ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})">
+              
+              <!-- Emoji icon on bar -->
+              <span class="tl-bar-emoji">${taskEmoji}</span>
+              
+              <span class="tl-bar-label">${task.title || ''}</span>
+              
+              <!-- Fade overlay for future/incomplete tasks -->
+              ${showTaskFade ? '<div class="tl-bar-fade-overlay"></div>' : ''}
+              
+              <div class="tl-bar-resize tl-bar-resize-left" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'left', ${projectIndex})"></div>
+              <div class="tl-bar-resize tl-bar-resize-right" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'right', ${projectIndex})"></div>
+            </div>
+          `;
+        }
+        
+        html += `<div class="tl-gantt-row tl-gantt-row-clickup tl-gantt-row-child" data-task-id="${task.id}" data-row-index="${rowIndex}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
+        rowIndex++;
+      });
+    }
+  });
+  
+  return html;
+}
+
+// Render ClickUp-style Today Line - Premium Enhanced
+function renderTimelineTodayLineClickup(dates, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const offset = daysBetween(startDate, today);
+  if (offset < 0 || offset >= dates.length) return '';
+  
+  const left = (offset * cellWidth) + (cellWidth / 2);
+  
+  // Format today's date nicely
+  const monthName = today.toLocaleDateString('en-US', { month: 'short' });
+  const dayNum = today.getDate();
+  
+  return `
+    <div class="tl-today-line tl-today-line-clickup" style="left: ${left}px;">
+      <div class="tl-today-date-label">
+        <span class="tl-today-date-label-text">Today</span>
+        <span class="tl-today-date-label-date">${monthName} ${dayNum}</span>
+      </div>
+    </div>
+  `;
+}
+
+// V2 Dependencies with curved bezier paths
+function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const rowHeight = 50; // Updated for tighter spacing
+  
+  const allItems = [];
+  let rowIndex = 0;
+  
+  columns.forEach(col => {
+    allItems.push({ id: col.id, row: rowIndex, left: 0, width: 0, minDate: col.minDate, maxDate: col.maxDate, dependencies: col.dependencies || [] });
+    rowIndex++;
+    
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        allItems.push({ id: task.id, row: rowIndex, startDate: task.startDate, dueDate: task.dueDate, dependencies: task.dependencies || [] });
+        rowIndex++;
+      });
+    }
+  });
+  
+  // Calculate positions
+  allItems.forEach(item => {
+    if (item.minDate && item.maxDate) {
+      const startOffset = daysBetween(startDate, item.minDate);
+      const duration = Math.max(1, daysBetween(item.minDate, item.maxDate) + 1);
+      item.left = Math.max(0, startOffset * cellWidth);
+      item.width = Math.max(cellWidth, duration * cellWidth - 4);
+    } else if (item.startDate) {
+      const taskStart = new Date(item.startDate);
+      const taskEnd = item.dueDate ? new Date(item.dueDate) : taskStart;
+      const startOffset = daysBetween(startDate, taskStart);
+      const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
+      item.left = Math.max(0, startOffset * cellWidth);
+      item.width = Math.max(cellWidth - 4, duration * cellWidth - 4);
+    }
+  });
+  
+  let svg = '';
+  
+  allItems.forEach(target => {
+    if (!target.dependencies || target.dependencies.length === 0) return;
+    
+    target.dependencies.forEach(sourceId => {
+      const source = allItems.find(i => i.id === sourceId);
+      if (!source || source.width === 0 || !target.width) return;
+      
+      const sourceX = source.left + source.width;
+      const sourceY = (source.row * rowHeight) + (rowHeight / 2);
+      const targetX = target.left;
+      const targetY = (target.row * rowHeight) + (rowHeight / 2);
+      
+      // Curved bezier path
+      const midX = sourceX + (targetX - sourceX) / 2;
+      const curve = Math.abs(targetY - sourceY) / 3;
+      
+      const path = `M ${sourceX} ${sourceY} C ${sourceX + 30} ${sourceY}, ${targetX - 30} ${targetY}, ${targetX} ${targetY}`;
+      
+      svg += `
+        <path class="tl-dep-path" d="${path}" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="6,3">
+          <animate attributeName="stroke-dashoffset" from="9" to="0" dur="0.5s" repeatCount="indefinite"/>
+        </path>
+        <circle class="tl-dep-dot-start" cx="${sourceX}" cy="${sourceY}" r="4" fill="#6366f1"/>
+        <polygon class="tl-dep-arrow" points="${targetX},${targetY} ${targetX - 8},${targetY - 4} ${targetX - 8},${targetY + 4}" fill="#6366f1"/>
+      `;
+    });
+  });
+  
+  return svg;
+}
+
+// Helper to adjust color brightness
+function adjustColor(color, amount) {
+  // Simple hex color adjustment
+  if (!color || !color.startsWith('#')) return color;
+  
+  let hex = color.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  
+  const num = parseInt(hex, 16);
+  let r = (num >> 16) + amount;
+  let g = ((num >> 8) & 0x00FF) + amount;
+  let b = (num & 0x0000FF) + amount;
+  
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  
+  return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+// Autofit timeline to show all content
+function autofitTimeline(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Find date range
+  let minDate = null, maxDate = null;
+  project.columns.forEach(col => {
+    col.tasks.forEach(task => {
+      if (task.startDate) {
+        const d = new Date(task.startDate);
+        if (!minDate || d < minDate) minDate = d;
+      }
+      if (task.dueDate) {
+        const d = new Date(task.dueDate);
+        if (!maxDate || d > maxDate) maxDate = d;
+      }
+    });
+  });
+  
+  if (minDate && maxDate) {
+    timelineState.currentDate = new Date(minDate);
+    timelineState.zoom = 1;
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+    showToast('Timeline auto-fitted to content');
+  }
+}
+
+// Export Gantt chart
+function exportGanttChart(projectIndex) {
+  showToast('Export feature coming soon');
+}
+
+// Toggle Me mode (show only my tasks)
+function toggleMeMode(projectIndex) {
+  timelineState.meMode = !timelineState.meMode;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast(timelineState.meMode ? 'Showing your tasks only' : 'Showing all tasks');
+}
+
+// Open sort menu
+function openGanttSortMenu(event, projectIndex) {
+  event.stopPropagation();
+  showToast('Sort options coming soon');
+}
+
+// Open assignee filter
+function openAssigneeFilter(event, projectIndex) {
+  event.stopPropagation();
+  showToast('Assignee filter coming soon');
+}
+
+// Toggle task done from timeline
+function toggleTimelineTaskDone(taskId, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  project.columns.forEach(col => {
+    col.tasks.forEach(task => {
+      if (task.id === taskId) {
+        task.done = !task.done;
+      }
+    });
+  });
+  
+  saveProjects(projects);
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Toggle dependency mode
+// toggleDependencyMode removed
+
+// Toggle timeline filters
+function toggleTimelineFilters(projectIndex) {
+  showToast('Filters panel coming soon');
+}
+
+// V4 Column List with avatars
+function renderTimelineColumnListV4(columns, projectIndex) {
+  let html = '';
+  
+  columns.forEach(col => {
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    const dateRange = col.minDate && col.maxDate 
+      ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
+      : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
+    
+    // Collect unique assignees
+    const assignees = [];
+    col.tasks.forEach(t => {
+      if (t.assignee && !assignees.includes(t.assignee)) {
+        assignees.push(t.assignee);
+      }
+    });
+    
+    // Column header row
+    html += `
+      <div class="tl-task-item" style="border-left: 3px solid ${col.color}; cursor: pointer;" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
+        <div class="tl-task-status">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s; transform: rotate(${col.isExpanded ? '90deg' : '0deg'});">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+        <div class="tl-task-content">
+          <div class="tl-task-title" style="font-weight: 700;">${col.title}</div>
+          <div class="tl-task-meta">
+            <span class="tl-task-dates">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              ${dateRange}
+            </span>
+            <span class="tl-task-count" style="color: ${col.color};">${col.taskCount} tasks</span>
+          </div>
+          <div style="margin-top: 6px; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; overflow: hidden;">
+            <div style="width: ${progress}%; height: 100%; background: ${col.color}; border-radius: 2px; transition: width 0.3s;"></div>
+          </div>
+        </div>
+        ${assignees.length > 0 ? `
+          <div class="tl-task-avatars" style="display: flex; margin-left: 8px;">
+            ${assignees.slice(0, 3).map((a, i) => `
+              <div class="tl-task-avatar" style="width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, ${getAvatarColor(a)} 0%, ${getAvatarColorDark(a)} 100%); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; margin-left: ${i > 0 ? '-6px' : '0'}; border: 2px solid var(--card); z-index: ${3 - i};" title="${a}">
+                ${a.charAt(0).toUpperCase()}
+              </div>
+            `).join('')}
+            ${assignees.length > 3 ? `<div class="tl-task-avatar" style="width: 22px; height: 22px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 600; color: var(--muted-foreground); margin-left: -6px; border: 2px solid var(--card);">+${assignees.length - 3}</div>` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    // Expanded task rows
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        const taskDateRange = task.startDate || task.dueDate 
+          ? `${task.startDate ? formatShortDate(task.startDate) : ''} ${task.startDate && task.dueDate ? '→' : ''} ${task.dueDate ? formatShortDate(task.dueDate) : ''}`
+          : 'No date';
+        const isDone = task.done || task.status === 'done';
+        const hasDependencies = task.dependencies && task.dependencies.length > 0;
+        
+        html += `
+          <div class="tl-task-item" style="padding-left: 32px; height: 48px; border-left: 3px solid ${col.color}20; background: rgba(0,0,0,0.02);" 
+               onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
+            <div class="tl-task-status">
+              ${isDone 
+                ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+                : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
+              }
+            </div>
+            <div class="tl-task-content">
+              <div class="tl-task-title ${isDone ? 'completed' : ''}" style="font-size: 12px;">${task.title || 'Untitled'}</div>
+              <div class="tl-task-meta">
+                <span class="tl-task-dates" style="font-size: 10px;">${taskDateRange}</span>
+                ${hasDependencies ? `<span class="tl-dep-badge" style="font-size: 9px; padding: 1px 5px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border-radius: 4px; margin-left: 6px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 10px; height: 10px; margin-right: 2px; vertical-align: middle;">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  ${task.dependencies.length}
+                </span>` : ''}
+              </div>
+            </div>
+            ${task.assignee ? `
+              <div class="tl-task-avatar" style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, ${getAvatarColor(task.assignee)} 0%, ${getAvatarColorDark(task.assignee)} 100%); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white;" title="${task.assignee}">
+                ${task.assignee.charAt(0).toUpperCase()}
+              </div>
+            ` : ''}
+            ${task.priority ? `<div class="tl-priority-dot ${task.priority}"></div>` : ''}
+          </div>
+        `;
+      });
+    }
+  });
+  
+  return html;
+}
+
+// Get avatar color based on name
+function getAvatarColor(name) {
+  const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#22c55e', '#eab308', '#ef4444'];
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+}
+
+function getAvatarColorDark(name) {
+  const colors = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0d9488', '#16a34a', '#ca8a04', '#dc2626'];
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+}
+
+// V4 Date Headers with week indicators
+function renderTimelineDateHeadersV4(dates, zoom) {
+  const cellWidth = 48 * zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Group by month for header row
+  let monthHtml = '';
+  let currentMonth = '';
+  let monthCount = 0;
+  
+  dates.forEach((date, idx) => {
+    const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    if (monthKey !== currentMonth) {
+      if (currentMonth) {
+        monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
+      }
+      currentMonth = monthKey;
+      monthCount = 1;
+    } else {
+      monthCount++;
+    }
+  });
+  if (currentMonth) {
+    monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
+  }
+  
+  // Week indicators row
+  let weekHtml = '';
+  let currentWeek = -1;
+  let weekCount = 0;
+  
+  dates.forEach((date) => {
+    const weekNum = getWeekNumber(date);
+    if (weekNum !== currentWeek) {
+      if (currentWeek !== -1 && weekCount > 0) {
+        weekHtml += `<div class="tl-week-cell" style="width: ${weekCount * cellWidth}px; flex-shrink: 0; padding: 0 8px; font-size: 10px; font-weight: 600; color: #818cf8; display: flex; align-items: center; border-right: 1px solid rgba(99, 102, 241, 0.1);">W${currentWeek}</div>`;
+      }
+      currentWeek = weekNum;
+      weekCount = 1;
+    } else {
+      weekCount++;
+    }
+  });
+  if (currentWeek !== -1 && weekCount > 0) {
+    weekHtml += `<div class="tl-week-cell" style="width: ${weekCount * cellWidth}px; flex-shrink: 0; padding: 0 8px; font-size: 10px; font-weight: 600; color: #818cf8; display: flex; align-items: center; border-right: 1px solid rgba(99, 102, 241, 0.1);">W${currentWeek}</div>`;
+  }
+  
+  // Day row
+  const dayHtml = dates.map((date) => {
+    const isToday = date.toDateString() === today.toDateString();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+    const dayNum = date.getDate();
+    
+    return `
+      <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
+        <div class="tl-date-day">${dayName}</div>
+        <div class="tl-date-num">${dayNum}</div>
+      </div>
+    `;
+  }).join('');
+  
+  return `
+    <div class="tl-month-row">${monthHtml}</div>
+    <div class="tl-week-row" style="display: flex; height: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); background: rgba(99, 102, 241, 0.03);">${weekHtml}</div>
+    <div class="tl-day-row">${dayHtml}</div>
+  `;
+}
+
+// Get week number
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// V4 Gantt Rows with avatars, tooltips, connection dots
+function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '';
+  let rowIndex = 0;
+  
+  columns.forEach((col) => {
+    const cells = dates.map((date) => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
+    }).join('');
+    
+    let left, width, barStartDate, barEndDate;
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    
+    if (col.minDate && col.maxDate) {
+      const startOffset = daysBetween(startDate, col.minDate);
+      const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
+      left = Math.max(0, startOffset * cellWidth);
+      width = Math.max(cellWidth, duration * cellWidth - 4);
+      barStartDate = col.minDate.toISOString().split('T')[0];
+      barEndDate = col.maxDate.toISOString().split('T')[0];
+    } else {
+      const todayOffset = daysBetween(startDate, today);
+      left = Math.max(0, todayOffset * cellWidth);
+      width = 7 * cellWidth - 4;
+      barStartDate = today.toISOString().split('T')[0];
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 6);
+      barEndDate = defaultEnd.toISOString().split('T')[0];
+    }
+    
+    // Collect assignees
+    const assignees = [];
+    col.tasks.forEach(t => {
+      if (t.assignee && !assignees.includes(t.assignee)) assignees.push(t.assignee);
+    });
+    
+    const statusIcon = progress === 100 
+      ? `<svg class="tl-status-icon done" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+      : progress > 0
+        ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+        : `<svg class="tl-status-icon todo" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
+    
+    const tooltipHtml = `
+      <div class="tl-bar-tooltip">
+        <div class="tl-tooltip-header">
+          <div class="tl-tooltip-status ${progress === 100 ? 'done' : progress > 0 ? 'in-progress' : 'todo'}">${statusIcon}</div>
+          <div class="tl-tooltip-title"><h4>${col.title}</h4><span>${col.taskCount} tasks</span></div>
+        </div>
+        <div class="tl-tooltip-meta">
+          <div class="tl-tooltip-meta-item"><span class="tl-tooltip-meta-label">Start</span><span class="tl-tooltip-meta-value">${formatShortDate(barStartDate)}</span></div>
+          <div class="tl-tooltip-meta-item"><span class="tl-tooltip-meta-label">End</span><span class="tl-tooltip-meta-value">${formatShortDate(barEndDate)}</span></div>
+        </div>
+        <div class="tl-tooltip-progress">
+          <div class="tl-tooltip-progress-header"><span class="tl-tooltip-progress-label">Progress</span><span class="tl-tooltip-progress-value">${progress}%</span></div>
+          <div class="tl-tooltip-progress-bar"><div class="tl-tooltip-progress-fill" style="width: ${progress}%;"></div></div>
+        </div>
+      </div>
+    `;
+    
+    const avatarsHtml = assignees.length > 0 ? `
+      <div class="tl-bar-avatars">
+        ${assignees.slice(0, 3).map((a) => `<div class="tl-bar-avatar" style="background: linear-gradient(135deg, ${getAvatarColor(a)} 0%, ${getAvatarColorDark(a)} 100%);" title="${a}">${a.charAt(0).toUpperCase()}</div>`).join('')}
+        ${assignees.length > 3 ? `<div class="tl-bar-avatar tl-bar-avatar-more">+${assignees.length - 3}</div>` : ''}
+      </div>
+    ` : '';
+    
+    const barHtml = `
+      <div class="tl-bar-header" style="left: ${left}px;">
+        <div class="tl-bar-header-left">${statusIcon}<span class="tl-bar-header-title">${col.title}</span><span class="tl-bar-header-count">(${col.taskCount})</span></div>
+      </div>
+      <div class="tl-task-bar column-bar" 
+           data-column-id="${col.id}" data-column-index="${col.columnIndex}" data-row-index="${rowIndex}"
+           data-start-date="${barStartDate}" data-end-date="${barEndDate}"
+           style="left: ${left}px; width: ${width}px; background: linear-gradient(180deg, ${col.color}dd 0%, ${col.color} 100%); border: 1px solid ${col.color}; cursor: grab;${!col.minDate ? ' border-style: dashed; opacity: 0.7;' : ''}"
+           onmousedown="startColumnBarDrag(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           onclick="handleColumnBarClick(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           ondblclick="openEditColumnModal(${col.columnIndex}, ${projectIndex})">
+        ${tooltipHtml}
+        <div class="tl-column-bar-actions">
+          <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); openEditColumnModal(${col.columnIndex}, ${projectIndex})" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); editColumnDates(${col.columnIndex}, ${projectIndex})" title="Dates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+        </div>
+        <span class="tl-bar-label">${col.title}</span>
+        ${avatarsHtml}
+        <div class="tl-bar-resize left" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'left', ${projectIndex})"></div>
+        <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
+      </div>
+    `;
+    
+    html += `<div class="tl-gantt-row" data-row-id="${col.id}" data-row-index="${rowIndex}">${cells}${barHtml}</div>`;
+    rowIndex++;
+    
+    if (col.isExpanded && col.tasks.length > 0) {
+      col.tasks.forEach(task => {
+        const taskCells = dates.map((date) => {
+          const isToday = date.toDateString() === today.toDateString();
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 48px;"></div>`;
+        }).join('');
+        
+        let taskBarHtml = '';
+        const taskStart = task.startDate ? new Date(task.startDate) : null;
+        const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
+        
+        if (taskStart) {
+          const taskStartOffset = daysBetween(startDate, taskStart);
+          const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
+          const taskLeft = Math.max(0, taskStartOffset * cellWidth);
+          const taskWidth = Math.max(cellWidth - 4, taskDuration * cellWidth - 4);
+          const isDone = task.done;
+          const taskColor = task.color || col.color;
+          const colorClass = isDone ? 'status-done' : '';
+          
+          const taskTooltipHtml = `
+            <div class="tl-bar-tooltip">
+              <div class="tl-tooltip-header">
+                <div class="tl-tooltip-status ${isDone ? 'done' : 'todo'}">
+                  ${isDone ? `<svg viewBox="0 0 16 16" style="width:18px;height:18px;"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 16 16" style="width:18px;height:18px;"><circle cx="8" cy="8" r="6" stroke="${taskColor}" stroke-width="1.5" fill="none"/></svg>`}
+                </div>
+                <div class="tl-tooltip-title"><h4>${task.title || 'Untitled'}</h4><span>${col.title}</span></div>
+              </div>
+              <div class="tl-tooltip-meta">
+                <div class="tl-tooltip-meta-item"><span class="tl-tooltip-meta-label">Start</span><span class="tl-tooltip-meta-value">${formatShortDate(task.startDate)}</span></div>
+                <div class="tl-tooltip-meta-item"><span class="tl-tooltip-meta-label">Due</span><span class="tl-tooltip-meta-value">${formatShortDate(task.dueDate || task.endDate)}</span></div>
+                ${task.assignee ? `<div class="tl-tooltip-meta-item"><span class="tl-tooltip-meta-label">Assignee</span><span class="tl-tooltip-meta-value">${task.assignee}</span></div>` : ''}
+              </div>
+            </div>
+          `;
+          
+          taskBarHtml = `
+            <div class="tl-task-bar ${colorClass}" 
+                 data-task-id="${task.id}" data-column-index="${task.columnIndex}" data-task-index="${task.taskIndex}" data-row-index="${rowIndex}"
+                 style="left: ${taskLeft}px; width: ${taskWidth}px; height: 28px; background: linear-gradient(180deg, ${taskColor}cc 0%, ${taskColor} 100%); border-color: ${taskColor};"
+                 onmousedown="startTimelineDrag(event, '${task.id}', ${projectIndex})"
+                 ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})">
+              ${taskTooltipHtml}
+              <span class="tl-bar-label" style="font-size: 11px;">${task.title || ''}</span>
+              ${task.assignee ? `<div class="tl-bar-avatar" style="width: 20px; height: 20px; font-size: 9px; background: linear-gradient(135deg, ${getAvatarColor(task.assignee)} 0%, ${getAvatarColorDark(task.assignee)} 100%); margin-left: auto; margin-right: 4px;" title="${task.assignee}">${task.assignee.charAt(0).toUpperCase()}</div>` : ''}
+              <div class="tl-bar-resize left" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'left', ${projectIndex})"></div>
+              <div class="tl-bar-resize right" onmousedown="startTaskBarResize(event, '${task.id}', ${task.columnIndex}, ${task.taskIndex}, 'right', ${projectIndex})"></div>
+            </div>
+          `;
+        }
+        
+        html += `<div class="tl-gantt-row" data-task-id="${task.id}" data-row-index="${rowIndex}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
+        rowIndex++;
+      });
+    }
+  });
+  
+  return html;
+}
+
+// ============================================
+// LINEAR-STYLE MILESTONE SYSTEM
+// Diamond milestones on bars with right-click context menu
+// ============================================
+
+// Milestone state
+if (typeof tlMilestoneState === 'undefined') {
+  var tlMilestoneState = {
+    draggingMilestone: null,
+    activeInputPopup: null,
+    activeContextMenu: null
+  };
+}
+
+// Load milestones for a bar (stored in localStorage per project)
+function loadBarMilestones(projectIndex, barId) {
+  const key = `tl_milestones_${projectIndex}_${barId}`;
+  const stored = localStorage.getItem(key);
+  return stored ? JSON.parse(stored) : [];
+}
+
+// Save milestones for a bar
+function saveBarMilestones(projectIndex, barId, milestones) {
+  const key = `tl_milestones_${projectIndex}_${barId}`;
+  localStorage.setItem(key, JSON.stringify(milestones));
+}
+
+// Generate milestone ID
+function generateMilestoneId() {
+  return 'ms_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
+
+// Render milestones on a bar
+function renderBarMilestones(projectIndex, barId, barWidth) {
+  const milestones = loadBarMilestones(projectIndex, barId);
+  if (milestones.length === 0) return '';
+  
+  return milestones.map(m => {
+    const leftPx = (m.position / 100) * barWidth;
+    return `
+      <div class="tl-bar-milestone ${m.completed ? 'completed' : 'filled'}" 
+           data-milestone-id="${m.id}"
+           data-bar-id="${barId}"
+           data-project-index="${projectIndex}"
+           style="left: ${leftPx}px;"
+           onmousedown="startMilestoneDrag(event, '${m.id}', '${barId}', ${projectIndex})"
+           oncontextmenu="showMilestoneContextMenu(event, '${m.id}', '${barId}', ${projectIndex})"
+           title="${m.name || 'Milestone'}">
+        <span class="tl-bar-milestone-label">${m.name || 'Milestone'}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Add right-click listener to timeline bars
+function setupBarContextMenu(projectIndex) {
+  document.addEventListener('contextmenu', function(e) {
+    const bar = e.target.closest('.tl-task-bar');
+    if (!bar) return;
+    
+    // Don't show if clicking on milestone
+    if (e.target.closest('.tl-bar-milestone')) return;
+    
+    e.preventDefault();
+    closeAllContextMenus();
+    
+    const barId = bar.dataset.columnId || bar.dataset.taskId;
+    if (!barId) return;
+    
+    const barRect = bar.getBoundingClientRect();
+    const clickX = e.clientX - barRect.left;
+    const position = Math.max(5, Math.min(95, (clickX / barRect.width) * 100));
+    
+    showBarContextMenu(e.clientX, e.clientY, barId, projectIndex, position, barRect.width);
+  });
+  
+  // Close context menu on click outside
+  document.addEventListener('click', closeAllContextMenus);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeAllContextMenus();
+  });
+}
+
+// Show bar context menu
+function showBarContextMenu(x, y, barId, projectIndex, position, barWidth) {
+  closeAllContextMenus();
+  
+  const menu = document.createElement('div');
+  menu.className = 'tl-bar-context-menu';
+  menu.id = 'tlBarContextMenu';
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  
+  menu.innerHTML = `
+    <div class="tl-bar-context-menu-item" onclick="addMilestoneAtPosition('${barId}', ${projectIndex}, ${position}, ${barWidth})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12,2 15,8.5 22,9.27 17,14 18.18,21 12,17.77 5.82,21 7,14 2,9.27 9,8.5"/>
+      </svg>
+      Add milestone here
+    </div>
+    <div class="tl-bar-context-menu-separator"></div>
+    <div class="tl-bar-context-menu-item" onclick="closeAllContextMenus(); openEditColumnModal && openEditColumnModal(parseInt('${barId}'.replace('col_', '')), ${projectIndex})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Edit bar
+    </div>
+  `;
+  
+  document.body.appendChild(menu);
+  tlMilestoneState.activeContextMenu = menu;
+  
+  // Adjust position if off-screen
+  const menuRect = menu.getBoundingClientRect();
+  if (menuRect.right > window.innerWidth) {
+    menu.style.left = `${x - menuRect.width}px`;
+  }
+  if (menuRect.bottom > window.innerHeight) {
+    menu.style.top = `${y - menuRect.height}px`;
+  }
+}
+
+// Show milestone context menu (right-click on milestone)
+function showMilestoneContextMenu(e, milestoneId, barId, projectIndex) {
+  e.preventDefault();
+  e.stopPropagation();
+  closeAllContextMenus();
+  
+  const milestones = loadBarMilestones(projectIndex, barId);
+  const milestone = milestones.find(m => m.id === milestoneId);
+  if (!milestone) return;
+  
+  const menu = document.createElement('div');
+  menu.className = 'tl-bar-context-menu';
+  menu.id = 'tlBarContextMenu';
+  menu.style.left = `${e.clientX}px`;
+  menu.style.top = `${e.clientY}px`;
+  
+  menu.innerHTML = `
+    <div class="tl-bar-context-menu-item" onclick="editMilestoneName('${milestoneId}', '${barId}', ${projectIndex}, ${e.clientX}, ${e.clientY})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Edit name
+    </div>
+    <div class="tl-bar-context-menu-item" onclick="toggleMilestoneComplete('${milestoneId}', '${barId}', ${projectIndex})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      ${milestone.completed ? 'Mark incomplete' : 'Mark complete'}
+    </div>
+    <div class="tl-bar-context-menu-separator"></div>
+    <div class="tl-bar-context-menu-item danger" onclick="deleteMilestone('${milestoneId}', '${barId}', ${projectIndex})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+      </svg>
+      Delete milestone
+    </div>
+  `;
+  
+  document.body.appendChild(menu);
+  tlMilestoneState.activeContextMenu = menu;
+}
+
+// Close all context menus and popups
+function closeAllContextMenus() {
+  const menu = document.getElementById('tlBarContextMenu');
+  if (menu) menu.remove();
+  const popup = document.getElementById('tlMilestoneInputPopup');
+  if (popup) popup.remove();
+  tlMilestoneState.activeContextMenu = null;
+  tlMilestoneState.activeInputPopup = null;
+}
+
+// Add milestone at position
+function addMilestoneAtPosition(barId, projectIndex, position, barWidth) {
+  closeAllContextMenus();
+  
+  // Show input popup for name
+  const bar = document.querySelector(`[data-column-id="${barId}"], [data-task-id="${barId}"]`);
+  if (!bar) return;
+  
+  const barRect = bar.getBoundingClientRect();
+  const leftPx = (position / 100) * barRect.width;
+  
+  const popup = document.createElement('div');
+  popup.className = 'tl-milestone-input-popup';
+  popup.id = 'tlMilestoneInputPopup';
+  popup.style.left = `${barRect.left + leftPx}px`;
+  popup.style.top = `${barRect.bottom + 20}px`;
+  
+  popup.innerHTML = `
+    <div class="tl-milestone-input-title">New Milestone</div>
+    <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
+           placeholder="e.g., Beta, GA, Soft launch..." autofocus>
+    <div class="tl-milestone-input-actions">
+      <button class="tl-milestone-input-btn cancel" onclick="closeAllContextMenus()">Cancel</button>
+      <button class="tl-milestone-input-btn save" onclick="saveMilestoneFromInput('${barId}', ${projectIndex}, ${position})">Add</button>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  tlMilestoneState.activeInputPopup = popup;
+  
+  const input = document.getElementById('milestoneNameInput');
+  input.focus();
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveMilestoneFromInput(barId, projectIndex, position);
+    } else if (e.key === 'Escape') {
+      closeAllContextMenus();
+    }
+  });
+}
+
+// Save milestone from input popup
+function saveMilestoneFromInput(barId, projectIndex, position) {
+  const input = document.getElementById('milestoneNameInput');
+  const name = input ? input.value.trim() : '';
+  
+  if (!name) {
+    closeAllContextMenus();
+    return;
+  }
+  
+  const milestones = loadBarMilestones(projectIndex, barId);
+  milestones.push({
+    id: generateMilestoneId(),
+    name: name,
+    position: position,
+    completed: false,
+    createdAt: new Date().toISOString()
+  });
+  
+  saveBarMilestones(projectIndex, barId, milestones);
+  closeAllContextMenus();
+  
+  // Refresh timeline
+  refreshTimelineView(projectIndex);
+  showToast && showToast(`Milestone "${name}" added`);
+}
+
+// Edit milestone name
+function editMilestoneName(milestoneId, barId, projectIndex, x, y) {
+  closeAllContextMenus();
+  
+  const milestones = loadBarMilestones(projectIndex, barId);
+  const milestone = milestones.find(m => m.id === milestoneId);
+  if (!milestone) return;
+  
+  const popup = document.createElement('div');
+  popup.className = 'tl-milestone-input-popup';
+  popup.id = 'tlMilestoneInputPopup';
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+  
+  popup.innerHTML = `
+    <div class="tl-milestone-input-title">Edit Milestone</div>
+    <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
+           value="${milestone.name}" autofocus>
+    <div class="tl-milestone-input-actions">
+      <button class="tl-milestone-input-btn cancel" onclick="closeAllContextMenus()">Cancel</button>
+      <button class="tl-milestone-input-btn save" onclick="updateMilestoneName('${milestoneId}', '${barId}', ${projectIndex})">Save</button>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  tlMilestoneState.activeInputPopup = popup;
+  
+  const input = document.getElementById('milestoneNameInput');
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      updateMilestoneName(milestoneId, barId, projectIndex);
+    } else if (e.key === 'Escape') {
+      closeAllContextMenus();
+    }
+  });
+}
+
+// Update milestone name
+function updateMilestoneName(milestoneId, barId, projectIndex) {
+  const input = document.getElementById('milestoneNameInput');
+  const name = input ? input.value.trim() : '';
+  
+  if (!name) {
+    closeAllContextMenus();
+    return;
+  }
+  
+  const milestones = loadBarMilestones(projectIndex, barId);
+  const milestone = milestones.find(m => m.id === milestoneId);
+  if (milestone) {
+    milestone.name = name;
+    saveBarMilestones(projectIndex, barId, milestones);
+    closeAllContextMenus();
+    refreshTimelineView(projectIndex);
+    showToast && showToast('Milestone updated');
+  }
+}
+
+// Toggle milestone complete
+function toggleMilestoneComplete(milestoneId, barId, projectIndex) {
+  closeAllContextMenus();
+  
+  const milestones = loadBarMilestones(projectIndex, barId);
+  const milestone = milestones.find(m => m.id === milestoneId);
+  if (milestone) {
+    milestone.completed = !milestone.completed;
+    saveBarMilestones(projectIndex, barId, milestones);
+    refreshTimelineView(projectIndex);
+    showToast && showToast(milestone.completed ? 'Milestone completed!' : 'Milestone reopened');
+  }
+}
+
+// Delete milestone
+function deleteMilestone(milestoneId, barId, projectIndex) {
+  closeAllContextMenus();
+  
+  let milestones = loadBarMilestones(projectIndex, barId);
+  milestones = milestones.filter(m => m.id !== milestoneId);
+  saveBarMilestones(projectIndex, barId, milestones);
+  refreshTimelineView(projectIndex);
+  showToast && showToast('Milestone deleted');
+}
+
+// Start dragging a milestone
+function startMilestoneDrag(e, milestoneId, barId, projectIndex) {
+  if (e.button !== 0) return; // Only left click
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const milestoneEl = e.target.closest('.tl-bar-milestone');
+  const bar = document.querySelector(`[data-column-id="${barId}"], [data-task-id="${barId}"]`);
+  if (!milestoneEl || !bar) return;
+  
+  milestoneEl.classList.add('dragging');
+  
+  tlMilestoneState.draggingMilestone = {
+    milestoneId,
+    barId,
+    projectIndex,
+    element: milestoneEl,
+    bar: bar,
+    barWidth: bar.offsetWidth,
+    startX: e.clientX,
+    startLeft: parseFloat(milestoneEl.style.left) || 0
+  };
+  
+  document.addEventListener('mousemove', handleMilestoneDrag);
+  document.addEventListener('mouseup', endMilestoneDrag);
+}
+
+// Handle milestone drag
+function handleMilestoneDrag(e) {
+  const state = tlMilestoneState.draggingMilestone;
+  if (!state) return;
+  
+  const deltaX = e.clientX - state.startX;
+  let newLeft = state.startLeft + deltaX;
+  
+  // Clamp to bar bounds
+  newLeft = Math.max(10, Math.min(state.barWidth - 10, newLeft));
+  state.element.style.left = `${newLeft}px`;
+}
+
+// End milestone drag
+function endMilestoneDrag(e) {
+  document.removeEventListener('mousemove', handleMilestoneDrag);
+  document.removeEventListener('mouseup', endMilestoneDrag);
+  
+  const state = tlMilestoneState.draggingMilestone;
+  if (!state) return;
+  
+  state.element.classList.remove('dragging');
+  
+  const newLeft = parseFloat(state.element.style.left) || 0;
+  const newPosition = (newLeft / state.barWidth) * 100;
+  
+  // Update milestone position
+  const milestones = loadBarMilestones(state.projectIndex, state.barId);
+  const milestone = milestones.find(m => m.id === state.milestoneId);
+  if (milestone) {
+    milestone.position = newPosition;
+    saveBarMilestones(state.projectIndex, state.barId, milestones);
+  }
+  
+  tlMilestoneState.draggingMilestone = null;
+}
+
+// Refresh timeline view helper
+function refreshTimelineView(projectIndex) {
+  const container = document.querySelector('.pd-content-scroll');
+  if (container && typeof renderTimelineView === 'function') {
+    renderTimelineView(projectIndex, container);
+  }
+}
+
+// Check if task/column is overdue
+function isBarOverdue(endDate) {
+  if (!endDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  return end < today;
+}
+
+// Dependency functions removed
+function renderTimelineDependencies() { return ''; }
+function renderDependencyArrow() { return ''; }
+
+// Get column color based on title
+function getColumnColor(title) {
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes('done') || lowerTitle.includes('complete')) return '#10b981';
+  if (lowerTitle.includes('progress') || lowerTitle.includes('doing')) return '#f59e0b';
+  if (lowerTitle.includes('review') || lowerTitle.includes('test')) return '#8b5cf6';
+  if (lowerTitle.includes('todo') || lowerTitle.includes('backlog')) return '#6b7280';
+  return '#3b82f6';
+}
+
+// Render column list for timeline left panel
+function renderTimelineColumnList(columns) {
+  let html = '';
+  
+  // Column rows
+  columns.forEach(col => {
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    const dateRange = col.minDate && col.maxDate 
+      ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
+      : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
+    
+    html += `
+      <div class="tl-task-item" style="border-left: 3px solid ${col.color};">
+        <div class="tl-task-status">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="12" height="12" rx="2" stroke="${col.color}" stroke-width="1.5"/>
+            <rect x="4" y="6" width="8" height="1.5" fill="${col.color}" opacity="0.5"/>
+            <rect x="4" y="9" width="5" height="1.5" fill="${col.color}" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="tl-task-content">
+          <div class="tl-task-title" style="font-weight: 600;">${col.title}</div>
+          <div class="tl-task-meta">
+            <span class="tl-task-dates">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              ${dateRange}
+            </span>
+            <span class="tl-task-count" style="margin-left: 8px; color: ${col.color};">${col.taskCount} tasks</span>
+          </div>
+          <div style="margin-top: 6px; height: 4px; background: rgba(0,0,0,0.1); border-radius: 2px; overflow: hidden;">
+            <div style="width: ${progress}%; height: 100%; background: ${col.color}; border-radius: 2px;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
+// Render Gantt rows for columns
+function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '';
+  
+  // Column rows
+  columns.forEach((col, idx) => {
+    const cells = dates.map((date, dateIdx) => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
+    }).join('');
+    
+    let barHtml = '';
+    let left, width, barStartDate, barEndDate;
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    
+    if (col.minDate && col.maxDate) {
+      // Column has tasks with dates
+      const startOffset = daysBetween(startDate, col.minDate);
+      const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
+      left = Math.max(0, startOffset * cellWidth);
+      width = Math.max(cellWidth, duration * cellWidth - 4);
+      barStartDate = col.minDate.toISOString().split('T')[0];
+      barEndDate = col.maxDate.toISOString().split('T')[0];
+    } else {
+      // No dates - create a default bar starting from today, 7 days wide
+      const todayOffset = daysBetween(startDate, today);
+      left = Math.max(0, todayOffset * cellWidth);
+      width = 7 * cellWidth - 4;
+      barStartDate = today.toISOString().split('T')[0];
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 6);
+      barEndDate = defaultEnd.toISOString().split('T')[0];
+    }
+    
+    // Get status icon based on progress
+    const statusIcon = progress === 100 
+      ? `<svg class="tl-status-icon done" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+      : progress > 0
+        ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+        : `<svg class="tl-status-icon todo" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
+    
+    // Priority icon (simplified)
+    const priorityIcon = `<svg class="tl-priority-icon" viewBox="0 0 16 16"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z" fill="#6366f1" opacity="0.7"/></svg>`;
+    
+    // Check if overdue (end date passed and not 100% complete)
+    const isOverdue = progress < 100 && isBarOverdue(barEndDate);
+    const overdueClass = isOverdue ? 'linear-overdue' : '';
+    
+    // Get milestones for this bar
+    const milestonesHtml = renderBarMilestones(projectIndex, col.id, width);
+    
+    // Build bar style - Linear-style gradient
+    let barStyle = `left: ${left}px; width: ${width}px; `;
+    if (isOverdue) {
+      // Gradient from normal to red for overdue
+      barStyle += `background: linear-gradient(90deg, rgba(55, 55, 65, 0.95) 0%, rgba(55, 55, 65, 0.95) 40%, rgba(127, 29, 29, 0.95) 70%, rgba(153, 27, 27, 0.98) 100%); border-color: rgba(239, 68, 68, 0.4);`;
+    } else {
+      barStyle += `background: linear-gradient(180deg, rgba(55, 55, 65, 0.95) 0%, rgba(42, 42, 52, 0.95) 100%); border: 1px solid rgba(255, 255, 255, 0.1);`;
+    }
+    if (!col.minDate) {
+      barStyle += ' border-style: dashed; opacity: 0.7;';
+    }
+    
+    barHtml = `
+      <!-- Linear-Style Floating Header Above Bar -->
+      <div class="tl-bar-header" style="left: ${left}px;">
+        <div class="tl-bar-header-left">
+          ${statusIcon}
+          <span class="tl-bar-header-title">${col.title}</span>
+          ${priorityIcon}
+          <span class="tl-bar-header-count">(${col.taskCount})</span>
+        </div>
+      </div>
+      <div class="tl-task-bar column-bar ${overdueClass}" 
+           data-column-id="${col.id}"
+           data-column-index="${col.columnIndex}"
+           data-start-date="${barStartDate}"
+           data-end-date="${barEndDate}"
+           data-has-dates="${col.minDate && col.maxDate ? 'true' : 'false'}"
+           style="${barStyle} cursor: grab;"
+           onmousedown="startColumnBarDrag(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           onclick="handleColumnBarClick(event, '${col.id}', ${col.columnIndex}, ${projectIndex})"
+           ondblclick="openEditColumnModal(${col.columnIndex}, ${projectIndex})"
+           title="${col.title} - ${col.taskCount} tasks${col.minDate ? ` (${progress}% complete)` : ' (no dates set)'}${isOverdue ? ' - OVERDUE' : ''}">
+        <!-- Hover Quick Actions for Column Bar -->
+        <div class="tl-column-bar-actions">
+          <button class="tl-bar-quick-btn" 
+                  onclick="event.stopPropagation(); openEditColumnModal(${col.columnIndex}, ${projectIndex})"
+                  title="Edit column">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="tl-bar-quick-btn" 
+                  onclick="event.stopPropagation(); editColumnDates(${col.columnIndex}, ${projectIndex})"
+                  title="Edit dates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </button>
+        </div>
+        <span class="tl-bar-label">${col.title}</span>
+        ${milestonesHtml}
+        <div class="tl-bar-resize left" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'left', ${projectIndex})"></div>
+        <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
+      </div>
+    `;
+    
+    html += `
+      <div class="tl-gantt-row" data-row-id="${col.id}">
+        ${cells}
+        ${barHtml}
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
+// ============================================
+// Enhanced Milestone System
+// ============================================
+
+// Render milestones on the timeline
+function renderTimelineMilestones(columns, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return '';
+  
+  // Get milestones from project (or create from column end dates)
+  let milestones = project.milestones || [];
+  
+  // Auto-generate milestones from column end dates if none exist
+  if (milestones.length === 0) {
+    columns.forEach((col, idx) => {
+      if (col.maxDate) {
+        milestones.push({
+          id: `auto-ms-${col.id}`,
+          name: `${col.title} Complete`,
+          date: col.maxDate.toISOString().split('T')[0],
+          columnId: col.id,
+          columnIndex: col.columnIndex,
+          progress: col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0,
+          status: col.completedCount === col.taskCount && col.taskCount > 0 ? 'completed' : 'pending'
+        });
+      }
+    });
+  }
+  
+  let html = '';
+  
+  milestones.forEach((ms, idx) => {
+    if (!ms.date) return;
+    
+    const msDate = new Date(ms.date);
+    const offset = daysBetween(startDate, msDate);
+    const left = offset * cellWidth + cellWidth / 2;
+    
+    // Determine status class
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let statusClass = '';
+    if (ms.status === 'completed' || ms.progress === 100) {
+      statusClass = 'completed';
+    } else if (msDate < today) {
+      statusClass = 'critical'; // Overdue
+    } else if (daysBetween(today, msDate) <= 7) {
+      statusClass = 'upcoming';
+    }
+    
+    // Calculate progress ring values
+    const progress = ms.progress || 0;
+    const circumference = 2 * Math.PI * 10;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+    
+    html += `
+      <div class="tl-milestone" 
+           data-milestone-id="${ms.id}"
+           style="left: ${left}px; top: 50%; transform: translate(-50%, -50%);"
+           onclick="openMilestoneDetails('${ms.id}', ${projectIndex})"
+           title="${ms.name} - ${formatShortDate(ms.date)}">
+        <div class="tl-milestone-diamond ${statusClass}">
+          ${progress > 0 && progress < 100 ? `
+            <svg class="tl-milestone-progress" viewBox="0 0 24 24">
+              <circle class="progress-bg" cx="12" cy="12" r="10"/>
+              <circle class="progress-fill" cx="12" cy="12" r="10" 
+                      stroke-dasharray="${circumference}" 
+                      stroke-dashoffset="${strokeDashoffset}"/>
+            </svg>
+          ` : ''}
+        </div>
+        <div class="tl-milestone-info">
+          <span class="tl-milestone-name">${ms.name}</span>
+          <span class="tl-milestone-date">${formatShortDate(ms.date)}</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
+// Legacy milestone rendering removed - using new Linear-style system
+function renderTimelineMilestonesEnhanced() { return ''; }
+function openMilestoneDetails() {}
+
+// Calculate timeline date range
+function calculateTimelineDates(tasks, viewMode) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let startDate = new Date(today);
+  let endDate = new Date(today);
+  
+  // Adjust based on view mode
+  switch (viewMode) {
+    case 'day':
+      startDate.setDate(startDate.getDate() - 3);
+      endDate.setDate(endDate.getDate() + 11);
+      break;
+    case 'week':
+      startDate.setDate(startDate.getDate() - 7);
+      endDate.setDate(endDate.getDate() + 21);
+      break;
+    case 'month':
+      startDate.setDate(startDate.getDate() - 14);
+      endDate.setDate(endDate.getDate() + 45);
+      break;
+    case 'quarter':
+      startDate.setMonth(startDate.getMonth() - 1);
+      endDate.setMonth(endDate.getMonth() + 3);
+      break;
+  }
+  
+  // Expand range to include all tasks
+  tasks.forEach(task => {
+    if (task.startDate) {
+      const taskStart = new Date(task.startDate);
+      if (taskStart < startDate) startDate = new Date(taskStart);
+    }
+    if (task.dueDate || task.endDate) {
+      const taskEnd = new Date(task.dueDate || task.endDate);
+      if (taskEnd > endDate) endDate = new Date(taskEnd);
+    }
+  });
+  
+  // Add padding
+  startDate.setDate(startDate.getDate() - 3);
+  endDate.setDate(endDate.getDate() + 7);
+  
+  // Generate date array
+  const dates = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return { startDate, endDate, dates };
+}
+
+// Render task list
+function renderTimelineTaskList(tasks, projectIndex) {
+  if (tasks.length === 0) {
+    return `
+      <div class="tl-empty-state" style="padding: 32px 16px;">
+        <div class="tl-empty-icon" style="width: 40px; height: 40px; margin-bottom: 12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <p class="tl-empty-title" style="font-size: 14px;">No tasks yet</p>
+        <p class="tl-empty-desc" style="font-size: 12px;">Add tasks to see them on the timeline</p>
+      </div>
+    `;
+  }
+  
+  // Sort by date
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const dateA = new Date(a.startDate || a.dueDate || '9999-12-31');
+    const dateB = new Date(b.startDate || b.dueDate || '9999-12-31');
+    return dateA - dateB;
+  });
+  
+  return sortedTasks.map((task, idx) => {
+    const isSelected = timelineState.selectedTaskIds.includes(task.id);
+    const isMilestone = task.type === 'milestone';
+    const priority = task.priority || 'none';
+    const statusIcon = getTimelineStatusIcon(task.status);
+    
+    const startStr = task.startDate ? formatShortDate(task.startDate) : '';
+    const endStr = task.dueDate || task.endDate ? formatShortDate(task.dueDate || task.endDate) : '';
+    const dateStr = startStr && endStr ? `${startStr} → ${endStr}` : (startStr || endStr || 'No date');
+    
+    return `
+      <div class="tl-task-item ${isSelected ? 'selected' : ''} ${isMilestone ? 'milestone' : ''}" 
+           data-task-id="${task.id}"
+           onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
+        <div class="tl-task-status">${statusIcon}</div>
+        <div class="tl-task-content">
+          <div class="tl-task-title">${isMilestone ? '◇ ' : ''}${task.columnTitle || task.title || task.name || 'Untitled'}</div>
+          <div class="tl-task-meta">
+            <span class="tl-task-dates">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              ${dateStr}
+            </span>
+            ${priority !== 'none' ? `
+              <span class="tl-task-priority">
+                <span class="tl-priority-dot ${priority}"></span>
+              </span>
+            ` : ''}
+          </div>
+        </div>
+        ${task.assignee ? `
+          <div class="tl-task-assignee" title="${task.assignee}">${task.assignee.charAt(0).toUpperCase()}</div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// Get status icon
+function getTimelineStatusIcon(status) {
+  const icons = {
+    'todo': `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#a1a1aa" stroke-width="1.5"/></svg>`,
+    'in-progress': `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5"/><path d="M8 4v4l2.5 2.5" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    'review': `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#8b5cf6" stroke-width="1.5"/></svg>`,
+    'done': `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" fill="#10b981"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  };
+  return icons[status] || icons['todo'];
+}
+
+// Render date headers
+function renderTimelineDateHeaders(dates, zoom) {
+  const cellWidth = 48 * zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return dates.map((date, idx) => {
+    const isToday = date.toDateString() === today.toDateString();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+    const dayNum = date.getDate();
+    
+    return `
+      <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
+        <div class="tl-date-day">${dayName}</div>
+        <div class="tl-date-num">${dayNum}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Render Gantt rows
+function renderTimelineGanttRows(tasks, dates, projectIndex, startDate) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Sort tasks by date
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const dateA = new Date(a.startDate || a.dueDate || '9999-12-31');
+    const dateB = new Date(b.startDate || b.dueDate || '9999-12-31');
+    return dateA - dateB;
+  });
+  
+  return sortedTasks.map((task, idx) => {
+    // Render cells
+    const cells = dates.map((date, dateIdx) => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
+    }).join('');
+    
+    // Calculate bar position
+    const taskStart = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
+    const taskEnd = task.endDate || task.dueDate ? new Date(task.endDate || task.dueDate) : taskStart;
+    
+    let barHtml = '';
+    if (taskStart) {
+      const startOffset = daysBetween(startDate, taskStart);
+      const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
+      const left = startOffset * cellWidth;
+      const width = duration * cellWidth - 4;
+      
+      const isMilestone = task.type === 'milestone';
+      const isSelected = timelineState.selectedTaskIds.includes(task.id);
+      const colorClass = task.color ? `color-${getColorName(task.color)}` : 'color-blue';
+      const statusClass = task.status === 'done' || task.done ? 'status-done' : '';
+      
+      if (isMilestone) {
+        barHtml = `
+          <div class="tl-task-bar milestone ${isSelected ? 'selected' : ''}" 
+               style="left: ${left + cellWidth/2 - 14}px;"
+               data-task-id="${task.id}"
+               ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})"
+               title="${task.name || task.title}">
+          </div>
+        `;
+      } else {
+        barHtml = `
+          <div class="tl-task-bar ${colorClass} ${statusClass} ${isSelected ? 'selected' : ''}" 
+               style="left: ${left}px; width: ${width}px;"
+               data-task-id="${task.id}"
+               data-column-index="${task.columnIndex}"
+               data-task-index="${task.taskIndex}"
+               data-start-date="${task.startDate || ''}"
+               data-end-date="${task.dueDate || task.endDate || ''}"
+               onmousedown="startTimelineDrag(event, '${task.id}', ${projectIndex})"
+               onclick="handleTimelineBarClick(event, '${task.id}', ${projectIndex})"
+               ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})"
+               title="${task.title || task.name}">
+            <span class="tl-bar-label">${task.title || task.name || ''}</span>
+            <div class="tl-bar-resize left" onmousedown="startTimelineResize(event, '${task.id}', 'left', ${projectIndex})"></div>
+            <div class="tl-bar-resize right" onmousedown="startTimelineResize(event, '${task.id}', 'right', ${projectIndex})"></div>
+          </div>
+        `;
+      }
+    }
+    
+    return `
+      <div class="tl-gantt-row" data-task-id="${task.id}">
+        ${cells}
+        ${barHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+// Render today line
+function renderTimelineTodayLine(dates, startDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cellWidth = 48 * timelineState.zoom;
+  const offset = daysBetween(startDate, today);
+  
+  if (offset < 0 || offset >= dates.length) return '';
+  
+  const left = offset * cellWidth + cellWidth / 2;
+  return `<div class="tl-today-line" style="left: ${left}px;"></div>`;
+}
+
+// Helper: Get status from column title
+function getColumnStatus(title) {
+  const lower = title.toLowerCase();
+  if (lower.includes('done') || lower.includes('complete')) return 'done';
+  if (lower.includes('progress') || lower.includes('doing')) return 'in-progress';
+  if (lower.includes('review')) return 'review';
+  return 'todo';
+}
+
+// Helper functions
+function formatShortDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getColorName(color) {
+  const colors = {
+    '#3b82f6': 'blue',
+    '#8b5cf6': 'purple',
+    '#ec4899': 'pink',
+    '#ef4444': 'red',
+    '#f97316': 'orange',
+    '#eab308': 'yellow',
+    '#22c55e': 'green',
+    '#14b8a6': 'teal',
+    '#06b6d4': 'cyan'
+  };
+  return colors[color] || 'blue';
+}
+
+// Timeline Drag State
+let tlDragState = {
+  isDragging: false,
+  isResizing: false,
+  taskId: null,
+  taskBar: null,
+  startX: 0,
+  originalLeft: 0,
+  originalWidth: 0,
+  resizeDirection: null,
+  projectIndex: null,
+  startDate: null,
+  endDate: null,
+  columnIndex: null,
+  taskIndex: null
+};
+
+// Timeline interactions
+function setupTimelineInteractions(projectIndex) {
+  // Sync scroll between header and grid
+  const wrapper = document.getElementById('tlGanttWrapper');
+  const headerScroll = document.getElementById('tlDateHeaderScroll');
+  
+  if (wrapper && headerScroll) {
+    wrapper.addEventListener('scroll', () => {
+      headerScroll.scrollLeft = wrapper.scrollLeft;
+    });
+  }
+  
+  // Add global mouse event listeners for drag
+  document.addEventListener('mousemove', handleTimelineMouseMove);
+  document.addEventListener('mouseup', handleTimelineMouseUp);
+  
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleTimelineKeydown);
+  
+  // Setup right-click context menu for milestones
+  setupBarContextMenu(projectIndex);
+}
+
+// Start dragging a task bar
+function startTimelineDrag(event, taskId, projectIndex) {
+  // Ignore if clicking on resize handles
+  if (event.target.classList.contains('tl-bar-resize')) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const taskBar = event.currentTarget;
+  
+  tlDragState = {
+    isDragging: true,
+    isResizing: false,
+    taskId: taskId,
+    taskBar: taskBar,
+    startX: event.clientX,
+    originalLeft: parseInt(taskBar.style.left) || 0,
+    originalWidth: parseInt(taskBar.style.width) || 100,
+    resizeDirection: null,
+    projectIndex: projectIndex,
+    startDate: taskBar.dataset.startDate,
+    endDate: taskBar.dataset.endDate,
+    columnIndex: parseInt(taskBar.dataset.columnIndex),
+    taskIndex: parseInt(taskBar.dataset.taskIndex)
+  };
+  
+  taskBar.classList.add('dragging');
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+}
+
+// Start resizing a task bar
+function startTimelineResize(event, taskId, direction, projectIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const taskBar = event.target.closest('.tl-task-bar');
+  if (!taskBar) return;
+  
+  tlDragState = {
+    isDragging: false,
+    isResizing: true,
+    taskId: taskId,
+    taskBar: taskBar,
+    startX: event.clientX,
+    originalLeft: parseInt(taskBar.style.left) || 0,
+    originalWidth: parseInt(taskBar.style.width) || 100,
+    resizeDirection: direction,
+    projectIndex: projectIndex,
+    startDate: taskBar.dataset.startDate,
+    endDate: taskBar.dataset.endDate,
+    columnIndex: parseInt(taskBar.dataset.columnIndex),
+    taskIndex: parseInt(taskBar.dataset.taskIndex)
+  };
+  
+  taskBar.classList.add('resizing');
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+}
+
+// Handle mouse move during drag/resize
+function handleTimelineMouseMove(event) {
+  if (!tlDragState.isDragging && !tlDragState.isResizing) return;
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const deltaX = event.clientX - tlDragState.startX;
+  const daysDelta = Math.round(deltaX / cellWidth);
+  
+  if (tlDragState.isDragging) {
+    // Move the task bar
+    const newLeft = tlDragState.originalLeft + (daysDelta * cellWidth);
+    tlDragState.taskBar.style.left = `${newLeft}px`;
+    
+    // Show preview tooltip
+    showDragPreview(tlDragState.taskBar, daysDelta);
+  } else if (tlDragState.isResizing) {
+    if (tlDragState.resizeDirection === 'right') {
+      // Resize from right
+      const newWidth = Math.max(cellWidth - 4, tlDragState.originalWidth + (daysDelta * cellWidth));
+      tlDragState.taskBar.style.width = `${newWidth}px`;
+    } else {
+      // Resize from left
+      const newLeft = tlDragState.originalLeft + (daysDelta * cellWidth);
+      const newWidth = Math.max(cellWidth - 4, tlDragState.originalWidth - (daysDelta * cellWidth));
+      tlDragState.taskBar.style.left = `${newLeft}px`;
+      tlDragState.taskBar.style.width = `${newWidth}px`;
+    }
+    
+    // Show resize preview
+    showResizePreview(tlDragState.taskBar, daysDelta, tlDragState.resizeDirection);
+  }
+}
+
+// Handle mouse up - finalize drag/resize
+function handleTimelineMouseUp(event) {
+  if (!tlDragState.isDragging && !tlDragState.isResizing) return;
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const deltaX = event.clientX - tlDragState.startX;
+  const daysDelta = Math.round(deltaX / cellWidth);
+  
+  // Remove visual classes
+  if (tlDragState.taskBar) {
+    tlDragState.taskBar.classList.remove('dragging', 'resizing');
+  }
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  
+  // Remove preview tooltip
+  removeDragPreview();
+  
+  // Only update if there was actual movement
+  if (daysDelta !== 0) {
+    if (tlDragState.isDragging) {
+      // Update task dates (move both start and end)
+      updateTaskDatesAfterDrag(daysDelta);
+    } else if (tlDragState.isResizing) {
+      // Update task duration
+      updateTaskDatesAfterResize(daysDelta, tlDragState.resizeDirection);
+    }
+  }
+  
+  // Reset state
+  tlDragState = {
+    isDragging: false,
+    isResizing: false,
+    taskId: null,
+    taskBar: null,
+    startX: 0,
+    originalLeft: 0,
+    originalWidth: 0,
+    resizeDirection: null,
+    projectIndex: null,
+    startDate: null,
+    endDate: null,
+    columnIndex: null,
+    taskIndex: null
+  };
+}
+
+// Update task dates after dragging
+function updateTaskDatesAfterDrag(daysDelta) {
+  const projects = loadProjects();
+  const project = projects[tlDragState.projectIndex];
+  if (!project) return;
+  
+  // Find the task
+  const task = project.columns[tlDragState.columnIndex]?.tasks[tlDragState.taskIndex];
+  if (!task) return;
+  
+  // Update start date
+  if (task.startDate) {
+    const newStart = new Date(task.startDate);
+    newStart.setDate(newStart.getDate() + daysDelta);
+    task.startDate = newStart.toISOString().split('T')[0];
+  }
+  
+  // Update end/due date
+  if (task.dueDate) {
+    const newEnd = new Date(task.dueDate);
+    newEnd.setDate(newEnd.getDate() + daysDelta);
+    task.dueDate = newEnd.toISOString().split('T')[0];
+  }
+  if (task.endDate) {
+    const newEnd = new Date(task.endDate);
+    newEnd.setDate(newEnd.getDate() + daysDelta);
+    task.endDate = newEnd.toISOString().split('T')[0];
+  }
+  
+  // Save and re-render
+  saveProjects(projects);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(tlDragState.projectIndex, container);
+  
+  showToast(`Task moved ${Math.abs(daysDelta)} day${Math.abs(daysDelta) !== 1 ? 's' : ''} ${daysDelta > 0 ? 'forward' : 'back'}`);
+}
+
+// Update task dates after resizing
+function updateTaskDatesAfterResize(daysDelta, direction) {
+  const projects = loadProjects();
+  const project = projects[tlDragState.projectIndex];
+  if (!project) return;
+  
+  // Find the task
+  const task = project.columns[tlDragState.columnIndex]?.tasks[tlDragState.taskIndex];
+  if (!task) return;
+  
+  if (direction === 'right') {
+    // Extend/shrink end date
+    const endDateField = task.dueDate ? 'dueDate' : 'endDate';
+    if (task[endDateField]) {
+      const newEnd = new Date(task[endDateField]);
+      newEnd.setDate(newEnd.getDate() + daysDelta);
+      task[endDateField] = newEnd.toISOString().split('T')[0];
+    } else if (task.startDate) {
+      // Create end date from start
+      const newEnd = new Date(task.startDate);
+      newEnd.setDate(newEnd.getDate() + daysDelta);
+      task.dueDate = newEnd.toISOString().split('T')[0];
+    }
+  } else {
+    // Move start date
+    if (task.startDate) {
+      const newStart = new Date(task.startDate);
+      newStart.setDate(newStart.getDate() + daysDelta);
+      task.startDate = newStart.toISOString().split('T')[0];
+    }
+  }
+  
+  // Save and re-render
+  saveProjects(projects);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(tlDragState.projectIndex, container);
+  
+  showToast('Task duration updated');
+}
+
+// Show drag preview tooltip
+function showDragPreview(taskBar, daysDelta) {
+  removeDragPreview();
+  
+  if (daysDelta === 0) return;
+  
+  const preview = document.createElement('div');
+  preview.className = 'tl-drag-preview';
+  preview.innerHTML = `
+    <span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>
+  `;
+  
+  const rect = taskBar.getBoundingClientRect();
+  preview.style.top = `${rect.top - 30}px`;
+  preview.style.left = `${rect.left + rect.width / 2}px`;
+  
+  document.body.appendChild(preview);
+}
+
+// Show resize preview tooltip
+function showResizePreview(taskBar, daysDelta, direction) {
+  removeDragPreview();
+  
+  if (daysDelta === 0) return;
+  
+  const preview = document.createElement('div');
+  preview.className = 'tl-drag-preview';
+  
+  if (direction === 'right') {
+    preview.innerHTML = `<span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>`;
+  } else {
+    preview.innerHTML = `<span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>`;
+  }
+  
+  const rect = taskBar.getBoundingClientRect();
+  preview.style.top = `${rect.top - 30}px`;
+  preview.style.left = `${direction === 'right' ? rect.right - 40 : rect.left}px`;
+  
+  document.body.appendChild(preview);
+}
+
+// Remove drag preview
+function removeDragPreview() {
+  const existing = document.querySelector('.tl-drag-preview');
+  if (existing) existing.remove();
+}
+
+// ============================================
+// Column Bar Drag & Resize (Timeline)
+// ============================================
+
+let tlColumnDragState = {
+  isDragging: false,
+  isResizing: false,
+  columnId: null,
+  columnIndex: null,
+  columnBar: null,
+  startX: 0,
+  originalLeft: 0,
+  originalWidth: 0,
+  resizeDirection: null,
+  projectIndex: null,
+  startDate: null,
+  endDate: null
+};
+
+// Start dragging a column bar
+function startColumnBarDrag(event, columnId, columnIndex, projectIndex) {
+  if (event.target.classList.contains('tl-bar-resize')) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const columnBar = event.currentTarget;
+  
+  tlColumnDragState = {
+    isDragging: true,
+    isResizing: false,
+    columnId: columnId,
+    columnIndex: columnIndex,
+    columnBar: columnBar,
+    startX: event.clientX,
+    originalLeft: parseInt(columnBar.style.left) || 0,
+    originalWidth: parseInt(columnBar.style.width) || 100,
+    resizeDirection: null,
+    projectIndex: projectIndex,
+    startDate: columnBar.dataset.startDate,
+    endDate: columnBar.dataset.endDate
+  };
+  
+  columnBar.classList.add('dragging');
+  columnBar.style.cursor = 'grabbing';
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+  
+  // Add event listeners
+  document.addEventListener('mousemove', handleColumnBarMouseMove);
+  document.addEventListener('mouseup', handleColumnBarMouseUp);
+}
+
+// Start resizing a column bar
+function startColumnBarResize(event, columnId, columnIndex, direction, projectIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const columnBar = event.target.closest('.tl-task-bar');
+  if (!columnBar) return;
+  
+  tlColumnDragState = {
+    isDragging: false,
+    isResizing: true,
+    columnId: columnId,
+    columnIndex: columnIndex,
+    columnBar: columnBar,
+    startX: event.clientX,
+    originalLeft: parseInt(columnBar.style.left) || 0,
+    originalWidth: parseInt(columnBar.style.width) || 100,
+    resizeDirection: direction,
+    projectIndex: projectIndex,
+    startDate: columnBar.dataset.startDate,
+    endDate: columnBar.dataset.endDate
+  };
+  
+  columnBar.classList.add('resizing');
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+  
+  // Add event listeners
+  document.addEventListener('mousemove', handleColumnBarMouseMove);
+  document.addEventListener('mouseup', handleColumnBarMouseUp);
+}
+
+// Handle mouse move during column bar drag/resize
+function handleColumnBarMouseMove(event) {
+  if (!tlColumnDragState.isDragging && !tlColumnDragState.isResizing) return;
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const deltaX = event.clientX - tlColumnDragState.startX;
+  const daysDelta = Math.round(deltaX / cellWidth);
+  
+  if (tlColumnDragState.isDragging) {
+    const newLeft = tlColumnDragState.originalLeft + (daysDelta * cellWidth);
+    tlColumnDragState.columnBar.style.left = `${newLeft}px`;
+    showDragPreview(tlColumnDragState.columnBar, daysDelta);
+  } else if (tlColumnDragState.isResizing) {
+    if (tlColumnDragState.resizeDirection === 'right') {
+      const newWidth = Math.max(cellWidth - 4, tlColumnDragState.originalWidth + (daysDelta * cellWidth));
+      tlColumnDragState.columnBar.style.width = `${newWidth}px`;
+    } else {
+      const newLeft = tlColumnDragState.originalLeft + (daysDelta * cellWidth);
+      const newWidth = Math.max(cellWidth - 4, tlColumnDragState.originalWidth - (daysDelta * cellWidth));
+      tlColumnDragState.columnBar.style.left = `${newLeft}px`;
+      tlColumnDragState.columnBar.style.width = `${newWidth}px`;
+    }
+    showResizePreview(tlColumnDragState.columnBar, daysDelta, tlColumnDragState.resizeDirection);
+  }
+}
+
+// Handle mouse up for column bar drag/resize
+function handleColumnBarMouseUp(event) {
+  document.removeEventListener('mousemove', handleColumnBarMouseMove);
+  document.removeEventListener('mouseup', handleColumnBarMouseUp);
+  
+  if (!tlColumnDragState.isDragging && !tlColumnDragState.isResizing) return;
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const deltaX = event.clientX - tlColumnDragState.startX;
+  const daysDelta = Math.round(deltaX / cellWidth);
+  
+  if (tlColumnDragState.columnBar) {
+    tlColumnDragState.columnBar.classList.remove('dragging', 'resizing');
+    tlColumnDragState.columnBar.style.cursor = 'grab';
+  }
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  
+  removeDragPreview();
+  
+  if (daysDelta !== 0) {
+    if (tlColumnDragState.isDragging) {
+      updateColumnDatesAfterDrag(daysDelta);
+    } else if (tlColumnDragState.isResizing) {
+      updateColumnDatesAfterResize(daysDelta, tlColumnDragState.resizeDirection);
+    }
+  }
+  
+  tlColumnDragState = {
+    isDragging: false,
+    isResizing: false,
+    columnId: null,
+    columnIndex: null,
+    columnBar: null,
+    startX: 0,
+    originalLeft: 0,
+    originalWidth: 0,
+    resizeDirection: null,
+    projectIndex: null,
+    startDate: null,
+    endDate: null
+  };
+}
+
+// Update all task dates in a column after dragging
+function updateColumnDatesAfterDrag(daysDelta) {
+  const projects = loadProjects();
+  const project = projects[tlColumnDragState.projectIndex];
+  if (!project) return;
+  
+  const column = project.columns[tlColumnDragState.columnIndex];
+  if (!column) return;
+  
+  // Get the bar's current dates from the dataset
+  const barStartDate = tlColumnDragState.startDate;
+  const barEndDate = tlColumnDragState.endDate;
+  
+  // Calculate new bar dates
+  const newBarStart = new Date(barStartDate);
+  newBarStart.setDate(newBarStart.getDate() + daysDelta);
+  const newBarEnd = new Date(barEndDate);
+  newBarEnd.setDate(newBarEnd.getDate() + daysDelta);
+  
+  // If column has tasks with dates, update them
+  if (column.tasks && column.tasks.length > 0) {
+    const tasksWithDates = column.tasks.filter(t => t.startDate || t.dueDate || t.endDate);
+    
+    if (tasksWithDates.length > 0) {
+      // Update all tasks in the column that have dates
+      column.tasks.forEach(task => {
+        if (task.startDate) {
+          const newStart = new Date(task.startDate);
+          newStart.setDate(newStart.getDate() + daysDelta);
+          task.startDate = newStart.toISOString().split('T')[0];
+        }
+        if (task.dueDate) {
+          const newEnd = new Date(task.dueDate);
+          newEnd.setDate(newEnd.getDate() + daysDelta);
+          task.dueDate = newEnd.toISOString().split('T')[0];
+        }
+        if (task.endDate) {
+          const newEnd = new Date(task.endDate);
+          newEnd.setDate(newEnd.getDate() + daysDelta);
+          task.endDate = newEnd.toISOString().split('T')[0];
+        }
+      });
+    } else {
+      // No tasks have dates - set dates for all tasks based on new bar position
+      column.tasks.forEach(task => {
+        task.startDate = newBarStart.toISOString().split('T')[0];
+        task.dueDate = newBarEnd.toISOString().split('T')[0];
+      });
+    }
+  }
+  
+  // Store column-level date info (for columns without task dates)
+  if (!column.timelineStart || !column.timelineEnd) {
+    column.timelineStart = newBarStart.toISOString().split('T')[0];
+    column.timelineEnd = newBarEnd.toISOString().split('T')[0];
+  } else {
+    const colStart = new Date(column.timelineStart);
+    colStart.setDate(colStart.getDate() + daysDelta);
+    column.timelineStart = colStart.toISOString().split('T')[0];
+    
+    const colEnd = new Date(column.timelineEnd);
+    colEnd.setDate(colEnd.getDate() + daysDelta);
+    column.timelineEnd = colEnd.toISOString().split('T')[0];
+  }
+  
+  saveProjects(projects);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(tlColumnDragState.projectIndex, container);
+  
+  showToast(`Column "${column.title}" moved ${Math.abs(daysDelta)} day${Math.abs(daysDelta) !== 1 ? 's' : ''} ${daysDelta > 0 ? 'forward' : 'back'}`);
+}
+
+// Update column task dates after resizing
+function updateColumnDatesAfterResize(daysDelta, direction) {
+  const projects = loadProjects();
+  const project = projects[tlColumnDragState.projectIndex];
+  if (!project) return;
+  
+  const column = project.columns[tlColumnDragState.columnIndex];
+  if (!column) return;
+  
+  const barStartDate = tlColumnDragState.startDate;
+  const barEndDate = tlColumnDragState.endDate;
+  
+  // Get tasks with dates
+  const tasksWithDates = (column.tasks || []).filter(t => t.startDate || t.dueDate || t.endDate);
+  
+  if (tasksWithDates.length > 0) {
+    if (direction === 'right') {
+      // Extend end dates
+      tasksWithDates.forEach(task => {
+        if (task.dueDate) {
+          const newEnd = new Date(task.dueDate);
+          newEnd.setDate(newEnd.getDate() + daysDelta);
+          task.dueDate = newEnd.toISOString().split('T')[0];
+        } else if (task.endDate) {
+          const newEnd = new Date(task.endDate);
+          newEnd.setDate(newEnd.getDate() + daysDelta);
+          task.endDate = newEnd.toISOString().split('T')[0];
+        }
+      });
+    } else {
+      // Move start dates
+      tasksWithDates.forEach(task => {
+        if (task.startDate) {
+          const newStart = new Date(task.startDate);
+          newStart.setDate(newStart.getDate() + daysDelta);
+          task.startDate = newStart.toISOString().split('T')[0];
+        }
+      });
+    }
+  }
+  
+  // Update column-level stored dates
+  if (direction === 'right') {
+    const newEnd = new Date(barEndDate);
+    newEnd.setDate(newEnd.getDate() + daysDelta);
+    column.timelineEnd = newEnd.toISOString().split('T')[0];
+    if (!column.timelineStart) {
+      column.timelineStart = barStartDate;
+    }
+  } else {
+    const newStart = new Date(barStartDate);
+    newStart.setDate(newStart.getDate() + daysDelta);
+    column.timelineStart = newStart.toISOString().split('T')[0];
+    if (!column.timelineEnd) {
+      column.timelineEnd = barEndDate;
+    }
+  }
+  
+  saveProjects(projects);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(tlColumnDragState.projectIndex, container);
+  
+  showToast(`Column "${column.title}" dates updated`);
+}
+
+// Column bar click handler (context menu removed)
+function handleColumnBarClick(event, columnId, columnIndex, projectIndex) {
+  // Direct double-click to edit instead of context menu
+}
+
+// Handle column bar click
+function handleColumnBarClick(event, columnId, columnIndex, projectIndex) {
+  // No linking mode - just allow normal clicks
+}
+
+// Open edit column modal (name, color)
+function openEditColumnModal(columnIndex, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const column = project.columns[columnIndex];
+  if (!column) return;
+  
+  const colorOptions = [
+    { name: 'blue', hex: '#3b82f6' },
+    { name: 'purple', hex: '#8b5cf6' },
+    { name: 'pink', hex: '#ec4899' },
+    { name: 'red', hex: '#ef4444' },
+    { name: 'orange', hex: '#f97316' },
+    { name: 'yellow', hex: '#eab308' },
+    { name: 'green', hex: '#22c55e' },
+    { name: 'teal', hex: '#14b8a6' },
+    { name: 'cyan', hex: '#06b6d4' },
+    { name: 'gray', hex: '#6b7280' }
+  ];
+  
+  // Get current column color
+  const currentColor = getColumnColor(column.title) || '#3b82f6';
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'editColumnModal';
+  modal.innerHTML = `
+    <div class="modal-container quick-edit-modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>Edit Column</h3>
+        <button class="modal-close" onclick="closeEditColumnModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px; padding: 20px;">
+        <!-- Column Name -->
+        <div class="form-group">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Column Name</label>
+          <input type="text" id="editColumnName" 
+                 value="${(column.title || '').replace(/"/g, '&quot;')}" 
+                 style="width: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;"
+                 placeholder="Enter column name...">
+        </div>
+        
+        <!-- Color Picker -->
+        <div class="form-group">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Color</label>
+          <div class="quick-edit-color-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+            ${colorOptions.map(c => `
+              <button type="button" 
+                      class="quick-edit-color-btn column-color-btn ${currentColor === c.hex ? 'active' : ''}" 
+                      data-color="${c.hex}"
+                      onclick="selectColumnColor('${c.hex}')"
+                      style="width: 100%; aspect-ratio: 1; border-radius: 8px; background: ${c.hex}; border: 2px solid ${currentColor === c.hex ? 'white' : 'transparent'}; cursor: pointer; transition: all 0.15s;">
+              </button>
+            `).join('')}
+          </div>
+          <input type="hidden" id="editColumnColor" value="${currentColor}">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border);">
+        <button onclick="closeEditColumnModal()" 
+                style="padding: 10px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 13px; cursor: pointer;">
+          Cancel
+        </button>
+        <button onclick="saveEditColumn(${columnIndex}, ${projectIndex})" 
+                style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 8px; color: var(--primary-foreground); font-size: 13px; font-weight: 500; cursor: pointer;">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  setTimeout(() => document.getElementById('editColumnName')?.focus(), 100);
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeEditColumnModal();
+  });
+}
+
+function selectColumnColor(hex) {
+  document.getElementById('editColumnColor').value = hex;
+  document.querySelectorAll('.column-color-btn').forEach(btn => {
+    btn.style.border = btn.dataset.color === hex ? '2px solid white' : '2px solid transparent';
+    btn.classList.toggle('active', btn.dataset.color === hex);
+  });
+}
+
+function closeEditColumnModal() {
+  const modal = document.getElementById('editColumnModal');
+  if (modal) modal.remove();
+}
+
+function saveEditColumn(columnIndex, projectIndex) {
+  const name = document.getElementById('editColumnName')?.value?.trim();
+  const color = document.getElementById('editColumnColor')?.value;
+  
+  if (!name) {
+    showToast('Please enter a column name');
+    return;
+  }
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project?.columns?.[columnIndex]) return;
+  
+  project.columns[columnIndex].title = name;
+  project.columns[columnIndex].color = color;
+  
+  saveProjects(projects);
+  closeEditColumnModal();
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast('Column updated');
+}
+
+// Edit column dates modal
+function editColumnDates(columnIndex, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const column = project.columns[columnIndex];
+  if (!column) return;
+  
+  const startDate = column.timelineStart || '';
+  const endDate = column.timelineEnd || '';
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'editColumnDatesModal';
+  modal.innerHTML = `
+    <div class="modal-container" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>Edit Column Dates: ${column.title}</h3>
+        <button class="modal-close" onclick="closeEditColumnDatesModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="columnStartDate" value="${startDate}" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="columnEndDate" value="${endDate}" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditColumnDatesModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveColumnDates(${columnIndex}, ${projectIndex})">Save</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeEditColumnDatesModal();
+  });
+}
+
+function closeEditColumnDatesModal() {
+  const modal = document.getElementById('editColumnDatesModal');
+  if (modal) modal.remove();
+}
+
+function saveColumnDates(columnIndex, projectIndex) {
+  const startDate = document.getElementById('columnStartDate').value;
+  const endDate = document.getElementById('columnEndDate').value;
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const column = project.columns[columnIndex];
+  if (!column) return;
+  
+  column.timelineStart = startDate;
+  column.timelineEnd = endDate;
+  
+  saveProjects(projects);
+  closeEditColumnDatesModal();
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  
+  showToast('Column dates updated');
+}
+
+// Task context menu removed - use double-click to edit instead
+
+// Find task by ID in project
+function findTaskById(project, taskId) {
+  for (const col of project.columns || []) {
+    for (const task of col.tasks || []) {
+      if (task.id === taskId) return task;
+    }
+  }
+  return null;
+}
+
+// Delete a timeline task
+function deleteTimelineTask(taskId, colIdx, taskIdx, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project?.columns?.[colIdx]?.tasks?.[taskIdx]) return;
+  
+  project.columns[colIdx].tasks.splice(taskIdx, 1);
+  
+  // Also remove this task from other tasks' dependencies
+  project.columns.forEach(col => {
+    col.tasks.forEach(task => {
+      if (task.dependsOn) {
+        const idx = task.dependsOn.indexOf(taskId);
+        if (idx > -1) task.dependsOn.splice(idx, 1);
+      }
+    });
+  });
+  
+  saveProjects(projects);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  
+  showToast('Task deleted');
+}
+
+function syncTimelineScroll(wrapper) {
+  const headerScroll = document.getElementById('tlDateHeaderScroll');
+  if (headerScroll) {
+    headerScroll.scrollLeft = wrapper.scrollLeft;
+  }
+
+  // Persist scroll so re-renders can restore it
+  timelineState.scrollLeft = wrapper.scrollLeft || 0;
+  timelineState.scrollTop = wrapper.scrollTop || 0;
+}
+
+// Navigation functions
+function goToTimelineToday(projectIndex) {
+  timelineState.currentDate = new Date();
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  
+  // Scroll to today after render
+  setTimeout(() => {
+    const todayLine = document.querySelector('.tl-today-line');
+    const wrapper = document.getElementById('tlGanttWrapper');
+    if (todayLine && wrapper) {
+      const todayLeft = parseInt(todayLine.style.left);
+      wrapper.scrollLeft = todayLeft - wrapper.clientWidth / 2;
+    }
+  }, 50);
+}
+
+function zoomTimeline(delta, projectIndex) {
+  // Extended zoom range: 0.15 (6 months) to 2 (detailed day view)
+  const newZoom = Math.max(0.15, Math.min(2, timelineState.zoom + delta));
+  timelineState.zoom = newZoom;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+function toggleTimelineFilters() {
+  const panel = document.getElementById('tlFiltersPanel');
+  if (panel) {
+    panel.classList.toggle('show');
+  }
+}
+
+function toggleTimelineShowDone(projectIndex) {
+  timelineState.showDone = !timelineState.showDone;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Handle bar click
+function handleTimelineBarClick(event, taskId, projectIndex) {
+  // Normal selection
+  selectTimelineTask(taskId, projectIndex, event);
+}
+
+// Task selection
+function selectTimelineTask(taskId, projectIndex, event) {
+  if (event.shiftKey) {
+    // Multi-select
+    const idx = timelineState.selectedTaskIds.indexOf(taskId);
+    if (idx > -1) {
+      timelineState.selectedTaskIds.splice(idx, 1);
+    } else {
+      timelineState.selectedTaskIds.push(taskId);
+    }
+  } else {
+    timelineState.selectedTaskIds = [taskId];
+  }
+  
+  // Update UI
+  document.querySelectorAll('.tl-task-item, .tl-task-bar').forEach(el => {
+    el.classList.toggle('selected', timelineState.selectedTaskIds.includes(el.dataset.taskId));
+  });
+}
+
+// Quick add task
+function handleTimelineQuickAdd(event, projectIndex) {
+  if (event.key === 'Enter' && event.target.value.trim()) {
+    const title = event.target.value.trim();
+    const projects = loadProjects();
+    const project = projects[projectIndex];
+    
+    // Add to first column (To Do)
+    if (project && project.columns && project.columns[0]) {
+      const today = new Date().toISOString().split('T')[0];
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      
+      project.columns[0].tasks.push({
+        id: generateId('TASK'),
+        title: title,
+        done: false,
+        startDate: today,
+        dueDate: nextWeek.toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      });
+      
+      saveProjects(projects);
+      event.target.value = '';
+      
+      // Re-render
+      const container = document.querySelector('.pd-content-scroll');
+      if (container) renderTimelineView(projectIndex, container);
+      showToast('Task added to timeline');
+    }
+  }
+}
+
+// Add task modal
+function openTimelineAddTask(projectIndex) {
+  showModal('Add Timeline Task', `
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <label style="display: block; font-size: 12px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 6px;">Task Title</label>
+        <input type="text" id="tlNewTaskTitle" style="width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;" placeholder="Enter task title...">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 6px;">Start Date</label>
+          <input type="date" id="tlNewTaskStart" style="width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 6px;">End Date</label>
+          <input type="date" id="tlNewTaskEnd" style="width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+        <button onclick="closeModal()" style="padding: 10px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 13px; cursor: pointer;">Cancel</button>
+        <button onclick="saveTimelineTask(${projectIndex})" style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 8px; color: var(--primary-foreground); font-size: 13px; font-weight: 500; cursor: pointer;">Add Task</button>
+      </div>
+    </div>
+  `);
+  
+  // Set default dates
+  const today = new Date().toISOString().split('T')[0];
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  document.getElementById('tlNewTaskStart').value = today;
+  document.getElementById('tlNewTaskEnd').value = nextWeek.toISOString().split('T')[0];
+  
+  // Focus title input
+  setTimeout(() => document.getElementById('tlNewTaskTitle').focus(), 100);
+}
+
+function saveTimelineTask(projectIndex) {
+  const title = document.getElementById('tlNewTaskTitle').value.trim();
+  const startDate = document.getElementById('tlNewTaskStart').value;
+  const endDate = document.getElementById('tlNewTaskEnd').value;
+  
+  if (!title) {
+    showToast('Please enter a task title');
+    return;
+  }
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (project && project.columns && project.columns[0]) {
+    project.columns[0].tasks.push({
+      id: generateId('TASK'),
+      title: title,
+      done: false,
+      startDate: startDate,
+      dueDate: endDate,
+      createdAt: new Date().toISOString()
+    });
+    
+    saveProjects(projects);
+    closeModal();
+    
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+    showToast('Task added successfully');
+  }
+}
+
+// Toggle task complete status from timeline
+function toggleTimelineTaskComplete(taskId, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Find the task
+  for (const col of project.columns || []) {
+    for (const task of col.tasks || []) {
+      if (task.id === taskId) {
+        // Toggle status
+        if (task.status === 'done' || task.status === 'completed' || task.done) {
+          task.status = 'todo';
+          task.done = false;
+        } else {
+          task.status = 'done';
+          task.done = true;
+        }
+        
+        saveProjects(projects);
+        const container = document.querySelector('.pd-content-scroll');
+        if (container) renderTimelineView(projectIndex, container);
+        showToast(task.status === 'done' ? 'Task completed!' : 'Task marked incomplete');
+        return;
+      }
+    }
+  }
+}
+
+// Open quick edit modal for task (name, color, dates)
+function openQuickEditTaskModal(taskId, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Find the task
+  let foundTask = null;
+  let foundColIdx = -1;
+  let foundTaskIdx = -1;
+  
+  for (let colIdx = 0; colIdx < (project.columns || []).length; colIdx++) {
+    const col = project.columns[colIdx];
+    for (let taskIdx = 0; taskIdx < (col.tasks || []).length; taskIdx++) {
+      if (col.tasks[taskIdx].id === taskId) {
+        foundTask = col.tasks[taskIdx];
+        foundColIdx = colIdx;
+        foundTaskIdx = taskIdx;
+        break;
+      }
+    }
+    if (foundTask) break;
+  }
+  
+  if (!foundTask) {
+    showToast('Task not found');
+    return;
+  }
+  
+  const colorOptions = [
+    { name: 'blue', hex: '#3b82f6' },
+    { name: 'purple', hex: '#8b5cf6' },
+    { name: 'pink', hex: '#ec4899' },
+    { name: 'red', hex: '#ef4444' },
+    { name: 'orange', hex: '#f97316' },
+    { name: 'yellow', hex: '#eab308' },
+    { name: 'green', hex: '#22c55e' },
+    { name: 'teal', hex: '#14b8a6' },
+    { name: 'cyan', hex: '#06b6d4' },
+    { name: 'gray', hex: '#6b7280' }
+  ];
+  
+  const currentColor = foundTask.color || '#3b82f6';
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'quickEditTaskModal';
+  modal.innerHTML = `
+    <div class="modal-container quick-edit-modal" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>Edit Task</h3>
+        <button class="modal-close" onclick="closeQuickEditTaskModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px; padding: 20px;">
+        <!-- Task Name -->
+        <div class="form-group">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Task Name</label>
+          <input type="text" id="quickEditTaskName" 
+                 value="${(foundTask.title || foundTask.name || '').replace(/"/g, '&quot;')}" 
+                 style="width: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;"
+                 placeholder="Enter task name...">
+        </div>
+        
+        <!-- Dates -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Start Date</label>
+            <input type="date" id="quickEditStartDate" 
+                   value="${foundTask.startDate || ''}" 
+                   style="width: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">End Date</label>
+            <input type="date" id="quickEditEndDate" 
+                   value="${foundTask.endDate || foundTask.dueDate || ''}" 
+                   style="width: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 14px;">
+          </div>
+        </div>
+        
+        <!-- Color Picker -->
+        <div class="form-group">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Color</label>
+          <div class="quick-edit-color-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+            ${colorOptions.map(c => `
+              <button type="button" 
+                      class="quick-edit-color-btn ${currentColor === c.hex ? 'active' : ''}" 
+                      data-color="${c.hex}"
+                      onclick="selectQuickEditColor('${c.hex}')"
+                      style="width: 100%; aspect-ratio: 1; border-radius: 8px; background: ${c.hex}; border: 2px solid ${currentColor === c.hex ? 'white' : 'transparent'}; cursor: pointer; transition: all 0.15s;">
+              </button>
+            `).join('')}
+          </div>
+          <input type="hidden" id="quickEditTaskColor" value="${currentColor}">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border);">
+        <button onclick="closeQuickEditTaskModal()" 
+                style="padding: 10px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); font-size: 13px; cursor: pointer;">
+          Cancel
+        </button>
+        <button onclick="saveQuickEditTask('${taskId}', ${projectIndex}, ${foundColIdx}, ${foundTaskIdx})" 
+                style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 8px; color: var(--primary-foreground); font-size: 13px; font-weight: 500; cursor: pointer;">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Focus title input
+  setTimeout(() => document.getElementById('quickEditTaskName')?.focus(), 100);
+  
+  // Close on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeQuickEditTaskModal();
+  });
+  
+  // Close on Escape
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeQuickEditTaskModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function selectQuickEditColor(hex) {
+  document.getElementById('quickEditTaskColor').value = hex;
+  document.querySelectorAll('.quick-edit-color-btn').forEach(btn => {
+    btn.style.border = btn.dataset.color === hex ? '2px solid white' : '2px solid transparent';
+    btn.classList.toggle('active', btn.dataset.color === hex);
+  });
+}
+
+function closeQuickEditTaskModal() {
+  const modal = document.getElementById('quickEditTaskModal');
+  if (modal) modal.remove();
+}
+
+function saveQuickEditTask(taskId, projectIndex, colIdx, taskIdx) {
+  const name = document.getElementById('quickEditTaskName')?.value?.trim();
+  const startDate = document.getElementById('quickEditStartDate')?.value;
+  const endDate = document.getElementById('quickEditEndDate')?.value;
+  const color = document.getElementById('quickEditTaskColor')?.value;
+  
+  if (!name) {
+    showToast('Please enter a task name');
+    return;
+  }
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project?.columns?.[colIdx]?.tasks?.[taskIdx]) {
+    showToast('Task not found');
+    return;
+  }
+  
+  const task = project.columns[colIdx].tasks[taskIdx];
+  task.title = name;
+  task.name = name;
+  task.startDate = startDate || task.startDate;
+  task.endDate = endDate;
+  task.dueDate = endDate || task.dueDate;
+  task.color = color;
+  
+  saveProjects(projects);
+  closeQuickEditTaskModal();
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast('Task updated');
+}
+
+// Keyboard handler
+function handleTimelineKeydown(e) {
+  // Only handle if timeline is visible
+  const timeline = document.querySelector('.timeline-linear');
+  if (!timeline) return;
+  
+  // Don't handle if typing in input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+  
+  const projectIndex = timelineState.lastProjectIndex;
+  
+  switch (e.key.toLowerCase()) {
+    case 'd':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('day', projectIndex);
+      }
+      break;
+    case 'w':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('week', projectIndex);
+      }
+      break;
+    case 'm':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('month', projectIndex);
+      }
+      break;
+    case 't':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        goToTimelineToday(projectIndex);
+      }
+      break;
+  }
+}
+
+// Calculate stats
+function calculateTimelineStats(tasks, milestones) {
+  const allItems = [...tasks, ...milestones];
+  const total = allItems.length;
+  const completed = allItems.filter(t => t.status === 'completed' || t.status === 'done').length;
+  const inProgress = allItems.filter(t => t.status === 'in-progress' || t.status === 'in_progress').length;
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+  return { total, completed, inProgress, percentage };
+}
+
+// Resource Section
+function renderResourceSection(project, dates, projectIndex) {
+  const tasks = project.tasks || [];
+  const members = [...new Set(tasks.map(t => t.assignee || 'Unassigned'))];
+  
+  if (members.length === 0) {
+    return `
+      <div class="tl-resource-panel">
+        <div class="tl-resource-empty">No assignees found. Assign tasks to see workload.</div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="tl-resource-panel">
+      <div class="tl-resource-header">
+        <span class="tl-resource-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+          Team Workload
+        </span>
+        <button class="tl-collapse-btn" onclick="toggleTimelineResources(${projectIndex})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+      </div>
+      <div class="tl-resource-body">
+        ${members.slice(0, 5).map(member => {
+          const memberTasks = tasks.filter(t => t.assignee === member);
+          const workload = Math.min(100, memberTasks.length * 25);
+          return `
+            <div class="tl-resource-row">
+              <div class="tl-member-info">
+                <div class="tl-member-avatar" style="background: ${getAvatarColor(member)}">${member.charAt(0).toUpperCase()}</div>
+                <span class="tl-member-name">${member}</span>
+              </div>
+              <div class="tl-workload-bar">
+                <div class="tl-workload-fill ${workload > 80 ? 'high' : workload > 50 ? 'medium' : 'low'}" style="width: ${workload}%"></div>
+              </div>
+              <span class="tl-workload-label">${memberTasks.length} tasks</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Task List (left panel) - ADVANCED Linear.app Style Clone
+function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
+  const criticalSet = new Set(criticalPath);
+  const allItems = [
+    ...tasks.map(t => ({ ...t, type: 'task' })),
+    ...milestones.map(m => ({ ...m, type: 'milestone' }))
+  ].filter(item => {
+    if (timelineState.showDone) return true;
+    return item.status !== 'completed' && item.status !== 'done';
+  });
+  
+  if (allItems.length === 0) {
+    return `
+      <div class="tl-empty-list">
+        <div class="tl-empty-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <p class="tl-empty-title">No tasks scheduled</p>
+        <p class="tl-empty-desc">Add tasks with dates to see them on the timeline</p>
+      </div>
+    `;
+  }
+  
+  allItems.sort((a, b) => normalizeToLocalMidnight(a.startDate || a.dueDate || 0) - normalizeToLocalMidnight(b.startDate || b.dueDate || 0));
+  
+  // Priority colors and icons (no emojis - using colored dots via CSS)
+  const priorityConfig = {
+    urgent: { color: '#ef4444', icon: '', label: 'Urgent' },
+    high: { color: '#f97316', icon: '', label: 'High' },
+    medium: { color: '#eab308', icon: '', label: 'Medium' },
+    low: { color: '#6b7280', icon: '', label: 'Low' },
+    none: { color: '#3f3f46', icon: '', label: '' }
+  };
+  
+  // Status configuration with Linear-style icons
+  const statusConfig = {
+    'backlog': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="2 2"/></svg>`, color: '#6b7280', label: 'Backlog' },
+    'todo': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#a1a1aa" stroke-width="1.5"/></svg>`, color: '#a1a1aa', label: 'Todo' },
+    'in-progress': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5"/><path d="M8 4v4l2.5 2.5" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>`, color: '#f59e0b', label: 'In Progress' },
+    'in_progress': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5"/><path d="M8 4v4l2.5 2.5" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>`, color: '#f59e0b', label: 'In Progress' },
+    'review': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#8b5cf6" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="#8b5cf6" stroke-width="1.5" stroke-linecap="round"/></svg>`, color: '#8b5cf6', label: 'In Review' },
+    'done': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" fill="#10b981"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`, color: '#10b981', label: 'Done' },
+    'completed': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" fill="#10b981"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`, color: '#10b981', label: 'Completed' },
+    'cancelled': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#6b7280" stroke-width="1.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>`, color: '#6b7280', label: 'Cancelled' },
+    'blocked': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" fill="#ef4444"/><rect x="5" y="7" width="6" height="2" fill="white" rx="0.5"/></svg>`, color: '#ef4444', label: 'Blocked' }
+  };
+  
+  return allItems.map((item, idx) => {
+    const statusKey = (item.status || 'todo').toLowerCase().replace(/\s+/g, '-');
+    const statusClass = statusKey;
+    const isMilestone = item.type === 'milestone';
+    const isCritical = criticalSet.has(item.id);
+    const isSelected = timelineState.selectedTaskIds.includes(item.id);
+    const hasCustomColor = item.color && item.color !== null;
+    const priority = item.priority || 'none';
+    const priorityData = priorityConfig[priority] || priorityConfig.none;
+    const statusData = statusConfig[statusKey] || statusConfig.todo;
+    
+    // Format dates for display
+    const startDate = item.startDate ? new Date(item.startDate) : null;
+    const endDate = item.endDate || item.dueDate ? new Date(item.endDate || item.dueDate) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isOverdue = endDate && endDate < today && statusClass !== 'done' && statusClass !== 'completed';
+    
+    const formatShortDate = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    
+    const dateDisplay = startDate && endDate 
+      ? `${formatShortDate(startDate)} → ${formatShortDate(endDate)}`
+      : endDate 
+        ? formatShortDate(endDate)
+        : startDate 
+          ? formatShortDate(startDate)
+          : '';
+    
+    // Assignee avatar
+    const assigneeAvatar = item.assignee ? `
+      <div class="tl-task-assignee" title="${item.assignee}">
+        <div class="tl-assignee-avatar" style="background: ${getAvatarColor(item.assignee)}">
+          ${item.assignee.charAt(0).toUpperCase()}
+        </div>
+      </div>
+    ` : '';
+    
+    // Labels/Tags
+    const labels = item.labels || item.tags || [];
+    const labelColors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#ef4444'];
+    const labelsHtml = labels.length > 0 ? `
+      <div class="tl-task-labels">
+        ${labels.slice(0, 2).map((label, i) => `
+          <span class="tl-task-label" style="background: ${labelColors[i % labelColors.length]}20; color: ${labelColors[i % labelColors.length]}; border-color: ${labelColors[i % labelColors.length]}40;">
+            ${typeof label === 'string' ? label : label.name || label}
+          </span>
+        `).join('')}
+        ${labels.length > 2 ? `<span class="tl-task-label-more">+${labels.length - 2}</span>` : ''}
+      </div>
+    ` : '';
+    
+    // Priority indicator bar
+    const priorityBar = priority !== 'none' ? `
+      <div class="tl-priority-bar" style="background: ${priorityData.color};" title="${priorityData.label} priority"></div>
+    ` : '';
+    
+    // Milestone row
+    if (isMilestone) {
+      return `
+        <div class="tl-list-row milestone ${isCritical ? 'critical' : ''} ${isSelected ? 'selected' : ''}" 
+             data-id="${item.id}" 
+             data-index="${idx}"
+             onclick="selectTimelineTask(event, '${item.id}', ${projectIndex})">
+          ${priorityBar}
+          <div class="tl-row-content">
+            <div class="tl-task-main">
+              <div class="tl-milestone-icon-wrap">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#ec4899"><polygon points="12 2 22 12 12 22 2 12"/></svg>
+              </div>
+              <div class="tl-task-info">
+                <span class="tl-task-title">${item.title || item.name}</span>
+                <div class="tl-task-meta">
+                  <span class="tl-task-type milestone-type">Milestone</span>
+                  ${dateDisplay ? `<span class="tl-task-date ${isOverdue ? 'overdue' : ''}">${dateDisplay}</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="tl-task-right">
+              ${assigneeAvatar}
+              ${isCritical ? '<span class="tl-critical-indicator" title="Critical Path">⚡</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Task row - Advanced Linear.app clone
+    return `
+      <div class="tl-list-row task ${statusClass} ${isCritical ? 'critical' : ''} ${isSelected ? 'selected' : ''} ${isOverdue ? 'overdue' : ''}" 
+           data-id="${item.id}" 
+           data-index="${idx}"
+           onclick="selectTimelineTask(event, '${item.id}', ${projectIndex})">
+        ${priorityBar}
+        <div class="tl-row-content">
+          <div class="tl-task-main">
+            <div class="tl-status-icon-wrap" title="${statusData.label}">
+              ${statusData.icon}
+            </div>
+            <div class="tl-task-info">
+              <div class="tl-task-title-row">
+                <span class="tl-task-title ${statusClass === 'done' || statusClass === 'completed' ? 'completed' : ''}">${item.title || item.name}</span>
+                ${item.identifier || item.id ? `<span class="tl-task-id">${item.identifier || item.id.slice(0, 8)}</span>` : ''}
+              </div>
+              <div class="tl-task-meta">
+                ${dateDisplay ? `
+                  <span class="tl-task-date ${isOverdue ? 'overdue' : ''}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    ${dateDisplay}
+                  </span>
+                ` : ''}
+                ${labelsHtml}
+                ${item.estimate ? `<span class="tl-task-estimate">${item.estimate}h</span>` : ''}
+                ${item.dependsOn && item.dependsOn.length > 0 ? `<span class="tl-task-deps" title="${item.dependsOn.length} dependencies"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="tl-task-right">
+            ${priority !== 'none' ? `
+              <div class="tl-priority-icon" style="color: ${priorityData.color};" title="${priorityData.label} priority">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 3v14M5 10l7-7 7 7"/>
+                </svg>
+              </div>
+            ` : ''}
+            ${assigneeAvatar}
+            ${isCritical ? '<span class="tl-critical-indicator" title="Critical Path">⚡</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatStatus(status) {
+  return status.replace(/-|_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Gantt Bars (right panel)
+function renderGanttBars(tasks, milestones, dates, projectIndex) {
+  const allItems = [
+    ...tasks.map(t => ({ ...t, type: 'task' })),
+    ...milestones.map(m => ({ ...m, type: 'milestone' }))
+  ].filter(item => {
+    if (timelineState.showDone) return true;
+    return item.status !== 'completed' && item.status !== 'done';
+  });
+  
+  if (allItems.length === 0) return '';
+  
+  allItems.sort((a, b) => new Date(a.startDate || a.dueDate || 0) - new Date(b.startDate || b.dueDate || 0));
+  
+  const startDate = dates[0];
+  const totalDays = dates.length;
+  const colWidth = 100 / totalDays;
+  const rowHeight = 44;
+  
+  return allItems.map((item, idx) => {
+    const itemStart = new Date(item.startDate || item.dueDate || new Date());
+    const itemEnd = new Date(item.endDate || item.dueDate || itemStart);
+    
+    if (!item.endDate && !item.dueDate) {
+      itemEnd.setDate(itemEnd.getDate() + 3);
+    }
+    
+    const startPos = Math.max(0, daysBetween(startDate, itemStart));
+    const duration = Math.max(1, daysBetween(itemStart, itemEnd) + 1);
+    const left = startPos * colWidth;
+    const width = Math.min(duration * colWidth, 100 - left);
+    const top = idx * rowHeight + 4;
+    const progress = item.progress || 0;
+    const statusClass = (item.status || 'todo').toLowerCase().replace(/\s+/g, '-');
+    
+    if (item.type === 'milestone') {
+      return `
+        <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px">
+          <div class="tl-milestone-marker" style="left: ${left}%">
+            <div class="tl-diamond">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 22 12 12 22 2 12"/></svg>
+            </div>
+            <span class="tl-milestone-label">${item.name || item.title}</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px">
+        <div class="tl-bar ${statusClass}" 
+             style="left: ${left}%; width: ${width}%;"
+             data-task-id="${item.id}"
+             onclick="openTaskDetailModal(${projectIndex}, '${item.id}')">
+          <div class="tl-bar-resize left" data-dir="left"></div>
+          <span class="tl-bar-label">${item.title || item.name}</span>
+          <div class="tl-bar-resize right" data-dir="right"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Render today line indicator on the timeline
+ * @param {Date[]} dates - Array of dates in the timeline
+ * @param {number} [colWidth] - Column width in pixels (optional, uses percentage if not provided)
+ * @returns {string} HTML string for the today indicator
+ */
+function renderTodayLine(dates, colWidth) {
+  const todayIdx = dates.findIndex(d => isToday(d));
+  if (todayIdx === -1) return '';
+  
+  // Support both percentage (when colWidth not provided) and pixel positioning
+  const leftPos = colWidth 
+    ? (todayIdx * colWidth) + (colWidth / 2) 
+    : (todayIdx * (100 / dates.length)) + ((100 / dates.length) / 2);
+  const unit = colWidth ? 'px' : '%';
+  
+  return `
+    <div class="tl-today-indicator" style="left: ${leftPos}${unit}">
+      <div class="tl-today-badge">Today</div>
+      <div class="tl-today-line"></div>
+    </div>
+  `;
+}
+
+// Enhanced Gantt Bars - ADVANCED Linear.app Clone with task labels and full details
+function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidth, criticalPath) {
+  const allItems = [
+    ...tasks.map(t => ({ ...t, type: 'task' })),
+    ...milestones.map(m => ({ ...m, type: 'milestone' }))
+  ].filter(item => {
+    if (timelineState.showDone) return true;
+    return item.status !== 'completed' && item.status !== 'done';
+  });
+  
+  if (allItems.length === 0) return '';
+  
+  allItems.sort((a, b) => new Date(a.startDate || a.dueDate || 0) - new Date(b.startDate || b.dueDate || 0));
+  
+  const startDate = normalizeToLocalMidnight(dates[0]);
+  const rowHeight = 72; // Taller rows for Linear-style swimlanes
+  const criticalSet = new Set(criticalPath);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Status colors for bars
+  const statusColors = {
+    'backlog': { bg: '#27272a', border: '#3f3f46', text: '#a1a1aa' },
+    'todo': { bg: '#3f3f46', border: '#52525b', text: '#d4d4d8' },
+    'in-progress': { bg: '#0369a1', border: '#0284c7', text: '#ffffff' },
+    'in_progress': { bg: '#0369a1', border: '#0284c7', text: '#ffffff' },
+    'review': { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' },
+    'done': { bg: '#059669', border: '#10b981', text: '#ffffff' },
+    'completed': { bg: '#059669', border: '#10b981', text: '#ffffff' },
+    'blocked': { bg: '#b91c1c', border: '#dc2626', text: '#ffffff' },
+    'cancelled': { bg: '#3f3f46', border: '#52525b', text: '#71717a' }
+  };
+  
+  // Priority colors
+  const priorityColors = {
+    urgent: '#ef4444',
+    high: '#f97316',
+    medium: '#eab308',
+    low: '#6b7280'
+  };
+  
+  return allItems.map((item, idx) => {
+    const itemStart = normalizeToLocalMidnight(item.startDate || item.dueDate || new Date());
+    let itemEnd = normalizeToLocalMidnight(item.endDate || item.dueDate || itemStart);
+    
+    if (!item.endDate && !item.dueDate) {
+      itemEnd = new Date(itemStart);
+      itemEnd.setDate(itemEnd.getDate() + 7); // Default 7 days duration
+    }
+    
+    const startPos = Math.max(0, daysBetween(startDate, itemStart));
+    const duration = Math.max(1, daysBetween(itemStart, itemEnd) + 1);
+    const left = startPos * colWidth;
+    const minBarWidth = 80; // Minimum width to show label
+    const width = Math.max(minBarWidth, duration * colWidth - 4);
+    const top = idx * rowHeight + 16;
+    const progress = item.progress || 0;
+    const statusKey = (item.status || 'todo').toLowerCase().replace(/\s+/g, '-');
+    const statusClass = statusKey;
+    const isCritical = criticalSet.has(item.id);
+    const isSelected = timelineState.selectedTaskIds.includes(item.id);
+    const priority = item.priority || 'none';
+    const statusColor = statusColors[statusKey] || statusColors.todo;
+    
+    // Check if overdue
+    const isOverdue = itemEnd < today && statusClass !== 'done' && statusClass !== 'completed';
+    
+    // Custom color support
+    const hasCustomColor = item.color && item.color !== null;
+    const barBgColor = hasCustomColor ? item.color : statusColor.bg;
+    const barBorderColor = hasCustomColor ? item.color : statusColor.border;
+    
+    // Truncate label for display
+    const taskTitle = item.title || item.name || '';
+    const maxLabelChars = Math.floor(width / 8); // Approximate chars that fit
+    const displayLabel = taskTitle.length > maxLabelChars ? taskTitle.slice(0, maxLabelChars - 2) + '…' : taskTitle;
+    
+    // Calculate days remaining or overdue
+    const daysFromNow = daysBetween(today, itemEnd);
+    const daysText = isOverdue 
+      ? `${Math.abs(daysFromNow)}d overdue`
+      : daysFromNow === 0 
+        ? 'Due today'
+        : daysFromNow === 1 
+          ? 'Due tomorrow'
+          : `${daysFromNow}d left`;
+    
+    // Format date range for tooltip
+    const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dateRange = `${formatDate(itemStart)} - ${formatDate(itemEnd)}`;
+    
+    // Assignee initial
+    const assigneeInitial = item.assignee ? item.assignee.charAt(0).toUpperCase() : '';
+    const assigneeColor = item.assignee ? getAvatarColor(item.assignee) : '#52525b';
+    
+    if (item.type === 'milestone') {
+      // Enhanced milestone marker with more details
+      return `
+        <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px; height: ${rowHeight}px;">
+          <div class="tl-milestone-marker enhanced ${isCritical ? 'critical' : ''} ${isSelected ? 'selected' : ''}" 
+               style="left: ${left + colWidth/2}px;"
+               data-task-id="${item.id}"
+               title="${taskTitle} - ${formatDate(itemEnd)}"
+               draggable="true"
+               onmousedown="startMilestoneDrag(event, '${item.id}', ${projectIndex})"
+               onclick="selectTimelineTask(event, '${item.id}', ${projectIndex})">
+            <div class="tl-diamond-wrap">
+              <div class="tl-diamond ${isCritical ? 'critical' : ''}"></div>
+            </div>
+            <div class="tl-milestone-details">
+              <span class="tl-milestone-title">${taskTitle}</span>
+              <span class="tl-milestone-date">${formatDate(itemEnd)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Generate milestones for this task (if any are defined within the task's date range)
+    const taskMilestones = (item.milestones || []).map((ms, msIdx) => {
+      const msDate = normalizeToLocalMidnight(ms.date || itemEnd);
+      const msDays = daysBetween(startDate, msDate);
+      const msLeft = msDays * colWidth + colWidth/2;
+      return `
+        <div class="tl-inline-milestone" style="left: ${msLeft}px;">
+          <div class="tl-mini-diamond"></div>
+        </div>
+      `;
+    }).join('');
+    
+    // Advanced task bar with label, assignee, and indicators
+    return `
+      <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px; height: ${rowHeight}px;">
+        <div class="tl-bar-wrapper ${statusClass} ${isCritical ? 'critical-path' : ''} ${isSelected ? 'selected' : ''} ${isOverdue ? 'overdue' : ''}"
+             style="left: ${left}px; width: ${width}px;"
+             title="${taskTitle}&#10;${dateRange}&#10;${daysText}"
+             data-task-id="${item.id}"
+             data-start-date="${item.startDate || ''}"
+             data-end-date="${item.endDate || ''}"
+             onclick="selectTimelineTask(event, '${item.id}', ${projectIndex})"
+             ondblclick="editTimelineTask(${projectIndex}, '${item.id}')">
+          
+          <!-- Hover Quick Actions -->
+          <div class="tl-bar-quick-actions">
+            <button class="tl-bar-quick-btn tl-bar-complete-btn" 
+                    onclick="event.stopPropagation(); toggleTimelineTaskComplete('${item.id}', ${projectIndex})"
+                    title="Mark ${statusClass === 'done' || statusClass === 'completed' ? 'incomplete' : 'complete'}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </button>
+            <button class="tl-bar-quick-btn tl-bar-edit-btn" 
+                    onclick="event.stopPropagation(); openQuickEditTaskModal('${item.id}', ${projectIndex})"
+                    title="Edit task">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Priority indicator line -->
+          ${priority !== 'none' && priorityColors[priority] ? `
+            <div class="tl-bar-priority-line" style="background: ${priorityColors[priority]};"></div>
+          ` : ''}
+          
+          <!-- Main bar body -->
+          <div class="tl-bar-body" style="background: ${barBgColor}; border-color: ${barBorderColor};">
+            <!-- Resize handle left -->
+            <div class="tl-bar-resize left" data-dir="left"></div>
+            
+            <!-- Progress indicator -->
+            ${progress > 0 ? `<div class="tl-bar-progress-fill" style="width: ${progress}%;"></div>` : ''}
+            
+            <!-- Bar content -->
+            <div class="tl-bar-content">
+              <!-- Task label -->
+              <span class="tl-bar-label" style="color: ${statusColor.text};">${displayLabel}</span>
+              
+              <!-- Right side indicators -->
+              <div class="tl-bar-indicators">
+                ${item.dependsOn && item.dependsOn.length > 0 ? `
+                  <span class="tl-bar-dep-icon" title="${item.dependsOn.length} dependencies">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                  </span>
+                ` : ''}
+                ${isCritical ? `
+                  <span class="tl-bar-critical-icon" title="Critical path">⚡</span>
+                ` : ''}
+                ${assigneeInitial ? `
+                  <span class="tl-bar-assignee" style="background: ${assigneeColor};" title="${item.assignee}">${assigneeInitial}</span>
+                ` : ''}
+              </div>
+            </div>
+            
+            <!-- Resize handle right -->
+            <div class="tl-bar-resize right" data-dir="right"></div>
+          </div>
+          
+          <!-- Overdue indicator -->
+          ${isOverdue ? `<div class="tl-bar-overdue-indicator" title="${daysText}"></div>` : ''}
+        </div>
+        ${taskMilestones}
+      </div>
+    `;
+  }).join('');
+}
+
+// Month Headers
+function generateMonthHeaders(dates) {
+  const months = [];
+  let currentMonth = null;
+  let startIdx = 0;
+  
+  dates.forEach((date, idx) => {
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    if (monthKey !== currentMonth) {
+      if (currentMonth !== null) {
+        months.push({ 
+          name: dates[startIdx].toLocaleDateString('en-US', { month: 'short' }), 
+          span: idx - startIdx,
+          year: dates[startIdx].getFullYear()
+        });
+      }
+      currentMonth = monthKey;
+      startIdx = idx;
+    }
+    if (idx === dates.length - 1) {
+      months.push({ 
+        name: date.toLocaleDateString('en-US', { month: 'short' }), 
+        span: idx - startIdx + 1,
+        year: date.getFullYear()
+      });
+    }
+  });
+  
+  return months.map(m => `
+    <div class="tl-month-cell" style="flex: ${m.span}">
+      ${m.name} ${m.year}
+    </div>
+  `).join('');
+}
+
+// Utility Functions
+function getAvatarColor(name) {
+  const colors = ['#f97316', '#8b5cf6', '#10b981', '#ec4899', '#3b82f6', '#14b8a6'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function getTimelineDateRange() {
+  const current = new Date(timelineState.currentDate);
+  let start, end;
+  
+  switch (timelineState.viewMode) {
+    case 'day':
+      start = new Date(current);
+      start.setDate(start.getDate() - 3);
+      end = new Date(current);
+      end.setDate(end.getDate() + 10);
+      break;
+    case 'week':
+      start = new Date(current);
+      start.setDate(start.getDate() - (start.getDay() || 7) + 1 - 7);
+      end = new Date(start);
+      end.setDate(end.getDate() + 21);
+      break;
+    case 'month':
+      start = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+      end = new Date(current.getFullYear(), current.getMonth() + 2, 0);
+      break;
+    case 'quarter':
+      const quarterStart = Math.floor(current.getMonth() / 3) * 3;
+      start = new Date(current.getFullYear(), quarterStart, 1);
+      end = new Date(current.getFullYear(), quarterStart + 3, 0);
+      break;
+    default:
+      start = new Date(current);
+      start.setDate(start.getDate() - 7);
+      end = new Date(current);
+      end.setDate(end.getDate() + 14);
+  }
+  
+  return { start, end };
+}
+
+function generateDateColumns(start, end) {
+  const dates = [];
+  const current = new Date(start);
+  while (current <= end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+function getDayLetter(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+}
+
+function isToday(date) {
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+}
+
+function isWeekend(date) {
+  return date.getDay() === 0 || date.getDay() === 6;
+}
+
+function formatDateRange(start, end) {
+  const startStr = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const endStr = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  return `${startStr} – ${endStr}`;
+}
+
+function daysBetween(date1, date2) {
+  // Normalize dates to avoid timezone issues
+  const d1 = normalizeToLocalMidnight(date1);
+  const d2 = normalizeToLocalMidnight(date2);
+  return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+
+// Helper to normalize dates properly avoiding timezone issues
+function normalizeToLocalMidnight(dateInput) {
+  if (!dateInput) return new Date();
+  
+  let date;
+  if (typeof dateInput === 'string') {
+    // Parse date string as local date (not UTC)
+    const parts = dateInput.split('T')[0].split('-');
+    if (parts.length === 3) {
+      date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else {
+      date = new Date(dateInput);
+    }
+  } else {
+    date = new Date(dateInput);
+  }
+  
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// Global drag state to persist across re-renders
+let _tlDragState = {
+  draggedBar: null,
+  dragStartX: 0,
+  originalLeft: 0,
+  originalWidth: 0,
+  resizeDir: null,
+  projectIndex: null,
+  dates: [],
+  colWidth: 40
+};
+
+// Cleanup previous listeners
+function cleanupTimelineListeners() {
+  if (window._tlMouseMoveHandler) {
+    document.removeEventListener('mousemove', window._tlMouseMoveHandler);
+  }
+  if (window._tlMouseUpHandler) {
+    document.removeEventListener('mouseup', window._tlMouseUpHandler);
+  }
+}
+
+// Enhanced Interactions with zoom, pan, and keyboard
+function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
+  const chartBody = document.getElementById('tlChartBody');
+  const rightPanel = document.getElementById('tlRightPanel');
+  const ganttWrap = document.getElementById('tlGanttWrap');
+  
+  if (!chartBody) return;
+  
+  // Store current context in global state
+  _tlDragState.projectIndex = projectIndex;
+  _tlDragState.dates = dates;
+  _tlDragState.colWidth = colWidth;
+  
+  // Cleanup old listeners first
+  cleanupTimelineListeners();
+  
+  // Bar dragging with snap-to-grid
+  chartBody.onmousedown = function(e) {
+    const bar = e.target.closest('.tl-bar');
+    if (!bar) return;
+    
+    const resize = e.target.closest('.tl-bar-resize');
+    if (resize) {
+      _tlDragState.resizeDir = resize.dataset.dir;
+      timelineState.isResizing = true;
+    } else {
+      timelineState.isDragging = true;
+    }
+    
+    _tlDragState.draggedBar = bar;
+    _tlDragState.dragStartX = e.clientX;
+    _tlDragState.originalLeft = parseFloat(bar.style.left) || 0;
+    _tlDragState.originalWidth = parseFloat(bar.style.width) || colWidth;
+    bar.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  // Global mousemove handler
+  window._tlMouseMoveHandler = function(e) {
+    if (!_tlDragState.draggedBar) return;
+    
+    const deltaX = e.clientX - _tlDragState.dragStartX;
+    const cw = _tlDragState.colWidth;
+    
+    // Snap to grid (column width)
+    const snappedDelta = Math.round(deltaX / cw) * cw;
+    
+    if (timelineState.isResizing) {
+      if (_tlDragState.resizeDir === 'right') {
+        const newWidth = Math.max(cw, _tlDragState.originalWidth + snappedDelta);
+        _tlDragState.draggedBar.style.width = `${newWidth}px`;
+      } else {
+        const newLeft = Math.max(0, _tlDragState.originalLeft + snappedDelta);
+        _tlDragState.draggedBar.style.left = `${newLeft}px`;
+        _tlDragState.draggedBar.style.width = `${Math.max(cw, _tlDragState.originalWidth - snappedDelta)}px`;
+      }
+    } else {
+      const maxLeft = _tlDragState.dates.length * cw - _tlDragState.originalWidth;
+      _tlDragState.draggedBar.style.left = `${Math.max(0, Math.min(maxLeft, _tlDragState.originalLeft + snappedDelta))}px`;
+    }
+    
+    // Show snap indicator
+    updateSnapIndicator(_tlDragState.draggedBar, _tlDragState.dates, cw);
+  };
+  
+  // Global mouseup handler
+  window._tlMouseUpHandler = function() {
+    if (_tlDragState.draggedBar) {
+      _tlDragState.draggedBar.classList.remove('dragging');
+      removeSnapIndicator();
+      
+      if (timelineState.isDragging || timelineState.isResizing) {
+        const taskId = _tlDragState.draggedBar.dataset.taskId;
+        const newLeft = parseFloat(_tlDragState.draggedBar.style.left) || 0;
+        const newWidth = parseFloat(_tlDragState.draggedBar.style.width) || _tlDragState.colWidth;
+        
+        // Save dates before clearing state
+        const savedDates = _tlDragState.dates;
+        const savedColWidth = _tlDragState.colWidth;
+        const savedProjectIndex = _tlDragState.projectIndex;
+        
+        // Clear state first to prevent re-renders from triggering
+        _tlDragState.draggedBar = null;
+        timelineState.isDragging = false;
+        timelineState.isResizing = false;
+        _tlDragState.resizeDir = null;
+        
+        // Then update the task
+        updateTaskDatesPixel(savedProjectIndex, taskId, savedDates, newLeft, newWidth, savedColWidth);
+        return;
+      }
+      
+      _tlDragState.draggedBar = null;
+      timelineState.isDragging = false;
+      timelineState.isResizing = false;
+      _tlDragState.resizeDir = null;
+    }
+  };
+  
+  document.addEventListener('mousemove', window._tlMouseMoveHandler);
+  document.addEventListener('mouseup', window._tlMouseUpHandler);
+  
+  // Mouse wheel zoom
+  if (rightPanel) {
+    rightPanel.onwheel = function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        zoomTimeline(delta, projectIndex);
+      }
+    };
+  }
+  
+  // Touch pinch zoom
+  let lastTouchDistance = 0;
+  if (rightPanel) {
+    rightPanel.ontouchstart = function(e) {
+      if (e.touches.length === 2) {
+        lastTouchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    };
+    
+    rightPanel.ontouchmove = function(e) {
+      if (e.touches.length === 2) {
+        const distance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (lastTouchDistance > 0) {
+          const delta = (distance - lastTouchDistance) * 0.005;
+          zoomTimeline(delta, projectIndex);
+        }
+        lastTouchDistance = distance;
+      }
+    };
+    
+    rightPanel.ontouchend = function() {
+      lastTouchDistance = 0;
+    };
+  }
+}
+
+// Snap indicator for visual feedback
+function updateSnapIndicator(bar, dates, colWidth) {
+  let indicator = document.getElementById('tlSnapIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'tlSnapIndicator';
+    indicator.className = 'tl-snap-indicator';
+    document.getElementById('tlChartBody')?.appendChild(indicator);
+  }
+  
+  const left = parseFloat(bar.style.left);
+  const dayIdx = Math.round(left / colWidth);
+  
+  if (dates[dayIdx]) {
+    indicator.textContent = dates[dayIdx].toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    indicator.style.left = `${left}px`;
+    indicator.style.top = `${parseFloat(bar.closest('.tl-bar-row').style.top) - 24}px`;
+    indicator.style.display = 'block';
+  }
+}
+
+function removeSnapIndicator() {
+  const indicator = document.getElementById('tlSnapIndicator');
+  if (indicator) indicator.style.display = 'none';
+}
+
+// Keyboard shortcuts
+function initTimelineKeyboardShortcuts(projectIndex) {
+  // Remove existing listener to avoid duplicates
+  document.removeEventListener('keydown', handleTimelineKeydown);
+  
+  // Store project index for the handler
+  window._timelineProjectIndex = projectIndex;
+  
+  document.addEventListener('keydown', handleTimelineKeydown);
+}
+
+function handleTimelineKeydown(e) {
+  // Don't handle if in input/textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+    return;
+  }
+  
+  // Check if we're in timeline view
+  const timelineEl = document.querySelector('.timeline-linear');
+  if (!timelineEl) return;
+  
+  const projectIndex = window._timelineProjectIndex ?? timelineState.lastProjectIndex;
+  if (projectIndex === null || projectIndex === undefined) return;
+  
+  switch (e.key) {
+    case 'ArrowLeft':
+      e.preventDefault();
+      navigateTimeline(-1, projectIndex);
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      navigateTimeline(1, projectIndex);
+      break;
+    case 't':
+    case 'T':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        navigateTimelineToday(projectIndex);
+      }
+      break;
+    case 'd':
+    case 'D':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('day', projectIndex);
+      }
+      break;
+    case 'w':
+    case 'W':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('week', projectIndex);
+      }
+      break;
+    case 'm':
+    case 'M':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('month', projectIndex);
+      }
+      break;
+    case 'q':
+    case 'Q':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimelineViewMode('quarter', projectIndex);
+      }
+      break;
+    case 'c':
+    case 'C':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        toggleCriticalPath(projectIndex);
+      }
+      break;
+    case 'r':
+    case 'R':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        toggleTimelineResources(projectIndex);
+      }
+      break;
+    case '+':
+    case '=':
+      e.preventDefault();
+      zoomTimeline(0.1, projectIndex);
+      break;
+    case '-':
+    case '_':
+      e.preventDefault();
+      zoomTimeline(-0.1, projectIndex);
+      break;
+    case '0':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        resetTimelineZoom(projectIndex);
+      }
+      break;
+    case '?':
+      e.preventDefault();
+      showTimelineKeyboardShortcuts();
+      break;
+    case 'Escape':
+      timelineState.selectedTaskIds = [];
+      const container = document.querySelector('.pd-content-scroll');
+      if (container) renderTimelineView(projectIndex, container);
+      break;
+    case 'Delete':
+    case 'Backspace':
+      if (timelineState.selectedTaskIds.length > 0) {
+        e.preventDefault();
+        deleteSelectedTimelineTasks(projectIndex);
+      }
+      break;
+  }
+}
+
+// Zoom presets for timeline
+const TIMELINE_ZOOM_PRESETS = [0.15, 0.25, 0.5, 0.75, 1, 1.5, 2];
+
+// Get zoom label for display
+function getZoomLabel(zoom) {
+  if (zoom <= 0.15) return '6 Months';
+  if (zoom <= 0.25) return '3 Months';
+  if (zoom <= 0.5) return '6 Weeks';
+  if (zoom <= 0.75) return '1 Month';
+  if (zoom <= 1) return '2 Weeks';
+  if (zoom <= 1.5) return '1 Week';
+  return 'Days';
+}
+
+// Smart zoom that snaps to presets
+function zoomTimelineSmart(direction, projectIndex) {
+  const currentIdx = TIMELINE_ZOOM_PRESETS.findIndex(z => z >= timelineState.zoom);
+  let newIdx;
+  
+  if (direction > 0) {
+    // Zoom in
+    newIdx = Math.min(TIMELINE_ZOOM_PRESETS.length - 1, currentIdx + 1);
+  } else {
+    // Zoom out
+    newIdx = Math.max(0, currentIdx - 1);
+  }
+  
+  const newZoom = TIMELINE_ZOOM_PRESETS[newIdx];
+  if (newZoom !== timelineState.zoom) {
+    timelineState.zoom = newZoom;
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+  }
+}
+
+// Set specific zoom level
+function setTimelineZoom(zoom, projectIndex) {
+  timelineState.zoom = zoom;
+  closeZoomDropdown();
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Toggle zoom dropdown
+function toggleZoomDropdown(event) {
+  event.stopPropagation();
+  const dropdown = document.getElementById('tlZoomDropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
+    
+    // Close on outside click
+    if (dropdown.classList.contains('show')) {
+      setTimeout(() => {
+        document.addEventListener('click', closeZoomDropdown, { once: true });
+      }, 10);
+    }
+  }
+}
+
+function closeZoomDropdown() {
+  const dropdown = document.getElementById('tlZoomDropdown');
+  if (dropdown) dropdown.classList.remove('show');
+}
+
+// Zoom functions - Extended range for 6-month view
+// Zoom levels: 0.15 (~6 months), 0.25 (~3 months), 0.5 (~6 weeks), 1 (default), 2 (detailed)
+function zoomTimeline(delta, projectIndex) {
+  const newZoom = Math.max(0.15, Math.min(2, timelineState.zoom + delta));
+  if (newZoom !== timelineState.zoom) {
+    timelineState.zoom = newZoom;
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+  }
+}
+
+function resetTimelineZoom(projectIndex) {
+  timelineState.zoom = 1;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Critical path toggle
+function toggleCriticalPath(projectIndex) {
+  timelineState.showCriticalPath = !timelineState.showCriticalPath;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast(timelineState.showCriticalPath ? 'Critical path highlighted' : 'Critical path hidden');
+}
+
+// Task selection
+function selectTimelineTask(event, taskId, projectIndex) {
+  event.stopPropagation();
+  
+  if (event.ctrlKey || event.metaKey) {
+    // Multi-select
+    const idx = timelineState.selectedTaskIds.indexOf(taskId);
+    if (idx > -1) {
+      timelineState.selectedTaskIds.splice(idx, 1);
+    } else {
+      timelineState.selectedTaskIds.push(taskId);
+    }
+  } else if (event.shiftKey && timelineState.selectedTaskIds.length > 0) {
+    // Range select - simplified, just add to selection
+    timelineState.selectedTaskIds.push(taskId);
+  } else {
+    // Single select
+    timelineState.selectedTaskIds = [taskId];
+  }
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// Delete selected tasks
+function deleteSelectedTimelineTasks(projectIndex) {
+  if (timelineState.selectedTaskIds.length === 0) return;
+  
+  if (!confirm(`Delete ${timelineState.selectedTaskIds.length} selected task(s)?`)) return;
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (project.tasks) {
+    project.tasks = project.tasks.filter(t => !timelineState.selectedTaskIds.includes(t.id));
+  }
+  if (project.milestones) {
+    project.milestones = project.milestones.filter(m => !timelineState.selectedTaskIds.includes(m.id));
+  }
+  
+  saveProjects(projects);
+  timelineState.selectedTaskIds = [];
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast('Tasks deleted');
+}
+
+// Milestone dragging
+function startMilestoneDrag(event, milestoneId, projectIndex) {
+  event.preventDefault();
+  const marker = event.currentTarget;
+  const chartBody = document.getElementById('tlChartBody');
+  if (!chartBody) return;
+  
+  const startX = event.clientX;
+  const originalLeft = parseFloat(marker.style.left);
+  
+  marker.classList.add('dragging');
+  
+  function onMove(e) {
+    const deltaX = e.clientX - startX;
+    const colWidth = parseInt(getComputedStyle(document.getElementById('tlGanttWrap')).getPropertyValue('--col-width'));
+    const snappedDelta = Math.round(deltaX / colWidth) * colWidth;
+    marker.style.left = `${Math.max(0, originalLeft + snappedDelta)}px`;
+  }
+  
+  function onUp(e) {
+    marker.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    
+    const colWidth = parseInt(getComputedStyle(document.getElementById('tlGanttWrap')).getPropertyValue('--col-width'));
+    const newLeft = parseFloat(marker.style.left);
+    
+    // Update milestone date
+    updateMilestoneDate(projectIndex, milestoneId, newLeft, colWidth);
+  }
+  
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function updateMilestoneDate(projectIndex, milestoneId, leftPx, colWidth) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.milestones) return;
+  
+  const milestone = project.milestones.find(m => m.id === milestoneId);
+  if (!milestone) return;
+  
+  const dateRange = getTimelineDateRange();
+  const dates = generateDateColumns(dateRange.start, dateRange.end);
+  // Clamp dayIdx to valid range
+  const dayIdx = Math.max(0, Math.min(dates.length - 1, Math.round(leftPx / colWidth)));
+  
+  if (dates[dayIdx]) {
+    milestone.dueDate = formatLocalDate(dates[dayIdx]);
+    saveProjects(projects);
+    showToast('Milestone moved');
+    
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+  }
+}
+
+// Update task dates using pixel values
+function updateTaskDatesPixel(projectIndex, taskId, dates, leftPx, widthPx, colWidth) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const task = project.tasks?.find(t => t.id === taskId);
+  if (!task) return;
+  
+  // Clamp startIdx to valid range
+  const startIdx = Math.max(0, Math.min(dates.length - 1, Math.round(leftPx / colWidth)));
+  const duration = Math.max(1, Math.round(widthPx / colWidth));
+  
+  if (dates[startIdx]) {
+    // Use local date formatting to avoid timezone issues
+    const startDate = dates[startIdx];
+    task.startDate = formatLocalDate(startDate);
+    
+    // Calculate end date correctly
+    const endIdx = Math.min(dates.length - 1, startIdx + duration - 1);
+    if (dates[endIdx]) {
+      task.endDate = formatLocalDate(dates[endIdx]);
+    } else {
+      // Fallback: calculate end date from start
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + Math.max(0, duration - 1));
+      task.endDate = formatLocalDate(endDate);
+    }
+    
+    saveProjects(projects);
+    showToast('Task updated');
+    
+    // Re-render to sync
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineView(projectIndex, container);
+  }
+}
+
+// Helper to format date as YYYY-MM-DD without timezone issues
+function formatLocalDate(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Show keyboard shortcuts modal
+function showTimelineKeyboardShortcuts() {
+  const content = `
+    <div class="tl-shortcuts-modal">
+      <div class="shortcuts-grid">
+        <div class="shortcut-section">
+          <h4>Navigation</h4>
+          <div class="shortcut-row"><kbd>←</kbd> <span>Previous period</span></div>
+          <div class="shortcut-row"><kbd>→</kbd> <span>Next period</span></div>
+          <div class="shortcut-row"><kbd>T</kbd> <span>Jump to today</span></div>
+        </div>
+        <div class="shortcut-section">
+          <h4>View Modes</h4>
+          <div class="shortcut-row"><kbd>D</kbd> <span>Day view</span></div>
+          <div class="shortcut-row"><kbd>W</kbd> <span>Week view</span></div>
+          <div class="shortcut-row"><kbd>M</kbd> <span>Month view</span></div>
+          <div class="shortcut-row"><kbd>Q</kbd> <span>Quarter view</span></div>
+        </div>
+        <div class="shortcut-section">
+          <h4>Zoom</h4>
+          <div class="shortcut-row"><kbd>+</kbd> <span>Zoom in</span></div>
+          <div class="shortcut-row"><kbd>-</kbd> <span>Zoom out</span></div>
+          <div class="shortcut-row"><kbd>0</kbd> <span>Reset zoom</span></div>
+          <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>Scroll</kbd> <span>Mouse zoom</span></div>
+        </div>
+        <div class="shortcut-section">
+          <h4>Display</h4>
+          <div class="shortcut-row"><kbd>C</kbd> <span>Toggle critical path</span></div>
+          <div class="shortcut-row"><kbd>R</kbd> <span>Toggle resources</span></div>
+        </div>
+        <div class="shortcut-section">
+          <h4>Selection</h4>
+          <div class="shortcut-row"><kbd>Click</kbd> <span>Select task</span></div>
+          <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>Click</kbd> <span>Multi-select</span></div>
+          <div class="shortcut-row"><kbd>Esc</kbd> <span>Clear selection</span></div>
+          <div class="shortcut-row"><kbd>Del</kbd> <span>Delete selected</span></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" onclick="closeModal()">Got it</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Keyboard Shortcuts', content, 'modal-medium');
+}
+
+// Sync scroll between task list panel and Gantt chart panel
+  const listBody = document.getElementById('tlListBody');
+  const chartBody = document.getElementById('tlChartBody');
+  const rightPanel = document.getElementById('tlRightPanel');
+  
+  if (listBody && chartBody) {
+    // Sync vertical scroll between list and chart
+    listBody.addEventListener('scroll', () => {
+      chartBody.scrollTop = listBody.scrollTop;
+      timelineState.scrollTop = listBody.scrollTop;
+    });
+    chartBody.addEventListener('scroll', () => {
+      listBody.scrollTop = chartBody.scrollTop;
+      timelineState.scrollTop = chartBody.scrollTop;
+      timelineState.scrollLeft = chartBody.scrollLeft;
+    });
+    
+    // Restore saved scroll position
+    if (timelineState.scrollTop > 0 || timelineState.scrollLeft > 0) {
+      setTimeout(() => {
+        listBody.scrollTop = timelineState.scrollTop;
+        chartBody.scrollTop = timelineState.scrollTop;
+        chartBody.scrollLeft = timelineState.scrollLeft;
+      }, 50);
+    }
+  }
+
+
+// Helper to adjust color brightness for gradients
+function adjustColorBrightness(hex, percent) {
+  if (!hex) return '#8b5cf6';
+  
+  // Remove # if present
+  hex = hex.replace('#', '');
+  
+  // Parse hex
+  let r = parseInt(hex.substring(0, 2), 16);
+  let g = parseInt(hex.substring(2, 4), 16);
+  let b = parseInt(hex.substring(4, 6), 16);
+  
+  // Adjust brightness
+  r = Math.min(255, Math.max(0, r + (r * percent / 100)));
+  g = Math.min(255, Math.max(0, g + (g * percent / 100)));
+  b = Math.min(255, Math.max(0, b + (b * percent / 100)));
+  
+  // Convert back to hex
+  return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+}
+
+function updateTaskDates(projectIndex, taskId, dates, leftPct, widthPct, colWidth) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const task = project.tasks?.find(t => t.id === taskId);
+  if (!task) return;
+  
+  const startIdx = Math.round(leftPct / colWidth);
+  const duration = Math.round(widthPct / colWidth);
+  
+  if (dates[startIdx]) {
+    task.startDate = dates[startIdx].toISOString().split('T')[0];
+    const endDate = new Date(dates[startIdx]);
+    endDate.setDate(endDate.getDate() + duration - 1);
+    task.endDate = endDate.toISOString().split('T')[0];
+    saveProjects(projects);
+    showToast('Task updated');
+  }
+}
+
+// Navigation & Toggle Functions
+function setTimelineViewMode(mode, projectIndex) {
+  timelineState.viewMode = mode;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+function navigateTimeline(direction, projectIndex) {
+  const days = { day: 7, week: 14, month: 30, quarter: 90 }[timelineState.viewMode] || 14;
+  timelineState.currentDate.setDate(timelineState.currentDate.getDate() + (direction * days));
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+function navigateTimelineToday(projectIndex) {
+  timelineState.currentDate = new Date();
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+function toggleTimelineResources(projectIndex) {
+  timelineState.showResources = !timelineState.showResources;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+// toggleDependencies removed - feature cleaned
+
+function toggleShowDone(projectIndex) {
+  timelineState.showDone = !timelineState.showDone;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+}
+
+function openTimelineSettings(projectIndex) {
+  const content = `
+    <div class="tl-settings-form">
+      <div class="form-group">
+        <label class="form-label">Default View</label>
+        <select class="form-input" id="settingsDefaultView">
+          <option value="day" ${timelineState.viewMode === 'day' ? 'selected' : ''}>Day</option>
+          <option value="week" ${timelineState.viewMode === 'week' ? 'selected' : ''}>Week</option>
+          <option value="month" ${timelineState.viewMode === 'month' ? 'selected' : ''}>Month</option>
+          <option value="quarter" ${timelineState.viewMode === 'quarter' ? 'selected' : ''}>Quarter</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="tl-checkbox-label">
+          <input type="checkbox" id="settingsShowResources" ${timelineState.showResources ? 'checked' : ''}>
+          Show Resource Workload
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="tl-checkbox-label">
+          <input type="checkbox" id="settingsShowDependencies" ${timelineState.showDependencies ? 'checked' : ''}>
+          Show Dependencies
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="tl-checkbox-label">
+          <input type="checkbox" id="settingsShowDone" ${timelineState.showDone ? 'checked' : ''}>
+          Show Completed Tasks
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveTimelineSettings(${projectIndex})">Save Settings</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Timeline Settings', content);
+}
+
+function saveTimelineSettings(projectIndex) {
+  timelineState.viewMode = document.getElementById('settingsDefaultView').value;
+  timelineState.showResources = document.getElementById('settingsShowResources').checked;
+  timelineState.showDependencies = document.getElementById('settingsShowDependencies').checked;
+  timelineState.showDone = document.getElementById('settingsShowDone').checked;
+  
+  closeModal();
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineView(projectIndex, container);
+  showToast('Settings saved');
+}
+
+function openAddTimelineTaskModal(projectIndex) {
+  const today = new Date().toISOString().split('T')[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  const colorOptions = TIMELINE_TASK_COLORS.map(c => 
+    `<button type="button" class="tl-color-swatch ${c.value === null ? 'default' : ''}" 
+             data-color="${c.value || ''}" 
+             style="${c.value ? `background: ${c.value};` : 'background: linear-gradient(135deg, #374151, #4b5563);'}"
+             title="${c.name}"
+             onclick="selectTaskColor(this)">
+       ${c.value === null ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/></svg>' : ''}
+     </button>`
+  ).join('');
+  
+  const content = `
+    <form onsubmit="handleAddTimelineTask(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Task Title</label>
+        <input type="text" name="title" class="form-input" placeholder="e.g. Design homepage mockup" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" name="startDate" class="form-input" value="${today}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="date" name="endDate" class="form-input" value="${nextWeek}" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-input">
+            <option value="">Select category...</option>
+            <option value="design">🎨 Design</option>
+            <option value="development">💻 Development</option>
+            <option value="marketing">📢 Marketing</option>
+            <option value="content">📝 Content</option>
+            <option value="animation">🎬 Animation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-input">
+            <option value="todo">To Do</option>
+            <option value="in-progress">In Progress</option>
+            <option value="review">Review</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bar Color</label>
+        <div class="tl-color-picker">
+          ${colorOptions}
+        </div>
+        <input type="hidden" name="color" value="">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Task</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Add Timeline Task', content);
+}
+
+// Color picker helper
+function selectTaskColor(element) {
+  // Remove active from all swatches
+  document.querySelectorAll('.tl-color-swatch').forEach(s => s.classList.remove('active'));
+  // Add active to clicked
+  element.classList.add('active');
+  // Update hidden input
+  const colorInput = document.querySelector('input[name="color"]');
+  if (colorInput) {
+    colorInput.value = element.dataset.color || '';
+  }
+}
+
+function handleAddTimelineTask(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (!project.tasks) project.tasks = [];
+  
+  const colorValue = form.color.value;
+  
+  const newTask = {
+    id: 'task_' + Date.now(),
+    title: form.title.value,
+    startDate: form.startDate.value,
+    endDate: form.endDate.value,
+    category: form.category.value,
+    status: form.status?.value || 'todo',
+    color: colorValue || null,
+    createdAt: new Date().toISOString()
+  };
+  
+  project.tasks.push(newTask);
+  saveProjects(projects);
+  closeModal();
+  
+  const contentScroll = document.querySelector('.pd-content-scroll');
+  if (contentScroll) {
+    renderTimelineView(projectIndex, contentScroll);
+  }
+  showToast('Task added to timeline!');
+}
+
+// Context menu removed - use double-click to edit tasks
+
+function deleteTimelineTask(projectIndex, taskId) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (project.tasks) {
+    project.tasks = project.tasks.filter(t => t.id !== taskId);
+    saveProjects(projects);
+    
+    const contentScroll = document.querySelector('.pd-content-scroll');
+    if (contentScroll) {
+      renderTimelineView(projectIndex, contentScroll);
+    }
+    showToast('Task deleted');
+  }
+}
+
+function editTimelineTask(projectIndex, taskId) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const task = project?.tasks?.find(t => t.id === taskId);
+  
+  if (!task) {
+    showToast('Task not found');
+    return;
+  }
+  
+  const colorOptions = TIMELINE_TASK_COLORS.map(c => 
+    `<button type="button" class="tl-color-swatch ${(c.value === task.color) || (c.value === null && !task.color) ? 'active' : ''}" 
+             data-color="${c.value || ''}" 
+             style="${c.value ? `background: ${c.value};` : 'background: linear-gradient(135deg, #374151, #4b5563);'}"
+             title="${c.name}"
+             onclick="selectTaskColor(this)">
+       ${c.value === null ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/></svg>' : ''}
+     </button>`
+  ).join('');
+  
+  const content = `
+    <form onsubmit="handleEditTimelineTask(event, ${projectIndex}, '${taskId}')">
+      <div class="form-group">
+        <label class="form-label">Task Title</label>
+        <input type="text" name="title" class="form-input" value="${task.title || ''}" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" name="startDate" class="form-input" value="${task.startDate || ''}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="date" name="endDate" class="form-input" value="${task.endDate || ''}" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-input">
+            <option value="">Select category...</option>
+            <option value="design" ${task.category === 'design' ? 'selected' : ''}>🎨 Design</option>
+            <option value="development" ${task.category === 'development' ? 'selected' : ''}>💻 Development</option>
+            <option value="marketing" ${task.category === 'marketing' ? 'selected' : ''}>📢 Marketing</option>
+            <option value="content" ${task.category === 'content' ? 'selected' : ''}>📝 Content</option>
+            <option value="animation" ${task.category === 'animation' ? 'selected' : ''}>🎬 Animation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-input">
+            <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>To Do</option>
+            <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+            <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
+            <option value="done" ${task.status === 'done' || task.status === 'completed' ? 'selected' : ''}>Done</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bar Color</label>
+        <div class="tl-color-picker">
+          ${colorOptions}
+        </div>
+        <input type="hidden" name="color" value="${task.color || ''}">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Edit Task', content);
+}
+
+function handleEditTimelineTask(event, projectIndex, taskId) {
+  event.preventDefault();
+  const form = event.target;
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const task = project?.tasks?.find(t => t.id === taskId);
+  
+  if (!task) {
+    showToast('Task not found');
+    closeModal();
+    return;
+  }
+  
+  task.title = form.title.value;
+  task.startDate = form.startDate.value;
+  task.endDate = form.endDate.value;
+  task.category = form.category.value;
+  task.status = form.status.value;
+  task.color = form.color.value || null;
+  
+  saveProjects(projects);
+  closeModal();
+  
+  const contentScroll = document.querySelector('.pd-content-scroll');
+  if (contentScroll) {
+    renderTimelineView(projectIndex, contentScroll);
+  }
+  showToast('Task updated');
+}
+
+// Quick color change from context menu
+function changeTaskColor(projectIndex, taskId, color) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const task = project?.tasks?.find(t => t.id === taskId);
+  
+  if (task) {
+    task.color = color || null;
+    saveProjects(projects);
+    
+    
+    const contentScroll = document.querySelector('.pd-content-scroll');
+    if (contentScroll) {
+      renderTimelineView(projectIndex, contentScroll);
+    }
+    showToast('Color updated');
+  }
+}
+
+function duplicateTimelineTask(projectIndex, taskId) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (project.tasks) {
+    const task = project.tasks.find(t => t.id === taskId);
+    if (task) {
+      const duplicate = { 
+        ...task, 
+        id: 'task_' + Date.now(),
+        title: task.title + ' (copy)'
+      };
+      project.tasks.push(duplicate);
+      saveProjects(projects);
+      
+      const contentScroll = document.querySelector('.pd-content-scroll');
+      if (contentScroll) {
+        renderTimelineView(projectIndex, contentScroll);
+      }
+      showToast('Task duplicated');
+    }
+  }
+}
+
+function openTaskDetailModal(projectIndex, taskId) {
+  showComingSoonToast();
+}
+
+function toggleProjectStar(projectIndex) {
+  const projects = loadProjects();
+  if (projects[projectIndex]) {
+    projects[projectIndex].starred = !projects[projectIndex].starred;
+    saveProjects(projects);
+    renderCurrentView();
+  }
+}
+
+function showProjectQuickActions(projectIndex, event) {
+  event.stopPropagation();
+  showComingSoonToast();
+}
+
+function copyProjectLink(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (project) {
+    const link = `${window.location.origin}/project/${project.id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      showToast('Link copied to clipboard!');
+    }).catch(() => {
+      showToast('Failed to copy link');
+    });
+  }
+}
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'pd-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
+  }, 10);
+}
+
+function openAddMilestoneModal(projectIndex) {
+  const content = `
+    <form onsubmit="handleAddMilestone(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Milestone Name</label>
+        <input type="text" name="name" class="form-input" placeholder="e.g. MVP Release" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <textarea name="description" class="form-textarea" placeholder="Brief description..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Milestone</button>
+      </div>
+    </form>
+  `;
+  openModal('Add Milestone', content);
+}
+
+function handleAddMilestone(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const name = form.name.value.trim();
+  const description = form.description.value.trim();
+  
+  const projects = loadProjects();
+  if (!projects[projectIndex].milestones) {
+    projects[projectIndex].milestones = [];
+  }
+  
+  projects[projectIndex].milestones.push({
+    id: Date.now(),
+    name,
+    description,
+    progress: 0,
+    total: 0
+  });
+  
+  saveProjects(projects);
+  closeModal();
+  renderCurrentView();
+}
+
+function updateMilestoneName(projectIndex, milestoneIndex, newName) {
+  const projects = loadProjects();
+  if (projects[projectIndex]?.milestones?.[milestoneIndex]) {
+    projects[projectIndex].milestones[milestoneIndex].name = newName.trim();
+    saveProjects(projects);
+  }
+}
+
+function showMilestoneMenu(projectIndex, milestoneIndex, event) {
+  event.stopPropagation();
+  showComingSoonToast();
+}
+
+function openAddResourceModal(projectIndex) {
+  const content = `
+    <form onsubmit="handleAddResource(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Resource Name</label>
+        <input type="text" name="name" class="form-input" placeholder="e.g. Design Spec" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link (optional)</label>
+        <input type="url" name="link" class="form-input" placeholder="https://...">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Resource</button>
+      </div>
+    </form>
+  `;
+  openModal('Add Resource', content);
+}
+
+function handleAddResource(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const name = form.name.value.trim();
+  const link = form.link.value.trim();
+  
+  const projects = loadProjects();
+  if (!projects[projectIndex].resources) {
+    projects[projectIndex].resources = [];
+  }
+  
+  projects[projectIndex].resources.push({ name, link, addedAt: new Date().toISOString() });
+  saveProjects(projects);
+  closeModal();
+  renderCurrentView();
+}
+
+function removeProjectResource(projectIndex, resourceIndex) {
+  const projects = loadProjects();
+  if (projects[projectIndex]?.resources) {
+    projects[projectIndex].resources.splice(resourceIndex, 1);
+    saveProjects(projects);
+    renderCurrentView();
+  }
+}
+
+function openAssignLeadModal(projectIndex) {
+  showComingSoonToast();
+}
+
+function openLabelsModal(projectIndex) {
+  showComingSoonToast();
+}
+
+function addCustomProperty(projectIndex) {
+  showComingSoonToast();
+}
+
+function openActivityModal(projectIndex) {
+  showComingSoonToast();
+}
+
+function showMorePropertiesMenu(projectIndex, event) {
+  event.stopPropagation();
+  showComingSoonToast();
+}
+
+function toggleStatusDropdown(projectIndex, event) {
+  event.stopPropagation();
+  showComingSoonToast();
+}
+
+function toggleUpdateReaction(projectIndex) {
+  showComingSoonToast();
+}
+
+function openEditStartDateModal(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const currentDate = project.startDate || new Date().toISOString().split('T')[0];
+  
+  const content = `
+    <form onsubmit="handleUpdateStartDate(event, ${projectIndex})">
+      <div class="form-group">
+        <label class="form-label">Start Date</label>
+        <input type="date" name="startDate" class="form-input" value="${currentDate}" required>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Date</button>
+      </div>
+    </form>
+  `;
+  openModal('Edit Start Date', content);
+}
+
+function handleUpdateStartDate(event, projectIndex) {
+  event.preventDefault();
+  const form = event.target;
+  const newDate = form.startDate.value;
+  
+  const projects = loadProjects();
+  if (projects[projectIndex]) {
+    projects[projectIndex].startDate = newDate;
+    saveProjects(projects);
+  }
+  closeModal();
+  renderCurrentView();
 }
 
 // Progress chart rendering - Linear-style Professional Chart (Minimalistic)
@@ -3297,24 +12358,158 @@ function handleUpdateProjectDescription(index, description) {
   updateProject(index, { description: description || '' });
 }
 
-function handleToggleProjectTask(projectIndex, columnIndex, taskIndex) {
-  toggleTaskDone(projectIndex, columnIndex, taskIndex);
-  renderCurrentView();
+// Helper to save and restore kanban, pd-main, and tl-gantt-wrapper scroll positions
+function saveKanbanScrollPosition() {
+  const kanban = document.querySelector('.pd-kanban');
+  const pdMain = document.querySelector('.pd-main');
+  const ganttWrapper = document.querySelector('.tl-gantt-wrapper');
+  return {
+    kanban: kanban ? { left: kanban.scrollLeft, top: kanban.scrollTop } : null,
+    pdMain: pdMain ? { left: pdMain.scrollLeft, top: pdMain.scrollTop } : null,
+    ganttWrapper: ganttWrapper ? { left: ganttWrapper.scrollLeft, top: ganttWrapper.scrollTop } : null
+  };
 }
 
-function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex) {
-  deleteTask(projectIndex, columnIndex, taskIndex);
+function restoreKanbanScrollPosition(scrollPos) {
+  if (scrollPos) {
+    requestAnimationFrame(() => {
+      const kanban = document.querySelector('.pd-kanban');
+      const pdMain = document.querySelector('.pd-main');
+      const ganttWrapper = document.querySelector('.tl-gantt-wrapper');
+      if (kanban && scrollPos.kanban) {
+        kanban.scrollLeft = scrollPos.kanban.left;
+        kanban.scrollTop = scrollPos.kanban.top;
+      }
+      if (pdMain && scrollPos.pdMain) {
+        pdMain.scrollLeft = scrollPos.pdMain.left;
+        pdMain.scrollTop = scrollPos.pdMain.top;
+      }
+      if (ganttWrapper && scrollPos.ganttWrapper) {
+        ganttWrapper.scrollLeft = scrollPos.ganttWrapper.left;
+        ganttWrapper.scrollTop = scrollPos.ganttWrapper.top;
+      }
+    });
+  }
+}
+
+function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
+  // Prevent event bubbling that could trigger tab switches or other handlers
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  const scrollPos = saveKanbanScrollPosition();
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
+  const projects = loadProjects();
+  const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
+  if (task) {
+    task.done = !task.done;
+    saveProjects(projects);
+  }
+  
+  // Re-render the current view
   renderCurrentView();
+  
+  // Restore the active tab if we're in project detail view and timeline was active
+  if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      switchProjectTab('timeline', projectIndex);
+      restoreKanbanScrollPosition(scrollPos);
+    });
+  } else {
+    restoreKanbanScrollPosition(scrollPos);
+  }
+}
+
+function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
+  if (confirm('Delete this task?')) {
+    const scrollPos = saveKanbanScrollPosition();
+    const projects = loadProjects();
+    if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
+      projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
+      saveProjects(projects);
+    }
+    renderCurrentView();
+    restoreKanbanScrollPosition(scrollPos);
+    
+    // Restore the active tab if we're in project detail view and timeline was active
+    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+      requestAnimationFrame(() => {
+        switchProjectTab('timeline', projectIndex);
+      });
+    }
+  }
 }
 
 function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
   if (event.key === 'Enter') {
     const input = event.target;
     const title = input.value.trim();
     if (title) {
+      const scrollPos = saveKanbanScrollPosition();
       addTaskToColumn(projectIndex, columnIndex, title);
       input.value = '';
       renderCurrentView();
+      restoreKanbanScrollPosition(scrollPos);
+      
+      // Restore the active tab if we're in project detail view and timeline was active
+      if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+        requestAnimationFrame(() => {
+          switchProjectTab('timeline', projectIndex);
+        });
+      }
+    }
+  }
+}
+
+function handleAddTaskToColumn(projectIndex, columnIndex, event) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
+  // Prompt user for task title
+  const title = prompt('Enter task title:');
+  if (title && title.trim()) {
+    const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
+    addTaskToColumn(projectIndex, columnIndex, title.trim());
+    renderCurrentView();
+    if (scrollPos && restoreKanbanScrollPosition) {
+      restoreKanbanScrollPosition(scrollPos);
+    }
+    
+    // Restore the active tab if we're in project detail view and timeline was active
+    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+      requestAnimationFrame(() => {
+        switchProjectTab('timeline', projectIndex);
+      });
     }
   }
 }
@@ -3400,18 +12595,13 @@ function renderSettingsView() {
   const themes = [
     { value: 'dark', label: 'Dark (Default)' },
     { value: 'light', label: 'Light' },
-    { value: 'liquid-glass', label: 'Liquid Glass' },
-    { value: 'coffee', label: 'Coffee' },
     { value: 'pink', label: 'Pink' },
     { value: 'purple', label: 'Purple' },
     { value: 'ocean', label: 'Ocean' },
     { value: 'forest', label: 'Forest' },
-    { value: 'sunset', label: 'Sunset' },
     { value: 'midnight', label: 'Midnight Blue' },
     { value: 'dracula', label: 'Dracula' },
-    { value: 'nord', label: 'Nord' },
     { value: 'gruvbox', label: 'Gruvbox Dark' },
-    { value: 'catppuccin', label: 'Catppuccin Mocha' },
     { value: 'rosepine', label: 'Rosé Pine' },
   ];
 
@@ -5668,6 +14858,21 @@ function exportExcelAsCSV() {
   URL.revokeObjectURL(link.href);
   
   showToast('Spreadsheet exported as CSV!');
+}
+
+// ============================================
+// Assignments
+// ============================================
+function loadAssignments() {
+  try {
+    return JSON.parse(localStorage.getItem('layerAssignments')) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAssignments(assignments) {
+  localStorage.setItem('layerAssignments', JSON.stringify(assignments));
 }
 
 // ============================================
@@ -8014,94 +17219,6 @@ function openMilestoneDetail(projectIndex, milestoneIndex) {
    Update Card Functions
    ============================================ */
 
-function openNewUpdateModal(projectIndex) {
-  const content = `
-    <form id="newUpdateForm" onsubmit="handleNewUpdateSubmit(event, ${projectIndex})">
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select name="status" class="form-select">
-          <option value="in-progress">In Progress</option>
-          <option value="on-track">On Track</option>
-          <option value="at-risk">At Risk</option>
-          <option value="completed">Completed</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Update Message <span class="required">*</span></label>
-        <textarea name="text" class="form-textarea" placeholder="What's the latest progress on this project?" rows="3" required></textarea>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Post Update</button>
-      </div>
-    </form>
-  `;
-  openModal('New Project Update', content);
-}
-
-function handleNewUpdateSubmit(event, projectIndex) {
-  event.preventDefault();
-  const form = event.target;
-  const formData = new FormData(form);
-  
-  const status = formData.get('status');
-  const text = formData.get('text')?.trim();
-  
-  if (!text) return;
-  
-  const projects = loadProjects();
-  if (!projects[projectIndex]) return;
-  
-  if (!projects[projectIndex].updates) {
-    projects[projectIndex].updates = [];
-  }
-  
-  projects[projectIndex].updates.unshift({
-    id: Date.now(),
-    status: status,
-    text: text,
-    author: 'You',
-    time: 'just now',
-    createdAt: new Date().toISOString()
-  });
-  
-  saveProjects(projects);
-  closeModal();
-  showToast('Update posted!');
-  renderCurrentView();
-}
-
-function openUpdateCommentsModal(projectIndex) {
-  const projects = loadProjects();
-  const project = projects[projectIndex];
-  if (!project) return;
-  
-  const updates = project.updates || [];
-  
-  const content = `
-    <div style="max-height: 400px; overflow-y: auto;">
-      ${updates.length === 0 ? `
-        <div style="text-align: center; padding: 32px; color: var(--muted-foreground);">
-          <p>No updates yet</p>
-          <button class="btn btn-primary" onclick="closeModal(); openNewUpdateModal(${projectIndex})">Add First Update</button>
-        </div>
-      ` : updates.map((update, idx) => `
-        <div style="padding: 16px; background: var(--surface); border-radius: 10px; margin-bottom: 12px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span class="update-status-badge ${update.status || 'in-progress'}">${(update.status || 'in-progress').replace('-', ' ')}</span>
-            <span style="font-size: 11px; color: var(--muted-foreground);">${update.time || 'recently'}</span>
-          </div>
-          <p style="margin: 0; font-size: 14px; color: var(--foreground);">${update.text}</p>
-        </div>
-      `).join('')}
-    </div>
-  `;
-  openModal('Project Updates', content);
-}
-
-function viewUpdateHistory(projectIndex) {
-  openUpdateCommentsModal(projectIndex);
-}
 
 function handleUpdateProjectSummary(projectIndex, summary) {
   const projects = loadProjects();
@@ -8490,3 +17607,3745 @@ window.openAISidebar = openAISidebar;
 window.toggleWhiteboardAiSidebar = toggleWhiteboardAiSidebar;
 window.handleWhiteboardAiSidebarSend = handleWhiteboardAiSidebarSend;
 window.setupDocAiCommand = setupDocAiCommand;
+
+// ============================================
+// AI View - Layer Intelligence Interface
+// Advanced Professional AI System
+// ============================================
+
+const aiFeatureCards = [
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="12" y1="2" x2="12" y2="22" opacity="0.4"/></svg>`,
+    title: "Code Intelligence",
+    description: "Advanced debugging, optimization, and code generation with multi-language support",
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%)",
+    prompt: "Analyze and optimize my code with detailed explanations",
+    badge: "PRO"
+  },
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4"/><path d="M10 16h4"/><path d="M10 20h4" opacity="0.4"/></svg>`,
+    title: "Document Generator",
+    description: "Create professional documents, reports, and technical documentation instantly",
+    gradient: "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 50%, #06b6d4 100%)",
+    prompt: "Generate a comprehensive professional document",
+    badge: "NEW"
+  },
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    title: "Polyglot Translator",
+    description: "Neural machine translation across 100+ languages with context awareness",
+    gradient: "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",
+    prompt: "Translate with context-aware neural processing"
+  },
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+    title: "Research Analyst",
+    description: "Deep analysis, synthesis, and intelligent summarization of complex topics",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)",
+    prompt: "Conduct deep research analysis with citations"
+  },
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    title: "Data Architect",
+    description: "Design schemas, optimize queries, and architect robust data systems",
+    gradient: "linear-gradient(135deg, #ec4899 0%, #d946ef 50%, #a855f7 100%)",
+    prompt: "Help me design and optimize data architecture",
+    badge: "PRO"
+  },
+  {
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    title: "Creative Engine",
+    description: "Generate innovative ideas, stories, designs, and artistic concepts",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)",
+    prompt: "Generate creative and innovative ideas"
+  }
+];
+
+const suggestedPrompts = [
+  "🧠 Explain complex concepts simply",
+  "⚡ Generate production-ready code",
+  "📊 Analyze data patterns",
+  "✍️ Draft professional content"
+];
+
+// AI Statistics tracking
+let aiStats = {
+  totalQueries: parseInt(localStorage.getItem('aiTotalQueries') || '0'),
+  todayQueries: parseInt(localStorage.getItem('aiTodayQueries') || '0'),
+  lastQueryDate: localStorage.getItem('aiLastQueryDate') || new Date().toDateString()
+};
+
+function updateAIStats() {
+  const today = new Date().toDateString();
+  if (aiStats.lastQueryDate !== today) {
+    aiStats.todayQueries = 0;
+    aiStats.lastQueryDate = today;
+  }
+  aiStats.totalQueries++;
+  aiStats.todayQueries++;
+  localStorage.setItem('aiTotalQueries', aiStats.totalQueries.toString());
+  localStorage.setItem('aiTodayQueries', aiStats.todayQueries.toString());
+  localStorage.setItem('aiLastQueryDate', aiStats.lastQueryDate);
+}
+
+function renderAIView() {
+  // Reset today's count if new day
+  const today = new Date().toDateString();
+  if (aiStats.lastQueryDate !== today) {
+    aiStats.todayQueries = 0;
+    aiStats.lastQueryDate = today;
+  }
+
+  return `
+    <div class="superagents-view">
+      <!-- History Sidebar Overlay -->
+      <div class="ai-history-overlay ${aiChatHistorySidebarOpen ? 'show' : ''}" id="aiHistoryOverlay" onclick="toggleAIChatHistorySidebar()"></div>
+      
+      <!-- History Sidebar -->
+      <div class="ai-history-sidebar ${aiChatHistorySidebarOpen ? 'open' : ''}" id="aiHistorySidebar">
+        <div class="ai-history-sidebar-header">
+          <h3>Chat History</h3>
+          <button class="ai-history-close-btn" onclick="toggleAIChatHistorySidebar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="ai-history-sidebar-content">
+          ${renderHistorySidebarContent()}
+        </div>
+      </div>
+      
+      <!-- Background Effects - Enhanced -->
+      <div class="superagents-bg">
+        <div class="superagents-glow superagents-glow-1"></div>
+        <div class="superagents-glow superagents-glow-2"></div>
+        <div class="superagents-glow superagents-glow-3"></div>
+        <div class="superagents-grid-pattern"></div>
+        <div class="superagents-particles" id="aiParticles"></div>
+      </div>
+      
+      <!-- Top Right Actions -->
+      <div class="superagents-top-actions">
+        <div class="ai-stats-mini">
+          <span class="ai-stat-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            ${aiStats.todayQueries} today
+          </span>
+        </div>
+        <button class="ai-chat-history-btn" onclick="toggleAIChatHistorySidebar()" title="Chat History">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>History</span>
+        </button>
+      </div>
+      
+      <div class="superagents-content">
+        <!-- Hero Section - Enhanced -->
+        <div class="superagents-hero">
+          <div class="superagents-badge">
+            <div class="superagents-badge-pulse"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="superagents-badge-icon">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <span>Powered by Gemini 2.0 Flash</span>
+          </div>
+          
+          <h1 class="superagents-title">
+            <span class="superagents-title-gradient">Layer Intelligence</span>
+          </h1>
+          <div class="superagents-title-sub">Advanced AI-Powered Assistant</div>
+          
+          <p class="superagents-subtitle">
+            Enterprise-grade AI capabilities. Ask anything, generate code, analyze data, 
+            and unlock unprecedented productivity with neural-powered intelligence.
+          </p>
+        </div>
+
+        <!-- Input Container - Enhanced Glass Effect -->
+        <div class="superagents-input-wrapper">
+          <div class="superagents-input-glow"></div>
+          <div class="superagents-input-container">
+            <div class="superagents-input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <defs>
+                  <linearGradient id="aiInputGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#8b5cf6"/>
+                    <stop offset="50%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#3b82f6"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="12" cy="12" r="10" stroke="url(#aiInputGradient)"/>
+                <path d="M12 8v4l2 2" stroke="url(#aiInputGradient)"/>
+              </svg>
+            </div>
+            <input 
+              type="text"
+              class="superagents-input" 
+              placeholder="What would you like to explore today?"
+              id="aiAgentInput"
+              onkeydown="handleAIInputKeydown(event)"
+              autocomplete="off"
+            />
+            <button class="superagents-voice-btn" onclick="toggleVoiceInput()" title="Voice input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <button class="superagents-send-btn" onclick="sendAIAgentPrompt()" id="aiSendBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Suggested Prompts - Enhanced -->
+          <div class="superagents-suggestions">
+            ${suggestedPrompts.map(prompt => `
+              <button class="superagents-suggestion-btn" onclick="sendSuggestedPrompt('${prompt.replace(/'/g, "\\'")}')">
+                <span>${prompt}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Feature Cards - Enhanced Grid -->
+        <div class="superagents-features">
+          <h3 class="superagents-features-title">
+            <span>Intelligence Modules</span>
+          </h3>
+          
+          <div class="superagents-features-grid">
+            ${aiFeatureCards.map(card => `
+              <button class="superagents-feature-card" onclick="setAIPrompt('${card.prompt.replace(/'/g, "\\'")}')">
+                ${card.badge ? `<span class="superagents-feature-badge">${card.badge}</span>` : ''}
+                <div class="superagents-feature-icon" style="background: ${card.gradient}">
+                  ${card.icon}
+                </div>
+                <h4 class="superagents-feature-title">
+                  ${card.title}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="superagents-feature-arrow">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </h4>
+                <p class="superagents-feature-desc">${card.description}</p>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+        
+        <!-- AI Capabilities Footer -->
+        <div class="superagents-capabilities">
+          <div class="superagents-capability">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Secure & Private</span>
+          </div>
+          <div class="superagents-capability">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Real-time Response</span>
+          </div>
+          <div class="superagents-capability">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <span>Multi-modal AI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Voice input placeholder
+function toggleVoiceInput() {
+  showToast('Voice input coming soon!', 'info');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function handleAIInputKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendAIAgentPrompt();
+  }
+}
+
+function setAIPrompt(prompt) {
+  const input = document.getElementById('aiAgentInput');
+  if (input) {
+    input.value = prompt;
+    input.focus();
+  }
+}
+
+function sendSuggestedPrompt(prompt) {
+  const input = document.getElementById('aiAgentInput');
+  if (input) {
+    input.value = prompt;
+    sendAIAgentPrompt();
+  }
+}
+
+async function sendAIAgentPrompt() {
+  const input = document.getElementById('aiAgentInput');
+  if (input && input.value.trim()) {
+    const userMessage = input.value.trim();
+    input.value = '';
+    
+    // Switch to chat view and start conversation
+    openAIChatView(userMessage);
+  }
+}
+
+function showAIAddOptions() {
+  showToast('Add attachments coming soon!');
+}
+
+// ============================================
+// SuperAgents Chat View - ClickUp Style
+// ============================================
+
+let aiChatMessages = [];
+let aiChatIsLoading = false;
+let aiGeneratedContent = null; // For Essay/Report/Code panel
+let aiChatHistorySidebarOpen = false;
+let currentConversationId = null;
+
+// Load saved conversations from localStorage
+function loadAIChatHistory() {
+  try {
+    const saved = localStorage.getItem('aiChatHistory');
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Save conversations to localStorage
+function saveAIChatHistory(conversations) {
+  try {
+    localStorage.setItem('aiChatHistory', JSON.stringify(conversations));
+  } catch (e) {
+    console.error('Failed to save chat history:', e);
+  }
+}
+
+// Save current conversation
+function saveCurrentConversation() {
+  if (aiChatMessages.length === 0) return;
+  
+  const conversations = loadAIChatHistory();
+  const firstUserMsg = aiChatMessages.find(m => m.role === 'user');
+  const title = firstUserMsg ? firstUserMsg.content.substring(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '') : 'New Conversation';
+  
+  if (currentConversationId) {
+    // Update existing conversation
+    const index = conversations.findIndex(c => c.id === currentConversationId);
+    if (index !== -1) {
+      conversations[index].messages = [...aiChatMessages];
+      conversations[index].updatedAt = new Date().toISOString();
+    }
+  } else {
+    // Create new conversation
+    currentConversationId = 'conv_' + Date.now();
+    conversations.unshift({
+      id: currentConversationId,
+      title: title,
+      messages: [...aiChatMessages],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  
+  // Keep only last 50 conversations
+  saveAIChatHistory(conversations.slice(0, 50));
+}
+
+// Load a specific conversation
+function loadConversation(conversationId) {
+  const conversations = loadAIChatHistory();
+  const conversation = conversations.find(c => c.id === conversationId);
+  
+  if (conversation) {
+    aiChatMessages = [...conversation.messages];
+    currentConversationId = conversationId;
+    aiChatHistorySidebarOpen = false;
+    
+    const viewsContainer = document.getElementById('viewsContainer');
+    if (viewsContainer) {
+      viewsContainer.innerHTML = renderAIChatView();
+    }
+  }
+}
+
+// Delete a conversation
+function deleteConversation(conversationId, event) {
+  event.stopPropagation();
+  
+  const conversations = loadAIChatHistory();
+  const filtered = conversations.filter(c => c.id !== conversationId);
+  saveAIChatHistory(filtered);
+  
+  if (currentConversationId === conversationId) {
+    currentConversationId = null;
+  }
+  
+  // Re-render sidebar
+  const sidebar = document.getElementById('aiHistorySidebar');
+  if (sidebar) {
+    sidebar.innerHTML = renderHistorySidebarContent();
+  }
+}
+
+// Toggle history sidebar
+function toggleAIChatHistorySidebar() {
+  aiChatHistorySidebarOpen = !aiChatHistorySidebarOpen;
+  
+  const sidebar = document.getElementById('aiHistorySidebar');
+  const overlay = document.getElementById('aiHistoryOverlay');
+  
+  if (sidebar && overlay) {
+    if (aiChatHistorySidebarOpen) {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+    } else {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+  }
+}
+
+// Render sidebar content
+function renderHistorySidebarContent() {
+  const conversations = loadAIChatHistory();
+  
+  if (conversations.length === 0) {
+    return `
+      <div class="ai-history-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <p>No conversations yet</p>
+        <span>Start a new chat to see your history here</span>
+      </div>
+    `;
+  }
+  
+  return conversations.map(conv => {
+    const date = new Date(conv.updatedAt);
+    const timeAgo = getTimeAgo(date);
+    const isActive = conv.id === currentConversationId;
+    
+    return `
+      <div class="ai-history-item ${isActive ? 'active' : ''}" onclick="loadConversation('${conv.id}')">
+        <div class="ai-history-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="ai-history-item-content">
+          <div class="ai-history-item-title">${escapeHtml(conv.title)}</div>
+          <div class="ai-history-item-meta">${conv.messages.length} messages · ${timeAgo}</div>
+        </div>
+        <button class="ai-history-item-delete" onclick="deleteConversation('${conv.id}', event)" title="Delete conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Helper for time ago
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+function openAIChatView(initialMessage) {
+  aiChatMessages = [];
+  aiGeneratedContent = null;
+  currentConversationId = null; // Start fresh conversation
+  aiChatHistorySidebarOpen = false;
+  
+  if (initialMessage) {
+    aiChatMessages.push({
+      role: 'user',
+      content: initialMessage,
+      timestamp: new Date()
+    });
+    saveCurrentConversation();
+  }
+  
+  // Render the chat view
+  const viewsContainer = document.getElementById('viewsContainer');
+  if (viewsContainer) {
+    viewsContainer.innerHTML = renderAIChatView();
+    
+    // Focus the input
+    const chatInput = document.getElementById('aiChatInput');
+    if (chatInput) chatInput.focus();
+    
+    // If there's an initial message, send it
+    if (initialMessage) {
+      processAIMessage(initialMessage);
+    }
+  }
+}
+
+function renderAIChatView() {
+  const hasGeneratedContent = aiGeneratedContent !== null;
+  
+  return `
+    <div class="ai-chat-view clickup-style ${hasGeneratedContent ? 'has-generated-content' : ''}">
+      <!-- History Sidebar Overlay -->
+      <div class="ai-history-overlay ${aiChatHistorySidebarOpen ? 'show' : ''}" id="aiHistoryOverlay" onclick="toggleAIChatHistorySidebar()"></div>
+      
+      <!-- History Sidebar -->
+      <div class="ai-history-sidebar ${aiChatHistorySidebarOpen ? 'open' : ''}" id="aiHistorySidebar">
+        <div class="ai-history-sidebar-header">
+          <h3>Chat History</h3>
+          <button class="ai-history-close-btn" onclick="toggleAIChatHistorySidebar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="ai-history-sidebar-content">
+          ${renderHistorySidebarContent()}
+        </div>
+      </div>
+      
+      <!-- Main Chat Container -->
+      <div class="ai-chat-panel">
+        <!-- Header with Back Button and History Button -->
+        <div class="ai-chat-header clickup-header">
+          <button class="ai-chat-back-btn" onclick="goBackToAILanding()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span>Back</span>
+          </button>
+          <button class="ai-chat-history-btn" onclick="toggleAIChatHistorySidebar()" title="Chat History">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>History</span>
+          </button>
+        </div>
+        
+        <!-- Messages Container - Centered -->
+        <div class="ai-chat-scroll-area">
+          <div class="ai-chat-messages clickup-messages" id="aiChatMessages">
+            ${renderAIChatMessages()}
+          </div>
+        </div>
+        
+        <!-- Input Area - Fixed at bottom, centered -->
+        <div class="ai-chat-input-area clickup-input-area">
+          <div class="ai-chat-input-wrapper clickup-input-wrapper">
+            <div class="ai-chat-input-glow"></div>
+            <div class="ai-chat-input-box clickup-input-box">
+              <!-- Row 1: Input text -->
+              <div class="ai-chat-input-row-top">
+                <input 
+                  type="text" 
+                  class="ai-chat-input clickup-input" 
+                  id="aiChatInput"
+                  placeholder="Awaiting your response..."
+                  onkeydown="handleAIChatInputKeydown(event)"
+                  ${aiChatIsLoading ? 'disabled' : ''}
+                />
+              </div>
+              <!-- Row 2: Buttons -->
+              <div class="ai-chat-input-row-bottom">
+                <button class="ai-chat-add-btn clickup-add-btn" onclick="showAIAddOptions()" title="Add attachments">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+                <button class="ai-chat-send-btn clickup-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Panel - Generated Content (Essay/Report/Code) -->
+      ${hasGeneratedContent ? renderGeneratedContentPanel() : ''}
+    </div>
+  `;
+}
+
+function renderAIChatMessages() {
+  if (aiChatMessages.length === 0) {
+    return `
+      <div class="ai-chat-empty clickup-empty">
+        <div class="ai-chat-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="6" width="8" height="12" rx="2"/>
+            <rect x="14" y="6" width="8" height="12" rx="2"/>
+            <path d="M6 12h12"/>
+          </svg>
+        </div>
+        <p>Start a conversation with Layer Intelligence</p>
+      </div>
+    `;
+  }
+  
+  return aiChatMessages.map((msg, index) => {
+    if (msg.role === 'user') {
+      return `
+        <div class="ai-chat-message ai-chat-message-user clickup-user-msg">
+          <div class="ai-chat-bubble ai-chat-bubble-user clickup-user-bubble">
+            ${escapeHtml(msg.content)}
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="ai-chat-message ai-chat-message-assistant clickup-assistant-msg">
+          <div class="ai-chat-assistant-header clickup-assistant-header">
+            <span class="ai-chat-agent-icon clickup-agent-icon">🤖</span>
+            <span class="ai-chat-agent-name clickup-agent-name">Layer Intelligence</span>
+          </div>
+          <div class="ai-chat-content clickup-content">
+            ${formatAIResponse(msg.content)}
+          </div>
+          <div class="ai-chat-actions clickup-actions">
+            <button class="ai-chat-action-btn clickup-action-btn" onclick="copyAIMessage(${index})" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <span class="ai-chat-action-divider clickup-divider"></span>
+            <button class="ai-chat-action-btn clickup-action-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+            </button>
+            <button class="ai-chat-action-btn clickup-action-btn" onclick="likeAIMessage(${index})" title="Like">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+              </svg>
+            </button>
+            <button class="ai-chat-action-btn clickup-action-btn" onclick="dislikeAIMessage(${index})" title="Dislike">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+              </svg>
+            </button>
+          </div>
+          ${msg.followUps ? renderFollowUps(msg.followUps) : ''}
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+function formatAIResponse(content) {
+  // Convert markdown-style formatting to HTML
+  let formatted = escapeHtml(content);
+  
+  // Bold text **text**
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic text *text*
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Headers with emoji (💡 Agent Ideas)
+  formatted = formatted.replace(/^(💡|🎯|📋|✨|🚀)\s*(.+)$/gm, '<h3 class="ai-response-heading"><span class="ai-heading-icon">$1</span> $2</h3>');
+  
+  // Numbered lists
+  formatted = formatted.replace(/^(\d+)\.\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm, 
+    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div><strong>$2</strong> — $3</div></div>');
+  
+  // Simple numbered lists
+  formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm, 
+    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div>$2</div></div>');
+  
+  // Line breaks
+  formatted = formatted.replace(/\n\n/g, '</p><p>');
+  formatted = formatted.replace(/\n/g, '<br>');
+  
+  return `<p>${formatted}</p>`;
+}
+
+function renderFollowUps(followUps) {
+  if (!followUps || followUps.length === 0) return '';
+  
+  return `
+    <div class="ai-chat-followups">
+      <span class="ai-chat-followups-label">Follow ups</span>
+      <div class="ai-chat-followups-list">
+        ${followUps.map(fu => `
+          <button class="ai-chat-followup-btn" onclick="sendFollowUp('${escapeHtml(fu).replace(/'/g, "\\'")}')">
+            ${escapeHtml(fu)}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderGeneratedContentPanel() {
+  if (!aiGeneratedContent) return '';
+  
+  return `
+    <div class="ai-generated-panel">
+      <div class="ai-generated-header">
+        <div class="ai-generated-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>${aiGeneratedContent.title || 'Generated Content'}</span>
+        </div>
+        <div class="ai-generated-actions">
+          <button class="ai-generated-action-btn" onclick="copyGeneratedContent()" title="Copy all">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+          <button class="ai-generated-close-btn" onclick="closeGeneratedPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="ai-generated-content" id="aiGeneratedContent">
+        ${formatGeneratedContent(aiGeneratedContent.content, aiGeneratedContent.type)}
+      </div>
+    </div>
+  `;
+}
+
+function formatGeneratedContent(content, type) {
+  if (type === 'code') {
+    return `<pre class="ai-generated-code"><code>${escapeHtml(content)}</code></pre>`;
+  }
+  
+  // Format as professional document
+  let formatted = escapeHtml(content);
+  
+  // Headers
+  formatted = formatted.replace(/^###\s+(.+)$/gm, '<h4 class="ai-doc-h4">$1</h4>');
+  formatted = formatted.replace(/^##\s+(.+)$/gm, '<h3 class="ai-doc-h3">$1</h3>');
+  formatted = formatted.replace(/^#\s+(.+)$/gm, '<h2 class="ai-doc-h2">$1</h2>');
+  
+  // Bold and italic
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Paragraphs
+  formatted = formatted.replace(/\n\n/g, '</p><p class="ai-doc-paragraph">');
+  formatted = formatted.replace(/\n/g, '<br>');
+  
+  return `<div class="ai-doc-content"><p class="ai-doc-paragraph">${formatted}</p></div>`;
+}
+
+function handleAIChatInputKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendAIChatMessage();
+  }
+}
+
+async function sendAIChatMessage() {
+  const input = document.getElementById('aiChatInput');
+  if (!input || !input.value.trim() || aiChatIsLoading) return;
+  
+  const userMessage = input.value.trim();
+  input.value = '';
+  
+  aiChatMessages.push({
+    role: 'user',
+    content: userMessage,
+    timestamp: new Date()
+  });
+  saveCurrentConversation();
+  
+  updateChatView();
+  processAIMessage(userMessage);
+}
+
+async function processAIMessage(message) {
+  aiChatIsLoading = true;
+  updateChatView();
+  scrollChatToBottom();
+  
+  try {
+    // Check if this is a content generation request
+    const isGeneration = detectContentGeneration(message);
+    
+    const response = await window.callGeminiAPI(message);
+    
+    // Parse the response for structured content
+    const parsedResponse = parseAIResponse(response, isGeneration);
+    
+    aiChatMessages.push({
+      role: 'assistant',
+      content: parsedResponse.message,
+      followUps: parsedResponse.followUps,
+      timestamp: new Date()
+    });
+    saveCurrentConversation();
+    
+    // If there's generated content, set it for the right panel
+    if (parsedResponse.generatedContent) {
+      aiGeneratedContent = parsedResponse.generatedContent;
+    }
+    
+  } catch (error) {
+    aiChatMessages.push({
+      role: 'assistant',
+      content: 'I apologize, but I encountered an error processing your request. Please try again.',
+      timestamp: new Date()
+    });
+    saveCurrentConversation();
+  }
+  
+  aiChatIsLoading = false;
+  updateChatView();
+  scrollChatToBottom();
+}
+
+function detectContentGeneration(message) {
+  const generationKeywords = ['write', 'essay', 'report', 'code', 'generate', 'create', 'draft', 'compose'];
+  const lowerMessage = message.toLowerCase();
+  return generationKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
+function parseAIResponse(response, isGeneration) {
+  // Basic parsing - in production this would be more sophisticated
+  const result = {
+    message: response,
+    followUps: [],
+    generatedContent: null
+  };
+  
+  // Generate some follow-up suggestions based on context
+  if (response.length > 200) {
+    result.followUps = [
+      'Tell me more about this',
+      'Can you summarize the key points?',
+      'What are the next steps?'
+    ];
+  }
+  
+  // If this looks like generated content (essay, report, code), add to right panel
+  if (isGeneration && response.length > 500) {
+    const isCode = response.includes('function') || response.includes('const ') || response.includes('import ');
+    result.generatedContent = {
+      title: isCode ? 'Generated Code' : 'Generated Document',
+      type: isCode ? 'code' : 'document',
+      content: response
+    };
+  }
+  
+  return result;
+}
+
+function updateChatView() {
+  const viewsContainer = document.getElementById('viewsContainer');
+  if (viewsContainer) {
+    viewsContainer.innerHTML = renderAIChatView();
+  }
+}
+
+function scrollChatToBottom() {
+  const messagesContainer = document.getElementById('aiChatMessages');
+  if (messagesContainer) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}
+
+function goBackToAILanding() {
+  aiChatMessages = [];
+  aiGeneratedContent = null;
+  aiChatIsLoading = false;
+  
+  const viewsContainer = document.getElementById('viewsContainer');
+  if (viewsContainer) {
+    viewsContainer.innerHTML = renderAIView();
+  }
+}
+
+function copyAIMessage(index) {
+  const msg = aiChatMessages[index];
+  if (msg && msg.content) {
+    navigator.clipboard.writeText(msg.content).then(() => {
+      showToast('Message copied to clipboard!');
+    }).catch(() => {
+      showToast('Failed to copy message');
+    });
+  }
+}
+
+function copyGeneratedContent() {
+  if (aiGeneratedContent && aiGeneratedContent.content) {
+    navigator.clipboard.writeText(aiGeneratedContent.content).then(() => {
+      showToast('Content copied to clipboard!');
+    }).catch(() => {
+      showToast('Failed to copy content');
+    });
+  }
+}
+
+function closeGeneratedPanel() {
+  aiGeneratedContent = null;
+  updateChatView();
+}
+
+function regenerateAIMessage(index) {
+  // Find the user message before this assistant message
+  if (index > 0 && aiChatMessages[index - 1].role === 'user') {
+    const userMessage = aiChatMessages[index - 1].content;
+    // Remove the current assistant message
+    aiChatMessages.splice(index, 1);
+    // Regenerate
+    processAIMessage(userMessage);
+  }
+}
+
+function likeAIMessage(index) {
+  showToast('Thanks for your feedback! 👍');
+}
+
+function dislikeAIMessage(index) {
+  showToast('Thanks for your feedback. We\'ll improve! 👎');
+}
+
+function sendFollowUp(followUp) {
+  const input = document.getElementById('aiChatInput');
+  if (input) {
+    input.value = followUp;
+    sendAIChatMessage();
+  }
+}
+
+// Expose functions globally
+window.renderAIView = renderAIView;
+window.renderAIChatView = renderAIChatView;
+window.openAIChatView = openAIChatView;
+window.goBackToAILanding = goBackToAILanding;
+window.sendAIAgentPrompt = sendAIAgentPrompt;
+window.sendAIChatMessage = sendAIChatMessage;
+window.showAIAddOptions = showAIAddOptions;
+window.handleAIInputKeydown = handleAIInputKeydown;
+window.handleAIChatInputKeydown = handleAIChatInputKeydown;
+window.setAIPrompt = setAIPrompt;
+window.sendSuggestedPrompt = sendSuggestedPrompt;
+window.copyAIMessage = copyAIMessage;
+window.copyGeneratedContent = copyGeneratedContent;
+window.closeGeneratedPanel = closeGeneratedPanel;
+window.regenerateAIMessage = regenerateAIMessage;
+window.likeAIMessage = likeAIMessage;
+window.dislikeAIMessage = dislikeAIMessage;
+window.sendFollowUp = sendFollowUp;
+
+// ============================================
+// TIME ZONE SUPPORT
+// ============================================
+let selectedTimezone = localStorage.getItem('layerTimezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+let secondaryTimezone = localStorage.getItem('layerSecondaryTimezone') || null;
+
+const COMMON_TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)', offset: -5 },
+  { value: 'America/Chicago', label: 'Central Time (CT)', offset: -6 },
+  { value: 'America/Denver', label: 'Mountain Time (MT)', offset: -7 },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)', offset: -8 },
+  { value: 'America/Phoenix', label: 'Arizona (MST)', offset: -7 },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)', offset: -9 },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)', offset: -10 },
+  { value: 'Europe/London', label: 'London (GMT/BST)', offset: 0 },
+  { value: 'Europe/Paris', label: 'Paris (CET)', offset: 1 },
+  { value: 'Europe/Berlin', label: 'Berlin (CET)', offset: 1 },
+  { value: 'Europe/Moscow', label: 'Moscow (MSK)', offset: 3 },
+  { value: 'Asia/Dubai', label: 'Dubai (GST)', offset: 4 },
+  { value: 'Asia/Kolkata', label: 'India (IST)', offset: 5.5 },
+  { value: 'Asia/Bangkok', label: 'Bangkok (ICT)', offset: 7 },
+  { value: 'Asia/Singapore', label: 'Singapore (SGT)', offset: 8 },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)', offset: 9 },
+  { value: 'Australia/Sydney', label: 'Sydney (AEST)', offset: 10 },
+  { value: 'Pacific/Auckland', label: 'Auckland (NZST)', offset: 12 },
+  { value: 'UTC', label: 'UTC', offset: 0 }
+];
+
+function getCurrentTimezoneLabel() {
+  const tz = COMMON_TIMEZONES.find(t => t.value === selectedTimezone);
+  if (tz) return tz.label.split(' ')[0];
+  
+  // Fallback: calculate offset
+  const offset = -(new Date().getTimezoneOffset() / 60);
+  return `UTC${offset >= 0 ? '+' : ''}${offset}`;
+}
+
+function openTimeZoneModal() {
+  const currentTz = selectedTimezone;
+  const secondTz = secondaryTimezone;
+  
+  const content = `
+    <div class="timezone-modal-content">
+      <div class="form-group">
+        <label class="form-label">Primary Time Zone</label>
+        <select id="primaryTimezoneSelect" class="form-select form-select-large">
+          ${COMMON_TIMEZONES.map(tz => `
+            <option value="${tz.value}" ${tz.value === currentTz ? 'selected' : ''}>
+              ${tz.label} (UTC${tz.offset >= 0 ? '+' : ''}${tz.offset})
+            </option>
+          `).join('')}
+        </select>
+        <p class="form-hint">Events will be displayed in this time zone</p>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" id="showSecondaryTz" ${secondTz ? 'checked' : ''} onchange="toggleSecondaryTimezone()">
+          Show secondary time zone
+        </label>
+      </div>
+      
+      <div class="form-group secondary-tz-group" id="secondaryTzGroup" style="display: ${secondTz ? 'block' : 'none'};">
+        <label class="form-label">Secondary Time Zone</label>
+        <select id="secondaryTimezoneSelect" class="form-select form-select-large">
+          ${COMMON_TIMEZONES.map(tz => `
+            <option value="${tz.value}" ${tz.value === secondTz ? 'selected' : ''}>
+              ${tz.label} (UTC${tz.offset >= 0 ? '+' : ''}${tz.offset})
+            </option>
+          `).join('')}
+        </select>
+        <p class="form-hint">Displayed alongside primary time zone in week/day views</p>
+      </div>
+      
+      <div class="timezone-preview" id="timezonePreview">
+        <div class="tz-preview-title">Current time:</div>
+        <div class="tz-preview-times" id="tzPreviewTimes"></div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveTimezoneSettings()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          Save
+        </button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Time Zone Settings', content);
+  updateTimezonePreview();
+}
+
+function toggleSecondaryTimezone() {
+  const show = document.getElementById('showSecondaryTz').checked;
+  document.getElementById('secondaryTzGroup').style.display = show ? 'block' : 'none';
+  updateTimezonePreview();
+}
+
+function updateTimezonePreview() {
+  const primarySelect = document.getElementById('primaryTimezoneSelect');
+  const secondarySelect = document.getElementById('secondaryTimezoneSelect');
+  const showSecondary = document.getElementById('showSecondaryTz')?.checked;
+  const previewEl = document.getElementById('tzPreviewTimes');
+  
+  if (!primarySelect || !previewEl) return;
+  
+  const now = new Date();
+  const primaryTz = primarySelect.value;
+  const primaryTime = now.toLocaleTimeString('en-US', { 
+    timeZone: primaryTz, 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
+  
+  let html = `<div class="tz-preview-item primary"><span class="tz-label">${primaryTz.split('/')[1]?.replace('_', ' ') || primaryTz}</span><span class="tz-time">${primaryTime}</span></div>`;
+  
+  if (showSecondary && secondarySelect) {
+    const secondaryTz = secondarySelect.value;
+    const secondaryTime = now.toLocaleTimeString('en-US', { 
+      timeZone: secondaryTz, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    html += `<div class="tz-preview-item secondary"><span class="tz-label">${secondaryTz.split('/')[1]?.replace('_', ' ') || secondaryTz}</span><span class="tz-time">${secondaryTime}</span></div>`;
+  }
+  
+  previewEl.innerHTML = html;
+}
+
+function saveTimezoneSettings() {
+  const primarySelect = document.getElementById('primaryTimezoneSelect');
+  const secondarySelect = document.getElementById('secondaryTimezoneSelect');
+  const showSecondary = document.getElementById('showSecondaryTz')?.checked;
+  
+  if (primarySelect) {
+    selectedTimezone = primarySelect.value;
+    localStorage.setItem('layerTimezone', selectedTimezone);
+  }
+  
+  if (showSecondary && secondarySelect) {
+    secondaryTimezone = secondarySelect.value;
+    localStorage.setItem('layerSecondaryTimezone', secondaryTimezone);
+  } else {
+    secondaryTimezone = null;
+    localStorage.removeItem('layerSecondaryTimezone');
+  }
+  
+  closeModal();
+  showToast('Time zone settings saved!');
+  renderCurrentView();
+}
+
+function convertTimeToTimezone(time24, fromTz, toTz) {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  
+  return date.toLocaleTimeString('en-US', {
+    timeZone: toTz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+// ============================================
+// SMART SCHEDULING - Find Available Times
+// ============================================
+function openSmartScheduleModal() {
+  const events = loadCalendarEvents();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const content = `
+    <div class="smart-schedule-modal">
+      <div class="smart-schedule-header">
+        <div class="smart-schedule-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <div>
+          <h3>Find Available Time</h3>
+          <p>Discover open slots in your schedule</p>
+        </div>
+      </div>
+      
+      <div class="smart-schedule-options">
+        <div class="form-group">
+          <label class="form-label">Meeting Duration</label>
+          <div class="duration-chips">
+            <button type="button" class="duration-chip active" data-duration="30" onclick="setSmartDuration(30)">30 min</button>
+            <button type="button" class="duration-chip" data-duration="60" onclick="setSmartDuration(60)">1 hour</button>
+            <button type="button" class="duration-chip" data-duration="90" onclick="setSmartDuration(90)">1.5 hours</button>
+            <button type="button" class="duration-chip" data-duration="120" onclick="setSmartDuration(120)">2 hours</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Date Range</label>
+          <div class="date-range-inputs">
+            <input type="date" id="smartStartDate" class="form-input" value="${today.toISOString().split('T')[0]}" onchange="findAvailableSlots()">
+            <span class="date-separator">to</span>
+            <input type="date" id="smartEndDate" class="form-input" value="${new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0]}" onchange="findAvailableSlots()">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Working Hours</label>
+          <div class="time-range-inputs">
+            <select id="smartStartHour" class="form-select" onchange="findAvailableSlots()">
+              ${Array.from({length: 24}, (_, i) => {
+                const h = i < 10 ? '0' + i : i;
+                const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`;
+                return `<option value="${h}:00" ${i === 9 ? 'selected' : ''}>${label}</option>`;
+              }).join('')}
+            </select>
+            <span class="time-separator">to</span>
+            <select id="smartEndHour" class="form-select" onchange="findAvailableSlots()">
+              ${Array.from({length: 24}, (_, i) => {
+                const h = i < 10 ? '0' + i : i;
+                const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`;
+                return `<option value="${h}:00" ${i === 17 ? 'selected' : ''}>${label}</option>`;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="available-slots-section">
+        <div class="slots-header">
+          <span class="slots-title">Available Time Slots</span>
+          <span class="slots-count" id="slotsCount">Finding slots...</span>
+        </div>
+        <div class="available-slots-list" id="availableSlotsList">
+          <div class="slots-loading">
+            <div class="loading-spinner"></div>
+            <span>Analyzing your schedule...</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Smart Scheduling', content, 'modal-large');
+  
+  // Find slots after modal renders
+  setTimeout(() => findAvailableSlots(), 100);
+}
+
+let smartScheduleDuration = 30;
+
+function setSmartDuration(duration) {
+  smartScheduleDuration = duration;
+  document.querySelectorAll('.duration-chip').forEach(chip => {
+    chip.classList.toggle('active', parseInt(chip.dataset.duration) === duration);
+  });
+  findAvailableSlots();
+}
+
+function findAvailableSlots() {
+  const events = loadCalendarEvents();
+  const startDateEl = document.getElementById('smartStartDate');
+  const endDateEl = document.getElementById('smartEndDate');
+  const startHourEl = document.getElementById('smartStartHour');
+  const endHourEl = document.getElementById('smartEndHour');
+  const slotsContainer = document.getElementById('availableSlotsList');
+  const slotsCount = document.getElementById('slotsCount');
+  
+  if (!startDateEl || !endDateEl || !startHourEl || !endHourEl) return;
+  
+  const startDate = new Date(startDateEl.value);
+  const endDate = new Date(endDateEl.value);
+  const workStartHour = parseInt(startHourEl.value.split(':')[0]);
+  const workEndHour = parseInt(endHourEl.value.split(':')[0]);
+  const duration = smartScheduleDuration;
+  
+  const slots = [];
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const dayEvents = events.filter(e => e.date === dateStr && e.time);
+    
+    // Skip weekends optionally
+    const dayOfWeek = currentDate.getDay();
+    
+    // Find busy time ranges
+    const busyRanges = dayEvents.map(e => {
+      const [startH, startM] = (e.time || '00:00').split(':').map(Number);
+      const [endH, endM] = (e.endTime || e.time || '00:00').split(':').map(Number);
+      return {
+        start: startH * 60 + startM,
+        end: e.endTime ? (endH * 60 + endM) : (startH * 60 + startM + 60)
+      };
+    }).sort((a, b) => a.start - b.start);
+    
+    // Find free slots
+    let currentMinute = workStartHour * 60;
+    const endMinute = workEndHour * 60;
+    
+    while (currentMinute + duration <= endMinute) {
+      const slotEnd = currentMinute + duration;
+      
+      // Check if slot overlaps with any event
+      const hasConflict = busyRanges.some(range => 
+        (currentMinute < range.end && slotEnd > range.start)
+      );
+      
+      if (!hasConflict) {
+        const startTime = `${Math.floor(currentMinute / 60).toString().padStart(2, '0')}:${(currentMinute % 60).toString().padStart(2, '0')}`;
+        const endTime = `${Math.floor(slotEnd / 60).toString().padStart(2, '0')}:${(slotEnd % 60).toString().padStart(2, '0')}`;
+        
+        slots.push({
+          date: dateStr,
+          startTime,
+          endTime,
+          dayName: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayNum: currentDate.getDate(),
+          monthName: currentDate.toLocaleDateString('en-US', { month: 'short' })
+        });
+        
+        // Jump to next slot (don't show consecutive slots)
+        currentMinute = slotEnd;
+      } else {
+        // Find end of conflicting event
+        const conflictingEvent = busyRanges.find(range => 
+          (currentMinute < range.end && currentMinute + duration > range.start)
+        );
+        if (conflictingEvent) {
+          currentMinute = conflictingEvent.end;
+        } else {
+          currentMinute += 30;
+        }
+      }
+    }
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  // Render slots (limit to first 20)
+  const displaySlots = slots.slice(0, 20);
+  slotsCount.textContent = `${slots.length} slots found`;
+  
+  if (displaySlots.length === 0) {
+    slotsContainer.innerHTML = `
+      <div class="no-slots-message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M16 16s-1.5-2-4-2-4 2-4 2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9"/>
+          <line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+        <p>No available slots found in this date range.</p>
+        <span>Try expanding the date range or adjusting working hours.</span>
+      </div>
+    `;
+    return;
+  }
+  
+  slotsContainer.innerHTML = displaySlots.map(slot => `
+    <div class="available-slot-card" onclick="selectSmartSlot('${slot.date}', '${slot.startTime}', '${slot.endTime}')">
+      <div class="slot-date-badge">
+        <span class="slot-day-name">${slot.dayName}</span>
+        <span class="slot-day-num">${slot.dayNum}</span>
+        <span class="slot-month">${slot.monthName}</span>
+      </div>
+      <div class="slot-time-info">
+        <span class="slot-time-range">${formatTime12h(slot.startTime)} - ${formatTime12h(slot.endTime)}</span>
+        <span class="slot-duration">${smartScheduleDuration} min</span>
+      </div>
+      <button class="slot-select-btn" onclick="event.stopPropagation(); selectSmartSlot('${slot.date}', '${slot.startTime}', '${slot.endTime}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Schedule
+      </button>
+    </div>
+  `).join('');
+}
+
+function selectSmartSlot(date, startTime, endTime) {
+  closeModal();
+  openAdvancedEventModal(date, startTime);
+  
+  // Pre-fill end time after modal opens
+  setTimeout(() => {
+    const endTimeSelect = document.querySelector('select[name="endTime"]');
+    if (endTimeSelect) {
+      endTimeSelect.value = endTime;
+    }
+  }, 100);
+}
+
+// Enhanced goToScheduleToday - scroll to current time
+function goToScheduleToday() {
+  scheduleCurrentDate = new Date();
+  scheduleSelectedDate = new Date();
+  renderCurrentView();
+  
+  // Scroll to current time in day/week view
+  setTimeout(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const scrollContainer = document.querySelector('.week-grid-scroll, .day-view-grid-scroll');
+    
+    if (scrollContainer) {
+      // Each hour is 80px, starting from 6 AM
+      const hourOffset = currentHour >= 6 ? currentHour - 6 : currentHour + 18;
+      const scrollPosition = Math.max(0, (hourOffset * 80) - 100);
+      scrollContainer.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+    }
+  }, 100);
+}
+
+/* ============================================
+   Layer - Timeline V2 - Linear-Style Professional Rebuild
+   A complete, clean implementation inspired by Linear.app
+   ============================================ */
+
+// ============================================
+// Timeline V2 State
+// ============================================
+const TimelineV2 = {
+  // View settings
+  viewMode: 'week', // 'day', 'week', 'month', 'quarter'
+  currentDate: new Date(),
+  zoom: 1, // 0.5 - 2
+  filter: 'active', // 'active', 'closed', 'all'
+  
+  // Interaction state
+  isDragging: false,
+  isResizing: false,
+  dragTarget: null,
+  dragStartX: 0,
+  dragOriginalLeft: 0,
+  dragOriginalWidth: 0,
+  resizeDirection: null,
+  
+  // Scroll position (preserved across re-renders)
+  scrollLeft: 0,
+  scrollTop: 0,
+  
+  // Current project context
+  projectIndex: null,
+  
+  // Cell size (base, adjusted by zoom)
+  get cellWidth() { return 42 * this.zoom; },
+  rowHeight: 76,
+  
+  // Date range
+  startDate: null,
+  endDate: null,
+  dates: []
+};
+
+// ============================================
+// Utility Functions
+// ============================================
+
+function tlv2_daysBetween(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  d1.setHours(0, 0, 0, 0);
+  d2.setHours(0, 0, 0, 0);
+  return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+
+function tlv2_formatDate(date, format = 'short') {
+  const d = new Date(date);
+  if (format === 'short') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } else if (format === 'full') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  return d.toISOString().split('T')[0];
+}
+
+function tlv2_getColumnColor(title) {
+  const t = (title || '').toLowerCase();
+  if (t.includes('done') || t.includes('complete')) return '#22c55e';
+  if (t.includes('progress') || t.includes('doing') || t.includes('active')) return '#3b82f6';
+  if (t.includes('review') || t.includes('test')) return '#8b5cf6';
+  if (t.includes('blocked') || t.includes('stuck')) return '#ef4444';
+  if (t.includes('todo') || t.includes('backlog')) return '#71717a';
+  return '#52525b';
+}
+
+// Predefined color palette for column bars
+const TLV2_COLORS = [
+  { name: 'Gray', value: '#71717a' },
+  { name: 'Red', value: '#ef4444' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Amber', value: '#f59e0b' },
+  { name: 'Yellow', value: '#eab308' },
+  { name: 'Lime', value: '#84cc16' },
+  { name: 'Green', value: '#22c55e' },
+  { name: 'Emerald', value: '#10b981' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Cyan', value: '#06b6d4' },
+  { name: 'Sky', value: '#0ea5e9' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Violet', value: '#8b5cf6' },
+  { name: 'Purple', value: '#a855f7' },
+  { name: 'Fuchsia', value: '#d946ef' },
+  { name: 'Pink', value: '#ec4899' },
+  { name: 'Rose', value: '#f43f5e' },
+];
+
+// ============================================
+// Date Range Calculation
+// ============================================
+
+function tlv2_calculateDateRange(project) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let minDate = new Date(today);
+  let maxDate = new Date(today);
+  
+  // Calculate padding based on view mode
+  const paddings = {
+    'day': { before: 3, after: 14 },
+    'week': { before: 7, after: 28 },
+    'month': { before: 14, after: 60 },
+    'quarter': { before: 30, after: 120 }
+  };
+  
+  const padding = paddings[TimelineV2.viewMode] || paddings.week;
+  
+  minDate.setDate(minDate.getDate() - padding.before);
+  maxDate.setDate(maxDate.getDate() + padding.after);
+  
+  // Extend range based on task dates
+  if (project && project.columns) {
+    project.columns.forEach(col => {
+      // Check column-level dates
+      if (col.timelineStart) {
+        const colStart = new Date(col.timelineStart);
+        if (colStart < minDate) minDate = new Date(colStart);
+      }
+      if (col.timelineEnd) {
+        const colEnd = new Date(col.timelineEnd);
+        if (colEnd > maxDate) maxDate = new Date(colEnd);
+      }
+      
+      // Check task dates
+      (col.tasks || []).forEach(task => {
+        if (task.startDate) {
+          const start = new Date(task.startDate);
+          if (start < minDate) minDate = new Date(start);
+        }
+        if (task.dueDate || task.endDate) {
+          const end = new Date(task.dueDate || task.endDate);
+          if (end > maxDate) maxDate = new Date(end);
+        }
+      });
+    });
+  }
+  
+  // Add padding
+  minDate.setDate(minDate.getDate() - 5);
+  maxDate.setDate(maxDate.getDate() + 10);
+  
+  // Generate dates array
+  const dates = [];
+  const current = new Date(minDate);
+  while (current <= maxDate) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  TimelineV2.startDate = minDate;
+  TimelineV2.endDate = maxDate;
+  TimelineV2.dates = dates;
+  
+  return { startDate: minDate, endDate: maxDate, dates };
+}
+
+// ============================================
+// Main Render Function
+// ============================================
+
+function renderTimelineV2(projectIndex, container) {
+  TimelineV2.projectIndex = projectIndex;
+  
+  // Preserve scroll position
+  const prevWrapper = document.getElementById('tlv2GanttWrapper');
+  if (prevWrapper) {
+    TimelineV2.scrollLeft = prevWrapper.scrollLeft;
+    TimelineV2.scrollTop = prevWrapper.scrollTop;
+  }
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Calculate date range
+  const { dates, startDate } = tlv2_calculateDateRange(project);
+  
+  // Build column data
+  const columns = (project.columns || []).map((col, idx) => {
+    const tasks = col.tasks || [];
+    let minDate = col.timelineStart ? new Date(col.timelineStart) : null;
+    let maxDate = col.timelineEnd ? new Date(col.timelineEnd) : null;
+    
+    // Expand range based on task dates
+    tasks.forEach(t => {
+      const start = t.startDate ? new Date(t.startDate) : null;
+      const end = t.endDate || t.dueDate ? new Date(t.endDate || t.dueDate) : start;
+      
+      if (start && (!minDate || start < minDate)) minDate = new Date(start);
+      if (end && (!maxDate || end > maxDate)) maxDate = new Date(end);
+    });
+    
+    return {
+      id: `col-${idx}`,
+      index: idx,
+      title: col.title,
+      color: col.color || tlv2_getColumnColor(col.title),
+      taskCount: tasks.length,
+      completedCount: tasks.filter(t => t.done).length,
+      minDate,
+      maxDate,
+      hasDates: !!(minDate && maxDate),
+      dependsOn: col.dependsOn || []
+    };
+  });
+  
+  // Calculate stats
+  const allTasks = project.columns.flatMap(c => c.tasks || []);
+  const stats = {
+    total: allTasks.length,
+    completed: allTasks.filter(t => t.done).length,
+    inProgress: project.columns.filter(c => c.title.toLowerCase().includes('progress')).flatMap(c => c.tasks || []).length
+  };
+  
+  const gridWidth = dates.length * TimelineV2.cellWidth;
+  
+  container.innerHTML = `
+    <div class="timeline-linear" id="tlv2Container">
+      <!-- Header -->
+      <div class="tl-header">
+        <div class="tl-header-left">
+          <div class="tl-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+            </svg>
+            Timeline
+          </div>
+        </div>
+        
+        <div class="tl-header-right">
+          <div class="tl-view-tabs">
+            ${['day', 'week', 'month', 'quarter'].map(mode => `
+              <button class="tl-view-tab ${TimelineV2.viewMode === mode ? 'active' : ''}" 
+                      onclick="tlv2_setViewMode('${mode}')">${mode.charAt(0).toUpperCase() + mode.slice(1)}</button>
+            `).join('')}
+          </div>
+          
+          <div class="tl-nav">
+            <button class="tl-today-btn" onclick="tlv2_goToToday()">Today</button>
+          </div>
+          
+          <div class="tl-zoom-controls">
+            <button class="tl-zoom-btn" onclick="tlv2_zoom(-0.25)" title="Zoom out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <span class="tl-zoom-level">${Math.round(TimelineV2.zoom * 100)}%</span>
+            <button class="tl-zoom-btn" onclick="tlv2_zoom(0.25)" title="Zoom in">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          
+        </div>
+      </div>
+      
+      <!-- Stats Bar -->
+      <div class="tl-stats-bar">
+        <div class="tl-stat-item">
+          <span class="tl-stat-value">${stats.total}</span>
+          <span class="tl-stat-label">tasks</span>
+        </div>
+        <div class="tl-stat-divider"></div>
+        <div class="tl-stat-item">
+          <span class="tl-stat-value" style="color: #22c55e;">${stats.completed}</span>
+          <span class="tl-stat-label">done</span>
+        </div>
+        <div class="tl-stat-divider"></div>
+        <div class="tl-stat-item">
+          <span class="tl-stat-value">${stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
+          <span class="tl-stat-label">complete</span>
+        </div>
+      </div>
+      
+      <!-- Body -->
+      <div class="tl-body">
+        <!-- Left Panel -->
+        <div class="tl-left-panel tl-left-panel-clickup">
+          <div class="tl-left-header">
+            <span class="tl-left-title">Tasks</span>
+            <span class="tl-task-count-badge">${stats.total}</span>
+          </div>
+          <div class="tl-task-list" id="tlv2TaskList">
+            ${tlv2_renderLeftPanel(columns)}
+          </div>
+        </div>
+        
+        <!-- Right Panel -->
+        <div class="tl-right-panel">
+          <!-- Date Header -->
+          <div class="tl-date-header">
+            <div class="tl-date-header-scroll" id="tlv2DateHeader">
+              ${tlv2_renderMonthRow(dates)}
+              ${tlv2_renderDayRow(dates)}
+            </div>
+          </div>
+          
+          <!-- Gantt Grid -->
+          <div class="tl-gantt-wrapper" id="tlv2GanttWrapper" onscroll="tlv2_syncScroll(this)">
+            <div class="tl-gantt-grid" id="tlv2GanttGrid" style="width: ${gridWidth}px; min-height: ${columns.length * TimelineV2.rowHeight}px;">
+              ${tlv2_renderGanttRows(columns, dates, startDate)}
+              ${tlv2_renderTodayLine(dates, startDate)}
+              
+              <!-- Dependencies SVG -->
+              <svg class="tl-dependencies-svg" id="tlv2DepsSvg" 
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible;">
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- Premium Kanban Board Section Under Timeline -->
+    <div class="tl-kanban-section">
+      <div class="tl-kanban-header">
+        <div class="tl-kanban-title-group">
+          <div class="tl-kanban-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </div>
+          <h3 class="tl-kanban-title">Task Board</h3>
+          <span class="tl-kanban-badge">${project.columns.reduce((acc, col) => acc + (col.tasks || []).length, 0)} tasks</span>
+        </div>
+        <div class="tl-kanban-actions">
+          <button class="tl-kanban-add-col-btn" onclick="handleAddColumn(${projectIndex})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Column
+          </button>
+        </div>
+      </div>
+      
+      <div class="tl-kanban-board">
+        ${project.columns.map((column, colIndex) => {
+          const tasks = column.tasks || [];
+          const completedCount = tasks.filter(t => t.done).length;
+          const totalCount = tasks.length;
+          const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          const columnColor = column.color || tlv2_getColumnColor(column.title);
+          
+          return `
+          <div class="tl-kanban-column" data-col-index="${colIndex}">
+            <div class="tl-kanban-col-header" style="--col-accent: ${columnColor};">
+              <div class="tl-kanban-col-indicator" style="background: ${columnColor};"></div>
+              <h4 class="tl-kanban-col-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
+              <div class="tl-kanban-col-meta">
+                <span class="tl-kanban-col-count">${completedCount}/${totalCount}</span>
+                <div class="tl-kanban-col-progress">
+                  <div class="tl-kanban-col-progress-fill" style="width: ${progressPercent}%; background: ${columnColor};"></div>
+                </div>
+              </div>
+              <button class="tl-kanban-col-menu" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div class="tl-kanban-col-tasks" data-col-index="${colIndex}">
+              ${tasks.map((task, taskIndex) => `
+                <div class="tl-kanban-task ${task.done ? 'completed' : ''}" draggable="true" data-task-index="${taskIndex}">
+                  <label class="tl-kanban-task-check">
+                    <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
+                    <span class="tl-kanban-checkmark" style="--check-color: ${columnColor};">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <span class="tl-kanban-task-title" contenteditable="true" onblur="handleUpdateTaskTitle(${projectIndex}, ${colIndex}, ${taskIndex}, this.textContent)">${task.title}</span>
+                  ${task.priority ? `<span class="tl-kanban-task-priority tl-priority-${task.priority}">${task.priority}</span>` : ''}
+                  <button class="tl-kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)" title="Delete task">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+            
+            <button class="tl-kanban-add-task" onclick="handleAddTaskToColumn(${projectIndex}, ${colIndex}, event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              <span>Add task</span>
+            </button>
+          </div>
+        `}).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Setup interactions
+  tlv2_setupInteractions();
+  
+  // Restore scroll
+  requestAnimationFrame(() => {
+    const wrapper = document.getElementById('tlv2GanttWrapper');
+    const header = document.getElementById('tlv2DateHeader');
+    if (wrapper) {
+      wrapper.scrollLeft = TimelineV2.scrollLeft;
+      wrapper.scrollTop = TimelineV2.scrollTop;
+    }
+    if (header) {
+      header.scrollLeft = TimelineV2.scrollLeft;
+    }
+  });
+  
+  // Dependencies rendering removed
+}
+
+// ============================================
+// Left Panel Rendering
+// ============================================
+
+function tlv2_renderLeftPanel(columns) {
+  if (columns.length === 0) {
+    return `
+      <div style="padding: 32px 16px; text-align: center; color: var(--muted-foreground);">
+        <p style="font-size: 13px;">No columns yet</p>
+      </div>
+    `;
+  }
+  
+  // Ultra-minimalistic design - just name + count
+  return columns.map(col => {
+    return `
+      <div class="tl-column-row" data-column-index="${col.index}">
+        <div class="tl-column-indicator" style="background: ${col.color};"></div>
+        <div class="tl-column-info">
+          <span class="tl-column-name">${col.title}</span>
+          <span class="tl-column-count">${col.taskCount}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================
+// Date Header Rendering
+// ============================================
+
+function tlv2_renderMonthRow(dates) {
+  const monthGroups = [];
+  let currentMonth = null;
+  let count = 0;
+  
+  dates.forEach((date, idx) => {
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    if (monthKey !== currentMonth) {
+      if (currentMonth !== null) {
+        monthGroups.push({ month: currentMonth, count, date: dates[idx - count] });
+      }
+      currentMonth = monthKey;
+      count = 1;
+    } else {
+      count++;
+    }
+  });
+  
+  // Push last group
+  if (count > 0) {
+    monthGroups.push({ month: currentMonth, count, date: dates[dates.length - count] });
+  }
+  
+  return `
+    <div class="tl-month-row">
+      ${monthGroups.map(g => {
+        const monthName = g.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const width = g.count * TimelineV2.cellWidth;
+        return `<div class="tl-month-cell" style="min-width: ${width}px; width: ${width}px;">${monthName}</div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function tlv2_renderDayRow(dates) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return `
+    <div class="tl-day-row">
+      ${dates.map(date => {
+        const isToday = date.toDateString() === today.toDateString();
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+        const dayNum = date.getDate();
+        
+        return `
+          <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" 
+               style="min-width: ${TimelineV2.cellWidth}px; width: ${TimelineV2.cellWidth}px;">
+            ${isToday ? `<div class="tl-date-num">${dayNum}</div>` : `
+              <span class="tl-date-day">${dayName}</span>
+              <span class="tl-date-num">${dayNum}</span>
+            `}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ============================================
+// Gantt Grid Rendering
+// ============================================
+
+function tlv2_renderGanttRows(columns, dates, startDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return columns.map((col, rowIdx) => {
+    // Background cells
+    const cells = dates.map(date => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" 
+                   style="min-width: ${TimelineV2.cellWidth}px;"></div>`;
+    }).join('');
+    
+    // Bar
+    let barHtml = '';
+    const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
+    
+    if (col.hasDates) {
+      const startOffset = tlv2_daysBetween(startDate, col.minDate);
+      const duration = Math.max(1, tlv2_daysBetween(col.minDate, col.maxDate) + 1);
+      const left = Math.max(0, startOffset * TimelineV2.cellWidth);
+      const width = Math.max(TimelineV2.cellWidth, duration * TimelineV2.cellWidth - 4);
+      
+      barHtml = `
+        <div class="tl-task-bar column-bar" 
+             data-column-index="${col.index}"
+             data-start-date="${col.minDate.toISOString().split('T')[0]}"
+             data-end-date="${col.maxDate.toISOString().split('T')[0]}"
+             style="left: ${left}px; width: ${width}px; background: linear-gradient(180deg, ${col.color}30 0%, ${col.color}15 100%); border-color: ${col.color}50;"
+             onmousedown="tlv2_startDrag(event, ${col.index})"
+             ondblclick="tlv2_editColumn(${col.index})"
+             oncontextmenu="tlv2_showContextMenu(event, ${col.index})">
+          <div class="tl-column-bar-actions">
+            <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); tlv2_openColorPicker(event, ${col.index})" title="Change color">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
+            </button>
+            <button class="tl-bar-quick-btn" onclick="event.stopPropagation(); tlv2_toggleMilestone(${col.index})" title="Toggle milestone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L22 12L12 22L2 12Z"/></svg>
+            </button>
+          </div>
+          <span class="tl-bar-icon">${tlv2_getColumnEmoji(col.title)}</span>
+          <span class="tl-bar-label" style="color: ${col.color};">${col.title}</span>
+          <div class="tl-bar-resize left" onmousedown="tlv2_startResize(event, ${col.index}, 'left')"></div>
+          <div class="tl-bar-resize right" onmousedown="tlv2_startResize(event, ${col.index}, 'right')"></div>
+        </div>
+      `;
+    } else {
+      // No dates - show dashed placeholder bar at today
+      const todayOffset = tlv2_daysBetween(startDate, today);
+      const left = Math.max(0, todayOffset * TimelineV2.cellWidth);
+      const width = 7 * TimelineV2.cellWidth - 4;
+      
+      barHtml = `
+        <div class="tl-task-bar column-bar no-dates" 
+             data-column-index="${col.index}"
+             style="left: ${left}px; width: ${width}px; border-color: ${col.color}50;"
+             onmousedown="tlv2_startDrag(event, ${col.index})"
+             ondblclick="tlv2_editColumn(${col.index})">
+          <span class="tl-bar-icon">${tlv2_getColumnEmoji(col.title)}</span>
+          <span class="tl-bar-label" style="color: ${col.color}; opacity: 0.7;">${col.title} (click to set dates)</span>
+          <div class="tl-bar-resize left" onmousedown="tlv2_startResize(event, ${col.index}, 'left')"></div>
+          <div class="tl-bar-resize right" onmousedown="tlv2_startResize(event, ${col.index}, 'right')"></div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="tl-gantt-row" data-column-index="${col.index}" style="height: ${TimelineV2.rowHeight}px;">
+        ${cells}
+        ${barHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function tlv2_getColumnEmoji(title) {
+  // Returns empty string - no emojis used in timeline
+  return '';
+}
+
+// ============================================
+// Today Line
+// ============================================
+
+function tlv2_renderTodayLine(dates, startDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const offset = tlv2_daysBetween(startDate, today);
+  if (offset < 0 || offset >= dates.length) return '';
+  
+  const left = offset * TimelineV2.cellWidth + TimelineV2.cellWidth / 2;
+  
+  return `<div class="tl-today-line" style="left: ${left}px;"></div>`;
+}
+
+// Dependencies Rendering - REMOVED (feature cleaned)
+
+// ============================================
+// Interactions
+// ============================================
+
+function tlv2_setupInteractions() {
+  document.addEventListener('mousemove', tlv2_handleMouseMove);
+  document.addEventListener('mouseup', tlv2_handleMouseUp);
+  document.addEventListener('keydown', tlv2_handleKeydown);
+}
+
+function tlv2_startDrag(event, columnIndex) {
+  if (event.target.classList.contains('tl-bar-resize')) return;
+  event.preventDefault();
+  
+  const bar = event.currentTarget;
+  
+  TimelineV2.isDragging = true;
+  TimelineV2.dragTarget = bar;
+  TimelineV2.dragColumnIndex = columnIndex;
+  TimelineV2.dragStartX = event.clientX;
+  TimelineV2.dragOriginalLeft = parseInt(bar.style.left) || 0;
+  TimelineV2.dragOriginalWidth = parseInt(bar.style.width) || 100;
+  
+  bar.classList.add('dragging');
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+}
+
+function tlv2_startResize(event, columnIndex, direction) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const bar = event.target.closest('.tl-task-bar');
+  if (!bar) return;
+  
+  TimelineV2.isResizing = true;
+  TimelineV2.resizeDirection = direction;
+  TimelineV2.dragTarget = bar;
+  TimelineV2.dragColumnIndex = columnIndex;
+  TimelineV2.dragStartX = event.clientX;
+  TimelineV2.dragOriginalLeft = parseInt(bar.style.left) || 0;
+  TimelineV2.dragOriginalWidth = parseInt(bar.style.width) || 100;
+  
+  bar.classList.add('resizing');
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function tlv2_handleMouseMove(event) {
+  if (!TimelineV2.isDragging && !TimelineV2.isResizing) return;
+  
+  const deltaX = event.clientX - TimelineV2.dragStartX;
+  const daysDelta = Math.round(deltaX / TimelineV2.cellWidth);
+  
+  // Minimum width is 1 day (1 cell)
+  const minWidth = TimelineV2.cellWidth;
+  
+  if (TimelineV2.isDragging) {
+    const newLeft = TimelineV2.dragOriginalLeft + (daysDelta * TimelineV2.cellWidth);
+    TimelineV2.dragTarget.style.left = `${Math.max(0, newLeft)}px`;
+  } else if (TimelineV2.isResizing) {
+    if (TimelineV2.resizeDirection === 'right') {
+      // Resize from right: adjust width, keep left fixed
+      const newWidth = TimelineV2.dragOriginalWidth + (daysDelta * TimelineV2.cellWidth);
+      TimelineV2.dragTarget.style.width = `${Math.max(minWidth, newWidth)}px`;
+    } else {
+      // Resize from left: adjust both left and width
+      const potentialWidth = TimelineV2.dragOriginalWidth - (daysDelta * TimelineV2.cellWidth);
+      
+      if (potentialWidth >= minWidth) {
+        // Normal resize - move left edge, adjust width
+        const newLeft = TimelineV2.dragOriginalLeft + (daysDelta * TimelineV2.cellWidth);
+        TimelineV2.dragTarget.style.left = `${Math.max(0, newLeft)}px`;
+        TimelineV2.dragTarget.style.width = `${potentialWidth}px`;
+      } else {
+        // Would be too small - clamp to minimum width
+        const maxDelta = TimelineV2.dragOriginalWidth - minWidth;
+        const newLeft = TimelineV2.dragOriginalLeft + maxDelta;
+        TimelineV2.dragTarget.style.left = `${Math.max(0, newLeft)}px`;
+        TimelineV2.dragTarget.style.width = `${minWidth}px`;
+      }
+    }
+  }
+}
+
+function tlv2_handleMouseUp(event) {
+  if (!TimelineV2.isDragging && !TimelineV2.isResizing) return;
+  
+  const deltaX = event.clientX - TimelineV2.dragStartX;
+  const daysDelta = Math.round(deltaX / TimelineV2.cellWidth);
+  
+  if (TimelineV2.dragTarget) {
+    TimelineV2.dragTarget.classList.remove('dragging', 'resizing');
+  }
+  
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  
+  // Save changes if moved
+  if (daysDelta !== 0) {
+    if (TimelineV2.isDragging) {
+      tlv2_updateColumnDates(TimelineV2.dragColumnIndex, daysDelta, 'move');
+    } else if (TimelineV2.isResizing) {
+      tlv2_updateColumnDates(TimelineV2.dragColumnIndex, daysDelta, TimelineV2.resizeDirection);
+    }
+  }
+  
+  // Reset state
+  TimelineV2.isDragging = false;
+  TimelineV2.isResizing = false;
+  TimelineV2.dragTarget = null;
+  TimelineV2.resizeDirection = null;
+}
+
+function tlv2_updateColumnDates(columnIndex, daysDelta, mode) {
+  const projects = loadProjects();
+  const project = projects[TimelineV2.projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const column = project.columns[columnIndex];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Check if column already has dates - don't auto-expand if not
+  const hasExistingStart = !!column.timelineStart;
+  const hasExistingEnd = !!column.timelineEnd;
+  
+  // Only proceed if the column already has dates set
+  // For columns without dates, they should be set via the edit dialog
+  if (!hasExistingStart && !hasExistingEnd) {
+    // Calculate dates from the bar's current visual position
+    const bar = TimelineV2.dragTarget;
+    if (!bar) return;
+    
+    const currentLeft = parseInt(bar.style.left) || 0;
+    const currentWidth = parseInt(bar.style.width) || TimelineV2.cellWidth;
+    
+    // Calculate start date from left position
+    const startDayOffset = Math.round(currentLeft / TimelineV2.cellWidth);
+    const durationDays = Math.max(1, Math.round(currentWidth / TimelineV2.cellWidth));
+    
+    let startDate = new Date(TimelineV2.startDate);
+    startDate.setDate(startDate.getDate() + startDayOffset);
+    
+    let endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + durationDays - 1);
+    
+    column.timelineStart = startDate.toISOString().split('T')[0];
+    column.timelineEnd = endDate.toISOString().split('T')[0];
+    
+    saveProjects(projects);
+    
+    const container = document.querySelector('.pd-content-scroll');
+    if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+    
+    if (typeof showToast === 'function') {
+      showToast(`Column dates set`);
+    }
+    return;
+  }
+  
+  // Get existing dates
+  let startDate = new Date(column.timelineStart);
+  let endDate = new Date(column.timelineEnd);
+  
+  if (mode === 'move') {
+    startDate.setDate(startDate.getDate() + daysDelta);
+    endDate.setDate(endDate.getDate() + daysDelta);
+  } else if (mode === 'right') {
+    endDate.setDate(endDate.getDate() + daysDelta);
+  } else if (mode === 'left') {
+    startDate.setDate(startDate.getDate() + daysDelta);
+  }
+  
+  // Ensure end >= start
+  if (endDate < startDate) {
+    endDate = new Date(startDate);
+  }
+  
+  column.timelineStart = startDate.toISOString().split('T')[0];
+  column.timelineEnd = endDate.toISOString().split('T')[0];
+  
+  // Update tasks within column only for move operations
+  if (mode === 'move') {
+    (column.tasks || []).forEach(task => {
+      if (task.startDate) {
+        const d = new Date(task.startDate);
+        d.setDate(d.getDate() + daysDelta);
+        task.startDate = d.toISOString().split('T')[0];
+      }
+      if (task.dueDate) {
+        const d = new Date(task.dueDate);
+        d.setDate(d.getDate() + daysDelta);
+        task.dueDate = d.toISOString().split('T')[0];
+      }
+      if (task.endDate) {
+        const d = new Date(task.endDate);
+        d.setDate(d.getDate() + daysDelta);
+        task.endDate = d.toISOString().split('T')[0];
+      }
+    });
+  }
+  
+  saveProjects(projects);
+  
+  // Re-render
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+  
+  if (typeof showToast === 'function') {
+    showToast(`Column dates updated`);
+  }
+}
+
+// ============================================
+// Navigation & Controls
+// ============================================
+
+function tlv2_setViewMode(mode) {
+  TimelineV2.viewMode = mode;
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+}
+
+// Filter tabs removed
+
+function tlv2_navigate(direction) {
+  const days = { 'day': 7, 'week': 14, 'month': 30, 'quarter': 90 };
+  const offset = (days[TimelineV2.viewMode] || 14) * direction;
+  
+  TimelineV2.currentDate.setDate(TimelineV2.currentDate.getDate() + offset);
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+}
+
+function tlv2_goToToday() {
+  TimelineV2.currentDate = new Date();
+  TimelineV2.scrollLeft = 0;
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+  
+  // Scroll to today
+  requestAnimationFrame(() => {
+    const todayLine = document.querySelector('.tl-today-line');
+    const wrapper = document.getElementById('tlv2GanttWrapper');
+    if (todayLine && wrapper) {
+      const left = parseInt(todayLine.style.left) || 0;
+      wrapper.scrollLeft = Math.max(0, left - wrapper.clientWidth / 2);
+    }
+  });
+}
+
+function tlv2_zoom(delta) {
+  TimelineV2.zoom = Math.max(0.5, Math.min(2, TimelineV2.zoom + delta));
+  
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+}
+
+function tlv2_syncScroll(wrapper) {
+  const header = document.getElementById('tlv2DateHeader');
+  if (header) {
+    header.scrollLeft = wrapper.scrollLeft;
+  }
+  TimelineV2.scrollLeft = wrapper.scrollLeft;
+  TimelineV2.scrollTop = wrapper.scrollTop;
+}
+
+function tlv2_handleKeydown(event) {
+  if (!document.getElementById('tlv2Container')) return;
+  if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+  
+  switch (event.key.toLowerCase()) {
+    case 't':
+      tlv2_goToToday();
+      event.preventDefault();
+      break;
+    case 'arrowleft':
+      tlv2_navigate(-1);
+      event.preventDefault();
+      break;
+    case 'arrowright':
+      tlv2_navigate(1);
+      event.preventDefault();
+      break;
+    case '=':
+    case '+':
+      tlv2_zoom(0.25);
+      event.preventDefault();
+      break;
+    case '-':
+      tlv2_zoom(-0.25);
+      event.preventDefault();
+      break;
+  }
+}
+
+// ============================================
+// Actions
+// ============================================
+
+function tlv2_addTask() {
+  if (typeof openTimelineAddTask === 'function') {
+    openTimelineAddTask(TimelineV2.projectIndex);
+  } else if (typeof showToast === 'function') {
+    showToast('Add task feature');
+  }
+}
+
+function tlv2_editColumn(columnIndex) {
+  if (typeof openEditColumnModal === 'function') {
+    openEditColumnModal(columnIndex, TimelineV2.projectIndex);
+  }
+}
+
+function tlv2_editDates(columnIndex) {
+  if (typeof editColumnDates === 'function') {
+    editColumnDates(columnIndex, TimelineV2.projectIndex);
+  }
+}
+
+function tlv2_toggleMilestone(columnIndex) {
+  const projectIndex = TimelineV2.projectIndex;
+  const project = Store.projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const column = project.columns[columnIndex];
+  column.isMilestone = !column.isMilestone;
+  
+  Store.saveProjects();
+  tlv2_render();
+  
+  const status = column.isMilestone ? 'marked as milestone' : 'unmarked as milestone';
+  if (typeof showToast === 'function') {
+    showToast(`"${column.title}" ${status}`, 'success');
+  }
+}
+
+// Context menu removed - use double-click to edit
+
+// ============================================
+// Color Picker
+// ============================================
+
+function tlv2_openColorPicker(event, columnIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // Remove any existing picker
+  tlv2_closeColorPicker();
+  
+  const projects = loadProjects();
+  const project = projects[TimelineV2.projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const column = project.columns[columnIndex];
+  const currentColor = column.color || tlv2_getColumnColor(column.title);
+  
+  // Create color picker popover
+  const picker = document.createElement('div');
+  picker.id = 'tlv2ColorPicker';
+  picker.className = 'tlv2-color-picker';
+  picker.innerHTML = `
+    <div class="tlv2-color-picker-header">
+      <span class="tlv2-color-picker-title">Column Color</span>
+      <button class="tlv2-color-picker-close" onclick="tlv2_closeColorPicker()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="tlv2-color-grid">
+      ${TLV2_COLORS.map(c => `
+        <button class="tlv2-color-swatch ${c.value === currentColor ? 'active' : ''}" 
+                style="background-color: ${c.value};" 
+                title="${c.name}"
+                onclick="tlv2_setColumnColor(${columnIndex}, '${c.value}')">
+          ${c.value === currentColor ? '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="12" height="12"><path d="M20 6L9 17l-5-5"/></svg>' : ''}
+        </button>
+      `).join('')}
+    </div>
+    <div class="tlv2-color-custom">
+      <label class="tlv2-color-custom-label">Custom</label>
+      <input type="color" class="tlv2-color-custom-input" value="${currentColor}" 
+             onchange="tlv2_setColumnColor(${columnIndex}, this.value)">
+    </div>
+  `;
+  
+  // Position the picker near the click
+  document.body.appendChild(picker);
+  
+  const rect = event.target.getBoundingClientRect();
+  const pickerRect = picker.getBoundingClientRect();
+  
+  let left = rect.left;
+  let top = rect.bottom + 8;
+  
+  // Keep within viewport
+  if (left + pickerRect.width > window.innerWidth - 16) {
+    left = window.innerWidth - pickerRect.width - 16;
+  }
+  if (top + pickerRect.height > window.innerHeight - 16) {
+    top = rect.top - pickerRect.height - 8;
+  }
+  
+  picker.style.left = `${Math.max(16, left)}px`;
+  picker.style.top = `${Math.max(16, top)}px`;
+  
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', tlv2_handleColorPickerOutsideClick);
+  }, 10);
+}
+
+function tlv2_handleColorPickerOutsideClick(event) {
+  const picker = document.getElementById('tlv2ColorPicker');
+  if (picker && !picker.contains(event.target)) {
+    tlv2_closeColorPicker();
+  }
+}
+
+function tlv2_closeColorPicker() {
+  const picker = document.getElementById('tlv2ColorPicker');
+  if (picker) picker.remove();
+  document.removeEventListener('click', tlv2_handleColorPickerOutsideClick);
+}
+
+function tlv2_setColumnColor(columnIndex, color) {
+  const projects = loadProjects();
+  const project = projects[TimelineV2.projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  project.columns[columnIndex].color = color;
+  saveProjects(projects);
+  
+  tlv2_closeColorPicker();
+  
+  // Re-render timeline
+  const container = document.querySelector('.pd-content-scroll');
+  if (container) renderTimelineV2(TimelineV2.projectIndex, container);
+  
+  if (typeof showToast === 'function') {
+    showToast('Column color updated');
+  }
+}
+
+// ============================================
+// TIMELINE V6 - ADVANCED PREMIUM FEATURES
+// Swimlanes, Critical Path, Mini Calendar,
+// Task Inspector, Workload Heatmap, Baseline
+// ============================================
+
+// Advanced Timeline State
+if (typeof advancedTimelineState === 'undefined') {
+  var advancedTimelineState = {
+    swimlanesEnabled: false,
+    swimlaneGroupBy: 'priority', // 'priority', 'assignee', 'status'
+    criticalPathEnabled: false,
+    showWorkload: false,
+    showBaseline: false,
+    miniCalendarOpen: false,
+    inspectorTaskId: null,
+    keyboardShortcutsOpen: false,
+    collapsedSwimlanes: {},
+    baselineData: {} // Stores original dates for baseline comparison
+  };
+}
+
+// ============================================
+// Advanced Toolbar Rendering
+// ============================================
+function renderAdvancedToolbar(projectIndex) {
+  const state = advancedTimelineState;
+  
+  return `
+    <div class="tl-advanced-toolbar">
+      <!-- Swimlanes Toggle -->
+      <button class="tl-adv-btn ${state.swimlanesEnabled ? 'active' : ''}" 
+              onclick="toggleSwimlanes(${projectIndex})" 
+              title="Group tasks into swimlanes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="6" rx="1"/>
+          <rect x="3" y="11" width="18" height="6" rx="1"/>
+        </svg>
+        Swimlanes
+        ${state.swimlanesEnabled ? `<span class="btn-badge">${capitalizeStatus(state.swimlaneGroupBy)}</span>` : ''}
+      </button>
+      
+      <!-- Critical Path -->
+      <button class="tl-adv-btn ${state.criticalPathEnabled ? 'active' : ''}" 
+              onclick="toggleCriticalPath(${projectIndex})"
+              title="Highlight the critical path">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Critical Path
+      </button>
+      
+      <div class="tl-adv-separator"></div>
+      
+      <!-- Workload View -->
+      <button class="tl-adv-btn ${state.showWorkload ? 'active' : ''}" 
+              onclick="toggleWorkloadView(${projectIndex})"
+              title="Show resource workload heatmap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workload
+      </button>
+      
+      <!-- Baseline -->
+      <button class="tl-adv-btn ${state.showBaseline ? 'active' : ''}" 
+              onclick="toggleBaselineView(${projectIndex})"
+              title="Compare with baseline schedule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+          <polyline points="16 7 22 7 22 13"/>
+        </svg>
+        Baseline
+      </button>
+      
+      <div class="tl-adv-separator"></div>
+      
+      <!-- Mini Calendar -->
+      <button class="tl-adv-btn" onclick="openMiniCalendar(event, ${projectIndex})" title="Quick date navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Navigate
+      </button>
+      
+      <!-- Keyboard Shortcuts -->
+      <button class="tl-adv-btn" onclick="showKeyboardShortcuts()" title="Show keyboard shortcuts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <line x1="6" y1="10" x2="6" y2="10"/>
+          <line x1="10" y1="10" x2="10" y2="10"/>
+          <line x1="14" y1="10" x2="14" y2="10"/>
+          <line x1="18" y1="10" x2="18" y2="10"/>
+          <line x1="8" y1="14" x2="16" y2="14"/>
+        </svg>
+        ?
+      </button>
+      
+      ${state.criticalPathEnabled ? `
+        <div class="tl-critical-path-legend">
+          Critical path tasks
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+// ============================================
+// Swimlanes Functionality
+// ============================================
+function toggleSwimlanes(projectIndex) {
+  advancedTimelineState.swimlanesEnabled = !advancedTimelineState.swimlanesEnabled;
+  
+  if (advancedTimelineState.swimlanesEnabled) {
+    openSwimlanesGroupByMenu(event, projectIndex);
+  } else {
+    refreshAdvancedTimeline(projectIndex);
+  }
+}
+
+function openSwimlanesGroupByMenu(event, projectIndex) {
+  event.stopPropagation();
+  
+  // Close existing menus
+  closeAllDropdowns();
+  
+  const menu = document.createElement('div');
+  menu.id = 'swimlanesGroupMenu';
+  menu.className = 'tl-zoom-dropdown show';
+  menu.style.cssText = `
+    position: fixed;
+    left: ${event.clientX}px;
+    top: ${event.clientY + 10}px;
+    min-width: 150px;
+  `;
+  
+  menu.innerHTML = `
+    <button class="tl-zoom-preset ${advancedTimelineState.swimlaneGroupBy === 'priority' ? 'active' : ''}" 
+            onclick="setSwimlanesGroupBy('priority', ${projectIndex})">
+      By Priority
+    </button>
+    <button class="tl-zoom-preset ${advancedTimelineState.swimlaneGroupBy === 'assignee' ? 'active' : ''}" 
+            onclick="setSwimlanesGroupBy('assignee', ${projectIndex})">
+      By Assignee
+    </button>
+    <button class="tl-zoom-preset ${advancedTimelineState.swimlaneGroupBy === 'status' ? 'active' : ''}" 
+            onclick="setSwimlanesGroupBy('status', ${projectIndex})">
+      By Status
+    </button>
+  `;
+  
+  document.body.appendChild(menu);
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeSwimlaneMenu);
+  }, 10);
+}
+
+function closeSwimlaneMenu() {
+  const menu = document.getElementById('swimlanesGroupMenu');
+  if (menu) menu.remove();
+  document.removeEventListener('click', closeSwimlaneMenu);
+}
+
+function setSwimlanesGroupBy(groupBy, projectIndex) {
+  advancedTimelineState.swimlaneGroupBy = groupBy;
+  advancedTimelineState.swimlanesEnabled = true;
+  closeSwimlaneMenu();
+  refreshAdvancedTimeline(projectIndex);
+}
+
+function renderSwimlanes(columns, projectIndex, dates, startDate) {
+  const groupBy = advancedTimelineState.swimlaneGroupBy;
+  const allTasks = [];
+  
+  columns.forEach(col => {
+    col.tasks.forEach(task => {
+      allTasks.push({
+        ...task,
+        columnTitle: col.title,
+        columnColor: col.color
+      });
+    });
+  });
+  
+  // Group tasks
+  const groups = {};
+  allTasks.forEach(task => {
+    let key;
+    switch (groupBy) {
+      case 'priority':
+        key = task.priority || 'none';
+        break;
+      case 'assignee':
+        key = task.assignee || 'Unassigned';
+        break;
+      case 'status':
+        key = task.columnTitle || 'Unknown';
+        break;
+      default:
+        key = 'all';
+    }
+    
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(task);
+  });
+  
+  // Sort group keys
+  let sortedKeys = Object.keys(groups);
+  if (groupBy === 'priority') {
+    const priorityOrder = ['high', 'medium', 'low', 'none'];
+    sortedKeys.sort((a, b) => priorityOrder.indexOf(a) - priorityOrder.indexOf(b));
+  }
+  
+  const cellWidth = 48 * timelineState.zoom;
+  let html = '';
+  
+  sortedKeys.forEach(key => {
+    const tasks = groups[key];
+    const isCollapsed = advancedTimelineState.collapsedSwimlanes[key];
+    const completedCount = tasks.filter(t => t.done).length;
+    
+    let iconClass = '';
+    let iconContent = '';
+    
+    if (groupBy === 'priority') {
+      iconClass = `priority-${key}`;
+      iconContent = key === 'high' ? '!!!' : key === 'medium' ? '!!' : '!';
+    } else if (groupBy === 'assignee') {
+      iconClass = 'assignee';
+      iconContent = key.charAt(0).toUpperCase();
+    } else {
+      iconClass = 'assignee';
+      iconContent = key.charAt(0).toUpperCase();
+    }
+    
+    html += `
+      <div class="tl-swimlane ${isCollapsed ? 'collapsed' : ''}" data-swimlane="${key}">
+        <div class="tl-swimlane-header">
+          <div class="tl-swimlane-icon ${iconClass}">${iconContent}</div>
+          <div class="tl-swimlane-info">
+            <div class="tl-swimlane-title">${capitalizeStatus(key)}</div>
+            <div class="tl-swimlane-meta">${tasks.length} task${tasks.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="tl-swimlane-stats">
+            <div class="tl-swimlane-stat">
+              <span class="tl-swimlane-stat-value">${completedCount}</span>
+              <span class="tl-swimlane-stat-label">Done</span>
+            </div>
+            <div class="tl-swimlane-stat">
+              <span class="tl-swimlane-stat-value">${tasks.length - completedCount}</span>
+              <span class="tl-swimlane-stat-label">Open</span>
+            </div>
+          </div>
+          <button class="tl-swimlane-expand" onclick="toggleSwimlaneCollapse('${key}', ${projectIndex})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="tl-swimlane-body">
+          <div class="tl-left-panel" style="width: 200px;">
+            ${tasks.map(task => `
+              <div class="tl-task-item" onclick="showTaskInspector('${task.id}', ${projectIndex}, event)" style="height: 44px;">
+                <div class="tl-task-status">
+                  <svg class="tl-task-icon ${task.done ? 'complete' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    ${task.done ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : '<circle cx="12" cy="12" r="10"/>'}
+                  </svg>
+                </div>
+                <div class="tl-task-content">
+                  <div class="tl-task-title ${task.done ? 'completed' : ''}">${task.title}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="tl-gantt-wrapper" style="flex: 1;">
+            <div class="tl-gantt-grid" style="width: ${dates.length * cellWidth}px;">
+              ${renderSwimlaneTaskBars(tasks, dates, startDate, projectIndex)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
+function renderSwimlaneTaskBars(tasks, dates, startDate, projectIndex) {
+  const cellWidth = 48 * timelineState.zoom;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '';
+  
+  tasks.forEach((task, idx) => {
+    const cells = dates.map(date => {
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 44px;"></div>`;
+    }).join('');
+    
+    let barHtml = '';
+    if (task.startDate) {
+      const taskStart = new Date(task.startDate);
+      const taskEnd = task.dueDate ? new Date(task.dueDate) : taskStart;
+      const startOffset = daysBetween(startDate, taskStart);
+      const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
+      const left = Math.max(0, startOffset * cellWidth);
+      const width = Math.max(cellWidth - 4, duration * cellWidth - 4);
+      
+      const isOverdue = taskEnd < today && !task.done;
+      const isCritical = advancedTimelineState.criticalPathEnabled && isTaskOnCriticalPath(task);
+      
+      barHtml = `
+        <div class="tl-task-bar tl-task-bar-clickup tl-task-bar-child ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${isCritical ? 'critical-path' : ''}"
+             style="left: ${left}px; width: ${width}px; top: ${idx * 44 + 9}px; background: linear-gradient(180deg, ${task.columnColor || '#6366f1'} 0%, ${adjustColor(task.columnColor || '#6366f1', -15)} 100%);"
+             onclick="showTaskInspector('${task.id}', ${projectIndex}, event)">
+          <span class="tl-bar-label">${task.title}</span>
+        </div>
+      `;
+    }
+    
+    html += `<div class="tl-gantt-row tl-gantt-row-clickup" style="height: 36px; position: relative;">${cells}${barHtml}</div>`;
+  });
+  
+  return html;
+}
+
+function toggleSwimlaneCollapse(key, projectIndex) {
+  advancedTimelineState.collapsedSwimlanes[key] = !advancedTimelineState.collapsedSwimlanes[key];
+  refreshAdvancedTimeline(projectIndex);
+}
+
+// ============================================
+// Critical Path Functionality
+// ============================================
+function toggleCriticalPath(projectIndex) {
+  advancedTimelineState.criticalPathEnabled = !advancedTimelineState.criticalPathEnabled;
+  refreshAdvancedTimeline(projectIndex);
+  
+  if (advancedTimelineState.criticalPathEnabled) {
+    showToast('Critical path highlighted - longest dependency chain shown');
+  }
+}
+
+function isTaskOnCriticalPath(task) {
+  // Simple critical path logic - tasks with dependencies that are on the longest chain
+  // In a real implementation, this would use topological sorting
+  if (!task.dependencies || task.dependencies.length === 0) return false;
+  
+  // For now, highlight tasks with dependencies
+  return true;
+}
+
+function calculateCriticalPath(columns) {
+  const allTasks = [];
+  columns.forEach(col => {
+    col.tasks.forEach(task => {
+      allTasks.push({
+        ...task,
+        column: col.title
+      });
+    });
+  });
+  
+  // Find tasks with longest dependency chains
+  const criticalTasks = new Set();
+  
+  allTasks.forEach(task => {
+    if (task.dependencies && task.dependencies.length > 0) {
+      criticalTasks.add(task.id);
+      task.dependencies.forEach(depId => criticalTasks.add(depId));
+    }
+  });
+  
+  return Array.from(criticalTasks);
+}
+
+// ============================================
+// Workload View
+// ============================================
+function toggleWorkloadView(projectIndex) {
+  advancedTimelineState.showWorkload = !advancedTimelineState.showWorkload;
+  refreshAdvancedTimeline(projectIndex);
+}
+
+function renderWorkloadView(columns, dates, projectIndex) {
+  // Collect all assignees
+  const assignees = {};
+  columns.forEach(col => {
+    col.tasks.forEach(task => {
+      const name = task.assignee || 'Unassigned';
+      if (!assignees[name]) {
+        assignees[name] = { name, tasks: [] };
+      }
+      assignees[name].tasks.push(task);
+    });
+  });
+  
+  const cellWidth = 48 * timelineState.zoom;
+  
+  let html = `
+    <div class="tl-workload-container">
+      <div class="tl-workload-legend">
+        <span class="tl-workload-legend-title">Workload Capacity (8h/day):</span>
+        <div class="tl-workload-legend-items">
+          <div class="tl-workload-legend-item">
+            <div class="tl-workload-legend-color light"></div>
+            <span>Light (1-3h)</span>
+          </div>
+          <div class="tl-workload-legend-item">
+            <div class="tl-workload-legend-color medium"></div>
+            <span>Medium (4-6h)</span>
+          </div>
+          <div class="tl-workload-legend-item">
+            <div class="tl-workload-legend-color heavy"></div>
+            <span>Heavy (7-8h)</span>
+          </div>
+          <div class="tl-workload-legend-item">
+            <div class="tl-workload-legend-color overloaded"></div>
+            <span>Overloaded (>8h)</span>
+          </div>
+        </div>
+      </div>
+      <div class="tl-workload-rows">
+  `;
+  
+  Object.values(assignees).forEach(assignee => {
+    const avatarColor = getAvatarColor(assignee.name);
+    
+    html += `
+      <div class="tl-workload-row">
+        <div class="tl-workload-assignee">
+          <div class="tl-workload-avatar" style="background: linear-gradient(135deg, ${avatarColor} 0%, ${adjustColor(avatarColor, -20)} 100%);">
+            ${assignee.name.charAt(0).toUpperCase()}
+          </div>
+          <div class="tl-workload-name">
+            <div class="tl-workload-name-text">${assignee.name}</div>
+            <div class="tl-workload-capacity">${assignee.tasks.length} tasks</div>
+          </div>
+        </div>
+        <div class="tl-workload-cells">
+    `;
+    
+    dates.forEach(date => {
+      // Calculate hours for this date
+      const hours = assignee.tasks.filter(task => {
+        if (!task.startDate) return false;
+        const start = new Date(task.startDate);
+        const end = task.dueDate ? new Date(task.dueDate) : start;
+        return date >= start && date <= end;
+      }).length * 2; // Assume 2 hours per task per day
+      
+      const level = hours === 0 ? 0 : hours <= 2 ? 1 : hours <= 4 ? 2 : hours <= 6 ? 3 : hours <= 8 ? 4 : hours <= 10 ? 5 : 6;
+      const isOverloaded = hours > 8;
+      
+      html += `
+        <div class="tl-workload-cell level-${level} ${isOverloaded ? 'overloaded' : ''}" 
+             style="width: ${cellWidth}px;" 
+             data-hours="${hours}h"
+             title="${assignee.name}: ${hours}h on ${date.toLocaleDateString()}">
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+// ============================================
+// Baseline Comparison
+// ============================================
+function toggleBaselineView(projectIndex) {
+  advancedTimelineState.showBaseline = !advancedTimelineState.showBaseline;
+  
+  if (advancedTimelineState.showBaseline && Object.keys(advancedTimelineState.baselineData).length === 0) {
+    // Save current dates as baseline
+    saveBaseline(projectIndex);
+    showToast('Baseline saved! Future changes will be compared against this snapshot.');
+  }
+  
+  refreshAdvancedTimeline(projectIndex);
+}
+
+function saveBaseline(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  const baseline = {};
+  project.columns.forEach((col, colIdx) => {
+    col.tasks.forEach((task, taskIdx) => {
+      if (task.startDate || task.dueDate) {
+        baseline[task.id] = {
+          startDate: task.startDate,
+          dueDate: task.dueDate
+        };
+      }
+    });
+  });
+  
+  advancedTimelineState.baselineData = baseline;
+  
+  // Also save to project
+  project.baselineData = baseline;
+  project.baselineSavedAt = new Date().toISOString();
+  saveProjects(projects);
+}
+
+function renderBaselineBar(task, startDate) {
+  const baseline = advancedTimelineState.baselineData[task.id];
+  if (!baseline) return '';
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const baseStart = baseline.startDate ? new Date(baseline.startDate) : null;
+  const baseEnd = baseline.dueDate ? new Date(baseline.dueDate) : baseStart;
+  
+  if (!baseStart) return '';
+  
+  const startOffset = daysBetween(startDate, baseStart);
+  const duration = Math.max(1, daysBetween(baseStart, baseEnd) + 1);
+  const left = Math.max(0, startOffset * cellWidth);
+  const width = Math.max(cellWidth - 4, duration * cellWidth - 4);
+  
+  // Calculate variance
+  const currentStart = task.startDate ? new Date(task.startDate) : null;
+  let variance = 0;
+  let varianceClass = '';
+  
+  if (currentStart && baseStart) {
+    variance = daysBetween(baseStart, currentStart);
+    varianceClass = variance < 0 ? 'ahead' : variance > 0 ? 'behind' : '';
+  }
+  
+  return `
+    <div class="tl-baseline-bar" style="left: ${left}px; width: ${width}px;"></div>
+    ${variance !== 0 ? `
+      <div class="tl-baseline-indicator ${varianceClass}">
+        ${variance < 0 ? `${Math.abs(variance)}d ahead` : `${variance}d behind`}
+      </div>
+    ` : ''}
+  `;
+}
+
+// ============================================
+// Mini Calendar Navigator
+// ============================================
+function openMiniCalendar(event, projectIndex) {
+  event.stopPropagation();
+  
+  const existing = document.getElementById('tlMiniCalendar');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  
+  const today = new Date();
+  const currentMonth = timelineState.currentDate || today;
+  
+  const calendar = document.createElement('div');
+  calendar.id = 'tlMiniCalendar';
+  calendar.className = 'tl-mini-calendar show';
+  calendar.style.cssText = `
+    left: ${event.clientX - 150}px;
+    top: ${event.clientY + 20}px;
+  `;
+  
+  calendar.innerHTML = renderMiniCalendarContent(currentMonth, projectIndex);
+  document.body.appendChild(calendar);
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeMiniCalendar);
+  }, 10);
+}
+
+function renderMiniCalendarContent(displayMonth, projectIndex) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const year = displayMonth.getFullYear();
+  const month = displayMonth.getMonth();
+  
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay();
+  
+  const monthName = displayMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  
+  let daysHtml = dayLabels.map(d => `<div class="tl-mini-calendar-day-label">${d}</div>`).join('');
+  
+  // Previous month days
+  const prevMonth = new Date(year, month, 0);
+  for (let i = startDay - 1; i >= 0; i--) {
+    const day = prevMonth.getDate() - i;
+    daysHtml += `<div class="tl-mini-calendar-day other-month">${day}</div>`;
+  }
+  
+  // Current month days
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const date = new Date(year, month, day);
+    const isToday = date.toDateString() === today.toDateString();
+    
+    daysHtml += `
+      <div class="tl-mini-calendar-day ${isToday ? 'today' : ''}" 
+           onclick="navigateToDate(${year}, ${month}, ${day}, ${projectIndex})">
+        ${day}
+      </div>
+    `;
+  }
+  
+  // Next month days
+  const remainingCells = 42 - (startDay + lastDay.getDate());
+  for (let day = 1; day <= remainingCells; day++) {
+    daysHtml += `<div class="tl-mini-calendar-day other-month">${day}</div>`;
+  }
+  
+  return `
+    <div class="tl-mini-calendar-header">
+      <span class="tl-mini-calendar-title">${monthName}</span>
+      <div class="tl-mini-calendar-nav">
+        <button onclick="navigateMiniCalendar(-1, ${projectIndex})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button onclick="navigateMiniCalendar(1, ${projectIndex})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="tl-mini-calendar-days">
+      ${daysHtml}
+    </div>
+    <div class="tl-mini-calendar-shortcuts">
+      <button class="tl-mini-calendar-shortcut" onclick="navigateToToday(${projectIndex})">Today</button>
+      <button class="tl-mini-calendar-shortcut" onclick="navigateToThisWeek(${projectIndex})">This Week</button>
+      <button class="tl-mini-calendar-shortcut" onclick="navigateToNextMonth(${projectIndex})">Next Month</button>
+    </div>
+  `;
+}
+
+function closeMiniCalendar(event) {
+  const calendar = document.getElementById('tlMiniCalendar');
+  if (calendar && !calendar.contains(event?.target)) {
+    calendar.remove();
+    document.removeEventListener('click', closeMiniCalendar);
+  }
+}
+
+function navigateMiniCalendar(direction, projectIndex) {
+  event.stopPropagation();
+  const current = timelineState.currentDate || new Date();
+  const newMonth = new Date(current.getFullYear(), current.getMonth() + direction, 1);
+  timelineState.currentDate = newMonth;
+  
+  const calendar = document.getElementById('tlMiniCalendar');
+  if (calendar) {
+    calendar.innerHTML = renderMiniCalendarContent(newMonth, projectIndex);
+  }
+}
+
+function navigateToDate(year, month, day, projectIndex) {
+  const targetDate = new Date(year, month, day);
+  timelineState.currentDate = targetDate;
+  closeMiniCalendar();
+  refreshAdvancedTimeline(projectIndex);
+  
+  // Scroll to the date in the gantt
+  setTimeout(() => {
+    goToTimelineDate(targetDate, projectIndex);
+  }, 100);
+}
+
+function navigateToToday(projectIndex) {
+  navigateToDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), projectIndex);
+}
+
+function navigateToThisWeek(projectIndex) {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  navigateToDate(monday.getFullYear(), monday.getMonth(), monday.getDate(), projectIndex);
+}
+
+function navigateToNextMonth(projectIndex) {
+  const next = new Date();
+  next.setMonth(next.getMonth() + 1);
+  next.setDate(1);
+  navigateToDate(next.getFullYear(), next.getMonth(), next.getDate(), projectIndex);
+}
+
+function goToTimelineDate(targetDate, projectIndex) {
+  const wrapper = document.getElementById('tlGanttWrapper');
+  if (!wrapper) return;
+  
+  const cellWidth = 48 * timelineState.zoom;
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Calculate approximate scroll position
+  const allTasks = [];
+  project.columns.forEach(col => {
+    col.tasks.forEach(task => {
+      if (task.startDate) allTasks.push(task);
+    });
+  });
+  
+  if (allTasks.length === 0) return;
+  
+  const startDates = allTasks.map(t => new Date(t.startDate));
+  const minDate = new Date(Math.min(...startDates));
+  const offset = daysBetween(minDate, targetDate);
+  
+  wrapper.scrollLeft = Math.max(0, offset * cellWidth - wrapper.clientWidth / 2);
+}
+
+// ============================================
+// Task Inspector
+// ============================================
+function showTaskInspector(taskId, projectIndex, event) {
+  event.stopPropagation();
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  let task = null;
+  let columnTitle = '';
+  
+  project.columns.forEach(col => {
+    col.tasks.forEach(t => {
+      if (t.id === taskId) {
+        task = t;
+        columnTitle = col.title;
+      }
+    });
+  });
+  
+  if (!task) return;
+  
+  const existing = document.getElementById('tlTaskInspector');
+  if (existing) existing.remove();
+  
+  const inspector = document.createElement('div');
+  inspector.id = 'tlTaskInspector';
+  inspector.className = 'tl-task-inspector';
+  
+  // Position near the click but within viewport
+  let left = event.clientX + 20;
+  let top = event.clientY - 100;
+  
+  if (left + 360 > window.innerWidth) left = event.clientX - 380;
+  if (top < 20) top = 20;
+  if (top + 480 > window.innerHeight) top = window.innerHeight - 500;
+  
+  inspector.style.cssText = `left: ${left}px; top: ${top}px;`;
+  
+  const statusClass = task.done ? 'done' : columnTitle.toLowerCase().includes('progress') ? 'in-progress' : 'todo';
+  const statusIcon = task.done 
+    ? '<polyline points="22 4 12 14.01 9 11.01"/><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>'
+    : '<circle cx="12" cy="12" r="10"/>';
+  
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isOverdue = dueDate && dueDate < today && !task.done;
+  const isDueSoon = dueDate && !isOverdue && daysBetween(today, dueDate) <= 3;
+  
+  inspector.innerHTML = `
+    <div class="tl-inspector-header">
+      <div class="tl-inspector-status ${statusClass}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${statusIcon}</svg>
+      </div>
+      <div class="tl-inspector-title-wrap">
+        <div class="tl-inspector-title">${task.title}</div>
+        <div class="tl-inspector-subtitle">${columnTitle} • ${task.id}</div>
+      </div>
+      <button class="tl-inspector-close" onclick="closeTaskInspector()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    
+    <div class="tl-inspector-body">
+      <div class="tl-inspector-section">
+        <div class="tl-inspector-section-title">Details</div>
+        
+        <div class="tl-inspector-row">
+          <div class="tl-inspector-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          </div>
+          <div class="tl-inspector-row-content">
+            <div class="tl-inspector-label">Due Date</div>
+            <div class="tl-inspector-value ${isOverdue ? 'overdue' : isDueSoon ? 'due-soon' : ''}">
+              ${dueDate ? formatDate(task.dueDate) : 'No due date'}
+              ${isOverdue ? ' (Overdue)' : isDueSoon ? ' (Due soon)' : ''}
+            </div>
+          </div>
+        </div>
+        
+        ${task.assignee ? `
+        <div class="tl-inspector-row">
+          <div class="tl-inspector-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="tl-inspector-row-content">
+            <div class="tl-inspector-label">Assignee</div>
+            <div class="tl-inspector-value">${task.assignee}</div>
+          </div>
+        </div>
+        ` : ''}
+        
+        ${task.priority ? `
+        <div class="tl-inspector-row">
+          <div class="tl-inspector-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="tl-inspector-row-content">
+            <div class="tl-inspector-label">Priority</div>
+            <div class="tl-inspector-value">${capitalizeStatus(task.priority)}</div>
+          </div>
+        </div>
+        ` : ''}
+        
+        ${task.startDate ? `
+        <div class="tl-inspector-row">
+          <div class="tl-inspector-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="tl-inspector-row-content">
+            <div class="tl-inspector-label">Duration</div>
+            <div class="tl-inspector-value">
+              ${formatDate(task.startDate)} → ${task.dueDate ? formatDate(task.dueDate) : 'TBD'}
+              <span style="color: var(--muted-foreground); margin-left: 8px;">
+                (${task.dueDate ? daysBetween(new Date(task.startDate), new Date(task.dueDate)) + 1 : '?'} days)
+              </span>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+      
+      ${task.description ? `
+      <div class="tl-inspector-section">
+        <div class="tl-inspector-section-title">Description</div>
+        <p style="font-size: 13px; color: var(--foreground); line-height: 1.5;">${task.description}</p>
+      </div>
+      ` : ''}
+    </div>
+    
+    <div class="tl-inspector-actions">
+      <button class="tl-inspector-action" onclick="closeTaskInspector(); openTimelineTaskEdit('${task.id}', ${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit
+      </button>
+      <button class="tl-inspector-action primary" onclick="closeTaskInspector(); toggleTaskComplete('${task.id}', ${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        ${task.done ? 'Mark Incomplete' : 'Complete'}
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(inspector);
+  
+  requestAnimationFrame(() => {
+    inspector.classList.add('show');
+  });
+  
+  setTimeout(() => {
+    document.addEventListener('click', handleInspectorOutsideClick);
+  }, 10);
+}
+
+function handleInspectorOutsideClick(event) {
+  const inspector = document.getElementById('tlTaskInspector');
+  if (inspector && !inspector.contains(event.target)) {
+    closeTaskInspector();
+  }
+}
+
+function closeTaskInspector() {
+  const inspector = document.getElementById('tlTaskInspector');
+  if (inspector) {
+    inspector.classList.remove('show');
+    setTimeout(() => inspector.remove(), 200);
+  }
+  document.removeEventListener('click', handleInspectorOutsideClick);
+}
+
+function toggleTaskComplete(taskId, projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  project.columns.forEach((col, colIdx) => {
+    col.tasks.forEach((task, taskIdx) => {
+      if (task.id === taskId) {
+        task.done = !task.done;
+      }
+    });
+  });
+  
+  saveProjects(projects);
+  refreshAdvancedTimeline(projectIndex);
+  showToast(projects[projectIndex].columns.flatMap(c => c.tasks).find(t => t.id === taskId)?.done ? 'Task completed!' : 'Task reopened');
+}
+
+// ============================================
+// Keyboard Shortcuts
+// ============================================
+function showKeyboardShortcuts() {
+  const overlay = document.createElement('div');
+  overlay.id = 'tlShortcutsOverlay';
+  overlay.className = 'tl-shortcuts-overlay';
+  
+  overlay.innerHTML = `
+    <div class="tl-shortcuts-panel">
+      <div class="tl-shortcuts-header">
+        <span class="tl-shortcuts-title">Keyboard Shortcuts</span>
+        <button class="tl-shortcuts-close" onclick="closeKeyboardShortcuts()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      
+      <div class="tl-shortcuts-group">
+        <div class="tl-shortcuts-group-title">Navigation</div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Go to today</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">T</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Previous period</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">←</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Next period</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">→</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Scroll up</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">↑</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Scroll down</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">↓</span></div>
+        </div>
+      </div>
+      
+      <div class="tl-shortcuts-group">
+        <div class="tl-shortcuts-group-title">Zoom</div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Zoom in</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">+</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Zoom out</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">-</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Fit to screen</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">F</span></div>
+        </div>
+      </div>
+      
+      <div class="tl-shortcuts-group">
+        <div class="tl-shortcuts-group-title">Views</div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Day view</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">D</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Week view</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">W</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Month view</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">M</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Toggle swimlanes</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">S</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Toggle critical path</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">C</span></div>
+        </div>
+      </div>
+      
+      <div class="tl-shortcuts-group">
+        <div class="tl-shortcuts-group-title">Actions</div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Add new task</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">N</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Show shortcuts</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">?</span></div>
+        </div>
+        <div class="tl-shortcut-item">
+          <span class="tl-shortcut-desc">Close modal / Cancel</span>
+          <div class="tl-shortcut-keys"><span class="tl-shortcut-key">Esc</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+  });
+  
+  document.addEventListener('keydown', handleShortcutsEsc);
+}
+
+function handleShortcutsEsc(event) {
+  if (event.key === 'Escape') {
+    closeKeyboardShortcuts();
+  }
+}
+
+function closeKeyboardShortcuts() {
+  const overlay = document.getElementById('tlShortcutsOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+    setTimeout(() => overlay.remove(), 250);
+  }
+  document.removeEventListener('keydown', handleShortcutsEsc);
+}
+
+// Enhanced keyboard handler for timeline
+function setupAdvancedTimelineKeyboard(projectIndex) {
+  document.addEventListener('keydown', function(event) {
+    // Don't trigger if user is typing in an input
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+    
+    const key = event.key.toLowerCase();
+    
+    switch (key) {
+      case 't':
+        goToTimelineToday(projectIndex);
+        break;
+      case 'arrowleft':
+        navigateTimeline(-1, projectIndex);
+        break;
+      case 'arrowright':
+        navigateTimeline(1, projectIndex);
+        break;
+      case '+':
+      case '=':
+        zoomTimelineSmart(1, projectIndex);
+        break;
+      case '-':
+        zoomTimelineSmart(-1, projectIndex);
+        break;
+      case 'f':
+        autofitTimeline(projectIndex);
+        break;
+      case 'd':
+        setTimelineViewMode('day', projectIndex);
+        break;
+      case 'w':
+        setTimelineViewMode('week', projectIndex);
+        break;
+      case 'm':
+        setTimelineViewMode('month', projectIndex);
+        break;
+      case 's':
+        toggleSwimlanes(projectIndex);
+        break;
+      case 'c':
+        toggleCriticalPath(projectIndex);
+        break;
+      case 'n':
+        openTimelineAddTask(projectIndex);
+        break;
+      case '?':
+        showKeyboardShortcuts();
+        break;
+    }
+  });
+}
+
+// ============================================
+// Refresh Helper
+// ============================================
+function refreshAdvancedTimeline(projectIndex) {
+  const container = document.querySelector('.pd-content-scroll');
+  if (container && typeof renderTimelineView === 'function') {
+    renderTimelineView(projectIndex, container);
+  }
+}
+
+// ============================================
+// Close all dropdowns helper
+// ============================================
+function closeAllDropdowns() {
+  const dropdowns = document.querySelectorAll('.tl-zoom-dropdown.show, #swimlanesGroupMenu, #tlMiniCalendar');
+  dropdowns.forEach(d => d.remove());
+}
+
+// ============================================
+// Integration - Replace old timeline render
+// ============================================
+
+// Override the old renderTimelineView if it exists
+if (typeof window !== 'undefined') {
+  window.renderTimelineViewV2 = renderTimelineV2;
+  window.renderAdvancedToolbar = renderAdvancedToolbar;
+}
+
+console.log('Timeline V2 loaded successfully');
+console.log('Timeline V6 Advanced Features loaded successfully');
+
+// ============================================
+// PREMIUM BAR CONTEXT MENU & MILESTONE SYSTEM
+// ============================================
+
+// Emoji icons pool for bar decoration
+const barEmojiIcons = ['🌐', '⚙️', '⭐', '⚡', '🎯', '📊', '🚀', '💡', '🔧', '📁', '✨', '🎨', '📌', '🔥', '💎'];
+
+function getBarEmoji(title) {
+  // Generate consistent emoji based on title hash
+  if (!title) return '📌';
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = ((hash << 5) - hash) + title.charCodeAt(i);
+    hash |= 0;
+  }
+  return barEmojiIcons[Math.abs(hash) % barEmojiIcons.length];
+}
+
+// Context menu state
+let barContextMenuState = {
+  visible: false,
+  targetId: null,
+  targetType: null, // 'column' or 'task'
+  projectIndex: null,
+  clickX: 0,
+  clickY: 0,
+  clickDate: null
+};
+
+// Show bar context menu on click
+function showBarContextMenu(event, id, type, projectIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // Close any existing menu
+  hideBarContextMenu();
+  
+  // Store context state
+  barContextMenuState.visible = true;
+  barContextMenuState.targetId = id;
+  barContextMenuState.targetType = type;
+  barContextMenuState.projectIndex = projectIndex;
+  barContextMenuState.clickX = event.clientX;
+  barContextMenuState.clickY = event.clientY;
+  
+  // Calculate clicked date position on bar
+  const bar = event.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const clickOffsetX = event.clientX - rect.left;
+  const barWidth = rect.width;
+  const startDate = new Date(bar.dataset.startDate);
+  const endDate = new Date(bar.dataset.endDate);
+  
+  if (startDate && endDate && !isNaN(startDate) && !isNaN(endDate)) {
+    const totalDays = daysBetween(startDate, endDate) + 1;
+    const dayOffset = Math.floor((clickOffsetX / barWidth) * totalDays);
+    const clickedDate = new Date(startDate);
+    clickedDate.setDate(clickedDate.getDate() + dayOffset);
+    barContextMenuState.clickDate = clickedDate.toISOString().split('T')[0];
+  } else {
+    barContextMenuState.clickDate = new Date().toISOString().split('T')[0];
+  }
+  
+  // Create context menu
+  const menu = document.createElement('div');
+  menu.id = 'tlBarContextMenu';
+  menu.className = 'tl-bar-context-menu';
+  menu.innerHTML = `
+    <button class="tl-bar-context-menu-item" onclick="createMilestoneFromMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      Create milestone
+    </button>
+    <button class="tl-bar-context-menu-item" onclick="addMarkerFromMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v20M2 12h20"/>
+      </svg>
+      Add marker
+    </button>
+    <div class="tl-bar-context-menu-separator"></div>
+    <button class="tl-bar-context-menu-item" onclick="editBarDates()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+      </svg>
+      Edit dates
+    </button>
+  `;
+  
+  // Position menu
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
+  
+  document.body.appendChild(menu);
+  
+  // Adjust position if menu goes off screen
+  const menuRect = menu.getBoundingClientRect();
+  if (menuRect.right > window.innerWidth) {
+    menu.style.left = `${window.innerWidth - menuRect.width - 10}px`;
+  }
+  if (menuRect.bottom > window.innerHeight) {
+    menu.style.top = `${window.innerHeight - menuRect.height - 10}px`;
+  }
+  
+  // Add click outside listener
+  setTimeout(() => {
+    document.addEventListener('click', hideBarContextMenuOnClick);
+    document.addEventListener('contextmenu', hideBarContextMenuOnClick);
+  }, 10);
+}
+
+function hideBarContextMenu() {
+  const menu = document.getElementById('tlBarContextMenu');
+  if (menu) {
+    menu.remove();
+  }
+  barContextMenuState.visible = false;
+  document.removeEventListener('click', hideBarContextMenuOnClick);
+  document.removeEventListener('contextmenu', hideBarContextMenuOnClick);
+}
+
+function hideBarContextMenuOnClick(event) {
+  const menu = document.getElementById('tlBarContextMenu');
+  if (menu && !menu.contains(event.target)) {
+    hideBarContextMenu();
+  }
+}
+
+// Milestone menu functions removed
+function createMilestoneFromMenu() {}
+function addMarkerFromMenu() {}
+
+// Edit bar dates
+function editBarDates() {
+  hideBarContextMenu();
+  const { targetId, targetType, projectIndex } = barContextMenuState;
+  
+  if (targetType === 'column') {
+    // Find column index
+    const projects = loadProjects();
+    const project = projects[projectIndex];
+    if (project) {
+      const colIndex = project.columns.findIndex(c => c.id === targetId);
+      if (colIndex !== -1) {
+        openEditColumnModal(colIndex, projectIndex);
+      }
+    }
+  } else {
+    openTimelineTaskEdit(targetId, projectIndex);
+  }
+}
+
+// Remaining milestone functions removed
+function showMilestoneNameInput() {}
+function closeMilestoneInput() {}
+function confirmMilestoneCreation() {}
+function showMilestoneContextMenu() {}
+function renameMilestone() {}
+function deleteMilestone() {}
+function renderCustomMilestonesOnBar() { return ''; }

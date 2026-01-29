@@ -3343,7 +3343,7 @@ window.updateCodeLanguageDisplay = updateCodeLanguageDisplay;
 // ============================================
 // AI Chat Assistant Functions
 // ============================================
-let aiChatMessages = [];
+// Note: aiChatMessages is defined in functionality.js
 
 function setupAiChatListeners() {
   const toggleBtn = document.getElementById('gripAiChatToggle');
@@ -3524,7 +3524,7 @@ function generateAiResponse(userMessage) {
   
   // Theme
   if (msg.includes('theme') || msg.includes('dark') || msg.includes('light') || msg.includes('color')) {
-    return "The whiteboard uses your app theme! Change it in Settings from the main sidebar. We support Dark, Light, and many custom themes like Liquid Glass, Coffee, Pink, and more.";
+    return "The whiteboard uses your app theme! Change it in Settings from the main sidebar. We support Dark, Light, and many custom themes like Pink, Purple, Ocean, and more.";
   }
   
   // Help

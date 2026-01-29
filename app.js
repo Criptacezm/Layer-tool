@@ -57,7 +57,9 @@ function init() {
 
   // Set up sidebar collapse
   setupSidebarCollapse();
-
+  
+  // Initialize sidebar sections (collapsible)
+  initSidebarSections();
   // Set up search
   setupSearch();
   
@@ -75,6 +77,9 @@ function init() {
 
   // Render initial view
   renderCurrentView();
+  
+  // Initialize AI icon morphing animation
+  initAIIconMorph();
 }
 
 // ============================================
@@ -144,6 +149,71 @@ function closeBetaNotification() {
 }
 
 // ============================================
+// AI Icon Animation (Glasses with gradient)
+// ============================================
+function initAIIconMorph() {
+  // Gradient animation is handled via SVG animate elements
+  // No JavaScript needed - the gradient loops automatically
+}
+
+// ============================================
+// Sidebar Section Toggle (Collapsible Sections)
+// ============================================
+function toggleNavSection(sectionName) {
+  const section = document.querySelector(`.nav-section-collapsible[data-section="${sectionName}"]`);
+  if (section) {
+    section.classList.toggle('collapsed');
+    // Save state to localStorage
+    const collapsedSections = JSON.parse(localStorage.getItem('layerCollapsedSections') || '{}');
+    collapsedSections[sectionName] = section.classList.contains('collapsed');
+    localStorage.setItem('layerCollapsedSections', JSON.stringify(collapsedSections));
+  }
+}
+
+function toggleTeamSection(teamName) {
+  const teamItem = document.querySelector(`.nav-team-item[data-team="${teamName}"]`);
+  if (teamItem) {
+    teamItem.classList.toggle('collapsed');
+    const content = teamItem.querySelector('.nav-team-content');
+    if (content) {
+      content.classList.toggle('open');
+    }
+    // Save state
+    const collapsedTeams = JSON.parse(localStorage.getItem('layerCollapsedTeams') || '{}');
+    collapsedTeams[teamName] = teamItem.classList.contains('collapsed');
+    localStorage.setItem('layerCollapsedTeams', JSON.stringify(collapsedTeams));
+  }
+}
+
+function initSidebarSections() {
+  // Load collapsed sections state
+  const collapsedSections = JSON.parse(localStorage.getItem('layerCollapsedSections') || '{}');
+  Object.keys(collapsedSections).forEach(sectionName => {
+    if (collapsedSections[sectionName]) {
+      const section = document.querySelector(`.nav-section-collapsible[data-section="${sectionName}"]`);
+      if (section) {
+        section.classList.add('collapsed');
+      }
+    }
+  });
+  
+  // Load collapsed teams state
+  const collapsedTeams = JSON.parse(localStorage.getItem('layerCollapsedTeams') || '{}');
+  Object.keys(collapsedTeams).forEach(teamName => {
+    if (collapsedTeams[teamName]) {
+      const teamItem = document.querySelector(`.nav-team-item[data-team="${teamName}"]`);
+      if (teamItem) {
+        teamItem.classList.add('collapsed');
+        const content = teamItem.querySelector('.nav-team-content');
+        if (content) {
+          content.classList.remove('open');
+        }
+      }
+    }
+  });
+}
+
+// ============================================
 // Sidebar Collapse
 // ============================================
 function setupSidebarCollapse() {
@@ -162,6 +232,30 @@ function setupSidebarCollapse() {
       const collapsed = sidebar.classList.contains('collapsed');
       localStorage.setItem('layerSidebarCollapsed', collapsed);
     });
+  }
+  
+  // Initialize workspace section state
+  initWorkspaceSection();
+}
+
+// ============================================
+// Workspace Section Toggle
+// ============================================
+function initWorkspaceSection() {
+  // Always start expanded by default
+  const workspaceSection = document.getElementById('workspaceSection');
+  if (workspaceSection) {
+    workspaceSection.classList.add('expanded');
+  }
+}
+
+function toggleWorkspaceSection(event) {
+  if (event) event.stopPropagation();
+  
+  const workspaceSection = document.getElementById('workspaceSection');
+  
+  if (workspaceSection) {
+    workspaceSection.classList.toggle('expanded');
   }
 }
 
@@ -234,17 +328,21 @@ function setupMobileNavigation() {
 }
 
 function updateBreadcrumb(text) {
-  breadcrumbText.textContent = text;
+  if (breadcrumbText) {
+    breadcrumbText.textContent = text;
+  }
 }
 
 // ============================================
 // Search
 // ============================================
 function setupSearch() {
-  searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    renderCurrentView();
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderCurrentView();
+    });
+  }
 }
 
 // ============================================
@@ -568,7 +666,39 @@ function checkExistingSession() {
 // ============================================
 // View Rendering
 // ============================================
-function renderCurrentView() {
+
+// Store scroll position for schedule view
+let scheduleScrollPosition = { x: 0, y: 0 };
+
+// Save current schedule scroll position
+function saveScheduleScrollPosition() {
+  const scrollContainer = document.querySelector('.week-grid-scroll, .day-view-grid-scroll');
+  if (scrollContainer) {
+    scheduleScrollPosition = {
+      x: scrollContainer.scrollLeft,
+      y: scrollContainer.scrollTop
+    };
+  }
+}
+
+// Restore schedule scroll position after render
+function restoreScheduleScrollPosition() {
+  requestAnimationFrame(() => {
+    const scrollContainer = document.querySelector('.week-grid-scroll, .day-view-grid-scroll');
+    if (scrollContainer && (scheduleScrollPosition.x > 0 || scheduleScrollPosition.y > 0)) {
+      scrollContainer.scrollLeft = scheduleScrollPosition.x;
+      scrollContainer.scrollTop = scheduleScrollPosition.y;
+    }
+  });
+}
+
+// Render current view with optional scroll preservation
+function renderCurrentView(preserveScroll = false) {
+  // Save scroll position if we're on schedule view and preserving scroll
+  if (preserveScroll && currentView === 'schedule') {
+    saveScheduleScrollPosition();
+  }
+  
   if (selectedProjectIndex !== null) {
     viewsContainer.innerHTML = renderProjectDetailView(selectedProjectIndex);
     updateBreadcrumb('Project Details');
@@ -597,19 +727,55 @@ function renderCurrentView() {
     case 'schedule':                          // ← Add this case
       viewsContainer.innerHTML = renderScheduleView();
       updateBreadcrumb('Schedule');
+      // Initialize current time indicator
+      if (typeof initCurrentTimeIndicator === 'function') {
+        initCurrentTimeIndicator();
+      }
+      // Restore scroll position if preserving
+      if (preserveScroll) {
+        restoreScheduleScrollPosition();
+      }
       break;
     case 'activity':
       viewsContainer.innerHTML = renderActivityView(searchQuery);
-      updateBreadcrumb('Activity');
+      updateBreadcrumb('Projects');
       break;
     case 'team':
       viewsContainer.innerHTML = renderTeamView();
       updateBreadcrumb('Team');
       break;
+    case 'ai':
+      viewsContainer.innerHTML = renderAIView();
+      updateBreadcrumb('AI');
+      break;
     default:
       viewsContainer.innerHTML = renderMyIssuesView();
       updateBreadcrumb('My issues');
   }
+  
+  // Restore saved left panel width
+  const savedWidth = loadLeftPanelWidth();
+  if (savedWidth) {
+    document.querySelectorAll('.tl-left-panel-clickup').forEach(panel => {
+      panel.style.width = savedWidth + 'px';
+    });
+  }
+  
+  // Setup resize observer for left panels
+  setTimeout(() => {
+    document.querySelectorAll('.tl-left-panel-clickup').forEach(panel => {
+      if (!panel.dataset.resizeObserved) {
+        panel.dataset.resizeObserved = 'true';
+        const observer = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            const width = Math.round(entry.contentRect.width);
+            if (width > 0) saveLeftPanelWidth(width);
+          }
+        });
+        observer.observe(panel);
+      }
+    });
+  }, 100);
 }
 
 function setupIssueFilterListeners() {
@@ -757,17 +923,64 @@ function handleUpdateProjectDescription(index, description) {
 // ============================================
 // Project Task Handlers
 // ============================================
-function handleToggleProjectTask(projectIndex, columnIndex, taskIndex) {
+function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
+  // Prevent event bubbling that could trigger tab switches or other handlers
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
   toggleTaskDone(projectIndex, columnIndex, taskIndex);
   renderCurrentView();
+  
+  // Restore the active tab if we're in project detail view and timeline was active
+  if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+    requestAnimationFrame(() => {
+      switchProjectTab('timeline', projectIndex);
+    });
+  }
 }
 
-function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex) {
-  deleteTask(projectIndex, columnIndex, taskIndex);
-  renderCurrentView();
+function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
+  if (confirm('Delete this task?')) {
+    const projects = loadProjects();
+    if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
+      projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
+      saveProjects(projects);
+    }
+    renderCurrentView();
+    
+    // Restore the active tab if we're in project detail view and timeline was active
+    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+      requestAnimationFrame(() => {
+        switchProjectTab('timeline', projectIndex);
+      });
+    }
+  }
 }
 
 function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
   if (event.key === 'Enter') {
     const input = event.target;
     const title = input.value.trim();
@@ -775,6 +988,38 @@ function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
       addTaskToColumn(projectIndex, columnIndex, title);
       input.value = '';
       renderCurrentView();
+      
+      // Restore the active tab if we're in project detail view and timeline was active
+      if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+        requestAnimationFrame(() => {
+          switchProjectTab('timeline', projectIndex);
+        });
+      }
+    }
+  }
+}
+
+function handleAddTaskToColumn(projectIndex, columnIndex, event) {
+  // Prevent event bubbling that could trigger tab switches
+  if (event) {
+    event.stopPropagation();
+  }
+  
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
+  // Prompt user for task title
+  const title = prompt('Enter task title:');
+  if (title && title.trim()) {
+    addTaskToColumn(projectIndex, columnIndex, title.trim());
+    renderCurrentView();
+    
+    // Restore the active tab if we're in project detail view and timeline was active
+    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+      requestAnimationFrame(() => {
+        switchProjectTab('timeline', projectIndex);
+      });
     }
   }
 }
@@ -793,46 +1038,7 @@ document.addEventListener('DOMContentLoaded', init);
 // View Renderers
 // ============================================
 
-function renderInboxView() {
-  const projects = loadProjects();
-  const activity = getRecentActivity(projects);
-
-  if (activity.length === 0) {
-    return `
-      <div class="inbox-container">
-        <div class="empty-state">
-          <div class="empty-state-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
-              <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
-              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
-            </svg>
-          </div>
-          <h3 class="empty-state-title">No recent activity</h3>
-          <p class="empty-state-text">Activity from your projects will appear here</p>
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="inbox-container">
-      <h2 class="view-title" style="margin-bottom: 24px;">Recent Activity</h2>
-      <div class="activity-list">
-        ${activity.map(item => `
-        <div class="activity-item">
-            <div class="activity-icon">
-                <i class="fa fa-cube"></i>
-            </div>
-            <div class="activity-content">
-                <div class="activity-message">${item.message}</div>
-                <div class="activity-time">${formatTimeAgo(item.time)}</div>
-            </div>
-        </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
+// Note: renderInboxView is defined in functionality.js with the full dashboard
 
 function renderMyIssuesView(filter = 'all', searchQuery = '') {
   let issues = loadIssues();
@@ -1207,13 +1413,13 @@ function renderProjectDetailView(projectIndex) {
                   ${column.tasks.map((task, taskIndex) => `
                     <div class="kanban-task ${task.done ? 'done' : ''}">
                       <label class="checkbox-container" style="width: 16px; height: 16px;">
-                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
+                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
                         <div class="checkbox-custom" style="width: 16px; height: 16px; border-radius: 3px;">
                           <svg class="check-icon" style="width: 10px; height: 10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
                         </div>
                       </label>
                       <span class="kanban-task-title">${task.title}</span>
-                      <button class="kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
+                      <button class="kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
                         <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                       </button>
                     </div>
