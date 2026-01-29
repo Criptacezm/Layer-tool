@@ -5128,7 +5128,7 @@ function renderProjectDetailView(projectIndex) {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/>
               </svg>
-              Timeline
+              Gantt
             </button>
           </div>
         </div>
