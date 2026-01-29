@@ -83,6 +83,7 @@
   --destructive: hsl(0, 65%, 51%);
   --destructive-foreground: hsl(0, 0%, 100%);
 
+  --GanttRows: hsl(261, 49%, 17%);
   --border: hsl(260, 20%, 31%);
   --border-strong: hsl(256, 60%, 61%);
   --input: hsl(260, 30%, 25%);
@@ -139,6 +140,7 @@
   --destructive: hsl(10, 45%, 50%);
   --destructive-foreground: hsl(0, 0%, 100%);
 
+  --GanttRows: hsl(197, 33%, 29%);
   --border: hsl(197, 30%, 35%);
   --border-strong: hsl(174, 30%, 60%);
   --input: hsl(197, 35%, 29%);
@@ -195,6 +197,7 @@
   --destructive: hsl(0, 65%, 51%);
   --destructive-foreground: hsl(0, 0%, 100%);
   
+  --GanttRows: hsl(148, 27%, 10%);
   --border: hsl(150, 25%, 18%);
   --border-strong: hsl(150, 70%, 50%);
   --input: hsl(150, 25%, 14%);
@@ -250,7 +253,8 @@
   
   --destructive: hsl(0, 65%, 51%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  
+
+  --GanttRows: hsl(222, 38%, 9%);
   --border: hsl(220, 35%, 16%);
   --border-strong: hsl(220, 90%, 60%);
   --input: hsl(220, 35%, 14%);
@@ -307,7 +311,8 @@
   --destructive: hsl(0, 65%, 51%);
   --destructive-foreground: hsl(0, 0%, 100%);
   
-  --border: hsl(233, 16%, 20%);
+  --GanttRows: hsl(240, 11%, 20%);
+  --border: hsl(231, 18%, 21%);
   --border-strong: hsl(330, 81%, 60%);
   --input: hsl(231, 15%, 22%);
   --ring: hsl(330, 81%, 60%);
@@ -364,6 +369,7 @@
   --destructive-foreground: hsl(0, 0%, 100%);
 
   --border: hsl(30, 5%, 32%);
+  --GanttRows: hsl(34, 8%, 18%);
   --border-strong: hsl(42, 75%, 49%);
   --input: hsl(30, 5%, 23%);
   --ring: hsl(42, 75%, 49%);
@@ -422,6 +428,7 @@
   --destructive-foreground: hsl(249, 22%, 12%);
 
   --border: hsl(248, 15%, 22%);
+  --GanttRows: hsl(244, 21%, 14%);
   --border-strong: hsl(267, 57%, 78%);
   --input: hsl(249, 17%, 16%);
   --ring: hsl(267, 57%, 78%);
@@ -550,6 +557,7 @@
   --accent: hsl(340, 82%, 66%);
   --accent-foreground: hsl(0, 0%, 100%);
 
+  --GanttRows: hsl(349, 26%, 12%);
   --border: hsl(350, 22%, 21%);
   --border-strong: hsl(340, 82%, 70%);
   --input: hsl(345, 22%, 16%);
@@ -1989,7 +1997,7 @@
 
 /* Gantt Grid */
 .tl-gantt-row {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--GanttRows);
 }
 
 .tl-gantt-row:hover {
@@ -1997,7 +2005,7 @@
 }
 
 .tl-gantt-cell {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--GanttRows);
 }
 
 .tl-gantt-cell.today {
