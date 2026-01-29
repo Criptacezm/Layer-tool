@@ -5126,7 +5126,7 @@ function renderProjectDetailView(projectIndex) {
             </button>
             <button class="pd-tab" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/>
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="19" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
               </svg>
               Gantt
             </button>
