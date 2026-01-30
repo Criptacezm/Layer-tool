@@ -2083,16 +2083,12 @@ let dragCreateState = {
 
 // Convert Y position to time (based on 80px per hour, starting at 6 AM, full 24 hours)
 function yPositionToTime(clientY, columnElement) {
-  const scrollContainer = columnElement.closest('.week-grid-scroll, .day-view-grid-scroll');
+  // Get the column element's bounding rect (viewport-relative, already accounts for scroll)
+  const columnRect = columnElement.getBoundingClientRect();
   
-  // Get the column's position relative to its scroll container
-  const containerRect = scrollContainer ? scrollContainer.getBoundingClientRect() : columnElement.getBoundingClientRect();
-  const scrollTop = scrollContainer?.scrollTop || 0;
-  
-  // Calculate the Y position relative to the column's content (not viewport)
-  // clientY is viewport-relative, containerRect.top is where container starts in viewport
-  // Add scrollTop to account for how much we've scrolled within the container
-  const relativeY = clientY - containerRect.top + scrollTop;
+  // Calculate Y position relative to column - no need to add scrollTop
+  // because getBoundingClientRect() already gives us the actual viewport position
+  const relativeY = clientY - columnRect.top;
   
   // Clamp relativeY to valid range (0 to 24 hours * 80px = 1920px)
   const clampedY = Math.max(0, Math.min(1920, relativeY));
@@ -2181,13 +2177,12 @@ function updateDragPreview(currentY) {
   const { startY, columnElement, previewElement } = dragCreateState;
   if (!previewElement || !columnElement) return;
   
+  // getBoundingClientRect() already accounts for scroll position
   const rect = columnElement.getBoundingClientRect();
-  const scrollContainer = columnElement.closest('.week-grid-scroll, .day-view-grid-scroll');
-  const scrollTop = scrollContainer?.scrollTop || 0;
   
-  // Calculate positions relative to column
-  const startRelative = startY - rect.top + scrollTop;
-  const currentRelative = currentY - rect.top + scrollTop;
+  // Calculate positions relative to column - no scrollTop needed
+  const startRelative = startY - rect.top;
+  const currentRelative = currentY - rect.top;
   
   // Determine top and height
   const top = Math.min(startRelative, currentRelative);
