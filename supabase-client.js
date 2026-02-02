@@ -17,8 +17,24 @@ let currentSession = null;
 // ============================================
 
 async function initAuth() {
-  // Set up auth state listener
+  // Get initial session first
+  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+  
+  if (sessionError) {
+    console.error('Failed to get session:', sessionError);
+  }
+  
+  currentSession = session;
+  currentUser = session?.user ?? null;
+  
+  console.log('Initial auth state:', { 
+    hasSession: !!session, 
+    userEmail: currentUser?.email 
+  });
+  
+  // Set up auth state listener AFTER checking initial session
   supabaseClient.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state changed:', event, session?.user?.email);
     currentSession = session;
     currentUser = session?.user ?? null;
     
@@ -27,11 +43,6 @@ async function initAuth() {
       detail: { user: currentUser, session: currentSession, event } 
     }));
   });
-
-  // Get initial session
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  currentSession = session;
-  currentUser = session?.user ?? null;
   
   return { user: currentUser, session: currentSession };
 }
@@ -50,20 +61,33 @@ async function signUp(email, password) {
 }
 
 async function signIn(email, password) {
+  console.log('Attempting sign in for:', email);
+  
   const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
   
-  if (error) throw error;
+  if (error) {
+    console.error('Sign in error:', error);
+    throw error;
+  }
+  
+  // Update local state immediately
+  currentSession = data.session;
+  currentUser = data.user;
+  
+  console.log('Sign in successful:', data.user?.email);
   return data;
 }
 
 async function signOut() {
+  console.log('Signing out...');
   const { error } = await supabaseClient.auth.signOut();
   if (error) throw error;
   currentUser = null;
   currentSession = null;
+  console.log('Sign out complete');
 }
 
 function getCurrentUser() {
