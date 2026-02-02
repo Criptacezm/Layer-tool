@@ -5,8 +5,22 @@
 const SUPABASE_URL = 'https://uqfnadlyrbprzxgjkvtc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZm5hZGx5cmJwcnp4Z2prdnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzkxNzAsImV4cCI6MjA4Mjk1NTE3MH0.12PfMd0vnsWvCXSNdkc3E02KDn46xi9XTyZ8rXNiVHs';
 
-// Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase client from the global supabase object (UMD build)
+let supabaseClient = null;
+
+(function initSupabaseClient() {
+  try {
+    // The UMD build exposes 'supabase' as a global with createClient
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase client initialized successfully');
+    } else {
+      console.error('Supabase library not found. Make sure the Supabase CDN script is loaded before this file.');
+    }
+  } catch (e) {
+    console.error('Failed to initialize Supabase client:', e);
+  }
+})();
 
 // Current user state
 let currentUser = null;
@@ -17,8 +31,13 @@ let currentSession = null;
 // ============================================
 
 async function initAuth() {
+  if (!supabaseClient) {
+    console.error('Supabase client not initialized');
+    return { user: null, session: null };
+  }
+  
   // Set up auth state listener
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
     currentSession = session;
     currentUser = session?.user ?? null;
     
@@ -29,28 +48,46 @@ async function initAuth() {
   });
 
   // Get initial session
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   currentSession = session;
   currentUser = session?.user ?? null;
   
   return { user: currentUser, session: currentSession };
 }
 
-async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({
+async function signUp(email, password, username) {
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: window.location.origin + '/layer.html'
+      emailRedirectTo: window.location.origin + '/layer.html',
+      data: {
+        username: username
+      }
     }
   });
   
   if (error) throw error;
+  
+  // Update profile with username if signup succeeded
+  if (data.user) {
+    currentUser = data.user;
+    currentSession = data.session;
+    
+    // Update the profile with username
+    if (data.session) {
+      await supabaseClient
+        .from('profiles')
+        .update({ username: username })
+        .eq('id', data.user.id);
+    }
+  }
+  
   return data;
 }
 
 async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
@@ -60,7 +97,7 @@ async function signIn(email, password) {
 }
 
 async function signOut() {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabaseClient.auth.signOut();
   if (error) throw error;
   currentUser = null;
   currentSession = null;
@@ -81,7 +118,7 @@ function isAuthenticated() {
 async function getProfile() {
   if (!currentUser) return null;
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .select('*')
     .eq('id', currentUser.id)
@@ -94,7 +131,7 @@ async function getProfile() {
 async function updateProfile(updates) {
   if (!currentUser) throw new Error('Not authenticated');
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .update(updates)
     .eq('id', currentUser.id)
@@ -118,7 +155,7 @@ async function getUserPreferences() {
     };
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('user_preferences')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -126,7 +163,7 @@ async function getUserPreferences() {
   
   if (error && error.code === 'PGRST116') {
     // No preferences yet, create default
-    const { data: newData, error: insertError } = await supabase
+    const { data: newData, error: insertError } = await supabaseClient
       .from('user_preferences')
       .insert({ user_id: currentUser.id })
       .select()
@@ -148,7 +185,7 @@ async function saveUserPreferences(prefs) {
     return prefs;
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('user_preferences')
     .upsert({ 
       user_id: currentUser.id,
@@ -171,7 +208,7 @@ async function loadProjectsFromDB() {
     return loadProjects();
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('projects')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -199,7 +236,7 @@ async function saveProjectToDB(projectData) {
     return addProject(projectData);
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('projects')
     .insert({
       user_id: currentUser.id,
@@ -244,7 +281,7 @@ async function updateProjectInDB(projectId, updates) {
   if (updates.columns !== undefined) dbUpdates.columns = updates.columns;
   if (updates.updates !== undefined) dbUpdates.updates = updates.updates;
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('projects')
     .update(dbUpdates)
     .eq('id', projectId)
@@ -267,7 +304,7 @@ async function deleteProjectFromDB(projectId) {
     return projects;
   }
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('projects')
     .delete()
     .eq('id', projectId)
@@ -286,7 +323,7 @@ async function loadBacklogTasksFromDB() {
     return loadBacklogTasks();
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('backlog_tasks')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -307,7 +344,7 @@ async function addBacklogTaskToDB(title) {
     return addBacklogTask(title);
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('backlog_tasks')
     .insert({
       user_id: currentUser.id,
@@ -329,13 +366,13 @@ async function toggleBacklogTaskInDB(taskId) {
   }
   
   // Get current state
-  const { data: task } = await supabase
+  const { data: task } = await supabaseClient
     .from('backlog_tasks')
     .select('done')
     .eq('id', taskId)
     .single();
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('backlog_tasks')
     .update({ done: !task.done })
     .eq('id', taskId)
@@ -353,7 +390,7 @@ async function updateBacklogTaskInDB(taskId, title) {
     return tasks;
   }
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('backlog_tasks')
     .update({ title })
     .eq('id', taskId)
@@ -371,7 +408,7 @@ async function deleteBacklogTaskFromDB(taskId) {
     return tasks;
   }
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('backlog_tasks')
     .delete()
     .eq('id', taskId)
@@ -390,7 +427,7 @@ async function loadIssuesFromDB() {
     return loadIssues();
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('issues')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -416,7 +453,7 @@ async function addIssueToDB(issueData) {
     return addIssue(issueData);
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('issues')
     .insert({
       user_id: currentUser.id,
@@ -454,7 +491,7 @@ async function updateIssueInDB(issueDbId, updates) {
   if (updates.assignee !== undefined) dbUpdates.assignee = updates.assignee;
   if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('issues')
     .update(dbUpdates)
     .eq('id', issueDbId)
@@ -475,7 +512,7 @@ async function deleteIssueFromDB(issueDbId) {
     return issues;
   }
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('issues')
     .delete()
     .eq('id', issueDbId)
@@ -573,5 +610,5 @@ window.LayerDB = {
   migrateLocalDataToSupabase,
   
   // Direct Supabase access
-  supabase
+  supabase: supabaseClient
 };

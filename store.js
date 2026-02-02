@@ -87,8 +87,6 @@ function loadProjects() {
               data: { label: project.description.trim(), headerColor: '#89b4fa' }
             });
           }
-          // Clear old description if desired
-          // project.description = '';
         }
         project.columns = project.columns || [
           { title: 'To Do', tasks: [] },
@@ -341,6 +339,11 @@ function saveTheme(theme) {
 // ============================================
 function getRecentActivity(projects) {
   const activity = [];
+  
+  // Handle case where projects might be a promise or undefined
+  if (!projects || !Array.isArray(projects)) {
+    return activity;
+  }
 
   projects.slice().reverse().forEach(project => {
     activity.push({
