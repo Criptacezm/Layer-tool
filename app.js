@@ -11,6 +11,63 @@ let searchQuery = '';
 let selectedProjectIndex = null;
 
 // ============================================
+// Notification System
+// ============================================
+function showNotification(message, type = 'info') {
+  // Remove existing notifications
+  const existing = document.querySelector('.notification-toast');
+  if (existing) existing.remove();
+  
+  const notification = document.createElement('div');
+  notification.className = `notification-toast notification-${type}`;
+  notification.innerHTML = `
+    <span>${message}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;padding:4px;margin-left:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  `;
+  
+  // Add styles inline if not already present
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-size: 14px;
+    max-width: 350px;
+  `;
+  
+  // Type-specific colors
+  const colors = {
+    success: { bg: '#10b981', color: '#fff' },
+    error: { bg: '#ef4444', color: '#fff' },
+    info: { bg: '#3b82f6', color: '#fff' },
+    warning: { bg: '#f59e0b', color: '#fff' }
+  };
+  
+  const colorScheme = colors[type] || colors.info;
+  notification.style.backgroundColor = colorScheme.bg;
+  notification.style.color = colorScheme.color;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 4000);
+}
+
+// ============================================
 // DOM Elements
 // ============================================
 const viewsContainer = document.getElementById('viewsContainer');
@@ -547,10 +604,10 @@ async function handleAuthSubmit(event) {
   // Clear previous errors
   errorEl.style.display = 'none';
   
-  // Disable submit button
+  // Disable button during submission
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = authMode === 'signin' ? 'Signing in...' : 'Creating account...';
+    submitBtn.textContent = authMode === 'signup' ? 'Creating Account...' : 'Signing In...';
   }
   
   try {
@@ -574,55 +631,77 @@ async function handleAuthSubmit(event) {
         return;
       }
       
-      // Use Supabase signUp
-      const { user, session } = await window.LayerDB.signUp(email, password, username);
+      // Use Supabase Auth for signup
+      const { data, error } = await window.LayerDB.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: username
+          },
+          emailRedirectTo: window.location.origin + '/layer.html'
+        }
+      });
       
-      closeModal();
-      
-      if (session) {
-        // Immediately signed in
-        updateUserDisplay({ username, email });
-        showToast('Account created successfully!', 'success');
-        
-        // Migrate local data to Supabase
-        await window.LayerDB.migrateLocalDataToSupabase();
-        renderCurrentView();
-      } else {
-        // Email confirmation required
-        showToast('Please check your email to confirm your account', 'info');
+      if (error) {
+        console.error('Signup error:', error);
+        showAuthError(error.message || 'Failed to create account');
+        return;
       }
       
+      if (data.user && !data.session) {
+        // Email confirmation required
+        closeModal();
+        showNotification('Check your email to confirm your account!', 'success');
+        return;
+      }
+      
+      // Successfully signed up and logged in
+      closeModal();
+      await loadUserDataFromDB();
+      updateUserDisplay({ username: username, email: email });
+      showNotification('Account created successfully!', 'success');
+      renderCurrentView();
+      
     } else {
-      // Sign In
+      // Sign In with Supabase
       if (!email || !password) {
         showAuthError('Please enter your email and password');
         return;
       }
       
-      // Use Supabase signIn
-      const { user, session } = await window.LayerDB.signIn(email, password);
+      const { data, error } = await window.LayerDB.supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      // Get profile for username
-      const profile = await window.LayerDB.getProfile();
+      if (error) {
+        console.error('Sign in error:', error);
+        if (error.message.includes('Invalid login credentials')) {
+          showAuthError('Invalid email or password');
+        } else if (error.message.includes('Email not confirmed')) {
+          showAuthError('Please confirm your email before signing in');
+        } else {
+          showAuthError(error.message || 'Failed to sign in');
+        }
+        return;
+      }
       
       closeModal();
-      updateUserDisplay({ 
-        username: profile?.username || email.split('@')[0], 
-        email 
-      });
-      showToast('Signed in successfully!', 'success');
-      
-      // Reload views with Supabase data
+      await loadUserDataFromDB();
+      const username = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
+      updateUserDisplay({ username: username, email: data.user.email });
+      showNotification('Signed in successfully!', 'success');
       renderCurrentView();
     }
-  } catch (error) {
-    console.error('Auth error:', error);
-    showAuthError(error.message || 'An error occurred. Please try again.');
+  } catch (err) {
+    console.error('Auth error:', err);
+    showAuthError('An unexpected error occurred. Please try again.');
   } finally {
-    // Re-enable submit button
+    // Re-enable button
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+      submitBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
     }
   }
 }
@@ -636,12 +715,13 @@ function showAuthError(message) {
 function updateUserDisplay(user) {
   const signInBtn = document.getElementById('signInBtn');
   if (signInBtn && user) {
-    const initials = (user.username || user.email || 'U').slice(0, 2).toUpperCase();
+    const displayName = user.username || user.email?.split('@')[0] || 'User';
+    const initials = displayName.slice(0, 2).toUpperCase();
     signInBtn.outerHTML = `
       <div class="user-info" id="userInfo">
         <div class="user-avatar">${initials}</div>
-        <span class="user-name">${user.username || user.email}</span>
-        <button class="sign-out-btn" onclick="handleSignOut()" title="Sign Out">
+        <span class="user-name">${displayName}</span>
+        <button class="sign-out-btn" onclick="signOutUser()" title="Sign Out">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
@@ -653,9 +733,23 @@ function updateUserDisplay(user) {
   }
 }
 
-async function handleSignOut() {
+async function signOutUser() {
   try {
-    await window.LayerDB.signOut();
+    await window.LayerDB.supabase.auth.signOut();
+    
+    // Clear all user-specific localStorage data
+    const keysToRemove = [
+      'layerProjectsData',
+      'layerBacklogTasks',
+      'layerMyIssues',
+      'layerCalendarEvents',
+      'layerDocs',
+      'layerExcels',
+      'layerSpaces',
+      'layerRecurringTasks',
+      'layerCurrentUser'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     
     const userInfo = document.getElementById('userInfo');
     if (userInfo) {
@@ -671,39 +765,60 @@ async function handleSignOut() {
       `;
     }
     
-    showToast('Signed out successfully', 'success');
+    showNotification('Signed out successfully', 'info');
     renderCurrentView();
   } catch (error) {
     console.error('Sign out error:', error);
-    showToast('Failed to sign out', 'error');
+    showNotification('Failed to sign out', 'error');
+  }
+}
+
+// Load user data from database after login
+async function loadUserDataFromDB() {
+  try {
+    const user = window.LayerDB.getCurrentUser();
+    if (!user) return;
+    
+    // Load all user data from Supabase and cache in localStorage for offline use
+    const [projects, backlogTasks, issues] = await Promise.all([
+      window.LayerDB.loadProjects(),
+      window.LayerDB.loadBacklogTasks(),
+      window.LayerDB.loadIssues()
+    ]);
+    
+    // Cache locally for quick access
+    localStorage.setItem('layerProjectsData', JSON.stringify(projects));
+    localStorage.setItem('layerBacklogTasks', JSON.stringify(backlogTasks));
+    localStorage.setItem('layerMyIssues', JSON.stringify(issues));
+    
+    console.log('User data loaded from database');
+  } catch (error) {
+    console.error('Failed to load user data:', error);
   }
 }
 
 async function checkExistingSession() {
   try {
-    // Initialize Supabase auth
+    // Initialize Supabase auth and check for existing session
     const { user, session } = await window.LayerDB.initAuth();
     
     if (user && session) {
-      const profile = await window.LayerDB.getProfile();
-      updateUserDisplay({ 
-        username: profile?.username || user.email?.split('@')[0], 
-        email: user.email 
-      });
+      const username = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+      updateUserDisplay({ username: username, email: user.email });
+      await loadUserDataFromDB();
+      renderCurrentView();
     }
     
     // Listen for auth state changes
-    window.addEventListener('authStateChanged', async (e) => {
-      const { user, session, event } = e.detail;
+    window.addEventListener('authStateChanged', async (event) => {
+      const { user: authUser, session: authSession } = event.detail;
       
-      if (event === 'SIGNED_IN' && user) {
-        const profile = await window.LayerDB.getProfile();
-        updateUserDisplay({ 
-          username: profile?.username || user.email?.split('@')[0], 
-          email: user.email 
-        });
-        renderCurrentView();
-      } else if (event === 'SIGNED_OUT') {
+      if (authUser && authSession) {
+        const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+        updateUserDisplay({ username: username, email: authUser.email });
+        await loadUserDataFromDB();
+      } else {
+        // User signed out
         const userInfo = document.getElementById('userInfo');
         if (userInfo) {
           userInfo.outerHTML = `
@@ -717,40 +832,12 @@ async function checkExistingSession() {
             </button>
           `;
         }
-        renderCurrentView();
       }
+      renderCurrentView();
     });
   } catch (error) {
     console.error('Session check error:', error);
   }
-}
-
-// Toast notification helper
-function showToast(message, type = 'info') {
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `
-    <span>${message}</span>
-    <button onclick="this.parentElement.remove()">×</button>
-  `;
-  
-  // Add toast container if not exists
-  let container = document.getElementById('toastContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-  }
-  
-  container.appendChild(toast);
-  
-  // Auto-remove after 5 seconds
-  setTimeout(() => {
-    if (toast.parentElement) {
-      toast.remove();
-    }
-  }, 5000);
 }
 
 

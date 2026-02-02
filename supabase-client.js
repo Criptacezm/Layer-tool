@@ -5,22 +5,8 @@
 const SUPABASE_URL = 'https://uqfnadlyrbprzxgjkvtc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZm5hZGx5cmJwcnp4Z2prdnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzkxNzAsImV4cCI6MjA4Mjk1NTE3MH0.12PfMd0vnsWvCXSNdkc3E02KDn46xi9XTyZ8rXNiVHs';
 
-// Initialize Supabase client from the global supabase object (UMD build)
-let supabaseClient = null;
-
-(function initSupabaseClient() {
-  try {
-    // The UMD build exposes 'supabase' as a global with createClient
-    if (typeof supabase !== 'undefined' && supabase.createClient) {
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase client initialized successfully');
-    } else {
-      console.error('Supabase library not found. Make sure the Supabase CDN script is loaded before this file.');
-    }
-  } catch (e) {
-    console.error('Failed to initialize Supabase client:', e);
-  }
-})();
+// Initialize Supabase client (use window.supabase from CDN)
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Current user state
 let currentUser = null;
@@ -31,11 +17,6 @@ let currentSession = null;
 // ============================================
 
 async function initAuth() {
-  if (!supabaseClient) {
-    console.error('Supabase client not initialized');
-    return { user: null, session: null };
-  }
-  
   // Set up auth state listener
   supabaseClient.auth.onAuthStateChange((event, session) => {
     currentSession = session;
@@ -55,34 +36,16 @@ async function initAuth() {
   return { user: currentUser, session: currentSession };
 }
 
-async function signUp(email, password, username) {
+async function signUp(email, password) {
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: window.location.origin + '/layer.html',
-      data: {
-        username: username
-      }
+      emailRedirectTo: window.location.origin + '/layer.html'
     }
   });
   
   if (error) throw error;
-  
-  // Update profile with username if signup succeeded
-  if (data.user) {
-    currentUser = data.user;
-    currentSession = data.session;
-    
-    // Update the profile with username
-    if (data.session) {
-      await supabaseClient
-        .from('profiles')
-        .update({ username: username })
-        .eq('id', data.user.id);
-    }
-  }
-  
   return data;
 }
 

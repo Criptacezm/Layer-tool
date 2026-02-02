@@ -67,7 +67,7 @@ function generateIssueId() {
 }
 
 // ============================================
-// Projects
+// Projects - Use Supabase when authenticated
 // ============================================
 function loadProjects() {
   try {
@@ -78,7 +78,6 @@ function loadProjects() {
         // Migration: ensure flowchart exists
         if (!project.flowchart) {
           project.flowchart = { nodes: [], edges: [] };
-          // Optional: migrate old description to a text node
           if (project.description && project.description.trim()) {
             project.flowchart.nodes.push({
               id: 'migrated-text',
@@ -110,7 +109,21 @@ function saveProjects(projects) {
   }
 }
 
-function addProject(projectData) {
+async function addProject(projectData) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const newProject = await window.LayerDB.saveProject(projectData);
+      // Refresh local cache
+      const projects = await window.LayerDB.loadProjects();
+      saveProjects(projects);
+      return newProject;
+    } catch (error) {
+      console.error('Failed to save project to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   const projects = loadProjects();
   const newProject = {
     id: generateId('PROJ'),
@@ -137,8 +150,20 @@ function addProject(projectData) {
   return newProject;
 }
 
-function updateProject(index, updates) {
+async function updateProject(index, updates) {
   const projects = loadProjects();
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[index]?.id) {
+    try {
+      await window.LayerDB.updateProject(projects[index].id, updates);
+      const updatedProjects = await window.LayerDB.loadProjects();
+      saveProjects(updatedProjects);
+      return updatedProjects;
+    } catch (error) {
+      console.error('Failed to update project in database:', error);
+    }
+  }
+  
   if (projects[index]) {
     projects[index] = { ...projects[index], ...updates };
     saveProjects(projects);
@@ -146,8 +171,20 @@ function updateProject(index, updates) {
   return projects;
 }
 
-function deleteProject(index) {
+async function deleteProject(index) {
   const projects = loadProjects();
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[index]?.id) {
+    try {
+      await window.LayerDB.deleteProject(projects[index].id);
+      const updatedProjects = await window.LayerDB.loadProjects();
+      saveProjects(updatedProjects);
+      return updatedProjects;
+    } catch (error) {
+      console.error('Failed to delete project from database:', error);
+    }
+  }
+  
   projects.splice(index, 1);
   saveProjects(projects);
   return projects;
@@ -223,7 +260,7 @@ function renameColumn(projectIndex, columnIndex, newTitle) {
 }
 
 // ============================================
-// Backlog Tasks
+// Backlog Tasks - Use Supabase when authenticated
 // ============================================
 function loadBacklogTasks() {
   try {
@@ -245,7 +282,17 @@ function saveBacklogTasks(tasks) {
   }
 }
 
-function addBacklogTask(title) {
+async function addBacklogTask(title) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const tasks = await window.LayerDB.addBacklogTask(title);
+      saveBacklogTasks(tasks);
+      return tasks;
+    } catch (error) {
+      console.error('Failed to add backlog task to database:', error);
+    }
+  }
+  
   const tasks = loadBacklogTasks();
   tasks.push({
     id: generateId('BACKLOG'),
@@ -257,8 +304,19 @@ function addBacklogTask(title) {
   return tasks;
 }
 
-function toggleBacklogTask(index) {
+async function toggleBacklogTask(index) {
   const tasks = loadBacklogTasks();
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+    try {
+      const updatedTasks = await window.LayerDB.toggleBacklogTask(tasks[index].id);
+      saveBacklogTasks(updatedTasks);
+      return updatedTasks;
+    } catch (error) {
+      console.error('Failed to toggle backlog task in database:', error);
+    }
+  }
+  
   if (tasks[index]) {
     tasks[index].done = !tasks[index].done;
     saveBacklogTasks(tasks);
@@ -266,8 +324,19 @@ function toggleBacklogTask(index) {
   return tasks;
 }
 
-function updateBacklogTask(index, title) {
+async function updateBacklogTask(index, title) {
   const tasks = loadBacklogTasks();
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+    try {
+      const updatedTasks = await window.LayerDB.updateBacklogTask(tasks[index].id, title);
+      saveBacklogTasks(updatedTasks);
+      return updatedTasks;
+    } catch (error) {
+      console.error('Failed to update backlog task in database:', error);
+    }
+  }
+  
   if (tasks[index]) {
     tasks[index].title = title;
     saveBacklogTasks(tasks);
@@ -275,15 +344,26 @@ function updateBacklogTask(index, title) {
   return tasks;
 }
 
-function deleteBacklogTask(index) {
+async function deleteBacklogTask(index) {
   const tasks = loadBacklogTasks();
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+    try {
+      const updatedTasks = await window.LayerDB.deleteBacklogTask(tasks[index].id);
+      saveBacklogTasks(updatedTasks);
+      return updatedTasks;
+    } catch (error) {
+      console.error('Failed to delete backlog task from database:', error);
+    }
+  }
+  
   tasks.splice(index, 1);
   saveBacklogTasks(tasks);
   return tasks;
 }
 
 // ============================================
-// Issues
+// Issues - Use Supabase when authenticated
 // ============================================
 function loadIssues() {
   try {
@@ -294,7 +374,6 @@ function loadIssues() {
   } catch (e) {
     console.error('Failed to load issues:', e);
   }
-  // Return empty array for fresh start
   return [];
 }
 
@@ -306,7 +385,17 @@ function saveIssues(issues) {
   }
 }
 
-function addIssue(issueData) {
+async function addIssue(issueData) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const issues = await window.LayerDB.addIssue(issueData);
+      saveIssues(issues);
+      return issues;
+    } catch (error) {
+      console.error('Failed to add issue to database:', error);
+    }
+  }
+  
   const issues = loadIssues();
   const newIssue = {
     id: generateIssueId(),
@@ -314,7 +403,7 @@ function addIssue(issueData) {
     description: issueData.description || '',
     status: issueData.status || 'todo',
     priority: issueData.priority || 'medium',
-    assignee: issueData.assignee || 'Zeyad Maher',
+    assignee: issueData.assignee || '',
     dueDate: issueData.dueDate,
     updated: 'just now'
   };
@@ -339,11 +428,6 @@ function saveTheme(theme) {
 // ============================================
 function getRecentActivity(projects) {
   const activity = [];
-  
-  // Handle case where projects might be a promise or undefined
-  if (!projects || !Array.isArray(projects)) {
-    return activity;
-  }
 
   projects.slice().reverse().forEach(project => {
     activity.push({
