@@ -737,7 +737,7 @@ async function signOutUser() {
   try {
     await window.LayerDB.supabase.auth.signOut();
     
-    // Clear all user-specific localStorage data
+    // CRITICAL: Clear ALL user-specific localStorage data to ensure data privacy
     const keysToRemove = [
       'layerProjectsData',
       'layerBacklogTasks',
@@ -747,7 +747,8 @@ async function signOutUser() {
       'layerExcels',
       'layerSpaces',
       'layerRecurringTasks',
-      'layerCurrentUser'
+      'layerCurrentUser',
+      'layerAssignments'
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
@@ -777,23 +778,67 @@ async function signOutUser() {
 async function loadUserDataFromDB() {
   try {
     const user = window.LayerDB.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      console.log('No user authenticated, skipping DB load');
+      return;
+    }
     
-    // Load all user data from Supabase and cache in localStorage for offline use
-    const [projects, backlogTasks, issues] = await Promise.all([
+    console.log('Loading user data from database for:', user.email);
+    
+    // CRITICAL: Clear existing localStorage before loading new user's data
+    // This ensures no data leakage between users
+    localStorage.removeItem('layerProjectsData');
+    localStorage.removeItem('layerBacklogTasks');
+    localStorage.removeItem('layerMyIssues');
+    localStorage.removeItem('layerCalendarEvents');
+    localStorage.removeItem('layerDocs');
+    localStorage.removeItem('layerExcels');
+    localStorage.removeItem('layerSpaces');
+    // Also clear old favorites arrays (now stored in docs/excels)
+    localStorage.removeItem('layerFavorites');
+    localStorage.removeItem('layerFavoriteDocs');
+    localStorage.removeItem('layerExcelFavorites');
+    localStorage.removeItem('layerFavoriteExcels');
+    
+    // Load all user data from Supabase (including calendar events, docs, excels, spaces)
+    const [projects, backlogTasks, issues, calendarEvents, docs, excels, spaces] = await Promise.all([
       window.LayerDB.loadProjects(),
       window.LayerDB.loadBacklogTasks(),
-      window.LayerDB.loadIssues()
+      window.LayerDB.loadIssues(),
+      window.LayerDB.loadCalendarEvents(),
+      window.LayerDB.loadDocs(),
+      window.LayerDB.loadExcels(),
+      window.LayerDB.loadSpaces()
     ]);
     
-    // Cache locally for quick access
-    localStorage.setItem('layerProjectsData', JSON.stringify(projects));
-    localStorage.setItem('layerBacklogTasks', JSON.stringify(backlogTasks));
-    localStorage.setItem('layerMyIssues', JSON.stringify(issues));
+    // Cache in localStorage for synchronous access by render functions
+    localStorage.setItem('layerProjectsData', JSON.stringify(projects || []));
+    localStorage.setItem('layerBacklogTasks', JSON.stringify(backlogTasks || []));
+    localStorage.setItem('layerMyIssues', JSON.stringify(issues || []));
+    localStorage.setItem('layerCalendarEvents', JSON.stringify(calendarEvents || []));
+    localStorage.setItem('layerDocs', JSON.stringify(docs || []));
+    localStorage.setItem('layerExcels', JSON.stringify(excels || []));
+    localStorage.setItem('layerSpaces', JSON.stringify(spaces || []));
     
-    console.log('User data loaded from database');
+    console.log('User data loaded from database:', {
+      projects: projects?.length || 0,
+      backlogTasks: backlogTasks?.length || 0,
+      issues: issues?.length || 0,
+      calendarEvents: calendarEvents?.length || 0,
+      docs: docs?.length || 0,
+      excels: excels?.length || 0,
+      spaces: spaces?.length || 0
+    });
   } catch (error) {
     console.error('Failed to load user data:', error);
+    // On error, ensure empty arrays so user sees clean state
+    localStorage.setItem('layerProjectsData', '[]');
+    localStorage.setItem('layerBacklogTasks', '[]');
+    localStorage.setItem('layerMyIssues', '[]');
+    localStorage.setItem('layerCalendarEvents', '[]');
+    localStorage.setItem('layerDocs', '[]');
+    localStorage.setItem('layerExcels', '[]');
+    localStorage.setItem('layerSpaces', '[]');
   }
 }
 

@@ -1,6 +1,6 @@
 -- ============================================
--- Layer App - Fixed Database Schema for Supabase
--- Version: 2.0
+-- Layer App - Complete Database Schema for Supabase
+-- Version: 3.0 (Full DB Sync Support)
 -- Run this in Supabase SQL Editor
 -- ============================================
 
@@ -60,7 +60,7 @@ CREATE TABLE user_preferences (
 );
 
 -- ============================================
--- Projects Table (matches supabase-client.js)
+-- Projects Table (with full DB sync columns)
 -- ============================================
 CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -73,6 +73,12 @@ CREATE TABLE projects (
     flowchart JSONB DEFAULT '{"nodes": [], "edges": []}',
     columns JSONB DEFAULT '[{"title": "To Do", "tasks": []}, {"title": "In Progress", "tasks": []}, {"title": "Done", "tasks": []}]',
     updates JSONB DEFAULT '[]',
+    -- NEW: Milestones for Gantt chart bar markers
+    milestones JSONB DEFAULT '{}',
+    -- NEW: Whiteboard/flowchart diagram data (grip diagram)
+    grip_diagram JSONB DEFAULT NULL,
+    -- NEW: Gantt timeline tasks
+    tasks JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -129,7 +135,7 @@ CREATE TABLE calendar_events (
 );
 
 -- ============================================
--- Docs Table
+-- Docs Table (with favorite support)
 -- ============================================
 CREATE TABLE docs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -137,12 +143,14 @@ CREATE TABLE docs (
     title TEXT NOT NULL DEFAULT 'Untitled',
     content TEXT DEFAULT '',
     space_id UUID,
+    -- NEW: Favorite flag for docs
+    is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================
--- Excels/Sheets Table
+-- Excels/Sheets Table (with favorite support)
 -- ============================================
 CREATE TABLE excels (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -150,19 +158,26 @@ CREATE TABLE excels (
     title TEXT NOT NULL DEFAULT 'Untitled Sheet',
     data JSONB DEFAULT '[]',
     space_id UUID,
+    -- NEW: Favorite flag for sheets
+    is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================
--- Spaces Table
+-- Spaces Table (with full metadata)
 -- ============================================
 CREATE TABLE spaces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL DEFAULT 'New Space',
-    color TEXT DEFAULT '#3b82f6',
     icon TEXT DEFAULT 'folder',
+    -- NEW: Additional space metadata
+    description TEXT DEFAULT '',
+    due_date DATE,
+    linked_project UUID REFERENCES projects(id) ON DELETE SET NULL,
+    color_tag TEXT DEFAULT 'none',
+    members JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -195,7 +210,9 @@ CREATE INDEX idx_issues_status ON issues(status);
 CREATE INDEX idx_calendar_events_user_id ON calendar_events(user_id);
 CREATE INDEX idx_calendar_events_date ON calendar_events(date);
 CREATE INDEX idx_docs_user_id ON docs(user_id);
+CREATE INDEX idx_docs_favorite ON docs(is_favorite);
 CREATE INDEX idx_excels_user_id ON excels(user_id);
+CREATE INDEX idx_excels_favorite ON excels(is_favorite);
 CREATE INDEX idx_spaces_user_id ON spaces(user_id);
 CREATE INDEX idx_recurring_tasks_user_id ON recurring_tasks(user_id);
 
@@ -315,5 +332,12 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
--- Done! Your schema is ready.
+-- Done! Your schema is ready for full DB sync.
+-- New columns added:
+--   - projects.milestones (JSONB) - Gantt bar milestones
+--   - projects.grip_diagram (JSONB) - Whiteboard data
+--   - projects.tasks (JSONB) - Gantt timeline tasks
+--   - docs.is_favorite (BOOLEAN) - Doc favorite flag
+--   - excels.is_favorite (BOOLEAN) - Sheet favorite flag
+--   - spaces.description, due_date, linked_project, color_tag, members
 -- ============================================

@@ -380,12 +380,13 @@ function calculateStreak(events) {
 }
 
 // Toggle dashboard goal completion
-function toggleDashboardGoal(taskId) {
+async function toggleDashboardGoal(taskId) {
   const events = loadCalendarEvents();
   const idx = events.findIndex(e => e.id === taskId);
   if (idx !== -1) {
-    events[idx].completed = !events[idx].completed;
-    saveCalendarEvents(events);
+    const newCompleted = !events[idx].completed;
+    // Use async update if authenticated
+    await updateCalendarEventAsync(taskId, { completed: newCompleted });
     renderCurrentView();
   }
 }
@@ -1347,6 +1348,8 @@ function saveCalendarSettings(settings) {
   localStorage.setItem(CALENDAR_SETTINGS_KEY, JSON.stringify(settings));
 }
 
+// Calendar events - use cached localStorage data
+// Data is synced from Supabase on login
 function loadCalendarEvents() {
   try { return JSON.parse(localStorage.getItem(EVENTS_KEY)) || []; }
   catch { return []; }
@@ -1354,6 +1357,114 @@ function loadCalendarEvents() {
 
 function saveCalendarEvents(events) {
   localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+}
+
+// Initialize calendar events from DB on page load
+async function initCalendarEventsFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const events = await window.LayerDB.loadCalendarEvents();
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to load calendar events from database:', error);
+    }
+  }
+  return loadCalendarEvents();
+}
+
+// Async function to save a single event to DB and update cache
+async function saveCalendarEventAsync(eventData) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.saveCalendarEvent(eventData);
+      // Reload from DB and update cache
+      const events = await window.LayerDB.loadCalendarEvents();
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to save calendar event to database:', error);
+    }
+  }
+  // Fallback to localStorage
+  const events = loadCalendarEvents();
+  events.push(eventData);
+  saveCalendarEvents(events);
+  return events;
+}
+
+// Async function to update event in DB
+async function updateCalendarEventAsync(eventId, updates) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const events = await window.LayerDB.updateCalendarEvent(eventId, updates);
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to update calendar event in database:', error);
+    }
+  }
+  // Fallback to localStorage
+  const events = loadCalendarEvents();
+  const index = events.findIndex(e => e.id === eventId || e.id == eventId);
+  if (index !== -1) {
+    events[index] = { ...events[index], ...updates };
+    saveCalendarEvents(events);
+  }
+  return events;
+}
+
+// Async function to delete event from DB
+async function deleteCalendarEventAsync(eventId) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const events = await window.LayerDB.deleteCalendarEvent(eventId);
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to delete calendar event from database:', error);
+    }
+  }
+  // Fallback to localStorage
+  const events = loadCalendarEvents();
+  const index = events.findIndex(e => e.id === eventId || e.id == eventId);
+  if (index !== -1) {
+    events.splice(index, 1);
+    saveCalendarEvents(events);
+  }
+  return events;
+}
+
+// Async function to delete all recurring events
+async function deleteRecurringEventsAsync(recurringId) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const events = await window.LayerDB.deleteRecurringEvents(recurringId);
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to delete recurring events from database:', error);
+    }
+  }
+  // Fallback to localStorage
+  const events = loadCalendarEvents();
+  const filtered = events.filter(e => e.recurringId !== recurringId);
+  saveCalendarEvents(filtered);
+  return filtered;
+}
+
+// Load calendar events from Supabase on auth
+async function syncCalendarEventsFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const events = await window.LayerDB.loadCalendarEvents();
+      saveCalendarEvents(events);
+      return events;
+    } catch (error) {
+      console.error('Failed to load calendar events from database:', error);
+    }
+  }
+  return loadCalendarEvents();
 }
 
 // Generate unique event ID
@@ -1460,34 +1571,43 @@ function openDeleteTaskModal(eventId) {
   openModal('Delete task', content);
 }
 
-function deleteSingleCalendarEvent(eventId) {
-  let events = loadCalendarEvents();
-  // Use != for type coercion (eventId may be string or number)
-  events = events.filter(e => e.id != eventId);
-  saveCalendarEvents(events);
+async function deleteSingleCalendarEvent(eventId) {
+  // Use async delete if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    await deleteCalendarEventAsync(eventId);
+  } else {
+    let events = loadCalendarEvents();
+    // Use != for type coercion (eventId may be string or number)
+    events = events.filter(e => e.id != eventId);
+    saveCalendarEvents(events);
+  }
 
   if (loadExpandedTaskId() === eventId) {
     saveExpandedTaskId(null);
   }
 }
 
-function confirmDeleteTaskOccurrence(eventId) {
-  deleteSingleCalendarEvent(eventId);
+async function confirmDeleteTaskOccurrence(eventId) {
+  await deleteSingleCalendarEvent(eventId);
   closeModal();
   // Preserve scroll when deleting occurrence
   renderCurrentView(true);
 }
 
-function confirmDeleteTaskSeries(recurringId) {
+async function confirmDeleteTaskSeries(recurringId) {
   // Remove the recurring rule
   let rules = loadRecurringTasks();
   rules = rules.filter(r => r.id !== recurringId);
   saveRecurringTasks(rules);
 
-  // Remove all generated instances
-  let events = loadCalendarEvents();
-  events = events.filter(e => e.recurringId !== recurringId);
-  saveCalendarEvents(events);
+  // Remove all generated instances - use async if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    await deleteRecurringEventsAsync(recurringId);
+  } else {
+    let events = loadCalendarEvents();
+    events = events.filter(e => e.recurringId !== recurringId);
+    saveCalendarEvents(events);
+  }
 
   // Collapse any expanded task (safe + simple)
   saveExpandedTaskId(null);
@@ -1624,7 +1744,7 @@ function openEditTaskModal(eventId) {
   openModal('Edit Task', content);
 }
 
-function handleEditEventSubmit(e, eventId) {
+async function handleEditEventSubmit(e, eventId) {
   e.preventDefault();
   const form = e.target;
   const data = new FormData(form);
@@ -1640,13 +1760,7 @@ function handleEditEventSubmit(e, eventId) {
 
   if (!title) return;
 
-  let events = loadCalendarEvents();
-  // Use == for type coercion (eventId may be string or number)
-  const index = events.findIndex(e => e.id == eventId);
-  if (index === -1) return;
-
-  events[index] = {
-    ...events[index],
+  const updates = {
     title,
     time: startTime || null,
     endTime: endTime || null,
@@ -1657,7 +1771,9 @@ function handleEditEventSubmit(e, eventId) {
     spaceId
   };
 
-  saveCalendarEvents(events);
+  // Use async update if authenticated
+  await updateCalendarEventAsync(eventId, updates);
+  
   closeModal();
   // Preserve scroll when editing task
   renderCurrentView(true);
@@ -1684,15 +1800,13 @@ function addRecurringTask(taskData) {
   renderCurrentView();
 }
 
-function deleteRecurringTask(id) {
+async function deleteRecurringTask(id) {
   let tasks = loadRecurringTasks();
   tasks = tasks.filter(t => t.id !== id);
   saveRecurringTasks(tasks);
 
-  // Also purge generated instances from the calendar
-  let events = loadCalendarEvents();
-  events = events.filter(e => e.recurringId !== id);
-  saveCalendarEvents(events);
+  // Also purge generated instances from the calendar - use async if authenticated
+  await deleteRecurringEventsAsync(id);
 
   // If an instance was expanded, collapse it
   saveExpandedTaskId(null);
@@ -1972,7 +2086,7 @@ function closeCalendarQuickAdd() {
   renderCurrentView();
 }
 
-function handleQuickAddSubmit(e) {
+async function handleQuickAddSubmit(e) {
   e.preventDefault();
   const input = document.getElementById('quickAddInput');
   if (!input) return;
@@ -1983,10 +2097,10 @@ function handleQuickAddSubmit(e) {
   // Parse natural language input (e.g., "Meeting tomorrow at 3pm")
   const parsedEvent = parseNaturalLanguageEvent(text);
   
-  const events = loadCalendarEvents();
   const newEvent = createEnhancedEvent(parsedEvent);
-  events.push(newEvent);
-  saveCalendarEvents(events);
+  
+  // Use async save if authenticated
+  await saveCalendarEventAsync(newEvent);
   
   closeCalendarQuickAdd();
   showToast(`Event "${parsedEvent.title}" created`);
@@ -3297,7 +3411,7 @@ function cleanupDragMoveState() {
 // Listen for dragend to cleanup
 document.addEventListener('dragend', cleanupDragMoveState);
 
-function handleDrop(event, targetDate) {
+async function handleDrop(event, targetDate) {
   event.preventDefault();
   
   // Get drop position for time calculation, accounting for click offset
@@ -3332,28 +3446,22 @@ function handleDrop(event, targetDate) {
       isRecurring: false,
       recurringId: null
     };
-    events.push(newTask);
-    saveCalendarEvents(events);
+    // Use async save if authenticated
+    await saveCalendarEventAsync(newTask);
     showToast(`Task duplicated to ${targetDate}`);
   } else {
     // Move task to new date AND time
-    const taskIndex = events.findIndex(e => e.id === id);
-    if (taskIndex === -1) {
-      cleanupDragMoveState();
-      return;
-    }
-    
-    // Update date
-    events[taskIndex].date = targetDate;
+    const updates = { date: targetDate };
     
     // Update time if we have a valid new time
     if (newTime) {
       const eventDuration = duration || calculateEventDurationMinutes(task.time, task.endTime);
-      events[taskIndex].time = newTime;
-      events[taskIndex].endTime = calculateEndTimeFromDuration(newTime, eventDuration);
+      updates.time = newTime;
+      updates.endTime = calculateEndTimeFromDuration(newTime, eventDuration);
     }
     
-    saveCalendarEvents(events);
+    // Use async update if authenticated
+    await updateCalendarEventAsync(id, updates);
     
     // Show feedback
     if (fromDate !== targetDate) {
@@ -3463,7 +3571,7 @@ function handleEventResizeMove(e) {
   }
 }
 
-function handleEventResizeEnd(e) {
+async function handleEventResizeEnd(e) {
   if (!resizeState.isResizing) return;
   
   document.removeEventListener('mousemove', handleEventResizeMove);
@@ -3487,21 +3595,17 @@ function handleEventResizeEnd(e) {
     
     // Save the change if end time actually changed
     if (newEndTime !== resizeState.originalEndTime) {
-      const events = loadCalendarEvents();
-      const eventIndex = events.findIndex(ev => ev.id == resizeState.eventId);
-      if (eventIndex !== -1) {
-        events[eventIndex].endTime = newEndTime;
-        saveCalendarEvents(events);
-        
-        // Format duration for toast
-        const hours = Math.floor(durationMinutes / 60);
-        const mins = durationMinutes % 60;
-        let durationStr = '';
-        if (hours > 0) durationStr += `${hours}h`;
-        if (mins > 0) durationStr += `${mins > 0 && hours > 0 ? ' ' : ''}${mins}m`;
-        
-        showToast(`Duration updated to ${durationStr}`);
-      }
+      // Use async update if authenticated
+      await updateCalendarEventAsync(resizeState.eventId, { endTime: newEndTime });
+      
+      // Format duration for toast
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      let durationStr = '';
+      if (hours > 0) durationStr += `${hours}h`;
+      if (mins > 0) durationStr += `${mins > 0 && hours > 0 ? ' ' : ''}${mins}m`;
+      
+      showToast(`Duration updated to ${durationStr}`);
     }
   }
   
@@ -4128,7 +4232,7 @@ function updateCategoryColor(select) {
   }
 }
 
-function handleAdvancedEventSubmit(e) {
+async function handleAdvancedEventSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const data = new FormData(form);
@@ -4169,9 +4273,8 @@ function handleAdvancedEventSubmit(e) {
     conferenceLink
   });
   
-  let events = loadCalendarEvents();
-  events.push(newEvent);
-  saveCalendarEvents(events);
+  // Use async save if authenticated
+  await saveCalendarEventAsync(newEvent);
   
   closeModal();
   showToast(`Event "${title}" created successfully!`);
@@ -4257,7 +4360,7 @@ function duplicateCalendarTask(eventId) {
   openModal('Duplicate Task', content);
 }
 
-function handleDuplicateTaskSubmit(e, originalEventId) {
+async function handleDuplicateTaskSubmit(e, originalEventId) {
   e.preventDefault();
   const form = e.target;
   const data = new FormData(form);
@@ -4287,8 +4390,8 @@ function handleDuplicateTaskSubmit(e, originalEventId) {
     recurringId: null
   };
   
-  events.push(newTask);
-  saveCalendarEvents(events);
+  // Use async save if authenticated
+  await saveCalendarEventAsync(newTask);
   
   closeModal();
   showToast('Task duplicated successfully!');
@@ -4601,7 +4704,7 @@ function openCreateEventModal(defaultDate = null) {
   openModal('New Task / Event', content);
 }
 
-function handleCreateEventSubmit(e, date) {
+async function handleCreateEventSubmit(e, date) {
   e.preventDefault();
   const form = e.target;
   const data = new FormData(form);
@@ -4626,7 +4729,6 @@ function handleCreateEventSubmit(e, date) {
 
   // If no repeat, create single event
   if (repeatType === 'none') {
-    const events = loadCalendarEvents();
     const newEvent = { 
       id: Date.now(), 
       title, 
@@ -4639,8 +4741,8 @@ function handleCreateEventSubmit(e, date) {
       assignmentId,
       spaceId
     };
-    events.push(newEvent);
-    saveCalendarEvents(events);
+    // Use async save if authenticated
+    await saveCalendarEventAsync(newEvent);
     saveExpandedTaskId(newEvent.id);
     closeModal();
     renderCurrentView();
@@ -4688,7 +4790,6 @@ function handleCreateEventSubmit(e, date) {
   }
 
   // Generate all recurring event instances
-  const events = loadCalendarEvents();
   const generatedEvents = generateRecurringEvents({
     recurringId,
     title,
@@ -4706,8 +4807,10 @@ function handleCreateEventSubmit(e, date) {
     spaceId
   });
 
-  events.push(...generatedEvents);
-  saveCalendarEvents(events);
+  // Save all generated events using async if authenticated
+  for (const event of generatedEvents) {
+    await saveCalendarEventAsync(event);
+  }
 
   // Save recurring rule for future reference
   const recurringTasks = loadRecurringTasks();
@@ -7054,7 +7157,7 @@ function openAssigneeFilter(event, projectIndex) {
 }
 
 // Toggle task done from timeline
-function toggleTimelineTaskDone(taskId, projectIndex) {
+async function toggleTimelineTaskDone(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
@@ -7068,6 +7171,16 @@ function toggleTimelineTaskDone(taskId, projectIndex) {
   });
   
   saveProjects(projects);
+  
+  // Sync to DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, { columns: project.columns });
+    } catch (error) {
+      console.error('Failed to sync task toggle to database:', error);
+    }
+  }
+  
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
 }
@@ -7444,18 +7557,41 @@ if (typeof tlMilestoneState === 'undefined') {
   };
 }
 
-// Load milestones for a bar (stored in localStorage per project)
+// Load milestones for a bar (stored in project.milestones JSONB for DB sync)
 function loadBarMilestones(projectIndex, barId) {
-  const key = `tl_milestones_${projectIndex}_${barId}`;
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : [];
+  const projects = loadProjects();
+  if (!projects[projectIndex]) return [];
+  
+  // Milestones are stored in project.milestones object keyed by barId
+  const milestones = projects[projectIndex].milestones || {};
+  return milestones[barId] || [];
 }
 
-// Save milestones for a bar
-function saveBarMilestones(projectIndex, barId, milestones) {
-  const key = `tl_milestones_${projectIndex}_${barId}`;
-  localStorage.setItem(key, JSON.stringify(milestones));
+// Save milestones for a bar (stored in project for DB sync)
+async function saveBarMilestones(projectIndex, barId, milestones) {
+  const projects = loadProjects();
+  if (!projects[projectIndex]) return;
+  
+  // Initialize milestones object if it doesn't exist
+  if (!projects[projectIndex].milestones) {
+    projects[projectIndex].milestones = {};
+  }
+  
+  projects[projectIndex].milestones[barId] = milestones;
+  saveProjects(projects);
+  
+  // Sync to DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+    try {
+      await window.LayerDB.updateProject(projects[projectIndex].id, { 
+        milestones: projects[projectIndex].milestones 
+      });
+    } catch (error) {
+      console.error('Failed to save milestones to database:', error);
+    }
+  }
 }
+
 
 // Generate milestone ID
 function generateMilestoneId() {
@@ -9406,7 +9542,7 @@ function saveTimelineTask(projectIndex) {
 }
 
 // Toggle task complete status from timeline
-function toggleTimelineTaskComplete(taskId, projectIndex) {
+async function toggleTimelineTaskComplete(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
@@ -9425,6 +9561,16 @@ function toggleTimelineTaskComplete(taskId, projectIndex) {
         }
         
         saveProjects(projects);
+        
+        // Sync to DB if authenticated
+        if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+          try {
+            await window.LayerDB.updateProject(project.id, { columns: project.columns });
+          } catch (error) {
+            console.error('Failed to sync task complete to database:', error);
+          }
+        }
+        
         const container = document.querySelector('.pd-content-scroll');
         if (container) renderTimelineView(projectIndex, container);
         showToast(task.status === 'done' ? 'Task completed!' : 'Task marked incomplete');
@@ -11176,7 +11322,7 @@ function selectTaskColor(element) {
   }
 }
 
-function handleAddTimelineTask(event, projectIndex) {
+async function handleAddTimelineTask(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const projects = loadProjects();
@@ -11201,6 +11347,15 @@ function handleAddTimelineTask(event, projectIndex) {
   saveProjects(projects);
   closeModal();
   
+  // Sync to DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, { tasks: project.tasks });
+    } catch (error) {
+      console.error('Failed to sync timeline task to database:', error);
+    }
+  }
+  
   const contentScroll = document.querySelector('.pd-content-scroll');
   if (contentScroll) {
     renderTimelineView(projectIndex, contentScroll);
@@ -11210,13 +11365,22 @@ function handleAddTimelineTask(event, projectIndex) {
 
 // Context menu removed - use double-click to edit tasks
 
-function deleteTimelineTask(projectIndex, taskId) {
+async function deleteTimelineTask(projectIndex, taskId) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   
   if (project.tasks) {
     project.tasks = project.tasks.filter(t => t.id !== taskId);
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+      try {
+        await window.LayerDB.updateProject(project.id, { tasks: project.tasks });
+      } catch (error) {
+        console.error('Failed to sync timeline task deletion to database:', error);
+      }
+    }
     
     const contentScroll = document.querySelector('.pd-content-scroll');
     if (contentScroll) {
@@ -13780,14 +13944,55 @@ function saveDocs(docs) {
   localStorage.setItem(DOCS_KEY, JSON.stringify(docs));
 }
 
-function addDoc(doc) {
+// Initialize docs from DB on page load
+async function initDocsFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const docs = await window.LayerDB.loadDocs();
+      saveDocs(docs);
+      return docs;
+    } catch (error) {
+      console.error('Failed to load docs from database:', error);
+    }
+  }
+  return loadDocs();
+}
+
+async function addDoc(doc) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const savedDoc = await window.LayerDB.saveDoc(doc);
+      // Refresh local cache
+      const docs = await window.LayerDB.loadDocs();
+      saveDocs(docs);
+      return savedDoc;
+    } catch (error) {
+      console.error('Failed to save doc to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   const docs = loadDocs();
   docs.unshift(doc);
   saveDocs(docs);
   return doc;
 }
 
-function updateDoc(id, updates) {
+async function updateDoc(id, updates) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.updateDoc(id, updates);
+      const docs = await window.LayerDB.loadDocs();
+      saveDocs(docs);
+      return;
+    } catch (error) {
+      console.error('Failed to update doc in database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   const docs = loadDocs();
   const index = docs.findIndex(d => d.id === id);
   if (index !== -1) {
@@ -13796,7 +14001,20 @@ function updateDoc(id, updates) {
   }
 }
 
-function deleteDoc(id) {
+async function deleteDoc(id) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.deleteDoc(id);
+      const docs = await window.LayerDB.loadDocs();
+      saveDocs(docs);
+      return;
+    } catch (error) {
+      console.error('Failed to delete doc from database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   let docs = loadDocs();
   docs = docs.filter(d => d.id !== id);
   saveDocs(docs);
@@ -14029,16 +14247,38 @@ function openDocEditor(docId = null) {
   setupDocAiCommand();
   // Auto-create the document immediately if new
   if (!doc) {
-    const docs = loadDocs();
-    docs.unshift({
+    const newDoc = {
       id: currentDocId,
       title: 'Untitled',
       content: '',
       spaceId: currentSpaceId || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
-    saveDocs(docs);
+    };
+    
+    // Use Supabase if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      (async () => {
+        try {
+          const savedDoc = await window.LayerDB.saveDoc(newDoc);
+          // Update currentDocId to use database ID
+          currentDocId = savedDoc.id;
+          const docs = await window.LayerDB.loadDocs();
+          saveDocs(docs);
+        } catch (error) {
+          console.error('Failed to create doc in database:', error);
+          // Fallback to localStorage
+          const docs = loadDocs();
+          docs.unshift(newDoc);
+          saveDocs(docs);
+        }
+      })();
+    } else {
+      // Fallback to localStorage
+      const docs = loadDocs();
+      docs.unshift(newDoc);
+      saveDocs(docs);
+    }
     
     setTimeout(() => {
       document.getElementById('docTitleInput')?.focus();
@@ -14164,7 +14404,7 @@ function showAutoSaveIndicator() {
   }, 2000);
 }
 
-function autoSaveDoc() {
+async function autoSaveDoc() {
   const titleInput = document.getElementById('docTitleInput');
   const contentDiv = document.getElementById('docEditorContent');
   
@@ -14173,6 +14413,19 @@ function autoSaveDoc() {
   const title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
   
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.updateDoc(currentDocId, { title, content });
+      const docs = await window.LayerDB.loadDocs();
+      saveDocs(docs);
+      return;
+    } catch (error) {
+      console.error('Failed to auto-save doc to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   const docs = loadDocs();
   const existingIndex = docs.findIndex(d => d.id === currentDocId);
   
@@ -14429,6 +14682,81 @@ function saveExcels(excels) {
   localStorage.setItem(EXCELS_KEY, JSON.stringify(excels));
 }
 
+// Initialize excels from DB on page load
+async function initExcelsFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const excels = await window.LayerDB.loadExcels();
+      saveExcels(excels);
+      return excels;
+    } catch (error) {
+      console.error('Failed to load excels from database:', error);
+    }
+  }
+  return loadExcels();
+}
+
+async function addExcel(excel) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const savedExcel = await window.LayerDB.saveExcel(excel);
+      const excels = await window.LayerDB.loadExcels();
+      saveExcels(excels);
+      return savedExcel;
+    } catch (error) {
+      console.error('Failed to save excel to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  const excels = loadExcels();
+  excels.unshift(excel);
+  saveExcels(excels);
+  return excel;
+}
+
+async function updateExcel(id, updates) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.updateExcel(id, updates);
+      const excels = await window.LayerDB.loadExcels();
+      saveExcels(excels);
+      return;
+    } catch (error) {
+      console.error('Failed to update excel in database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  const excels = loadExcels();
+  const index = excels.findIndex(e => e.id === id);
+  if (index !== -1) {
+    excels[index] = { ...excels[index], ...updates, updatedAt: new Date().toISOString() };
+    saveExcels(excels);
+  }
+}
+
+async function deleteExcel(id) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.deleteExcel(id);
+      const excels = await window.LayerDB.loadExcels();
+      saveExcels(excels);
+      return;
+    } catch (error) {
+      console.error('Failed to delete excel from database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  let excels = loadExcels();
+  excels = excels.filter(e => e.id !== id);
+  saveExcels(excels);
+}
+
 // ============================================
 // Excel Editor
 // ============================================
@@ -14586,16 +14914,38 @@ function openExcelEditor(excelId = null) {
   
   // Auto-create the spreadsheet immediately if new
   if (!excel) {
-    const excels = loadExcels();
-    excels.unshift({
+    const newExcel = {
       id: currentExcelId,
       title: 'Untitled Spreadsheet',
       data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
       spaceId: currentSpaceId || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
-    saveExcels(excels);
+    };
+    
+    // Use Supabase if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      (async () => {
+        try {
+          const savedExcel = await window.LayerDB.saveExcel(newExcel);
+          // Update currentExcelId to use database ID
+          currentExcelId = savedExcel.id;
+          const excels = await window.LayerDB.loadExcels();
+          saveExcels(excels);
+        } catch (error) {
+          console.error('Failed to create excel in database:', error);
+          // Fallback to localStorage
+          const excels = loadExcels();
+          excels.unshift(newExcel);
+          saveExcels(excels);
+        }
+      })();
+    } else {
+      // Fallback to localStorage
+      const excels = loadExcels();
+      excels.unshift(newExcel);
+      saveExcels(excels);
+    }
     
     setTimeout(() => {
       document.getElementById('excelTitleInput')?.focus();
@@ -14651,13 +15001,26 @@ function updateExcelCell(row, col, value) {
   }, 1000);
 }
 
-function autoSaveExcel() {
+async function autoSaveExcel() {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) return;
   
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
   
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.updateExcel(currentExcelId, { title, data });
+      const excels = await window.LayerDB.loadExcels();
+      saveExcels(excels);
+      return;
+    } catch (error) {
+      console.error('Failed to auto-save excel to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
   const excels = loadExcels();
   const existingIndex = excels.findIndex(e => e.id === currentExcelId);
   
@@ -14885,6 +15248,81 @@ function saveSpaces(spaces) {
   localStorage.setItem(SPACES_KEY, JSON.stringify(spaces));
 }
 
+// Initialize spaces from DB on page load
+async function initSpacesFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const spaces = await window.LayerDB.loadSpaces();
+      saveSpaces(spaces);
+      return spaces;
+    } catch (error) {
+      console.error('Failed to load spaces from database:', error);
+    }
+  }
+  return loadSpaces();
+}
+
+async function addSpace(space) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const savedSpace = await window.LayerDB.saveSpace(space);
+      const spaces = await window.LayerDB.loadSpaces();
+      saveSpaces(spaces);
+      return savedSpace;
+    } catch (error) {
+      console.error('Failed to save space to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  const spaces = loadSpaces();
+  spaces.unshift(space);
+  saveSpaces(spaces);
+  return space;
+}
+
+async function updateSpace(id, updates) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.updateSpace(id, updates);
+      const spaces = await window.LayerDB.loadSpaces();
+      saveSpaces(spaces);
+      return;
+    } catch (error) {
+      console.error('Failed to update space in database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  const spaces = loadSpaces();
+  const index = spaces.findIndex(s => s.id === id);
+  if (index !== -1) {
+    spaces[index] = { ...spaces[index], ...updates, updatedAt: new Date().toISOString() };
+    saveSpaces(spaces);
+  }
+}
+
+async function deleteSpace(id) {
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.deleteSpace(id);
+      const spaces = await window.LayerDB.loadSpaces();
+      saveSpaces(spaces);
+      return;
+    } catch (error) {
+      console.error('Failed to delete space from database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  let spaces = loadSpaces();
+  spaces = spaces.filter(s => s.id !== id);
+  saveSpaces(spaces);
+}
+
 // Minimalistic SVG icons for spaces (instead of emojis)
 const SPACE_ICON_SVGS = [
   { id: 'folder', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
@@ -14906,7 +15344,8 @@ const SPACE_ICON_SVGS = [
 ];
 
 function openNewSpaceModal() {
-  toggleCreateDropdown();
+  // Close any open dropdowns
+  closeSidebarCreateDropdown();
   
   const projects = loadProjects();
   
@@ -15055,7 +15494,7 @@ function selectSpaceIcon(button) {
   document.getElementById('selectedSpaceIcon').value = button.dataset.icon;
 }
 
-function handleCreateSpace(event) {
+async function handleCreateSpace(event) {
   event.preventDefault();
   
   const form = event.target;
@@ -15068,7 +15507,6 @@ function handleCreateSpace(event) {
   
   if (!name) return;
   
-  const spaces = loadSpaces();
   const newSpace = {
     id: Date.now(),
     name,
@@ -15077,13 +15515,30 @@ function handleCreateSpace(event) {
     dueDate,
     linkedProject,
     colorTag,
-    teamMembers: [...pendingInvitedMembers],
+    members: [...pendingInvitedMembers],
     createdAt: new Date().toISOString()
   };
   
   // Reset pending members
   pendingInvitedMembers = [];
   
+  // Use Supabase if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.saveSpace(newSpace);
+      const spaces = await window.LayerDB.loadSpaces();
+      saveSpaces(spaces);
+      closeModal();
+      renderSpacesInSidebar();
+      showToast(`Space "${name}" created!`);
+      return;
+    } catch (error) {
+      console.error('Failed to save space to database:', error);
+    }
+  }
+  
+  // Fallback to localStorage
+  const spaces = loadSpaces();
   spaces.push(newSpace);
   saveSpaces(spaces);
   
@@ -15170,61 +15625,79 @@ function saveExcelFavorites(favorites) {
   localStorage.setItem(EXCEL_FAVORITES_KEY, JSON.stringify(favorites));
 }
 
-function toggleDocFavorite(docId) {
-  const favorites = loadFavorites();
-  const index = favorites.indexOf(docId);
-  
-  if (index === -1) {
-    favorites.push(docId);
-    showToast('Added to favorites!');
-  } else {
-    favorites.splice(index, 1);
-    showToast('Removed from favorites');
+async function toggleDocFavorite(docId) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save favorites', 'error');
+    return;
   }
   
-  saveFavorites(favorites);
-  renderFavoritesInSidebar();
+  const docs = loadDocs();
+  const doc = docs.find(d => d.id === docId);
+  if (!doc) return;
   
-  // Update star icon if visible
-  const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
-  if (starBtn) {
-    starBtn.classList.toggle('is-favorite', index === -1);
+  const newFavoriteState = !doc.isFavorite;
+  
+  try {
+    const updatedDocs = await window.LayerDB.toggleDocFavorite(docId, newFavoriteState);
+    saveDocs(updatedDocs);
+    showToast(newFavoriteState ? 'Added to favorites!' : 'Removed from favorites');
+    renderFavoritesInSidebar();
+    
+    // Update star icon if visible
+    const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
+    if (starBtn) {
+      starBtn.classList.toggle('is-favorite', newFavoriteState);
+    }
+  } catch (error) {
+    console.error('Failed to toggle doc favorite in database:', error);
+    showToast('Failed to save favorite', 'error');
   }
 }
 
-function toggleExcelFavorite(excelId) {
-  const favorites = loadExcelFavorites();
-  const index = favorites.indexOf(excelId);
-  
-  if (index === -1) {
-    favorites.push(excelId);
-    showToast('Added to favorites!');
-  } else {
-    favorites.splice(index, 1);
-    showToast('Removed from favorites');
+async function toggleExcelFavorite(excelId) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save favorites', 'error');
+    return;
   }
   
-  saveExcelFavorites(favorites);
-  renderFavoritesInSidebar();
+  const excels = loadExcels();
+  const excel = excels.find(e => e.id === excelId);
+  if (!excel) return;
   
-  // Update star icon if visible
-  const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
-  if (starBtn) {
-    starBtn.classList.toggle('is-favorite', index === -1);
+  const newFavoriteState = !excel.isFavorite;
+  
+  try {
+    const updatedExcels = await window.LayerDB.toggleExcelFavorite(excelId, newFavoriteState);
+    saveExcels(updatedExcels);
+    showToast(newFavoriteState ? 'Added to favorites!' : 'Removed from favorites');
+    renderFavoritesInSidebar();
+    
+    // Update star icon if visible
+    const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
+    if (starBtn) {
+      starBtn.classList.toggle('is-favorite', newFavoriteState);
+    }
+  } catch (error) {
+    console.error('Failed to toggle excel favorite in database:', error);
+    showToast('Failed to save favorite', 'error');
   }
 }
 
 function isDocFavorited(docId) {
-  return loadFavorites().includes(docId);
+  const docs = loadDocs();
+  const doc = docs.find(d => d.id === docId);
+  return doc ? doc.isFavorite : false;
 }
 
 function isExcelFavorited(excelId) {
-  return loadExcelFavorites().includes(excelId);
+  const excels = loadExcels();
+  const excel = excels.find(e => e.id === excelId);
+  return excel ? excel.isFavorite : false;
 }
 
 function renderFavoritesInSidebar() {
-  const docFavorites = loadFavorites();
-  const excelFavorites = loadExcelFavorites();
   const docs = loadDocs();
   const excels = loadExcels();
   const sidebar = document.querySelector('.sidebar-nav');
@@ -15235,9 +15708,9 @@ function renderFavoritesInSidebar() {
     existingSection.remove();
   }
   
-  // Get favorited docs and excels
-  const favoriteDocs = docs.filter(doc => docFavorites.includes(doc.id));
-  const favoriteExcels = excels.filter(excel => excelFavorites.includes(excel.id));
+  // Get favorited docs and excels using isFavorite field
+  const favoriteDocs = docs.filter(doc => doc.isFavorite === true);
+  const favoriteExcels = excels.filter(excel => excel.isFavorite === true);
   
   if (favoriteDocs.length === 0 && favoriteExcels.length === 0) return;
   
@@ -15317,17 +15790,15 @@ function confirmDeleteSpace(spaceId, spaceName) {
       </p>
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" onclick="deleteSpace(${spaceId})">Delete Space</button>
+        <button type="button" class="btn btn-danger" onclick="deleteSpaceConfirmed('${spaceId}')">Delete Space</button>
       </div>
     </div>
   `;
   openModal('Delete Space', content);
 }
 
-function deleteSpace(spaceId) {
-  let spaces = loadSpaces();
-  spaces = spaces.filter(s => s.id !== spaceId);
-  saveSpaces(spaces);
+async function deleteSpaceConfirmed(spaceId) {
+  await deleteSpace(spaceId);
   closeModal();
   renderSpacesInSidebar();
   showToast('Space deleted successfully!');
@@ -15660,22 +16131,22 @@ function confirmDeleteDoc(docId, docTitle) {
       </p>
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" onclick="deleteDocConfirmed(${docId})">Delete Document</button>
+        <button type="button" class="btn btn-danger" onclick="deleteDocConfirmed('${docId}')">Delete Document</button>
       </div>
     </div>
   `;
   openModal('Delete Document', content);
 }
 
-function deleteDocConfirmed(docId) {
-  deleteDoc(docId);
+async function deleteDocConfirmed(docId) {
+  await deleteDoc(docId);
   closeModal();
   showToast('Document deleted successfully!');
   
   // Refresh current view
   const activeSpace = document.querySelector('.custom-space-item.active');
   if (activeSpace) {
-    const spaceId = parseInt(activeSpace.dataset.spaceId);
+    const spaceId = activeSpace.dataset.spaceId;
     openSpaceView(spaceId);
   }
 }
@@ -15689,24 +16160,22 @@ function confirmDeleteExcel(excelId, excelTitle) {
       </p>
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" onclick="deleteExcelConfirmed(${excelId})">Delete Spreadsheet</button>
+        <button type="button" class="btn btn-danger" onclick="deleteExcelConfirmed('${excelId}')">Delete Spreadsheet</button>
       </div>
     </div>
   `;
   openModal('Delete Spreadsheet', content);
 }
 
-function deleteExcelConfirmed(excelId) {
-  let excels = loadExcels();
-  excels = excels.filter(e => e.id !== excelId);
-  saveExcels(excels);
+async function deleteExcelConfirmed(excelId) {
+  await deleteExcel(excelId);
   closeModal();
   showToast('Spreadsheet deleted successfully!');
   
   // Refresh current view
   const activeSpace = document.querySelector('.custom-space-item.active');
   if (activeSpace) {
-    const spaceId = parseInt(activeSpace.dataset.spaceId);
+    const spaceId = activeSpace.dataset.spaceId;
     openSpaceView(spaceId);
   }
 }
@@ -20959,7 +21428,7 @@ function closeTaskInspector() {
   document.removeEventListener('click', handleInspectorOutsideClick);
 }
 
-function toggleTaskComplete(taskId, projectIndex) {
+async function toggleTaskComplete(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
@@ -20973,6 +21442,16 @@ function toggleTaskComplete(taskId, projectIndex) {
   });
   
   saveProjects(projects);
+  
+  // Sync to DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, { columns: project.columns });
+    } catch (error) {
+      console.error('Failed to sync task complete to database:', error);
+    }
+  }
+  
   refreshAdvancedTimeline(projectIndex);
   showToast(projects[projectIndex].columns.flatMap(c => c.tasks).find(t => t.id === taskId)?.done ? 'Task completed!' : 'Task reopened');
 }

@@ -213,7 +213,10 @@ async function loadProjectsFromDB() {
     targetDate: p.target_date,
     flowchart: p.flowchart,
     columns: p.columns,
-    updates: p.updates
+    updates: p.updates,
+    milestones: p.milestones || {},
+    gripDiagram: p.grip_diagram || null,
+    tasks: p.tasks || []
   }));
 }
 
@@ -238,7 +241,8 @@ async function saveProjectToDB(projectData) {
         { title: 'In Progress', tasks: [] },
         { title: 'Done', tasks: [] }
       ],
-      updates: [{ actor: 'You', action: 'Project created', time: 'just now' }]
+      updates: [{ actor: 'You', action: 'Project created', time: 'just now' }],
+      milestones: projectData.milestones || {}
     })
     .select()
     .single();
@@ -267,6 +271,9 @@ async function updateProjectInDB(projectId, updates) {
   if (updates.flowchart !== undefined) dbUpdates.flowchart = updates.flowchart;
   if (updates.columns !== undefined) dbUpdates.columns = updates.columns;
   if (updates.updates !== undefined) dbUpdates.updates = updates.updates;
+  if (updates.milestones !== undefined) dbUpdates.milestones = updates.milestones;
+  if (updates.grip_diagram !== undefined) dbUpdates.grip_diagram = updates.grip_diagram;
+  if (updates.tasks !== undefined) dbUpdates.tasks = updates.tasks;
   
   const { data, error } = await supabaseClient
     .from('projects')
@@ -510,6 +517,469 @@ async function deleteIssueFromDB(issueDbId) {
 }
 
 // ============================================
+// Calendar Events Functions
+// ============================================
+
+async function loadCalendarEventsFromDB() {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('calendar_events')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('date', { ascending: true });
+  
+  if (error) throw error;
+  
+  // Transform to match existing format
+  return data.map(e => ({
+    id: e.id,
+    title: e.title,
+    description: e.notes || '',
+    date: e.date,
+    endDate: e.date,
+    time: e.time,
+    endTime: e.end_time,
+    isAllDay: !e.time,
+    category: e.category || 'default',
+    color: e.color || '#3b82f6',
+    location: '',
+    attendees: [],
+    reminders: [30],
+    recurrence: e.is_recurring_instance ? 'weekly' : 'none',
+    recurrenceEnd: null,
+    isRecurring: e.is_recurring_instance || false,
+    recurringId: e.recurring_id,
+    status: 'confirmed',
+    visibility: 'default',
+    notes: e.notes || '',
+    attachments: [],
+    created: e.created_at,
+    updated: e.updated_at,
+    conferenceLink: '',
+    guestsCanModify: false,
+    guestsCanSeeOtherGuests: true,
+    projectId: null,
+    spaceId: null,
+    completed: e.completed || false,
+    priority: e.priority || 'medium',
+    duration: e.duration
+  }));
+}
+
+async function saveCalendarEventToDB(eventData) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('calendar_events')
+    .insert({
+      user_id: currentUser.id,
+      title: eventData.title,
+      date: eventData.date,
+      time: eventData.time || null,
+      end_time: eventData.endTime || null,
+      duration: eventData.duration || null,
+      completed: eventData.completed || false,
+      color: eventData.color || '#3b82f6',
+      recurring_id: eventData.recurringId || null,
+      is_recurring_instance: eventData.isRecurring || false,
+      notes: eventData.notes || eventData.description || '',
+      priority: eventData.priority || 'medium',
+      category: eventData.category || 'default'
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+async function updateCalendarEventInDB(eventId, updates) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const dbUpdates = {};
+  if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.date !== undefined) dbUpdates.date = updates.date;
+  if (updates.time !== undefined) dbUpdates.time = updates.time;
+  if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+  if (updates.duration !== undefined) dbUpdates.duration = updates.duration;
+  if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+  if (updates.color !== undefined) dbUpdates.color = updates.color;
+  if (updates.recurringId !== undefined) dbUpdates.recurring_id = updates.recurringId;
+  if (updates.isRecurring !== undefined) dbUpdates.is_recurring_instance = updates.isRecurring;
+  if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+  if (updates.description !== undefined) dbUpdates.notes = updates.description;
+  if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+  if (updates.category !== undefined) dbUpdates.category = updates.category;
+  
+  const { error } = await supabaseClient
+    .from('calendar_events')
+    .update(dbUpdates)
+    .eq('id', eventId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadCalendarEventsFromDB();
+}
+
+async function deleteCalendarEventFromDB(eventId) {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { error } = await supabaseClient
+    .from('calendar_events')
+    .delete()
+    .eq('id', eventId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadCalendarEventsFromDB();
+}
+
+async function deleteRecurringEventsFromDB(recurringId) {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { error } = await supabaseClient
+    .from('calendar_events')
+    .delete()
+    .eq('recurring_id', recurringId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadCalendarEventsFromDB();
+}
+
+// ============================================
+// Documents Functions
+// ============================================
+
+async function loadDocsFromDB() {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('docs')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('updated_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  return data.map(d => ({
+    id: d.id,
+    title: d.title,
+    content: d.content,
+    spaceId: d.space_id,
+    isFavorite: d.is_favorite || false,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at
+  }));
+}
+
+async function saveDocToDB(docData) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('docs')
+    .insert({
+      user_id: currentUser.id,
+      title: docData.title || 'Untitled',
+      content: docData.content || '',
+      space_id: docData.spaceId || null,
+      is_favorite: docData.isFavorite || false
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return {
+    id: data.id,
+    title: data.title,
+    content: data.content,
+    spaceId: data.space_id,
+    isFavorite: data.is_favorite || false,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+async function updateDocInDB(docId, updates) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const dbUpdates = { updated_at: new Date().toISOString() };
+  if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.content !== undefined) dbUpdates.content = updates.content;
+  if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
+  if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
+  
+  const { error } = await supabaseClient
+    .from('docs')
+    .update(dbUpdates)
+    .eq('id', docId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadDocsFromDB();
+}
+
+async function deleteDocFromDB(docId) {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { error } = await supabaseClient
+    .from('docs')
+    .delete()
+    .eq('id', docId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadDocsFromDB();
+}
+
+async function toggleDocFavoriteInDB(docId, isFavorite) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { error } = await supabaseClient
+    .from('docs')
+    .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
+    .eq('id', docId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadDocsFromDB();
+}
+
+// ============================================
+// Excels/Spreadsheets Functions
+// ============================================
+
+async function loadExcelsFromDB() {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('excels')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('updated_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  return data.map(e => ({
+    id: e.id,
+    title: e.title,
+    data: e.data,
+    spaceId: e.space_id,
+    isFavorite: e.is_favorite || false,
+    createdAt: e.created_at,
+    updatedAt: e.updated_at
+  }));
+}
+
+async function saveExcelToDB(excelData) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('excels')
+    .insert({
+      user_id: currentUser.id,
+      title: excelData.title || 'Untitled Spreadsheet',
+      data: excelData.data || [],
+      space_id: excelData.spaceId || null,
+      is_favorite: excelData.isFavorite || false
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return {
+    id: data.id,
+    title: data.title,
+    data: data.data,
+    spaceId: data.space_id,
+    isFavorite: data.is_favorite || false,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+async function updateExcelInDB(excelId, updates) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const dbUpdates = { updated_at: new Date().toISOString() };
+  if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.data !== undefined) dbUpdates.data = updates.data;
+  if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
+  if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
+  
+  const { error } = await supabaseClient
+    .from('excels')
+    .update(dbUpdates)
+    .eq('id', excelId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadExcelsFromDB();
+}
+
+async function deleteExcelFromDB(excelId) {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { error } = await supabaseClient
+    .from('excels')
+    .delete()
+    .eq('id', excelId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadExcelsFromDB();
+}
+
+async function toggleExcelFavoriteInDB(excelId, isFavorite) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { error } = await supabaseClient
+    .from('excels')
+    .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
+    .eq('id', excelId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadExcelsFromDB();
+}
+
+// ============================================
+// Spaces Functions
+// ============================================
+
+async function loadSpacesFromDB() {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('spaces')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  return data.map(s => ({
+    id: s.id,
+    name: s.name,
+    icon: s.icon,
+    description: s.description,
+    dueDate: s.due_date,
+    linkedProject: s.linked_project,
+    colorTag: s.color_tag,
+    members: s.members || [],
+    createdAt: s.created_at,
+    updatedAt: s.updated_at
+  }));
+}
+
+async function saveSpaceToDB(spaceData) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('spaces')
+    .insert({
+      user_id: currentUser.id,
+      name: spaceData.name,
+      icon: spaceData.icon || 'folder',
+      description: spaceData.description || '',
+      due_date: spaceData.dueDate || null,
+      linked_project: spaceData.linkedProject || null,
+      color_tag: spaceData.colorTag || 'none',
+      members: spaceData.members || []
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return {
+    id: data.id,
+    name: data.name,
+    icon: data.icon,
+    description: data.description,
+    dueDate: data.due_date,
+    linkedProject: data.linked_project,
+    colorTag: data.color_tag,
+    members: data.members || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+async function updateSpaceInDB(spaceId, updates) {
+  if (!currentUser) {
+    return null;
+  }
+  
+  const dbUpdates = { updated_at: new Date().toISOString() };
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
+  if (updates.description !== undefined) dbUpdates.description = updates.description;
+  if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+  if (updates.linkedProject !== undefined) dbUpdates.linked_project = updates.linkedProject;
+  if (updates.colorTag !== undefined) dbUpdates.color_tag = updates.colorTag;
+  if (updates.members !== undefined) dbUpdates.members = updates.members;
+  
+  const { error } = await supabaseClient
+    .from('spaces')
+    .update(dbUpdates)
+    .eq('id', spaceId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadSpacesFromDB();
+}
+
+async function deleteSpaceFromDB(spaceId) {
+  if (!currentUser) {
+    return [];
+  }
+  
+  const { error } = await supabaseClient
+    .from('spaces')
+    .delete()
+    .eq('id', spaceId)
+    .eq('user_id', currentUser.id);
+  
+  if (error) throw error;
+  return await loadSpacesFromDB();
+}
+
+// ============================================
 // Data Migration (localStorage to Supabase)
 // ============================================
 
@@ -536,6 +1006,30 @@ async function migrateLocalDataToSupabase() {
     const localIssues = loadIssues();
     for (const issue of localIssues) {
       await addIssueToDB(issue);
+    }
+    
+    // Migrate calendar events
+    const localEvents = JSON.parse(localStorage.getItem('layerCalendarEvents') || '[]');
+    for (const event of localEvents) {
+      await saveCalendarEventToDB(event);
+    }
+    
+    // Migrate docs
+    const localDocs = JSON.parse(localStorage.getItem('layerDocs') || '[]');
+    for (const doc of localDocs) {
+      await saveDocToDB(doc);
+    }
+    
+    // Migrate excels
+    const localExcels = JSON.parse(localStorage.getItem('layerExcels') || '[]');
+    for (const excel of localExcels) {
+      await saveExcelToDB(excel);
+    }
+    
+    // Migrate spaces
+    const localSpaces = JSON.parse(localStorage.getItem('layerSpaces') || '[]');
+    for (const space of localSpaces) {
+      await saveSpaceToDB(space);
     }
     
     // Migrate preferences
@@ -592,6 +1086,33 @@ window.LayerDB = {
   addIssue: addIssueToDB,
   updateIssue: updateIssueInDB,
   deleteIssue: deleteIssueFromDB,
+  
+  // Calendar Events
+  loadCalendarEvents: loadCalendarEventsFromDB,
+  saveCalendarEvent: saveCalendarEventToDB,
+  updateCalendarEvent: updateCalendarEventInDB,
+  deleteCalendarEvent: deleteCalendarEventFromDB,
+  deleteRecurringEvents: deleteRecurringEventsFromDB,
+  
+  // Documents
+  loadDocs: loadDocsFromDB,
+  saveDoc: saveDocToDB,
+  updateDoc: updateDocInDB,
+  deleteDoc: deleteDocFromDB,
+  toggleDocFavorite: toggleDocFavoriteInDB,
+  
+  // Excels/Spreadsheets
+  loadExcels: loadExcelsFromDB,
+  saveExcel: saveExcelToDB,
+  updateExcel: updateExcelInDB,
+  deleteExcel: deleteExcelFromDB,
+  toggleExcelFavorite: toggleExcelFavoriteInDB,
+  
+  // Spaces
+  loadSpaces: loadSpacesFromDB,
+  saveSpace: saveSpaceToDB,
+  updateSpace: updateSpaceInDB,
+  deleteSpace: deleteSpaceFromDB,
   
   // Migration
   migrateLocalDataToSupabase,

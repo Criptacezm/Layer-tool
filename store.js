@@ -12,9 +12,14 @@ const LEFT_PANEL_WIDTH_KEY = 'layerLeftPanelWidth';
 // ============================================
 // Left Panel Width Persistence
 // ============================================
-function saveLeftPanelWidth(width) {
+async function saveLeftPanelWidth(width) {
   try {
     localStorage.setItem(LEFT_PANEL_WIDTH_KEY, width.toString());
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.saveUserPreferences({ left_panel_width: width });
+    }
   } catch (e) {
     console.error('Failed to save left panel width:', e);
   }
@@ -30,7 +35,19 @@ function loadLeftPanelWidth() {
   }
 }
 
-function initLeftPanelResize() {
+async function initLeftPanelResize() {
+  // Load from DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const prefs = await window.LayerDB.getUserPreferences();
+      if (prefs && prefs.left_panel_width) {
+        localStorage.setItem(LEFT_PANEL_WIDTH_KEY, prefs.left_panel_width.toString());
+      }
+    } catch (e) {
+      console.error('Failed to load panel width from DB:', e);
+    }
+  }
+  
   const savedWidth = loadLeftPanelWidth();
   if (savedWidth) {
     document.querySelectorAll('.tl-left-panel-clickup').forEach(panel => {
@@ -39,11 +56,16 @@ function initLeftPanelResize() {
   }
   
   // Use ResizeObserver to detect manual resizing
+  let resizeTimeout;
   const observer = new ResizeObserver(entries => {
     for (const entry of entries) {
       if (entry.target.classList.contains('tl-left-panel-clickup')) {
         const width = Math.round(entry.contentRect.width);
-        saveLeftPanelWidth(width);
+        // Debounce the save to avoid too many DB calls
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          saveLeftPanelWidth(width);
+        }, 500);
       }
     }
   });
@@ -69,7 +91,9 @@ function generateIssueId() {
 // ============================================
 // Projects - Use Supabase when authenticated
 // ============================================
-function loadProjects() {
+
+// Get projects from localStorage (internal use only)
+function loadProjectsFromLocal() {
   try {
     const data = localStorage.getItem(PROJECTS_KEY);
     if (data) {
@@ -99,6 +123,14 @@ function loadProjects() {
     console.error('Failed to load projects:', e);
   }
   return [];
+}
+
+// Main loadProjects function - uses cached data from localStorage
+// Data is synced to localStorage after DB operations
+function loadProjects() {
+  // When authenticated, we use the cached localStorage data that was
+  // populated from the database during login/data load
+  return loadProjectsFromLocal();
 }
 
 function saveProjects(projects) {
@@ -193,7 +225,7 @@ async function deleteProject(index) {
 // ============================================
 // Project Tasks
 // ============================================
-function addTaskToColumn(projectIndex, columnIndex, title) {
+async function addTaskToColumn(projectIndex, columnIndex, title) {
   const projects = loadProjects();
   if (projects[projectIndex] && projects[projectIndex].columns[columnIndex]) {
     projects[projectIndex].columns[columnIndex].tasks.push({
@@ -203,25 +235,52 @@ function addTaskToColumn(projectIndex, columnIndex, title) {
       createdAt: new Date().toISOString()
     });
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync task to database:', error);
+      }
+    }
   }
   return projects;
 }
 
-function toggleTaskDone(projectIndex, columnIndex, taskIndex) {
+async function toggleTaskDone(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
   const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
   if (task) {
     task.done = !task.done;
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync task toggle to database:', error);
+      }
+    }
   }
   return projects;
 }
 
-function deleteTask(projectIndex, columnIndex, taskIndex) {
+async function deleteTask(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
   if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
     projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync task deletion to database:', error);
+      }
+    }
   }
   return projects;
 }
@@ -229,7 +288,7 @@ function deleteTask(projectIndex, columnIndex, taskIndex) {
 // ============================================
 // Column Management
 // ============================================
-function addColumnToProject(projectIndex, title) {
+async function addColumnToProject(projectIndex, title) {
   const projects = loadProjects();
   if (projects[projectIndex]) {
     projects[projectIndex].columns.push({
@@ -237,24 +296,51 @@ function addColumnToProject(projectIndex, title) {
       tasks: []
     });
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync column to database:', error);
+      }
+    }
   }
   return projects;
 }
 
-function deleteColumnFromProject(projectIndex, columnIndex) {
+async function deleteColumnFromProject(projectIndex, columnIndex) {
   const projects = loadProjects();
   if (projects[projectIndex]?.columns[columnIndex]) {
     projects[projectIndex].columns.splice(columnIndex, 1);
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync column deletion to database:', error);
+      }
+    }
   }
   return projects;
 }
 
-function renameColumn(projectIndex, columnIndex, newTitle) {
+async function renameColumn(projectIndex, columnIndex, newTitle) {
   const projects = loadProjects();
   if (projects[projectIndex]?.columns[columnIndex]) {
     projects[projectIndex].columns[columnIndex].title = newTitle;
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync column rename to database:', error);
+      }
+    }
   }
   return projects;
 }
@@ -262,7 +348,9 @@ function renameColumn(projectIndex, columnIndex, newTitle) {
 // ============================================
 // Backlog Tasks - Use Supabase when authenticated
 // ============================================
-function loadBacklogTasks() {
+
+// Get backlog tasks from localStorage (internal use only)
+function loadBacklogTasksFromLocal() {
   try {
     const data = localStorage.getItem(BACKLOG_KEY);
     if (data) {
@@ -272,6 +360,11 @@ function loadBacklogTasks() {
     console.error('Failed to load backlog tasks:', e);
   }
   return [];
+}
+
+// Main loadBacklogTasks - uses cached localStorage data
+function loadBacklogTasks() {
+  return loadBacklogTasksFromLocal();
 }
 
 function saveBacklogTasks(tasks) {
@@ -365,7 +458,9 @@ async function deleteBacklogTask(index) {
 // ============================================
 // Issues - Use Supabase when authenticated
 // ============================================
-function loadIssues() {
+
+// Get issues from localStorage (internal use only)
+function loadIssuesFromLocal() {
   try {
     const data = localStorage.getItem(ISSUES_KEY);
     if (data) {
@@ -375,6 +470,11 @@ function loadIssues() {
     console.error('Failed to load issues:', e);
   }
   return [];
+}
+
+// Main loadIssues - uses cached localStorage data
+function loadIssues() {
+  return loadIssuesFromLocal();
 }
 
 function saveIssues(issues) {
