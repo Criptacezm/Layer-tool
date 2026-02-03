@@ -83,20 +83,21 @@ const themeToggle = document.getElementById('themeToggle');
 // Initialization
 // ============================================
 function init() {
-  // Short, smooth loading screen - 0.8s animation + 0.4s fade
+  // Professional loading sequence - 1s animation + fade
   const loadingScreen = document.getElementById('loadingScreen');
   const appContainer = document.getElementById('app');
   
   setTimeout(() => {
     loadingScreen.classList.add('fade-out');
     appContainer.style.opacity = '1';
-    appContainer.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    appContainer.style.transition = 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
     
     // Remove loading screen from DOM after fade
     setTimeout(() => {
       loadingScreen.remove();
-    }, 400);
+    }, 800);
     
+    // Show beta notification popup after short delay
     // Show beta notification popup after short delay
     setTimeout(() => {
       showBetaNotification();
@@ -719,7 +720,10 @@ function updateUserDisplay(user) {
     const initials = displayName.slice(0, 2).toUpperCase();
     signInBtn.outerHTML = `
       <div class="user-info" id="userInfo">
-        <div class="user-avatar">${initials}</div>
+        <div class="user-avatar-wrapper">
+          <div class="user-avatar">${initials}</div>
+          <div class="user-status-indicator" title="Connected to database"></div>
+        </div>
         <span class="user-name">${displayName}</span>
         <button class="sign-out-btn" onclick="signOutUser()" title="Sign Out">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -746,6 +750,7 @@ async function signOutUser() {
       'layerDocs',
       'layerExcels',
       'layerSpaces',
+      'layerSpaceChecklists',
       'layerRecurringTasks',
       'layerCurrentUser',
       'layerAssignments'
@@ -767,6 +772,13 @@ async function signOutUser() {
     }
     
     showNotification('Signed out successfully', 'info');
+    // Clear spaces and favorites from sidebar immediately
+    if (typeof renderSpacesInSidebar === 'function') {
+      renderSpacesInSidebar();
+    }
+    if (typeof renderFavoritesInSidebar === 'function') {
+      renderFavoritesInSidebar();
+    }
     renderCurrentView();
   } catch (error) {
     console.error('Sign out error:', error);
@@ -820,6 +832,15 @@ async function loadUserDataFromDB() {
     localStorage.setItem('layerExcels', JSON.stringify(excels || []));
     localStorage.setItem('layerSpaces', JSON.stringify(spaces || []));
     
+    // Cache checklists from spaces
+    const checklists = {};
+    spaces.forEach(space => {
+      if (space.checklist && space.checklist.length > 0) {
+        checklists[String(space.id)] = space.checklist;
+      }
+    });
+    localStorage.setItem('layerSpaceChecklists', JSON.stringify(checklists));
+    
     console.log('User data loaded from database:', {
       projects: projects?.length || 0,
       backlogTasks: backlogTasks?.length || 0,
@@ -829,6 +850,29 @@ async function loadUserDataFromDB() {
       excels: excels?.length || 0,
       spaces: spaces?.length || 0
     });
+    
+    // Render spaces in sidebar immediately after loading
+    if (typeof renderSpacesInSidebar === 'function') {
+      renderSpacesInSidebar();
+    }
+    
+    // Render favorites in sidebar immediately after loading
+    if (typeof renderFavoritesInSidebar === 'function') {
+      renderFavoritesInSidebar();
+    }
+    
+    // Initialize presence tracking
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      // Update presence on load
+      window.LayerDB.updatePresence(true, null).catch(console.error);
+      
+      // Update presence every 30 seconds to keep user online
+      setInterval(() => {
+        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+          window.LayerDB.updatePresence(true, null).catch(console.error);
+        }
+      }, 30000);
+    }
   } catch (error) {
     console.error('Failed to load user data:', error);
     // On error, ensure empty arrays so user sees clean state
@@ -839,6 +883,15 @@ async function loadUserDataFromDB() {
     localStorage.setItem('layerDocs', '[]');
     localStorage.setItem('layerExcels', '[]');
     localStorage.setItem('layerSpaces', '[]');
+    localStorage.setItem('layerSpaceChecklists', '{}');
+    
+    // Clear spaces and favorites from sidebar on error
+    if (typeof renderSpacesInSidebar === 'function') {
+      renderSpacesInSidebar();
+    }
+    if (typeof renderFavoritesInSidebar === 'function') {
+      renderFavoritesInSidebar();
+    }
   }
 }
 

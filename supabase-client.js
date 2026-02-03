@@ -900,6 +900,7 @@ async function loadSpacesFromDB() {
     linkedProject: s.linked_project,
     colorTag: s.color_tag,
     members: s.members || [],
+    checklist: s.checklist || [],
     createdAt: s.created_at,
     updatedAt: s.updated_at
   }));
@@ -920,7 +921,8 @@ async function saveSpaceToDB(spaceData) {
       due_date: spaceData.dueDate || null,
       linked_project: spaceData.linkedProject || null,
       color_tag: spaceData.colorTag || 'none',
-      members: spaceData.members || []
+      members: spaceData.members || [],
+      checklist: spaceData.checklist || []
     })
     .select()
     .single();
@@ -935,6 +937,7 @@ async function saveSpaceToDB(spaceData) {
     linkedProject: data.linked_project,
     colorTag: data.color_tag,
     members: data.members || [],
+    checklist: data.checklist || [],
     createdAt: data.created_at,
     updatedAt: data.updated_at
   };
@@ -953,6 +956,7 @@ async function updateSpaceInDB(spaceId, updates) {
   if (updates.linkedProject !== undefined) dbUpdates.linked_project = updates.linkedProject;
   if (updates.colorTag !== undefined) dbUpdates.color_tag = updates.colorTag;
   if (updates.members !== undefined) dbUpdates.members = updates.members;
+  if (updates.checklist !== undefined) dbUpdates.checklist = updates.checklist;
   
   const { error } = await supabaseClient
     .from('spaces')
@@ -1116,6 +1120,46 @@ window.LayerDB = {
   
   // Migration
   migrateLocalDataToSupabase,
+  
+  // Presence tracking
+  updatePresence: async (isOnline, watchingProjectId = null) => {
+    if (!currentUser) return;
+    const { error } = await supabaseClient
+      .from('user_presence')
+      .upsert({
+        user_id: currentUser.id,
+        is_online: isOnline,
+        last_seen: new Date().toISOString(),
+        watching_project_id: watchingProjectId,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      });
+    if (error) throw error;
+  },
+  
+  getProjectMembersPresence: async (projectId) => {
+    if (!currentUser) return [];
+    const { data, error } = await supabaseClient
+      .from('user_presence')
+      .select(`
+        *,
+        profiles!user_presence_user_id_fkey(email, name)
+      `)
+      .eq('watching_project_id', projectId)
+      .eq('is_online', true);
+    if (error) {
+      // Fallback if join fails
+      const { data: fallbackData, error: fallbackError } = await supabaseClient
+        .from('user_presence')
+        .select('*')
+        .eq('watching_project_id', projectId)
+        .eq('is_online', true);
+      if (fallbackError) throw fallbackError;
+      return fallbackData || [];
+    }
+    return data || [];
+  },
   
   // Direct Supabase access
   supabase: supabaseClient

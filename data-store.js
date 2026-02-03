@@ -135,7 +135,7 @@ function loadProjects() {
 
 // Debounce timer for DB sync
 let saveProjectsDebounceTimer = null;
-const SAVE_DEBOUNCE_MS = 800; // Debounce DB saves by 800ms for smoother dragging experience
+const SAVE_DEBOUNCE_MS = 0; // MODIFIED: Removed delay (was 800) for snappier interactions
 
 function saveProjects(projects) {
   try {
@@ -148,7 +148,7 @@ function saveProjects(projects) {
         clearTimeout(saveProjectsDebounceTimer);
       }
       
-      // Debounce the DB sync to avoid excessive calls during rapid changes (like dragging)
+      // Debounce the DB sync
       saveProjectsDebounceTimer = setTimeout(async () => {
         const projectsToSync = loadProjectsFromLocal();
         let syncSuccess = true;
@@ -354,11 +354,11 @@ async function toggleTaskDone(projectIndex, columnIndex, taskIndex) {
     
     // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
-      try {
-        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
-      } catch (error) {
-        console.error('Failed to sync task toggle to database:', error);
-      }
+      // Do not await the sync to avoid UI delay
+      window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns })
+        .catch(error => {
+          console.error('Failed to sync task toggle to database:', error);
+        });
     }
   }
   return projects;
@@ -501,12 +501,20 @@ async function toggleBacklogTask(index) {
   
   if (tasks[index]?.id) {
     try {
-      const updatedTasks = await window.LayerDB.toggleBacklogTask(tasks[index].id);
-      saveBacklogTasks(updatedTasks);
-      return updatedTasks;
+      // Optimistic update
+      tasks[index].done = !tasks[index].done;
+      saveBacklogTasks(tasks);
+
+      // Sync to DB in background
+      window.LayerDB.toggleBacklogTask(tasks[index].id)
+        .catch(error => {
+          console.error('Failed to toggle backlog task in database:', error);
+          showToast('Failed to sync task update', 'error');
+        });
+        
+      return tasks;
     } catch (error) {
-      console.error('Failed to toggle backlog task in database:', error);
-      showToast('Failed to update task', 'error');
+      console.error('Failed to toggle backlog task:', error);
     }
   }
   
@@ -736,184 +744,3 @@ function calculateProgress(columns) {
   const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
   return { total, completed, percentage };
 }
-
-
-// ============================================
-// PDF Viewer Functions
-// ============================================
-let currentPdfData = null;
-let currentPdfName = '';
-
-function openPdfViewer(dataUrl, fileName) {
-  currentPdfData = dataUrl;
-  currentPdfName = fileName || 'document.pdf';
-  
-  const overlay = document.getElementById('pdfViewerOverlay');
-  const frame = document.getElementById('pdfViewerFrame');
-  const title = document.getElementById('pdfViewerTitle');
-  
-  if (overlay && frame) {
-    title.textContent = currentPdfName;
-    frame.src = dataUrl;
-    overlay.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-function closePdfViewer() {
-  const overlay = document.getElementById('pdfViewerOverlay');
-  const frame = document.getElementById('pdfViewerFrame');
-  
-  if (overlay) {
-    overlay.style.display = 'none';
-    document.body.style.overflow = '';
-  }
-  if (frame) {
-    frame.src = '';
-  }
-  currentPdfData = null;
-  currentPdfName = '';
-}
-
-function downloadCurrentPdf() {
-  if (!currentPdfData) return;
-  downloadFile(currentPdfData, currentPdfName);
-}
-
-function downloadFile(dataUrl, fileName) {
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// Legacy function for backwards compatibility
-function openPdfPreview(dataUrl, fileName) {
-  openPdfViewer(dataUrl, fileName || 'document.pdf');
-}
-
-// Render file item with view and download buttons
-function renderFileItem(file, fileIndex, assignmentIndex) {
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  const isImage = file.type.startsWith('image/');
-  const fileSize = formatFileSize(file.size);
-  
-  let previewHtml = '';
-  let actionsHtml = '';
-  
-  if (isPdf) {
-    previewHtml = `
-      <div class="file-icon pdf-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: #ef4444;">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <path d="M10 12h4"/>
-          <path d="M10 16h4"/>
-        </svg>
-      </div>
-    `;
-    actionsHtml = `
-      <button class="btn btn-sm btn-secondary" onclick="openPdfViewer('${file.dataUrl}', '${file.name.replace(/'/g, "\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        View
-      </button>
-      <button class="btn btn-sm btn-primary" onclick="downloadFile('${file.dataUrl}', '${file.name.replace(/'/g, "\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download
-      </button>
-    `;
-  } else if (isImage) {
-    previewHtml = `
-      <div class="file-thumbnail" style="background-image: url('${file.dataUrl}')"></div>
-    `;
-    actionsHtml = `
-      <button class="btn btn-sm btn-secondary" onclick="openImagePreview('${file.dataUrl}', '${file.name.replace(/'/g, "\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        View
-      </button>
-      <button class="btn btn-sm btn-primary" onclick="downloadFile('${file.dataUrl}', '${file.name.replace(/'/g, "\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download
-      </button>
-    `;
-  } else {
-    previewHtml = `
-      <div class="file-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-        </svg>
-      </div>
-    `;
-    actionsHtml = `
-      <button class="btn btn-sm btn-primary" onclick="downloadFile('${file.dataUrl}', '${file.name.replace(/'/g, "\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download
-      </button>
-    `;
-  }
-  
-  return `
-    <div class="file-item">
-      ${previewHtml}
-      <div class="file-info">
-        <span class="file-name">${file.name}</span>
-        <span class="file-size">${fileSize}</span>
-      </div>
-      <div class="file-actions">
-        ${actionsHtml}
-      </div>
-    </div>
-  `;
-}
-
-function openImagePreview(dataUrl, fileName) {
-  const content = `
-    <div style="text-align: center;">
-      <img src="${dataUrl}" alt="${fileName}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
-      <div style="margin-top: 16px;">
-        <button class="btn btn-primary" onclick="downloadFile('${dataUrl}', '${fileName.replace(/'/g, "\\'")}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Download
-        </button>
-      </div>
-    </div>
-  `;
-  openModal(fileName, content);
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-// ============================================
-// Project Updates (Comments)
-// ============================================

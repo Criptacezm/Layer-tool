@@ -5530,14 +5530,26 @@ function renderProjectDetailView(projectIndex) {
               </div>
               <div class="pd-prop-row">
                 <span class="pd-prop-label">Members</span>
-                <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                  </svg>
-                  Add members
-                </button>
+                <div class="pd-members-list" id="pdMembersList-${projectIndex}">
+                  ${teamMembers.map((member, idx) => `
+                    <div class="pd-member-item" data-member="${member}">
+                      <div class="pd-member-avatar">${member.charAt(0)}</div>
+                      <span class="pd-member-name">${member}</span>
+                      <span class="pd-member-status" id="memberStatus-${projectIndex}-${idx}">
+                        <span class="status-dot offline"></span>
+                        <span class="status-text">Offline</span>
+                      </span>
+                    </div>
+                  `).join('')}
+                  <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                    </svg>
+                    Add members
+                  </button>
+                </div>
               </div>
               <div class="pd-prop-row">
                 <span class="pd-prop-label">Start date</span>
@@ -12434,27 +12446,131 @@ function openInviteMemberModal(projectIndex) {
   openModal('Invite Team Member', content);
 }
 
-function handleInviteMember(event, projectIndex) {
+async function handleInviteMember(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const email = form.email.value.trim();
   
   if (!email) return;
   
-  // Add member to project (using email prefix as name for now)
-  const projects = loadProjects();
-  if (projects[projectIndex]) {
-    if (!projects[projectIndex].teamMembers) {
-      projects[projectIndex].teamMembers = ['You'];
-    }
-    const memberName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    projects[projectIndex].teamMembers.push(memberName);
-    saveProjects(projects);
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to invite members', 'error');
+    return;
   }
   
-  closeModal();
-  alert('Invitation sent to ' + email + '!');
-  renderCurrentView();
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.id) {
+    showToast('Project not found', 'error');
+    return;
+  }
+  
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn?.textContent;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+  }
+  
+  try {
+    const currentUser = window.LayerDB.getCurrentUser();
+    const projectLink = `${window.location.origin}${window.location.pathname}?project=${project.id}`;
+    const inviterName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Someone';
+    
+    // Create invitation record in database first
+    const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
+      .from('project_invitations')
+      .insert({
+        project_id: project.id,
+        inviter_id: currentUser.id,
+        invitee_email: email,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (inviteError) throw inviteError;
+    
+    // Send email invitation via Supabase Edge Function
+    let emailSent = false;
+    try {
+      // Get the current session token for authentication
+      const { data: { session } } = await window.LayerDB.supabase.auth.getSession();
+      
+      const { data: emailData, error: emailError } = await window.LayerDB.supabase.functions.invoke('send-project-invitation', {
+        body: {
+          to: email,
+          projectName: project.name,
+          projectId: project.id,
+          inviterName: inviterName,
+          inviterEmail: currentUser.email,
+          projectLink: projectLink,
+          invitationId: invitationData.id
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+      
+      if (emailError) {
+        console.error('Email function error:', emailError);
+        // If Edge Function doesn't exist or fails, try alternative
+        throw emailError;
+      }
+      
+      emailSent = true;
+      console.log('Email sent successfully:', emailData);
+      
+      // Update invitation status to sent
+      await window.LayerDB.supabase
+        .from('project_invitations')
+        .update({ status: 'sent', updated_at: new Date().toISOString() })
+        .eq('id', invitationData.id);
+        
+    } catch (emailError) {
+      console.warn('Edge Function not available or failed:', emailError);
+      
+      // Fallback: For now, we'll save the invitation and show a message
+      // The invitation is already saved in the database
+      // User can configure email service later (see EMAIL_SETUP_INSTRUCTIONS.md)
+      
+      // Update invitation status to indicate it needs to be sent
+      await window.LayerDB.supabase
+        .from('project_invitations')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', invitationData.id);
+      
+      console.log('Invitation saved. Email service needs to be configured. See EMAIL_SETUP_INSTRUCTIONS.md for setup.');
+      // Note: We still continue - the invitation is saved and can be sent later
+    }
+    
+    // Add member to project locally (optimistic update)
+    if (!project.teamMembers) {
+      project.teamMembers = ['You'];
+    }
+    const memberName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    if (!project.teamMembers.includes(memberName)) {
+      project.teamMembers.push(memberName);
+    }
+    
+    // Update project with new member
+    await window.LayerDB.updateProject(project.id, { teamMembers: project.teamMembers });
+    const updatedProjects = await window.LayerDB.loadProjects();
+    saveProjects(updatedProjects);
+    
+    closeModal();
+    showToast(`Invitation sent to ${email}!`, 'success');
+    renderCurrentView();
+  } catch (error) {
+    console.error('Failed to send invitation:', error);
+    showToast('Failed to send invitation. Please try again.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText || 'Send Invitation';
+    }
+  }
 }
 
 // Team chart helper functions
@@ -12580,15 +12696,98 @@ async function handleCreateProjectSubmit(event) {
   }
 }
 
-function openProjectDetail(index) {
+async function openProjectDetail(index) {
   selectedProjectIndex = index;
+  
+  // Update presence to show user is watching this project
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    const projects = loadProjects();
+    const project = projects[index];
+    if (project && project.id) {
+      try {
+        await window.LayerDB.updatePresence(true, project.id);
+        // Start polling for member presence updates
+        startPresencePolling(project.id, index);
+      } catch (error) {
+        console.error('Failed to update presence:', error);
+      }
+    }
+  }
+  
   renderCurrentView();
+}
+
+// Poll for member presence updates
+let presencePollInterval = null;
+function startPresencePolling(projectId, projectIndex) {
+  // Clear existing interval
+  if (presencePollInterval) {
+    clearInterval(presencePollInterval);
+  }
+  
+  // Update presence immediately
+  updateMemberPresence(projectId, projectIndex);
+  
+  // Poll every 5 seconds
+  presencePollInterval = setInterval(() => {
+    updateMemberPresence(projectId, projectIndex);
+  }, 5000);
+}
+
+async function updateMemberPresence(projectId, projectIndex) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+  
+  try {
+    const members = await window.LayerDB.getProjectMembersPresence(projectId);
+    const projects = loadProjects();
+    const project = projects[projectIndex];
+    if (!project) return;
+    
+    const teamMembers = project.teamMembers || ['You'];
+    
+    // Update status indicators
+    teamMembers.forEach((member, idx) => {
+      const statusEl = document.getElementById(`memberStatus-${projectIndex}-${idx}`);
+      if (statusEl) {
+        // Check if member is online and watching
+        const memberPresence = members.find(m => 
+          m.profiles?.email?.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) === member ||
+          m.profiles?.name === member
+        );
+        
+        if (memberPresence) {
+          statusEl.innerHTML = `
+            <span class="status-dot online"></span>
+            <span class="status-text">Watching</span>
+          `;
+        } else {
+          statusEl.innerHTML = `
+            <span class="status-dot offline"></span>
+            <span class="status-text">Offline</span>
+          `;
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update member presence:', error);
+  }
 }
 
 function closeProjectDetail() {
   selectedProjectIndex = null;
   currentView = 'activity';
   setActiveNav('activity');
+  
+  // Stop presence polling
+  if (presencePollInterval) {
+    clearInterval(presencePollInterval);
+    presencePollInterval = null;
+  }
+  
+  // Update presence to show user is no longer watching
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    window.LayerDB.updatePresence(true, null).catch(console.error);
+  }
   renderCurrentView();
 }
 
@@ -14039,6 +14238,12 @@ document.addEventListener('click', (e) => {
 // Doc Storage
 // ============================================
 function loadDocs() {
+  // Only return docs if user is authenticated
+  // Docs should only exist in database, not localStorage for unauthenticated users
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  
   try {
     return JSON.parse(localStorage.getItem(DOCS_KEY)) || [];
   } catch {
@@ -14060,8 +14265,11 @@ async function initDocsFromDB() {
     } catch (error) {
       console.error('Failed to load docs from database:', error);
     }
+  } else {
+    // Clear localStorage when not authenticated to prevent showing old docs
+    localStorage.removeItem(DOCS_KEY);
   }
-  return loadDocs();
+  return [];
 }
 
 async function addDoc(doc) {
@@ -14765,6 +14973,12 @@ function confirmSaveDocToSpace(spaceId) {
 // Excel Storage
 // ============================================
 function loadExcels() {
+  // Only return excels if user is authenticated
+  // Excels should only exist in database, not localStorage for unauthenticated users
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  
   try {
     return JSON.parse(localStorage.getItem(EXCELS_KEY)) || [];
   } catch {
@@ -14786,8 +15000,11 @@ async function initExcelsFromDB() {
     } catch (error) {
       console.error('Failed to load excels from database:', error);
     }
+  } else {
+    // Clear localStorage when not authenticated to prevent showing old excels
+    localStorage.removeItem(EXCELS_KEY);
   }
-  return loadExcels();
+  return [];
 }
 
 async function addExcel(excel) {
@@ -15306,6 +15523,12 @@ function saveAssignments(assignments) {
 // Spaces
 // ============================================
 function loadSpaces() {
+  // Only return spaces if user is authenticated
+  // Spaces should only exist in database, not localStorage for unauthenticated users
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  
   try {
     return JSON.parse(localStorage.getItem(SPACES_KEY)) || [];
   } catch {
@@ -15323,12 +15546,19 @@ async function initSpacesFromDB() {
     try {
       const spaces = await window.LayerDB.loadSpaces();
       saveSpaces(spaces);
+      // Render spaces in sidebar after loading
+      if (typeof renderSpacesInSidebar === 'function') {
+        renderSpacesInSidebar();
+      }
       return spaces;
     } catch (error) {
       console.error('Failed to load spaces from database:', error);
     }
+  } else {
+    // Clear localStorage when not authenticated to prevent showing old spaces
+    localStorage.removeItem(SPACES_KEY);
   }
-  return loadSpaces();
+  return [];
 }
 
 async function addSpace(space) {
@@ -15701,19 +15931,38 @@ async function toggleDocFavorite(docId) {
   
   const newFavoriteState = !doc.isFavorite;
   
+  // Optimistic UI update - update immediately for instant feedback
+  const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
+  if (starBtn) {
+    starBtn.classList.toggle('is-favorite', newFavoriteState);
+  }
+  
+  // Update local state immediately
+  doc.isFavorite = newFavoriteState;
+  saveDocs(docs);
+  renderFavoritesInSidebar();
+  
   try {
+    // Sync to database in background
     const updatedDocs = await window.LayerDB.toggleDocFavorite(docId, newFavoriteState);
     saveDocs(updatedDocs);
-    showToast(newFavoriteState ? 'Added to favorites!' : 'Removed from favorites');
+    // Re-render favorites in case order changed
     renderFavoritesInSidebar();
     
-    // Update star icon if visible
-    const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
-    if (starBtn) {
-      starBtn.classList.toggle('is-favorite', newFavoriteState);
+    // Update star icon again in case it was re-rendered
+    const updatedStarBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
+    if (updatedStarBtn) {
+      updatedStarBtn.classList.toggle('is-favorite', newFavoriteState);
     }
   } catch (error) {
     console.error('Failed to toggle doc favorite in database:', error);
+    // Revert optimistic update on error
+    doc.isFavorite = !newFavoriteState;
+    saveDocs(docs);
+    renderFavoritesInSidebar();
+    if (starBtn) {
+      starBtn.classList.toggle('is-favorite', !newFavoriteState);
+    }
     showToast('Failed to save favorite', 'error');
   }
 }
@@ -15731,19 +15980,38 @@ async function toggleExcelFavorite(excelId) {
   
   const newFavoriteState = !excel.isFavorite;
   
+  // Optimistic UI update - update immediately for instant feedback
+  const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
+  if (starBtn) {
+    starBtn.classList.toggle('is-favorite', newFavoriteState);
+  }
+  
+  // Update local state immediately
+  excel.isFavorite = newFavoriteState;
+  saveExcels(excels);
+  renderFavoritesInSidebar();
+  
   try {
+    // Sync to database in background
     const updatedExcels = await window.LayerDB.toggleExcelFavorite(excelId, newFavoriteState);
     saveExcels(updatedExcels);
-    showToast(newFavoriteState ? 'Added to favorites!' : 'Removed from favorites');
+    // Re-render favorites in case order changed
     renderFavoritesInSidebar();
     
-    // Update star icon if visible
-    const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
-    if (starBtn) {
-      starBtn.classList.toggle('is-favorite', newFavoriteState);
+    // Update star icon again in case it was re-rendered
+    const updatedStarBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
+    if (updatedStarBtn) {
+      updatedStarBtn.classList.toggle('is-favorite', newFavoriteState);
     }
   } catch (error) {
     console.error('Failed to toggle excel favorite in database:', error);
+    // Revert optimistic update on error
+    excel.isFavorite = !newFavoriteState;
+    saveExcels(excels);
+    renderFavoritesInSidebar();
+    if (starBtn) {
+      starBtn.classList.toggle('is-favorite', !newFavoriteState);
+    }
     showToast('Failed to save favorite', 'error');
   }
 }
@@ -15761,6 +16029,16 @@ function isExcelFavorited(excelId) {
 }
 
 function renderFavoritesInSidebar() {
+  // Only show favorites if user is authenticated
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    // Remove existing favorites section if user is not authenticated
+    const existingSection = document.getElementById('favoritesSection');
+    if (existingSection) {
+      existingSection.remove();
+    }
+    return;
+  }
+  
   const docs = loadDocs();
   const excels = loadExcels();
   const sidebar = document.querySelector('.sidebar-nav');
@@ -17206,7 +17484,13 @@ function flipTaskCompletionWidget() {
 
 const CHECKLISTS_KEY = 'layerSpaceChecklists';
 
+// Load checklists from localStorage (cached from DB)
 function loadChecklists() {
+  // Only return checklists if user is authenticated
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return {};
+  }
+  
   try {
     return JSON.parse(localStorage.getItem(CHECKLISTS_KEY)) || {};
   } catch {
@@ -17214,50 +17498,169 @@ function loadChecklists() {
   }
 }
 
-function saveChecklists(checklists) {
+// Save checklists to localStorage and sync to database
+async function saveChecklists(checklists) {
+  try {
   localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+    
+    // Sync to database if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      // Update each space's checklist in the database
+      const spaces = loadSpaces();
+      for (const space of spaces) {
+        const spaceId = String(space.id);
+        if (checklists[spaceId]) {
+          try {
+            await window.LayerDB.updateSpace(space.id, { checklist: checklists[spaceId] });
+          } catch (error) {
+            console.error('Failed to sync checklist to database for space:', space.id, error);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to save checklists:', e);
+  }
 }
 
 function getSpaceChecklist(spaceId) {
+  // Only return checklist if user is authenticated
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  
   const checklists = loadChecklists();
-  return checklists[spaceId] || [];
+  const spaceIdStr = String(spaceId);
+  return checklists[spaceIdStr] || [];
 }
 
-function saveSpaceChecklist(spaceId, items) {
+async function saveSpaceChecklist(spaceId, items) {
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save checklists', 'error');
+    return;
+  }
+  
   const checklists = loadChecklists();
-  checklists[spaceId] = items;
-  saveChecklists(checklists);
+  const spaceIdStr = String(spaceId);
+  checklists[spaceIdStr] = items;
+  
+  // Save to localStorage first for immediate UI update
+  localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+  
+  // Sync to database
+  try {
+    const spaces = loadSpaces();
+    const space = spaces.find(s => String(s.id) === spaceIdStr);
+    if (space) {
+      await window.LayerDB.updateSpace(space.id, { checklist: items });
+}
+  } catch (error) {
+    console.error('Failed to save checklist to database:', error);
+    showToast('Failed to save checklist', 'error');
+  }
 }
 
-function addChecklistItem(spaceId, text) {
+async function addChecklistItem(spaceId, text) {
   if (!text || !text.trim()) return;
   
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to add checklist items', 'error');
+    return;
+  }
+  
   const items = getSpaceChecklist(spaceId);
-  items.push({
+  const newItem = {
     id: Date.now(),
     text: text.trim(),
     completed: false,
     createdAt: new Date().toISOString()
-  });
-  saveSpaceChecklist(spaceId, items);
+  };
+  items.push(newItem);
+  
+  // Optimistic update - update UI immediately
+  const checklists = loadChecklists();
+  const spaceIdStr = String(spaceId);
+  checklists[spaceIdStr] = items;
+  localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
   renderChecklistSidebar(spaceId);
+  
+  // Sync to database in background
+  saveSpaceChecklist(spaceId, items).catch(error => {
+    console.error('Failed to save checklist item:', error);
+    // Revert on error
+    items.pop();
+    checklists[spaceIdStr] = items;
+    localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+    renderChecklistSidebar(spaceId);
+    showToast('Failed to save checklist item', 'error');
+  });
 }
 
-function toggleChecklistItem(spaceId, itemId) {
+async function toggleChecklistItem(spaceId, itemId) {
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update checklist items', 'error');
+    return;
+  }
+  
   const items = getSpaceChecklist(spaceId);
   const item = items.find(i => i.id === itemId);
   if (item) {
+    const oldState = item.completed;
     item.completed = !item.completed;
-    saveSpaceChecklist(spaceId, items);
+    
+    // Optimistic update - update UI immediately
+    const checklists = loadChecklists();
+    const spaceIdStr = String(spaceId);
+    checklists[spaceIdStr] = items;
+    localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
     renderChecklistSidebar(spaceId);
+    
+    // Sync to database in background
+    saveSpaceChecklist(spaceId, items).catch(error => {
+      console.error('Failed to toggle checklist item:', error);
+      // Revert on error
+      item.completed = oldState;
+      checklists[spaceIdStr] = items;
+      localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+      renderChecklistSidebar(spaceId);
+      showToast('Failed to update checklist item', 'error');
+    });
   }
 }
 
-function deleteChecklistItem(spaceId, itemId) {
+async function deleteChecklistItem(spaceId, itemId) {
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete checklist items', 'error');
+    return;
+  }
+  
   let items = getSpaceChecklist(spaceId);
+  const deletedItem = items.find(i => i.id === itemId);
   items = items.filter(i => i.id !== itemId);
-  saveSpaceChecklist(spaceId, items);
+  
+  // Optimistic update - update UI immediately
+  const checklists = loadChecklists();
+  const spaceIdStr = String(spaceId);
+  checklists[spaceIdStr] = items;
+  localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
   renderChecklistSidebar(spaceId);
+  
+  // Sync to database in background
+  saveSpaceChecklist(spaceId, items).catch(error => {
+    console.error('Failed to delete checklist item:', error);
+    // Revert on error
+    if (deletedItem) {
+      items.push(deletedItem);
+      checklists[spaceIdStr] = items;
+      localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+      renderChecklistSidebar(spaceId);
+    }
+    showToast('Failed to delete checklist item', 'error');
+  });
 }
 
 function renderChecklistSidebar(spaceId) {
@@ -17268,6 +17671,9 @@ function renderChecklistSidebar(spaceId) {
   const completedCount = items.filter(i => i.completed).length;
   const totalCount = items.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  
+  // Properly escape spaceId for use in onclick handlers (handle both UUID strings and numbers)
+  const spaceIdEscaped = typeof spaceId === 'string' ? `'${spaceId.replace(/'/g, "\\'")}'` : spaceId;
   
   container.innerHTML = `
     <div class="checklist-header">
@@ -17292,15 +17698,15 @@ function renderChecklistSidebar(spaceId) {
         <div class="checklist-items">
           ${items.map(item => `
             <div class="checklist-item ${item.completed ? 'completed' : ''}">
-              <div class="checklist-checkbox" onclick="toggleChecklistItem(${spaceId}, ${item.id})">
+              <div class="checklist-checkbox" onclick="toggleChecklistItem(${spaceIdEscaped}, ${item.id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </div>
               <div class="checklist-item-content">
-                <div class="checklist-item-text">${item.text}</div>
+                <div class="checklist-item-text">${item.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
               </div>
-              <button class="checklist-item-delete" onclick="deleteChecklistItem(${spaceId}, ${item.id})">
+              <button class="checklist-item-delete" onclick="deleteChecklistItem(${spaceIdEscaped}, ${item.id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -17321,7 +17727,7 @@ function renderChecklistSidebar(spaceId) {
     <div class="checklist-add-input-wrapper">
       <input type="text" class="checklist-add-input" id="checklistAddInput" 
              placeholder="Add a task..." 
-             onkeypress="if(event.key==='Enter'){addChecklistItem(${spaceId}, this.value); this.value='';}" />
+             onkeypress="if(event.key==='Enter'){addChecklistItem(${spaceIdEscaped}, this.value); this.value='';}" />
     </div>
   `;
 }

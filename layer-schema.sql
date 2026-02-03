@@ -231,6 +231,46 @@ EXCEPTION
     WHEN duplicate_column THEN null;
 END $$;
 
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN checklist JSONB DEFAULT '[]';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+-- Add team_members column to projects if it doesn't exist
+DO $$ BEGIN
+    ALTER TABLE projects ADD COLUMN team_members JSONB DEFAULT '[]';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+-- ============================================
+-- Project Invitations Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS project_invitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    inviter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    invitee_email TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- User Presence Table (for online/watching status)
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_presence (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    is_online BOOLEAN DEFAULT TRUE,
+    last_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    watching_project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
 -- ============================================
 -- Recurring Tasks Table
 -- ============================================

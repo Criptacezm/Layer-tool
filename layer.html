@@ -25,10 +25,28 @@
   <script src="https://cdn.jsdelivr.net/npm/@xyflow/react@1/dist/umd/index.js"></script>
 </head>
 <body>
-  <!-- Minimal Loading Screen -->
+  <!-- Professional Motion Graphic Loading Screen -->
   <div class="loading-screen" id="loadingScreen">
-    <div class="loading-container">
-      <div class="loading-bar"></div>
+    <div class="loading-animation-wrapper">
+      <div class="logo-animation">
+        <svg class="logo-icon-animated" width="100" height="100" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="loaderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#5b21b6"/>
+            </linearGradient>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <rect class="logo-rect-1" x="38" y="38" width="52" height="52" rx="16" fill="url(#loaderGradient)" filter="url(#glow)"/>
+          <rect class="logo-rect-2" x="38" y="54" width="52" height="36" rx="14" fill="url(#loaderGradient)" filter="url(#glow)"/>
+          <rect class="logo-rect-3" x="38" y="70" width="52" height="20" rx="10" fill="url(#loaderGradient)" filter="url(#glow)"/>
+          <rect class="logo-rect-4" x="38" y="38" width="20" height="52" rx="10" fill="url(#loaderGradient)" filter="url(#glow)"/>
+        </svg>
+      </div>
+      <div class="loading-text-glitch" data-text="LAYER">LAYER</div>
     </div>
   </div>
 
@@ -105,11 +123,13 @@
       </div>
 
       <nav class="sidebar-nav">
-        <button class="nav-item" data-view="inbox">
+        <!-- MODIFIED: Added active class here instead of My Issues -->
+        <button class="nav-item active" data-view="inbox">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           <span>Dashboard</span>
         </button>
-        <button class="nav-item active" data-view="my-issues">
+        <!-- MODIFIED: Removed active class from here -->
+        <button class="nav-item" data-view="my-issues">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>
           <span>My issues</span>
         </button>
