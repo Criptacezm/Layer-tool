@@ -78,7 +78,7 @@ function renderInboxView() {
           <!-- Enhanced Dashboard Widgets Grid -->
           <div class="dashboard-widgets-grid" id="dashboardWidgetsGrid">
             <!-- Stats Widget -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="overview">
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -104,7 +104,7 @@ function renderInboxView() {
             </div>
             
             <!-- Progress Widget - Flippable with Backlog -->
-            <div class="dashboard-widget task-completion-widget" id="taskCompletionWidget" onclick="flipTaskCompletionWidget()">
+            <div class="dashboard-widget task-completion-widget" data-widget-id="task-completion" id="taskCompletionWidget" onclick="flipTaskCompletionWidget()">
               <div class="widget-flip-container">
                 <!-- Front Side -->
                 <div class="widget-flip-front">
@@ -155,7 +155,7 @@ function renderInboxView() {
             </div>
             
             <!-- Quick Actions Widget -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="quick-actions">
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -185,7 +185,7 @@ function renderInboxView() {
             </div>
             
             <!-- Productivity Chart -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="weekly-activity">
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -205,7 +205,7 @@ function renderInboxView() {
             </div>
             
             <!-- Streak Widget -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="streak">
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -228,7 +228,7 @@ function renderInboxView() {
             </div>
             
             <!-- Today's Focus Goals -->
-            <div class="dashboard-widget">
+            <div class="dashboard-widget" data-widget-id="todays-focus">
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -862,12 +862,17 @@ function handleDeleteIssue(index) {
   openModal('Delete Issue', confirmHTML);
 }
 
-function confirmDeleteIssue(index) {
-  let issues = loadIssues();
-  issues.splice(index, 1);
-  saveIssues(issues);
-  closeModal();
-  renderCurrentView();
+async function confirmDeleteIssue(index) {
+  try {
+    await deleteIssue(index);
+    closeModal();
+    renderCurrentView();
+  } catch (e) {
+    console.error('Failed to delete issue:', e);
+    if (typeof showNotification === 'function') {
+      showNotification('Failed to delete issue', 'error');
+    }
+  }
 }
 
 // ========================
@@ -919,7 +924,7 @@ function openCreateIssueModal() {
   openModal('Create New Issue', renderCreateIssueModalContent());
 }
 
-function handleCreateIssueSubmit(event) {
+async function handleCreateIssueSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -930,15 +935,24 @@ function handleCreateIssueSubmit(event) {
   const status = formData.get('status');
   
   if (title.trim()) {
-    addIssue({
-      title: title.trim(),
-      description: description.trim(),
-      priority,
-      status,
-      assignee: 'Zeyad Maher'
-    });
-    closeModal();
-    renderCurrentView();
+    try {
+      await addIssue({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        status,
+        assignee: 'Zeyad Maher'
+      });
+      closeModal();
+      renderCurrentView();
+    } catch (e) {
+      console.error('Failed to create issue:', e);
+      if (typeof showToast === 'function') {
+        showToast('Failed to create issue', 'error');
+      } else if (typeof showNotification === 'function') {
+        showNotification('Failed to create issue', 'error');
+      }
+    }
   }
 }
 
@@ -1210,15 +1224,23 @@ function clearCompletedBacklog() {
 }
 
 // Handlers (unchanged from your version)
-function handleToggleBacklogTask(index) {
-  toggleBacklogTask(index);
-  renderCurrentView();
+async function handleToggleBacklogTask(index) {
+  try {
+    await toggleBacklogTask(index);
+    renderCurrentView();
+  } catch (e) {
+    console.error('Failed to toggle backlog task:', e);
+  }
 }
 
-function handleUpdateBacklogTask(index, title) {
+async function handleUpdateBacklogTask(index, title) {
   if (title !== null) {
-    updateBacklogTask(index, title.trim() || 'New task');
-    renderCurrentView();
+    try {
+      await updateBacklogTask(index, title.trim() || 'New task');
+      renderCurrentView();
+    } catch (e) {
+      console.error('Failed to update backlog task:', e);
+    }
   }
 }
 
@@ -1238,34 +1260,49 @@ function handleDeleteBacklogTask(index) {
   openModal('Confirm Delete', confirmHTML);
 }
 
-function confirmDeleteBacklogTask(index) {
-  deleteBacklogTask(index);
-  closeModal();
-  renderCurrentView();
+async function confirmDeleteBacklogTask(index) {
+  try {
+    await deleteBacklogTask(index);
+    closeModal();
+    renderCurrentView();
+  } catch (e) {
+    console.error('Failed to delete backlog task:', e);
+    if (typeof showNotification === 'function') {
+      showNotification('Failed to delete task', 'error');
+    }
+  }
 }
 
-function handleQuickAddKeypress(event) {
+async function handleQuickAddKeypress(event) {
   if (event.key === 'Enter') {
     const input = event.target;
     const title = input.value.trim();
     if (title) {
-      addBacklogTask(title);
-      input.value = '';
-      renderCurrentView();
+      try {
+        await addBacklogTask(title);
+        input.value = '';
+        renderCurrentView();
+      } catch (e) {
+        console.error('Failed to add backlog task:', e);
+      }
     }
   }
 }
 
 // Handle quick add button click
-function handleQuickAddClick() {
+async function handleQuickAddClick() {
   const input = document.getElementById('quickAddInput');
   if (!input) return;
   
   const title = input.value.trim();
   if (title) {
-    addBacklogTask(title);
-    input.value = '';
-    renderCurrentView();
+    try {
+      await addBacklogTask(title);
+      input.value = '';
+      renderCurrentView();
+    } catch (e) {
+      console.error('Failed to add backlog task:', e);
+    }
   } else {
     // If empty, focus the input
     input.focus();
@@ -1375,42 +1412,48 @@ async function initCalendarEventsFromDB() {
 
 // Async function to save a single event to DB and update cache
 async function saveCalendarEventAsync(eventData) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.saveCalendarEvent(eventData);
-      // Reload from DB and update cache
-      const events = await window.LayerDB.loadCalendarEvents();
-      saveCalendarEvents(events);
-      return events;
-    } catch (error) {
-      console.error('Failed to save calendar event to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    return loadCalendarEvents();
   }
-  // Fallback to localStorage
-  const events = loadCalendarEvents();
-  events.push(eventData);
-  saveCalendarEvents(events);
-  return events;
+  
+  try {
+    await window.LayerDB.saveCalendarEvent(eventData);
+    // Reload from DB and update cache
+    const events = await window.LayerDB.loadCalendarEvents();
+    saveCalendarEvents(events);
+    return events;
+  } catch (error) {
+    console.error('Failed to save calendar event to database:', error);
+    showToast('Failed to save event', 'error');
+    return loadCalendarEvents();
+  }
 }
 
-// Async function to update event in DB
+// Async function to update event in DB - optimistic update for instant UI response
 async function updateCalendarEventAsync(eventId, updates) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const events = await window.LayerDB.updateCalendarEvent(eventId, updates);
-      saveCalendarEvents(events);
-      return events;
-    } catch (error) {
-      console.error('Failed to update calendar event in database:', error);
-    }
-  }
-  // Fallback to localStorage
+  // OPTIMISTIC UPDATE: Apply changes to localStorage immediately for instant UI
   const events = loadCalendarEvents();
   const index = events.findIndex(e => e.id === eventId || e.id == eventId);
   if (index !== -1) {
     events[index] = { ...events[index], ...updates };
     saveCalendarEvents(events);
   }
+  
+  // Sync with database in background (non-blocking)
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    window.LayerDB.updateCalendarEvent(eventId, updates)
+      .then(dbEvents => {
+        // Optionally sync back if needed
+        if (dbEvents) saveCalendarEvents(dbEvents);
+      })
+      .catch(error => {
+        console.error('Failed to update calendar event in database:', error);
+        // Optimistic update already applied, so UI remains responsive
+      });
+  }
+  
   return events;
 }
 
@@ -2250,6 +2293,13 @@ function handleCalendarDragStart(e, dateStr) {
   // Don't start drag if clicking on an event
   if (e.target.closest('.week-event-card')) return;
   
+  // Require authentication to create events
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    if (typeof openAuthModal === 'function') openAuthModal();
+    return;
+  }
+  
   e.preventDefault();
   const column = e.currentTarget;
   
@@ -2372,6 +2422,13 @@ function handleCalendarDragEnd(e) {
 
 // Open create modal with pre-selected time range
 function openCreateEventModalWithTime(date, startTime, endTime) {
+  // Require authentication to create events
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    if (typeof openAuthModal === 'function') openAuthModal();
+    return;
+  }
+  
   const duration = calculateDuration(startTime, endTime);
 
   const content = `
@@ -2960,9 +3017,9 @@ function renderWeekView(events, today) {
                            draggable="true"
                            data-event-id="${ev.id}"
                            data-date="${dateStr}"
-                           ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
-                           onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
-                           oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})">
+                           ondragstart="handleDragStart(event, '${ev.id}', '${dateStr}')"
+                           onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')"
+                           oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, '${ev.id}')">
                         <div class="week-event-color-bar" style="background: ${color};"></div>
                         <div class="week-event-content">
                           <div class="week-event-title">${ev.title}</div>
@@ -2975,7 +3032,7 @@ function renderWeekView(events, today) {
                           ${linkedInfo}
                         </div>
                         <div class="event-resize-handle" 
-                             onmousedown="event.stopPropagation(); handleEventResizeStart(event, ${ev.id}, '${dateStr}')">
+                             onmousedown="event.stopPropagation(); handleEventResizeStart(event, '${ev.id}', '${dateStr}')">
                         </div>
                       </div>
                     `;
@@ -3043,9 +3100,9 @@ function renderDayView(events, today) {
                        draggable="true"
                        data-event-id="${ev.id}"
                        data-date="${dateStr}"
-                       ondragstart="handleDragStart(event, ${ev.id}, '${dateStr}')"
-                       onclick="event.stopPropagation(); openEditTaskModal(${ev.id})"
-                       oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, ${ev.id})">
+                       ondragstart="handleDragStart(event, '${ev.id}', '${dateStr}')"
+                       onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')"
+                       oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, '${ev.id}')">
                     <div class="week-event-color-bar" style="background: ${color};"></div>
                     <div class="week-event-content">
                       <div class="week-event-title">${ev.title}</div>
@@ -3058,7 +3115,7 @@ function renderDayView(events, today) {
                       ${linkedInfo}
                     </div>
                     <div class="event-resize-handle" 
-                         onmousedown="event.stopPropagation(); handleEventResizeStart(event, ${ev.id}, '${dateStr}')">
+                         onmousedown="event.stopPropagation(); handleEventResizeStart(event, '${ev.id}', '${dateStr}')">
                     </div>
                   </div>
                 `;
@@ -3109,7 +3166,7 @@ function renderMonthViewAdvanced(events, today) {
             const color = getEventColor(ev.color || 'blue');
             return `
               <div class="month-event" style="--event-color: ${color};"
-                   onclick="event.stopPropagation(); openEditTaskModal(${ev.id})">
+                   onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')">
                 <span class="month-event-dot" style="background: ${color};"></span>
                 <span class="month-event-title">${ev.title.length > 12 ? ev.title.substring(0, 10) + '...' : ev.title}</span>
               </div>
@@ -3189,21 +3246,21 @@ function showTaskContextMenu(event, eventId) {
   menu.id = 'taskContextMenu';
   menu.className = 'task-context-menu';
   menu.innerHTML = `
-    <button class="context-menu-item" onclick="duplicateCalendarTask(${eventId}); hideTaskContextMenu();">
+    <button class="context-menu-item" onclick="duplicateCalendarTask('${eventId}'); hideTaskContextMenu();">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
         <rect x="9" y="9" width="13" height="13" rx="2"/>
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
       </svg>
       Duplicate
     </button>
-    <button class="context-menu-item" onclick="openEditTaskModal(${eventId}); hideTaskContextMenu();">
+    <button class="context-menu-item" onclick="openEditTaskModal('${eventId}'); hideTaskContextMenu();">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
       Edit
     </button>
-    <button class="context-menu-item delete" onclick="deleteTask(${eventId}); hideTaskContextMenu();">
+    <button class="context-menu-item delete" onclick="deleteTask('${eventId}'); hideTaskContextMenu();">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
         <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
       </svg>
@@ -4005,6 +4062,13 @@ function selectYearDate(dateStr) {
 // ADVANCED EVENT MODAL (Google Calendar style)
 // ============================================
 function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
+  // Require authentication to create calendar events
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    if (typeof openAuthModal === 'function') openAuthModal();
+    return;
+  }
+  
   const today = new Date();
   const date = prefillDate || today.toISOString().split('T')[0];
   const time = prefillTime || '';
@@ -4234,6 +4298,15 @@ function updateCategoryColor(select) {
 
 async function handleAdvancedEventSubmit(e) {
   e.preventDefault();
+  
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    closeModal();
+    if (typeof openAuthModal === 'function') openAuthModal();
+    return;
+  }
+  
   const form = e.target;
   const data = new FormData(form);
   
@@ -4975,6 +5048,7 @@ function getDefaultRepeatEndDate(startDate) {
 
 function renderActivityView(searchQuery = '') {
   let projects = loadProjects();
+  console.log('renderActivityView called with', projects.length, 'projects');
 
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
@@ -8592,7 +8666,7 @@ function startTimelineDrag(event, taskId, projectIndex) {
   document.body.style.userSelect = 'none';
 }
 
-// Start resizing a task bar
+// Start resizing a task bar (main function)
 function startTimelineResize(event, taskId, direction, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
@@ -8614,6 +8688,35 @@ function startTimelineResize(event, taskId, direction, projectIndex) {
     endDate: taskBar.dataset.endDate,
     columnIndex: parseInt(taskBar.dataset.columnIndex),
     taskIndex: parseInt(taskBar.dataset.taskIndex)
+  };
+  
+  taskBar.classList.add('resizing');
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+}
+
+// Alias function for task bar resize (called from HTML onmousedown handlers)
+function startTaskBarResize(event, taskId, columnIndex, taskIndex, direction, projectIndex) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const taskBar = event.target.closest('.tl-task-bar');
+  if (!taskBar) return;
+  
+  tlDragState = {
+    isDragging: false,
+    isResizing: true,
+    taskId: taskId,
+    taskBar: taskBar,
+    startX: event.clientX,
+    originalLeft: parseInt(taskBar.style.left) || 0,
+    originalWidth: parseInt(taskBar.style.width) || 100,
+    resizeDirection: direction,
+    projectIndex: projectIndex,
+    startDate: taskBar.dataset.startDate,
+    endDate: taskBar.dataset.endDate,
+    columnIndex: columnIndex,
+    taskIndex: taskIndex
   };
   
   taskBar.classList.add('resizing');
@@ -8702,7 +8805,7 @@ function handleTimelineMouseUp(event) {
 }
 
 // Update task dates after dragging
-function updateTaskDatesAfterDrag(daysDelta) {
+async function updateTaskDatesAfterDrag(daysDelta) {
   const projects = loadProjects();
   const project = projects[tlDragState.projectIndex];
   if (!project) return;
@@ -8730,7 +8833,7 @@ function updateTaskDatesAfterDrag(daysDelta) {
     task.endDate = newEnd.toISOString().split('T')[0];
   }
   
-  // Save and re-render
+  // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
   
   const container = document.querySelector('.pd-content-scroll');
@@ -8740,7 +8843,7 @@ function updateTaskDatesAfterDrag(daysDelta) {
 }
 
 // Update task dates after resizing
-function updateTaskDatesAfterResize(daysDelta, direction) {
+async function updateTaskDatesAfterResize(daysDelta, direction) {
   const projects = loadProjects();
   const project = projects[tlDragState.projectIndex];
   if (!project) return;
@@ -8771,7 +8874,7 @@ function updateTaskDatesAfterResize(daysDelta, direction) {
     }
   }
   
-  // Save and re-render
+  // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
   
   const container = document.querySelector('.pd-content-scroll');
@@ -8983,7 +9086,7 @@ function handleColumnBarMouseUp(event) {
 }
 
 // Update all task dates in a column after dragging
-function updateColumnDatesAfterDrag(daysDelta) {
+async function updateColumnDatesAfterDrag(daysDelta) {
   const projects = loadProjects();
   const project = projects[tlColumnDragState.projectIndex];
   if (!project) return;
@@ -9047,6 +9150,7 @@ function updateColumnDatesAfterDrag(daysDelta) {
     column.timelineEnd = colEnd.toISOString().split('T')[0];
   }
   
+  // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
   
   const container = document.querySelector('.pd-content-scroll');
@@ -9056,7 +9160,7 @@ function updateColumnDatesAfterDrag(daysDelta) {
 }
 
 // Update column task dates after resizing
-function updateColumnDatesAfterResize(daysDelta, direction) {
+async function updateColumnDatesAfterResize(daysDelta, direction) {
   const projects = loadProjects();
   const project = projects[tlColumnDragState.projectIndex];
   if (!project) return;
@@ -9113,6 +9217,7 @@ function updateColumnDatesAfterResize(daysDelta, direction) {
     }
   }
   
+  // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
   
   const container = document.querySelector('.pd-content-scroll');
@@ -9560,16 +9665,8 @@ async function toggleTimelineTaskComplete(taskId, projectIndex) {
           task.done = true;
         }
         
+        // Save to localStorage and auto-sync to DB (debounced)
         saveProjects(projects);
-        
-        // Sync to DB if authenticated
-        if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-          try {
-            await window.LayerDB.updateProject(project.id, { columns: project.columns });
-          } catch (error) {
-            console.error('Failed to sync task complete to database:', error);
-          }
-        }
         
         const container = document.querySelector('.pd-content-scroll');
         if (container) renderTimelineView(projectIndex, container);
@@ -12461,7 +12558,7 @@ function openCreateProjectModal() {
   openModal('Create new project', renderCreateProjectModalContent());
 }
 
-function handleCreateProjectSubmit(event) {
+async function handleCreateProjectSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -12471,14 +12568,14 @@ function handleCreateProjectSubmit(event) {
   const description = formData.get('description');
   
   if (name.trim() && targetDate) {
-    addProject({
+    closeModal();
+    await addProject({
       name: name.trim(),
       status: 'todo',
       startDate: new Date().toISOString().split('T')[0],
       targetDate,
       description: description.trim()
     });
-    closeModal();
     renderCurrentView();
   }
 }
@@ -12495,16 +12592,16 @@ function closeProjectDetail() {
   renderCurrentView();
 }
 
-function handleDeleteProject(index) {
+async function handleDeleteProject(index) {
   if (confirm('Delete this project permanently?')) {
-    deleteProject(index);
+    await deleteProject(index);
     renderCurrentView();
   }
 }
 
-function handleDeleteProjectFromDetail(index) {
+async function handleDeleteProjectFromDetail(index) {
   if (confirm('Delete this project permanently?')) {
-    deleteProject(index);
+    await deleteProject(index);
     closeProjectDetail();
   }
 }
@@ -12551,7 +12648,7 @@ function restoreKanbanScrollPosition(scrollPos) {
   }
 }
 
-function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
+async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
   // Prevent event bubbling that could trigger tab switches or other handlers
   if (event) {
     event.stopPropagation();
@@ -12568,6 +12665,15 @@ function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
   if (task) {
     task.done = !task.done;
     saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync task toggle to database:', error);
+      }
+    }
   }
   
   // Re-render the current view
@@ -14058,7 +14164,7 @@ function openDocEditor(docId = null) {
               </svg>
             </span>
             <span class="breadcrumb-current">Doc</span>
-            <button class="doc-favorite-btn-mini ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite(${currentDocId})" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+            <button class="doc-favorite-btn-mini ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite('${currentDocId}')" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
               <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
@@ -14651,7 +14757,7 @@ function confirmSaveDocToSpace(spaceId) {
   renderFavoritesInSidebar();
   
   const spaces = loadSpaces();
-  const space = spaces.find(s => s.id === spaceId);
+  const space = spaces.find(s => String(s.id) === String(spaceId));
   showToast('Document saved to "' + (space ? space.name : 'Space') + '"!');
 }
 
@@ -15150,7 +15256,7 @@ function confirmSaveExcelToSpace(spaceId) {
   renderFavoritesInSidebar();
   
   const spaces = loadSpaces();
-  const space = spaces.find(s => s.id === spaceId);
+  const space = spaces.find(s => String(s.id) === String(spaceId));
   showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
 }
 
@@ -15532,11 +15638,11 @@ function renderSpacesInSidebar() {
     <div class="spaces-section-label">Spaces</div>
     ${spaces.map(space => `
       <div class="custom-space-item-wrapper" ${space.colorTag && space.colorTag !== 'none' ? `style="--space-accent: var(--event-${space.colorTag});"` : ''}>
-        <button class="custom-space-item ${space.colorTag && space.colorTag !== 'none' ? 'has-color' : ''}" data-space-id="${space.id}" onclick="openSpaceView(${space.id})">
+        <button class="custom-space-item ${space.colorTag && space.colorTag !== 'none' ? 'has-color' : ''}" data-space-id="${space.id}" onclick="openSpaceView('${space.id}')">
           <span class="space-icon-svg">${getSpaceIconSVG(space.icon)}</span>
           <span class="space-name-text">${space.name}</span>
         </button>
-        <button class="delete-item-btn" onclick="confirmDeleteSpace(${space.id}, '${space.name.replace(/'/g, "\\'")}')" title="Delete space">
+        <button class="delete-item-btn" onclick="confirmDeleteSpace('${space.id}', '${space.name.replace(/'/g, "\\'")}')" title="Delete space">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -15590,7 +15696,7 @@ async function toggleDocFavorite(docId) {
   }
   
   const docs = loadDocs();
-  const doc = docs.find(d => d.id === docId);
+  const doc = docs.find(d => String(d.id) === String(docId));
   if (!doc) return;
   
   const newFavoriteState = !doc.isFavorite;
@@ -15620,7 +15726,7 @@ async function toggleExcelFavorite(excelId) {
   }
   
   const excels = loadExcels();
-  const excel = excels.find(e => e.id === excelId);
+  const excel = excels.find(e => String(e.id) === String(excelId));
   if (!excel) return;
   
   const newFavoriteState = !excel.isFavorite;
@@ -15644,14 +15750,14 @@ async function toggleExcelFavorite(excelId) {
 
 function isDocFavorited(docId) {
   const docs = loadDocs();
-  const doc = docs.find(d => d.id === docId);
-  return doc ? doc.isFavorite : false;
+  const doc = docs.find(d => String(d.id) === String(docId));
+  return doc ? doc.isFavorite === true : false;
 }
 
 function isExcelFavorited(excelId) {
   const excels = loadExcels();
-  const excel = excels.find(e => e.id === excelId);
-  return excel ? excel.isFavorite : false;
+  const excel = excels.find(e => String(e.id) === String(excelId));
+  return excel ? excel.isFavorite === true : false;
 }
 
 function renderFavoritesInSidebar() {
@@ -15695,7 +15801,7 @@ function renderFavoritesInSidebar() {
     <div class="${needsScroll ? 'favorites-scroll-container' : ''}">
       ${favoriteDocs.map(doc => `
         <div class="custom-space-item-wrapper favorite-doc-item">
-          <button class="custom-space-item" onclick="openDocEditor(${doc.id})">
+          <button class="custom-space-item" onclick="openDocEditor('${doc.id}')">
             <div class="favorite-item-layout">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon doc-icon">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -15711,7 +15817,7 @@ function renderFavoritesInSidebar() {
       `).join('')}
       ${favoriteExcels.map(excel => `
         <div class="custom-space-item-wrapper favorite-excel-item">
-          <button class="custom-space-item" onclick="openExcelEditor(${excel.id})">
+          <button class="custom-space-item" onclick="openExcelEditor('${excel.id}')">
             <div class="favorite-item-layout">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="favorite-type-icon excel-icon">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -15769,7 +15875,8 @@ async function deleteSpaceConfirmed(spaceId) {
 
 function openSpaceView(spaceId) {
   const spaces = loadSpaces();
-  const space = spaces.find(s => s.id === spaceId);
+  // Handle both string UUIDs and numeric IDs
+  const space = spaces.find(s => String(s.id) === String(spaceId));
   
   if (!space) return;
   
@@ -15798,9 +15905,9 @@ function renderSpaceDetailView(space) {
   const allExcels = loadExcels();
   const excelFavorites = loadExcelFavorites();
   
-  // Filter docs and excels by space
-  const docs = allDocs.filter(d => d.spaceId === space.id);
-  const excels = allExcels.filter(e => e.spaceId === space.id);
+  // Filter docs and excels by space - use string comparison for UUID/number compatibility
+  const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
+  const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
   
   // Recent docs (last 5)
   const recentDocs = [...docs].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
@@ -15837,7 +15944,7 @@ function renderSpaceDetailView(space) {
               <span>Recent</span>
             </div>
             ${recentDocs.length > 0 ? recentDocs.map(doc => `
-              <div class="docs-tree-item" onclick="openDocEditor(${doc.id})">
+              <div class="docs-tree-item" onclick="openDocEditor('${doc.id}')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -15863,7 +15970,7 @@ function renderSpaceDetailView(space) {
               </button>
             </div>
             ${docs.length > 0 ? docs.map(doc => `
-              <div class="docs-tree-item" onclick="openDocEditor(${doc.id})" data-doc-id="${doc.id}">
+              <div class="docs-tree-item" onclick="openDocEditor('${doc.id}')" data-doc-id="${doc.id}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -15942,13 +16049,13 @@ function renderSpaceDetailView(space) {
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 40px;">
                   ${docs.map(doc => `
                     <div class="card doc-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
-                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteDoc(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')" title="Delete document">
+                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteDoc('${doc.id}', '${doc.title.replace(/'/g, "\\'")}')" title="Delete document">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                         </svg>
                       </button>
-                      <div onclick="openDocEditor(${doc.id})">
+                      <div onclick="openDocEditor('${doc.id}')">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                           <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
@@ -15981,13 +16088,13 @@ function renderSpaceDetailView(space) {
                     const isFavorited = isExcelFavorited(excel.id);
                     return `
                     <div class="card excel-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
-                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteExcel(${excel.id}, '${excel.title.replace(/'/g, "\\'")}')" title="Delete spreadsheet">
+                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteExcel('${excel.id}', '${excel.title.replace(/'/g, "\\'")}')" title="Delete spreadsheet">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                         </svg>
                       </button>
-                      <div onclick="openExcelEditor(${excel.id})">
+                      <div onclick="openExcelEditor('${excel.id}')">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                           <div style="width: 40px; height: 40px; background: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(142, 71%, 35%)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
@@ -16051,7 +16158,7 @@ function filterSpaceDocs(spaceId) {
   const searchInput = document.getElementById('docsSearchInput');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   const allDocs = loadDocs();
-  const docs = allDocs.filter(d => d.spaceId === spaceId);
+  const docs = allDocs.filter(d => String(d.spaceId) === String(spaceId));
   
   const container = document.getElementById('docsTreeContainer');
   if (!container) return;
@@ -16784,8 +16891,8 @@ function renderSpaceWidgets() {
       </h3>
       <div class="dashboard-spaces-grid">
         ${spaces.map(space => {
-          const docs = allDocs.filter(d => d.spaceId === space.id);
-          const excels = allExcels.filter(e => e.spaceId === space.id);
+          const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
+          const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
           const dueDate = space.dueDate ? new Date(space.dueDate) : null;
           let dueDateClass = '';
           let dueDateText = '';
@@ -16812,15 +16919,15 @@ function renderSpaceWidgets() {
           return `<div class="space-widget" style="--space-accent: ${colorVar};">
             <!-- Hover Actions Bar -->
             <div class="space-widget-hover-actions">
-              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetTodo(${space.id})" title="Create To-Do">
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetTodo('${space.id}')" title="Create To-Do">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 <span>To-Do</span>
               </button>
-              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetNote(${space.id})" title="Add Note">
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetNote('${space.id}')" title="Add Note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 <span>Note</span>
               </button>
-              <button class="space-hover-action-btn" onclick="event.stopPropagation(); openEditSpaceModal(${space.id})" title="Edit Space">
+              <button class="space-hover-action-btn" onclick="event.stopPropagation(); openEditSpaceModal('${space.id}')" title="Edit Space">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 <span>Edit</span>
               </button>
@@ -16830,18 +16937,18 @@ function renderSpaceWidgets() {
             <div class="space-widget-overlay space-widget-todo-overlay" id="spaceTodoOverlay-${space.id}">
               <div class="space-overlay-header">
                 <span>To-Do List</span>
-                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay(${space.id}, 'todo')">
+                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay('${space.id}', 'todo')">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
               <div class="space-todo-list" id="spaceTodoList-${space.id}">
                 ${spaceWidgetTodos.map((todo, idx) => `
                   <div class="space-todo-item ${todo.done ? 'done' : ''}">
-                    <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo(${space.id}, ${idx})">
+                    <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo('${space.id}', ${idx})">
                       ${todo.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
                     </div>
                     <span class="space-todo-text">${todo.text}</span>
-                    <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo(${space.id}, ${idx})">
+                    <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo('${space.id}', ${idx})">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
@@ -16850,7 +16957,7 @@ function renderSpaceWidgets() {
               <div class="space-todo-add">
                 <input type="text" class="space-todo-input" id="spaceTodoInput-${space.id}" placeholder="Add a task..." 
                        onclick="event.stopPropagation();"
-                       onkeypress="if(event.key==='Enter'){event.stopPropagation(); addSpaceWidgetTodo(${space.id}, this.value); this.value='';}" />
+                       onkeypress="if(event.key==='Enter'){event.stopPropagation(); addSpaceWidgetTodo('${space.id}', this.value); this.value='';}" />
               </div>
             </div>
             
@@ -16858,18 +16965,18 @@ function renderSpaceWidgets() {
             <div class="space-widget-overlay space-widget-note-overlay" id="spaceNoteOverlay-${space.id}">
               <div class="space-overlay-header">
                 <span>Quick Note</span>
-                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay(${space.id}, 'note')">
+                <button class="space-overlay-close" onclick="event.stopPropagation(); hideSpaceWidgetOverlay('${space.id}', 'note')">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
               <textarea class="space-note-textarea" id="spaceNoteTextarea-${space.id}" placeholder="Write a quick note..." 
                         onclick="event.stopPropagation();"
-                        oninput="autoSaveSpaceWidgetNote(${space.id}, this.value)">${spaceWidgetNote}</textarea>
+                        oninput="autoSaveSpaceWidgetNote('${space.id}', this.value)">${spaceWidgetNote}</textarea>
               <div class="space-note-saved" id="spaceNoteSaved-${space.id}">Auto-saved</div>
             </div>
             
             <!-- Default Content -->
-            <div class="space-widget-content" onclick="openSpaceView(${space.id})">
+            <div class="space-widget-content" onclick="openSpaceView('${space.id}')">
               <div class="space-widget-header">
                 <div class="space-widget-icon">${getSpaceIconSVGById(space.icon)}</div>
                 <h4 class="space-widget-title">${space.name}</h4>
@@ -16980,11 +17087,11 @@ function refreshSpaceWidgetTodoList(spaceId) {
   const todos = getSpaceWidgetTodos(spaceId);
   container.innerHTML = todos.map((todo, idx) => `
     <div class="space-todo-item ${todo.done ? 'done' : ''}">
-      <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo(${spaceId}, ${idx})">
+      <div class="space-todo-checkbox" onclick="event.stopPropagation(); toggleSpaceWidgetTodo('${spaceId}', ${idx})">
         ${todo.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
       </div>
       <span class="space-todo-text">${todo.text}</span>
-      <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo(${spaceId}, ${idx})">
+      <button class="space-todo-delete" onclick="event.stopPropagation(); deleteSpaceWidgetTodo('${spaceId}', ${idx})">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -17006,11 +17113,12 @@ function autoSaveSpaceWidgetNote(spaceId, value) {
 
 function openEditSpaceModal(spaceId) {
   const spaces = loadSpaces();
-  const space = spaces.find(s => s.id === spaceId);
+  const space = spaces.find(s => String(s.id) === String(spaceId));
   if (!space) return;
   
+  const escapedSpaceId = String(spaceId).replace(/'/g, "\\'");
   const content = `
-    <form id="editSpaceForm" onsubmit="handleEditSpace(event, ${spaceId})">
+    <form id="editSpaceForm" onsubmit="handleEditSpace(event, '${escapedSpaceId}')">
       <div class="form-group">
         <label class="form-label">Space Name <span class="required">*</span></label>
         <input type="text" name="name" class="form-input" required value="${space.name}" />
@@ -17042,7 +17150,7 @@ function handleEditSpace(event, spaceId) {
   if (!name) return;
   
   const spaces = loadSpaces();
-  const idx = spaces.findIndex(s => s.id === spaceId);
+  const idx = spaces.findIndex(s => String(s.id) === String(spaceId));
   if (idx !== -1) {
     spaces[idx] = { ...spaces[idx], name, description, dueDate };
     saveSpaces(spaces);
@@ -19478,6 +19586,35 @@ function tlv2_formatDate(date, format = 'short') {
   return d.toISOString().split('T')[0];
 }
 
+// Format a date as YYYY-MM-DD using *local* calendar values (avoids timezone day-shift)
+function tlv2_formatISODateLocal(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Parse YYYY-MM-DD as a local date (not UTC)
+function tlv2_parseISODateLocal(dateStr) {
+  if (!dateStr) return null;
+  const parts = String(dateStr).split('T')[0].split('-');
+  if (parts.length !== 3) return new Date(dateStr);
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  const out = new Date(y, m, d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
+function tlv2_shiftISODateLocal(dateStr, daysDelta) {
+  const d = tlv2_parseISODateLocal(dateStr);
+  if (!d) return dateStr;
+  d.setDate(d.getDate() + daysDelta);
+  return tlv2_formatISODateLocal(d);
+}
+
 function tlv2_getColumnColor(title) {
   const t = (title || '').toLowerCase();
   if (t.includes('done') || t.includes('complete')) return '#22c55e';
@@ -20038,6 +20175,10 @@ function tlv2_renderTodayLine(dates, startDate) {
 // ============================================
 
 function tlv2_setupInteractions() {
+  // Prevent duplicate listeners across re-renders
+  if (TimelineV2._listenersAttached) return;
+  TimelineV2._listenersAttached = true;
+
   document.addEventListener('mousemove', tlv2_handleMouseMove);
   document.addEventListener('mouseup', tlv2_handleMouseUp);
   document.addEventListener('keydown', tlv2_handleKeydown);
@@ -20153,97 +20294,82 @@ function tlv2_updateColumnDates(columnIndex, daysDelta, mode) {
   if (!project || !project.columns[columnIndex]) return;
   
   const column = project.columns[columnIndex];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // Check if column already has dates - don't auto-expand if not
-  const hasExistingStart = !!column.timelineStart;
-  const hasExistingEnd = !!column.timelineEnd;
-  
-  // Only proceed if the column already has dates set
-  // For columns without dates, they should be set via the edit dialog
-  if (!hasExistingStart && !hasExistingEnd) {
-    // Calculate dates from the bar's current visual position
-    const bar = TimelineV2.dragTarget;
-    if (!bar) return;
-    
-    const currentLeft = parseInt(bar.style.left) || 0;
-    const currentWidth = parseInt(bar.style.width) || TimelineV2.cellWidth;
-    
-    // Calculate start date from left position
-    const startDayOffset = Math.round(currentLeft / TimelineV2.cellWidth);
-    const durationDays = Math.max(1, Math.round(currentWidth / TimelineV2.cellWidth));
-    
-    let startDate = new Date(TimelineV2.startDate);
-    startDate.setDate(startDate.getDate() + startDayOffset);
-    
-    let endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + durationDays - 1);
-    
-    column.timelineStart = startDate.toISOString().split('T')[0];
-    column.timelineEnd = endDate.toISOString().split('T')[0];
-    
-    saveProjects(projects);
-    
-    const container = document.querySelector('.pd-content-scroll');
-    if (container) renderTimelineV2(TimelineV2.projectIndex, container);
-    
-    if (typeof showToast === 'function') {
-      showToast(`Column dates set`);
+
+  // Always compute the new dates from the bar's *actual* visual position/size.
+  // This prevents the bar from snapping back on re-render when tasks already have dates.
+  const bar = TimelineV2.dragTarget;
+  if (!bar) return;
+
+  const currentLeft = parseInt(bar.style.left) || 0;
+  const currentWidth = parseInt(bar.style.width) || TimelineV2.cellWidth;
+  const startDayOffset = Math.max(0, Math.round(currentLeft / TimelineV2.cellWidth));
+  const durationDays = Math.max(1, Math.round(currentWidth / TimelineV2.cellWidth));
+
+  const newStartDate = new Date(TimelineV2.startDate);
+  newStartDate.setDate(newStartDate.getDate() + startDayOffset);
+  const newEndDate = new Date(newStartDate);
+  newEndDate.setDate(newEndDate.getDate() + durationDays - 1);
+
+  column.timelineStart = tlv2_formatISODateLocal(newStartDate);
+  column.timelineEnd = tlv2_formatISODateLocal(newEndDate);
+
+  // IMPORTANT: Persist the change into tasks too, otherwise task dates will override
+  // the bar's range on the next render.
+  (column.tasks || []).forEach(task => {
+    const hasStart = !!task.startDate;
+    const endField = task.dueDate ? 'dueDate' : (task.endDate ? 'endDate' : null);
+
+    if (mode === 'move') {
+      if (hasStart) task.startDate = tlv2_shiftISODateLocal(task.startDate, daysDelta);
+      if (endField) task[endField] = tlv2_shiftISODateLocal(task[endField], daysDelta);
+      return;
     }
-    return;
-  }
-  
-  // Get existing dates
-  let startDate = new Date(column.timelineStart);
-  let endDate = new Date(column.timelineEnd);
-  
-  if (mode === 'move') {
-    startDate.setDate(startDate.getDate() + daysDelta);
-    endDate.setDate(endDate.getDate() + daysDelta);
-  } else if (mode === 'right') {
-    endDate.setDate(endDate.getDate() + daysDelta);
-  } else if (mode === 'left') {
-    startDate.setDate(startDate.getDate() + daysDelta);
-  }
-  
-  // Ensure end >= start
-  if (endDate < startDate) {
-    endDate = new Date(startDate);
-  }
-  
-  column.timelineStart = startDate.toISOString().split('T')[0];
-  column.timelineEnd = endDate.toISOString().split('T')[0];
-  
-  // Update tasks within column only for move operations
-  if (mode === 'move') {
-    (column.tasks || []).forEach(task => {
-      if (task.startDate) {
-        const d = new Date(task.startDate);
-        d.setDate(d.getDate() + daysDelta);
-        task.startDate = d.toISOString().split('T')[0];
+
+    if (mode === 'left') {
+      // Adjust only the start edge
+      if (hasStart) {
+        task.startDate = tlv2_shiftISODateLocal(task.startDate, daysDelta);
+      } else if (endField) {
+        // If a task only has an end date, give it a start date so it can shrink/grow correctly
+        task.startDate = tlv2_shiftISODateLocal(task[endField], daysDelta);
       }
-      if (task.dueDate) {
-        const d = new Date(task.dueDate);
-        d.setDate(d.getDate() + daysDelta);
-        task.dueDate = d.toISOString().split('T')[0];
+    }
+
+    if (mode === 'right') {
+      // Adjust only the end edge
+      if (endField) {
+        task[endField] = tlv2_shiftISODateLocal(task[endField], daysDelta);
+      } else if (hasStart) {
+        task.endDate = tlv2_shiftISODateLocal(task.startDate, daysDelta);
       }
-      if (task.endDate) {
-        const d = new Date(task.endDate);
-        d.setDate(d.getDate() + daysDelta);
-        task.endDate = d.toISOString().split('T')[0];
-      }
-    });
-  }
-  
+    }
+
+    // Keep end >= start when both exist
+    const start = tlv2_parseISODateLocal(task.startDate);
+    const endVal = endField ? task[endField] : task.endDate;
+    const end = tlv2_parseISODateLocal(endVal);
+    if (start && end && end < start) {
+      const clamped = tlv2_formatISODateLocal(start);
+      if (endField) task[endField] = clamped;
+      else task.endDate = clamped;
+    }
+  });
+
+  // Save locally and then immediately sync the project columns to DB.
   saveProjects(projects);
-  
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    window.LayerDB
+      .updateProject(project.id, { columns: project.columns })
+      .catch(err => console.error('Failed to sync timeline changes to database:', err));
+  }
+
   // Re-render
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineV2(TimelineV2.projectIndex, container);
-  
+
   if (typeof showToast === 'function') {
-    showToast(`Column dates updated`);
+    const msg = mode === 'move' ? 'Timeline moved' : 'Timeline resized';
+    showToast(msg);
   }
 }
 

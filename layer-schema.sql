@@ -1,43 +1,37 @@
 -- ============================================
--- Layer App - Complete Database Schema for Supabase
--- Version: 3.0 (Full DB Sync Support)
--- Run this in Supabase SQL Editor
+-- Layer App - SAFE Database Schema for Supabase
+-- Version: 3.1 (Non-Destructive - Preserves User Data)
+-- Safe to run multiple times!
 -- ============================================
-
--- IMPORTANT: This script drops and recreates all tables
--- Make sure to backup any existing data first!
-
--- Drop existing tables (in reverse dependency order)
-DROP TABLE IF EXISTS recurring_tasks CASCADE;
-DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS spaces CASCADE;
-DROP TABLE IF EXISTS excels CASCADE;
-DROP TABLE IF EXISTS docs CASCADE;
-DROP TABLE IF EXISTS calendar_events CASCADE;
-DROP TABLE IF EXISTS issues CASCADE;
-DROP TABLE IF EXISTS backlog_tasks CASCADE;
-DROP TABLE IF EXISTS projects CASCADE;
-DROP TABLE IF EXISTS profiles CASCADE;
-
--- Drop existing types
-DROP TYPE IF EXISTS project_status CASCADE;
-DROP TYPE IF EXISTS task_status CASCADE;
-DROP TYPE IF EXISTS priority_level CASCADE;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- Enum Types
+-- Enum Types (Safe Creation)
 -- ============================================
-CREATE TYPE project_status AS ENUM ('todo', 'in_progress', 'review', 'done', 'backlog');
-CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done');
-CREATE TYPE priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
+DO $$ BEGIN
+    CREATE TYPE project_status AS ENUM ('todo', 'in_progress', 'review', 'done', 'backlog');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- ============================================
 -- Profiles Table (linked to auth.users)
 -- ============================================
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     name TEXT,
@@ -49,7 +43,7 @@ CREATE TABLE profiles (
 -- ============================================
 -- User Preferences Table
 -- ============================================
-CREATE TABLE user_preferences (
+CREATE TABLE IF NOT EXISTS user_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     theme TEXT DEFAULT 'dark',
@@ -59,10 +53,17 @@ CREATE TABLE user_preferences (
     UNIQUE(user_id)
 );
 
+-- Add new columns to user_preferences if they don't exist
+DO $$ BEGIN
+    ALTER TABLE user_preferences ADD COLUMN widget_order JSONB DEFAULT '[]';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
 -- ============================================
--- Projects Table (with full DB sync columns)
+-- Projects Table
 -- ============================================
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -73,20 +74,33 @@ CREATE TABLE projects (
     flowchart JSONB DEFAULT '{"nodes": [], "edges": []}',
     columns JSONB DEFAULT '[{"title": "To Do", "tasks": []}, {"title": "In Progress", "tasks": []}, {"title": "Done", "tasks": []}]',
     updates JSONB DEFAULT '[]',
-    -- NEW: Milestones for Gantt chart bar markers
-    milestones JSONB DEFAULT '{}',
-    -- NEW: Whiteboard/flowchart diagram data (grip diagram)
-    grip_diagram JSONB DEFAULT NULL,
-    -- NEW: Gantt timeline tasks
-    tasks JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add new columns to projects if they don't exist
+DO $$ BEGIN
+    ALTER TABLE projects ADD COLUMN milestones JSONB DEFAULT '{}';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE projects ADD COLUMN grip_diagram JSONB DEFAULT NULL;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE projects ADD COLUMN tasks JSONB DEFAULT '[]';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
 -- ============================================
 -- Backlog Tasks Table
 -- ============================================
-CREATE TABLE backlog_tasks (
+CREATE TABLE IF NOT EXISTS backlog_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
@@ -98,7 +112,7 @@ CREATE TABLE backlog_tasks (
 -- ============================================
 -- Issues Table
 -- ============================================
-CREATE TABLE issues (
+CREATE TABLE IF NOT EXISTS issues (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     issue_id TEXT NOT NULL,
@@ -115,7 +129,7 @@ CREATE TABLE issues (
 -- ============================================
 -- Calendar Events Table
 -- ============================================
-CREATE TABLE calendar_events (
+CREATE TABLE IF NOT EXISTS calendar_events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
@@ -135,57 +149,92 @@ CREATE TABLE calendar_events (
 );
 
 -- ============================================
--- Docs Table (with favorite support)
+-- Docs Table
 -- ============================================
-CREATE TABLE docs (
+CREATE TABLE IF NOT EXISTS docs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL DEFAULT 'Untitled',
     content TEXT DEFAULT '',
     space_id UUID,
-    -- NEW: Favorite flag for docs
-    is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add is_favorite column if it doesn't exist
+DO $$ BEGIN
+    ALTER TABLE docs ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
 -- ============================================
--- Excels/Sheets Table (with favorite support)
+-- Excels/Sheets Table
 -- ============================================
-CREATE TABLE excels (
+CREATE TABLE IF NOT EXISTS excels (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL DEFAULT 'Untitled Sheet',
     data JSONB DEFAULT '[]',
     space_id UUID,
-    -- NEW: Favorite flag for sheets
-    is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add is_favorite column if it doesn't exist
+DO $$ BEGIN
+    ALTER TABLE excels ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
 -- ============================================
--- Spaces Table (with full metadata)
+-- Spaces Table
 -- ============================================
-CREATE TABLE spaces (
+CREATE TABLE IF NOT EXISTS spaces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL DEFAULT 'New Space',
     icon TEXT DEFAULT 'folder',
-    -- NEW: Additional space metadata
-    description TEXT DEFAULT '',
-    due_date DATE,
-    linked_project UUID REFERENCES projects(id) ON DELETE SET NULL,
-    color_tag TEXT DEFAULT 'none',
-    members JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add new columns to spaces if they don't exist
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN description TEXT DEFAULT '';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN due_date DATE;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN linked_project UUID REFERENCES projects(id) ON DELETE SET NULL;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN color_tag TEXT DEFAULT 'none';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE spaces ADD COLUMN members JSONB DEFAULT '[]';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
 -- ============================================
 -- Recurring Tasks Table
 -- ============================================
-CREATE TABLE recurring_tasks (
+CREATE TABLE IF NOT EXISTS recurring_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
@@ -200,27 +249,25 @@ CREATE TABLE recurring_tasks (
 );
 
 -- ============================================
--- Indexes for Performance
+-- Indexes (Safe Creation with IF NOT EXISTS)
 -- ============================================
-CREATE INDEX idx_projects_user_id ON projects(user_id);
-CREATE INDEX idx_projects_status ON projects(status);
-CREATE INDEX idx_backlog_tasks_user_id ON backlog_tasks(user_id);
-CREATE INDEX idx_issues_user_id ON issues(user_id);
-CREATE INDEX idx_issues_status ON issues(status);
-CREATE INDEX idx_calendar_events_user_id ON calendar_events(user_id);
-CREATE INDEX idx_calendar_events_date ON calendar_events(date);
-CREATE INDEX idx_docs_user_id ON docs(user_id);
-CREATE INDEX idx_docs_favorite ON docs(is_favorite);
-CREATE INDEX idx_excels_user_id ON excels(user_id);
-CREATE INDEX idx_excels_favorite ON excels(is_favorite);
-CREATE INDEX idx_spaces_user_id ON spaces(user_id);
-CREATE INDEX idx_recurring_tasks_user_id ON recurring_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_backlog_tasks_user_id ON backlog_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_issues_user_id ON issues(user_id);
+CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_user_id ON calendar_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date);
+CREATE INDEX IF NOT EXISTS idx_docs_user_id ON docs(user_id);
+CREATE INDEX IF NOT EXISTS idx_docs_favorite ON docs(is_favorite);
+CREATE INDEX IF NOT EXISTS idx_excels_user_id ON excels(user_id);
+CREATE INDEX IF NOT EXISTS idx_excels_favorite ON excels(is_favorite);
+CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
 
 -- ============================================
--- Row Level Security (RLS) Policies
+-- Row Level Security (RLS) - Safe Enable
 -- ============================================
-
--- Enable RLS on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
@@ -232,59 +279,101 @@ ALTER TABLE excels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
 
+-- ============================================
+-- RLS Policies (Drop and recreate for safety)
+-- ============================================
+
 -- Profiles policies
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- User Preferences policies
+DROP POLICY IF EXISTS "Users can view own preferences" ON user_preferences;
+DROP POLICY IF EXISTS "Users can update own preferences" ON user_preferences;
+DROP POLICY IF EXISTS "Users can insert own preferences" ON user_preferences;
 CREATE POLICY "Users can view own preferences" ON user_preferences FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own preferences" ON user_preferences FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own preferences" ON user_preferences FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Projects policies
+DROP POLICY IF EXISTS "Users can view own projects" ON projects;
+DROP POLICY IF EXISTS "Users can insert own projects" ON projects;
+DROP POLICY IF EXISTS "Users can update own projects" ON projects;
+DROP POLICY IF EXISTS "Users can delete own projects" ON projects;
 CREATE POLICY "Users can view own projects" ON projects FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own projects" ON projects FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own projects" ON projects FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own projects" ON projects FOR DELETE USING (auth.uid() = user_id);
 
 -- Backlog Tasks policies
+DROP POLICY IF EXISTS "Users can view own backlog_tasks" ON backlog_tasks;
+DROP POLICY IF EXISTS "Users can insert own backlog_tasks" ON backlog_tasks;
+DROP POLICY IF EXISTS "Users can update own backlog_tasks" ON backlog_tasks;
+DROP POLICY IF EXISTS "Users can delete own backlog_tasks" ON backlog_tasks;
 CREATE POLICY "Users can view own backlog_tasks" ON backlog_tasks FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own backlog_tasks" ON backlog_tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own backlog_tasks" ON backlog_tasks FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own backlog_tasks" ON backlog_tasks FOR DELETE USING (auth.uid() = user_id);
 
 -- Issues policies
+DROP POLICY IF EXISTS "Users can view own issues" ON issues;
+DROP POLICY IF EXISTS "Users can insert own issues" ON issues;
+DROP POLICY IF EXISTS "Users can update own issues" ON issues;
+DROP POLICY IF EXISTS "Users can delete own issues" ON issues;
 CREATE POLICY "Users can view own issues" ON issues FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own issues" ON issues FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own issues" ON issues FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own issues" ON issues FOR DELETE USING (auth.uid() = user_id);
 
 -- Calendar Events policies
+DROP POLICY IF EXISTS "Users can view own calendar_events" ON calendar_events;
+DROP POLICY IF EXISTS "Users can insert own calendar_events" ON calendar_events;
+DROP POLICY IF EXISTS "Users can update own calendar_events" ON calendar_events;
+DROP POLICY IF EXISTS "Users can delete own calendar_events" ON calendar_events;
 CREATE POLICY "Users can view own calendar_events" ON calendar_events FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own calendar_events" ON calendar_events FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own calendar_events" ON calendar_events FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own calendar_events" ON calendar_events FOR DELETE USING (auth.uid() = user_id);
 
 -- Docs policies
+DROP POLICY IF EXISTS "Users can view own docs" ON docs;
+DROP POLICY IF EXISTS "Users can insert own docs" ON docs;
+DROP POLICY IF EXISTS "Users can update own docs" ON docs;
+DROP POLICY IF EXISTS "Users can delete own docs" ON docs;
 CREATE POLICY "Users can view own docs" ON docs FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own docs" ON docs FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own docs" ON docs FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own docs" ON docs FOR DELETE USING (auth.uid() = user_id);
 
 -- Excels policies
+DROP POLICY IF EXISTS "Users can view own excels" ON excels;
+DROP POLICY IF EXISTS "Users can insert own excels" ON excels;
+DROP POLICY IF EXISTS "Users can update own excels" ON excels;
+DROP POLICY IF EXISTS "Users can delete own excels" ON excels;
 CREATE POLICY "Users can view own excels" ON excels FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own excels" ON excels FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own excels" ON excels FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own excels" ON excels FOR DELETE USING (auth.uid() = user_id);
 
 -- Spaces policies
+DROP POLICY IF EXISTS "Users can view own spaces" ON spaces;
+DROP POLICY IF EXISTS "Users can insert own spaces" ON spaces;
+DROP POLICY IF EXISTS "Users can update own spaces" ON spaces;
+DROP POLICY IF EXISTS "Users can delete own spaces" ON spaces;
 CREATE POLICY "Users can view own spaces" ON spaces FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own spaces" ON spaces FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own spaces" ON spaces FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own spaces" ON spaces FOR DELETE USING (auth.uid() = user_id);
 
 -- Recurring Tasks policies
+DROP POLICY IF EXISTS "Users can view own recurring_tasks" ON recurring_tasks;
+DROP POLICY IF EXISTS "Users can insert own recurring_tasks" ON recurring_tasks;
+DROP POLICY IF EXISTS "Users can update own recurring_tasks" ON recurring_tasks;
+DROP POLICY IF EXISTS "Users can delete own recurring_tasks" ON recurring_tasks;
 CREATE POLICY "Users can view own recurring_tasks" ON recurring_tasks FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own recurring_tasks" ON recurring_tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own recurring_tasks" ON recurring_tasks FOR UPDATE USING (auth.uid() = user_id);
@@ -301,7 +390,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply triggers to all tables
+-- Apply triggers (drop first to avoid duplicates)
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS update_backlog_tasks_updated_at ON backlog_tasks;
+DROP TRIGGER IF EXISTS update_issues_updated_at ON issues;
+DROP TRIGGER IF EXISTS update_calendar_events_updated_at ON calendar_events;
+DROP TRIGGER IF EXISTS update_docs_updated_at ON docs;
+DROP TRIGGER IF EXISTS update_excels_updated_at ON excels;
+DROP TRIGGER IF EXISTS update_spaces_updated_at ON spaces;
+DROP TRIGGER IF EXISTS update_recurring_tasks_updated_at ON recurring_tasks;
+
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -320,24 +420,18 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO public.profiles (id, email)
-    VALUES (new.id, new.email);
+    VALUES (new.id, new.email)
+    ON CONFLICT (id) DO NOTHING;
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing trigger if exists and recreate
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
--- Done! Your schema is ready for full DB sync.
--- New columns added:
---   - projects.milestones (JSONB) - Gantt bar milestones
---   - projects.grip_diagram (JSONB) - Whiteboard data
---   - projects.tasks (JSONB) - Gantt timeline tasks
---   - docs.is_favorite (BOOLEAN) - Doc favorite flag
---   - excels.is_favorite (BOOLEAN) - Sheet favorite flag
---   - spaces.description, due_date, linked_project, color_tag, members
+-- SAFE SCHEMA COMPLETE!
+-- You can run this script multiple times without losing data.
 -- ============================================

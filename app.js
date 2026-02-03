@@ -932,6 +932,8 @@ function renderCurrentView(preserveScroll = false) {
     case 'inbox':
       viewsContainer.innerHTML = renderInboxView();
       updateBreadcrumb('Inbox');
+      // Apply saved widget order after rendering
+      initDashboardWidgetOrder();
       break;
     case 'my-issues':
       viewsContainer.innerHTML = renderMyIssuesView(currentFilter, searchQuery);
@@ -1015,10 +1017,16 @@ function setupIssueFilterListeners() {
 // Issue Handlers
 // ============================================
 function openCreateIssueModal() {
+  // Require authentication to create issues
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in to create issues', 'error');
+    openAuthModal();
+    return;
+  }
   openModal('Create New Issue', renderCreateIssueModalContent());
 }
 
-function handleCreateIssueSubmit(event) {
+async function handleCreateIssueSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -1029,14 +1037,14 @@ function handleCreateIssueSubmit(event) {
   const status = formData.get('status');
   
   if (title.trim()) {
-    addIssue({
+    closeModal();
+    await addIssue({
       title: title.trim(),
       description: description.trim(),
       priority,
       status,
       assignee: 'Zeyad Maher'
     });
-    closeModal();
     renderCurrentView();
   }
 }
@@ -1044,16 +1052,16 @@ function handleCreateIssueSubmit(event) {
 // ============================================
 // Backlog Handlers
 // ============================================
-function promptAddBacklogTask() {
+async function promptAddBacklogTask() {
   const title = prompt('New backlog task:', '');
   if (title?.trim()) {
-    addBacklogTask(title.trim());
+    await addBacklogTask(title.trim());
     renderCurrentView();
   }
 }
 
-function handleToggleBacklogTask(index) {
-  toggleBacklogTask(index);
+async function handleToggleBacklogTask(index) {
+  await toggleBacklogTask(index);
   renderCurrentView();
 }
 
@@ -1061,20 +1069,20 @@ function handleUpdateBacklogTask(index, title) {
   updateBacklogTask(index, title || 'New task');
 }
 
-function handleDeleteBacklogTask(index) {
+async function handleDeleteBacklogTask(index) {
   if (confirm('Delete this task?')) {
-    deleteBacklogTask(index);
+    await deleteBacklogTask(index);
     renderCurrentView();
   }
 }
 
-function handleQuickAddKeypress(event) {
+async function handleQuickAddKeypress(event) {
   if (event.key === 'Enter') {
     const input = event.target;
     const title = input.value.trim();
     if (title) {
-      addBacklogTask(title);
       input.value = '';
+      await addBacklogTask(title);
       renderCurrentView();
     }
   }
@@ -1084,10 +1092,16 @@ function handleQuickAddKeypress(event) {
 // Project Handlers
 // ============================================
 function openCreateProjectModal() {
+  // Require authentication to create projects
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in to create projects', 'error');
+    openAuthModal();
+    return;
+  }
   openModal('Create new project', renderCreateProjectModalContent());
 }
 
-function handleCreateProjectSubmit(event) {
+async function handleCreateProjectSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -1097,15 +1111,22 @@ function handleCreateProjectSubmit(event) {
   const description = formData.get('description');
   
   if (name.trim() && targetDate) {
-    addProject({
+    console.log('Starting project creation...');
+    closeModal();
+    const newProject = await addProject({
       name: name.trim(),
       status: 'todo',
       startDate: new Date().toISOString().split('T')[0],
       targetDate,
       description: description.trim()
     });
-    closeModal();
-    renderCurrentView();
+    console.log('Project creation completed, re-rendering...');
+    // Ensure localStorage is synced before re-render
+    if (newProject) {
+      // Force a synchronous read to ensure fresh data
+      renderCurrentView();
+      console.log('Re-render complete');
+    }
   }
 }
 
@@ -1121,16 +1142,16 @@ function closeProjectDetail() {
   renderCurrentView();
 }
 
-function handleDeleteProject(index) {
+async function handleDeleteProject(index) {
   if (confirm('Delete this project permanently?')) {
-    deleteProject(index);
+    await deleteProject(index);
     renderCurrentView();
   }
 }
 
-function handleDeleteProjectFromDetail(index) {
+async function handleDeleteProjectFromDetail(index) {
   if (confirm('Delete this project permanently?')) {
-    deleteProject(index);
+    await deleteProject(index);
     closeProjectDetail();
   }
 }
@@ -1146,7 +1167,7 @@ function handleUpdateProjectDescription(index, description) {
 // ============================================
 // Project Task Handlers
 // ============================================
-function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
+async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
   // Prevent event bubbling that could trigger tab switches or other handlers
   if (event) {
     event.stopPropagation();
@@ -1156,7 +1177,23 @@ function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, event) {
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
   
-  toggleTaskDone(projectIndex, columnIndex, taskIndex);
+  // Toggle task done state
+  const projects = loadProjects();
+  const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
+  if (task) {
+    task.done = !task.done;
+    saveProjects(projects);
+    
+    // Sync to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+      } catch (error) {
+        console.error('Failed to sync task toggle to database:', error);
+      }
+    }
+  }
+  
   renderCurrentView();
   
   // Restore the active tab if we're in project detail view and timeline was active
@@ -1783,7 +1820,17 @@ function renderCreateProjectModalContent() {
 // ============================================
 // Dashboard Widget Edit Mode
 // ============================================
+// Dashboard Widget Order & Edit Mode
+// ============================================
 let dashboardEditMode = false;
+
+async function initDashboardWidgetOrder() {
+  // Load and apply saved widget order from DB or localStorage
+  const order = await loadWidgetOrder();
+  if (order && order.length > 0) {
+    applyWidgetOrder(order);
+  }
+}
 
 function toggleDashboardEditMode() {
   dashboardEditMode = !dashboardEditMode;
@@ -1843,14 +1890,83 @@ function initWidgetDragDrop() {
   });
 }
 
-function saveWidgetOrder() {
+async function saveWidgetOrder() {
   const grid = document.getElementById('dashboardWidgetsGrid');
   if (!grid) return;
   
   const widgets = grid.querySelectorAll('.dashboard-widget');
-  const order = Array.from(widgets).map((w, i) => i);
+  // Store widget IDs in their current order
+  const order = Array.from(widgets).map(w => w.dataset.widgetId || w.querySelector('h3')?.textContent?.trim() || '');
   
+  // Always save to localStorage as fallback
   localStorage.setItem('layerWidgetOrder', JSON.stringify(order));
+  
+  // Sync to DB if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.saveUserPreferences({ widget_order: order });
+      console.log('✓ Widget order synced to DB');
+    } catch (error) {
+      console.error('Failed to sync widget order to DB:', error);
+    }
+  }
+}
+
+async function loadWidgetOrder() {
+  let order = null;
+  
+  // Try to load from DB first if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const prefs = await window.LayerDB.getUserPreferences();
+      if (prefs && prefs.widget_order && Array.isArray(prefs.widget_order) && prefs.widget_order.length > 0) {
+        order = prefs.widget_order;
+        // Cache to localStorage
+        localStorage.setItem('layerWidgetOrder', JSON.stringify(order));
+      }
+    } catch (error) {
+      console.error('Failed to load widget order from DB:', error);
+    }
+  }
+  
+  // Fall back to localStorage
+  if (!order) {
+    try {
+      const stored = localStorage.getItem('layerWidgetOrder');
+      if (stored) {
+        order = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Failed to parse widget order from localStorage:', e);
+    }
+  }
+  
+  return order;
+}
+
+function applyWidgetOrder(order) {
+  if (!order || !Array.isArray(order) || order.length === 0) return;
+  
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+  
+  const widgets = Array.from(grid.querySelectorAll('.dashboard-widget'));
+  if (widgets.length === 0) return;
+  
+  // Create a map of widget ID to element
+  const widgetMap = new Map();
+  widgets.forEach(w => {
+    const id = w.dataset.widgetId || w.querySelector('h3')?.textContent?.trim() || '';
+    if (id) widgetMap.set(id, w);
+  });
+  
+  // Reorder based on saved order
+  order.forEach(id => {
+    const widget = widgetMap.get(id);
+    if (widget) {
+      grid.appendChild(widget);
+    }
+  });
 }
 
 // ============================================
