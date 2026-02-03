@@ -13959,65 +13959,57 @@ async function initDocsFromDB() {
 }
 
 async function addDoc(doc) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const savedDoc = await window.LayerDB.saveDoc(doc);
-      // Refresh local cache
-      const docs = await window.LayerDB.loadDocs();
-      saveDocs(docs);
-      return savedDoc;
-    } catch (error) {
-      console.error('Failed to save doc to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create documents', 'error');
+    return null;
   }
   
-  // Fallback to localStorage
-  const docs = loadDocs();
-  docs.unshift(doc);
-  saveDocs(docs);
-  return doc;
+  try {
+    const savedDoc = await window.LayerDB.saveDoc(doc);
+    // Refresh local cache
+    const docs = await window.LayerDB.loadDocs();
+    saveDocs(docs);
+    return savedDoc;
+  } catch (error) {
+    console.error('Failed to save doc to database:', error);
+    showToast('Failed to save document', 'error');
+    return null;
+  }
 }
 
 async function updateDoc(id, updates) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.updateDoc(id, updates);
-      const docs = await window.LayerDB.loadDocs();
-      saveDocs(docs);
-      return;
-    } catch (error) {
-      console.error('Failed to update doc in database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update documents', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  const docs = loadDocs();
-  const index = docs.findIndex(d => d.id === id);
-  if (index !== -1) {
-    docs[index] = { ...docs[index], ...updates, updatedAt: new Date().toISOString() };
+  try {
+    await window.LayerDB.updateDoc(id, updates);
+    const docs = await window.LayerDB.loadDocs();
     saveDocs(docs);
+  } catch (error) {
+    console.error('Failed to update doc in database:', error);
+    showToast('Failed to update document', 'error');
   }
 }
 
 async function deleteDoc(id) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.deleteDoc(id);
-      const docs = await window.LayerDB.loadDocs();
-      saveDocs(docs);
-      return;
-    } catch (error) {
-      console.error('Failed to delete doc from database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete documents', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  let docs = loadDocs();
-  docs = docs.filter(d => d.id !== id);
-  saveDocs(docs);
+  try {
+    await window.LayerDB.deleteDoc(id);
+    const docs = await window.LayerDB.loadDocs();
+    saveDocs(docs);
+  } catch (error) {
+    console.error('Failed to delete doc from database:', error);
+    showToast('Failed to delete document', 'error');
+  }
 }
 
 // ============================================
@@ -14025,6 +14017,12 @@ async function deleteDoc(id) {
 // ============================================
 function openDocEditor(docId = null) {
   toggleCreateDropdown();
+  
+  // Require authentication for creating new docs
+  if (!docId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
+    showToast('Please sign in to create documents', 'error');
+    return;
+  }
   
   let doc = null;
   if (docId) {
@@ -14245,7 +14243,7 @@ function openDocEditor(docId = null) {
   
   // Set up AI command (** trigger)
   setupDocAiCommand();
-  // Auto-create the document immediately if new
+  // Auto-create the document immediately if new (auth already checked at function start)
   if (!doc) {
     const newDoc = {
       id: currentDocId,
@@ -14256,29 +14254,19 @@ function openDocEditor(docId = null) {
       updatedAt: new Date().toISOString()
     };
     
-    // Use Supabase if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-      (async () => {
-        try {
-          const savedDoc = await window.LayerDB.saveDoc(newDoc);
-          // Update currentDocId to use database ID
-          currentDocId = savedDoc.id;
-          const docs = await window.LayerDB.loadDocs();
-          saveDocs(docs);
-        } catch (error) {
-          console.error('Failed to create doc in database:', error);
-          // Fallback to localStorage
-          const docs = loadDocs();
-          docs.unshift(newDoc);
-          saveDocs(docs);
-        }
-      })();
-    } else {
-      // Fallback to localStorage
-      const docs = loadDocs();
-      docs.unshift(newDoc);
-      saveDocs(docs);
-    }
+    // Save to Supabase (auth is guaranteed by check at function start)
+    (async () => {
+      try {
+        const savedDoc = await window.LayerDB.saveDoc(newDoc);
+        // Update currentDocId to use database ID
+        currentDocId = savedDoc.id;
+        const docs = await window.LayerDB.loadDocs();
+        saveDocs(docs);
+      } catch (error) {
+        console.error('Failed to create doc in database:', error);
+        showToast('Failed to save document', 'error');
+      }
+    })();
     
     setTimeout(() => {
       document.getElementById('docTitleInput')?.focus();
@@ -14697,64 +14685,56 @@ async function initExcelsFromDB() {
 }
 
 async function addExcel(excel) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const savedExcel = await window.LayerDB.saveExcel(excel);
-      const excels = await window.LayerDB.loadExcels();
-      saveExcels(excels);
-      return savedExcel;
-    } catch (error) {
-      console.error('Failed to save excel to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spreadsheets', 'error');
+    return null;
   }
   
-  // Fallback to localStorage
-  const excels = loadExcels();
-  excels.unshift(excel);
-  saveExcels(excels);
-  return excel;
+  try {
+    const savedExcel = await window.LayerDB.saveExcel(excel);
+    const excels = await window.LayerDB.loadExcels();
+    saveExcels(excels);
+    return savedExcel;
+  } catch (error) {
+    console.error('Failed to save excel to database:', error);
+    showToast('Failed to save spreadsheet', 'error');
+    return null;
+  }
 }
 
 async function updateExcel(id, updates) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.updateExcel(id, updates);
-      const excels = await window.LayerDB.loadExcels();
-      saveExcels(excels);
-      return;
-    } catch (error) {
-      console.error('Failed to update excel in database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update spreadsheets', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  const excels = loadExcels();
-  const index = excels.findIndex(e => e.id === id);
-  if (index !== -1) {
-    excels[index] = { ...excels[index], ...updates, updatedAt: new Date().toISOString() };
+  try {
+    await window.LayerDB.updateExcel(id, updates);
+    const excels = await window.LayerDB.loadExcels();
     saveExcels(excels);
+  } catch (error) {
+    console.error('Failed to update excel in database:', error);
+    showToast('Failed to update spreadsheet', 'error');
   }
 }
 
 async function deleteExcel(id) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.deleteExcel(id);
-      const excels = await window.LayerDB.loadExcels();
-      saveExcels(excels);
-      return;
-    } catch (error) {
-      console.error('Failed to delete excel from database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete spreadsheets', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  let excels = loadExcels();
-  excels = excels.filter(e => e.id !== id);
-  saveExcels(excels);
+  try {
+    await window.LayerDB.deleteExcel(id);
+    const excels = await window.LayerDB.loadExcels();
+    saveExcels(excels);
+  } catch (error) {
+    console.error('Failed to delete excel from database:', error);
+    showToast('Failed to delete spreadsheet', 'error');
+  }
 }
 
 // ============================================
@@ -14766,6 +14746,12 @@ const COLUMN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function openExcelEditor(excelId = null) {
   toggleCreateDropdown();
+  
+  // Require authentication for creating new spreadsheets
+  if (!excelId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
+    showToast('Please sign in to create spreadsheets', 'error');
+    return;
+  }
   
   let excel = null;
   if (excelId) {
@@ -14912,7 +14898,7 @@ function openExcelEditor(excelId = null) {
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   
-  // Auto-create the spreadsheet immediately if new
+  // Auto-create the spreadsheet immediately if new (auth already checked at function start)
   if (!excel) {
     const newExcel = {
       id: currentExcelId,
@@ -14923,29 +14909,19 @@ function openExcelEditor(excelId = null) {
       updatedAt: new Date().toISOString()
     };
     
-    // Use Supabase if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-      (async () => {
-        try {
-          const savedExcel = await window.LayerDB.saveExcel(newExcel);
-          // Update currentExcelId to use database ID
-          currentExcelId = savedExcel.id;
-          const excels = await window.LayerDB.loadExcels();
-          saveExcels(excels);
-        } catch (error) {
-          console.error('Failed to create excel in database:', error);
-          // Fallback to localStorage
-          const excels = loadExcels();
-          excels.unshift(newExcel);
-          saveExcels(excels);
-        }
-      })();
-    } else {
-      // Fallback to localStorage
-      const excels = loadExcels();
-      excels.unshift(newExcel);
-      saveExcels(excels);
-    }
+    // Save to Supabase (auth is guaranteed by check at function start)
+    (async () => {
+      try {
+        const savedExcel = await window.LayerDB.saveExcel(newExcel);
+        // Update currentExcelId to use database ID
+        currentExcelId = savedExcel.id;
+        const excels = await window.LayerDB.loadExcels();
+        saveExcels(excels);
+      } catch (error) {
+        console.error('Failed to create excel in database:', error);
+        showToast('Failed to save spreadsheet', 'error');
+      }
+    })();
     
     setTimeout(() => {
       document.getElementById('excelTitleInput')?.focus();
@@ -15005,33 +14981,20 @@ async function autoSaveExcel() {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) return;
   
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return; // Silently fail - user was warned on open
+  }
+  
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
   
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.updateExcel(currentExcelId, { title, data });
-      const excels = await window.LayerDB.loadExcels();
-      saveExcels(excels);
-      return;
-    } catch (error) {
-      console.error('Failed to auto-save excel to database:', error);
-    }
-  }
-  
-  // Fallback to localStorage
-  const excels = loadExcels();
-  const existingIndex = excels.findIndex(e => e.id === currentExcelId);
-  
-  if (existingIndex !== -1) {
-    excels[existingIndex] = {
-      ...excels[existingIndex],
-      title,
-      data,
-      updatedAt: new Date().toISOString()
-    };
+  try {
+    await window.LayerDB.updateExcel(currentExcelId, { title, data });
+    const excels = await window.LayerDB.loadExcels();
     saveExcels(excels);
+  } catch (error) {
+    console.error('Failed to auto-save excel to database:', error);
   }
 }
 
@@ -15263,64 +15226,56 @@ async function initSpacesFromDB() {
 }
 
 async function addSpace(space) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const savedSpace = await window.LayerDB.saveSpace(space);
-      const spaces = await window.LayerDB.loadSpaces();
-      saveSpaces(spaces);
-      return savedSpace;
-    } catch (error) {
-      console.error('Failed to save space to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spaces', 'error');
+    return null;
   }
   
-  // Fallback to localStorage
-  const spaces = loadSpaces();
-  spaces.unshift(space);
-  saveSpaces(spaces);
-  return space;
+  try {
+    const savedSpace = await window.LayerDB.saveSpace(space);
+    const spaces = await window.LayerDB.loadSpaces();
+    saveSpaces(spaces);
+    return savedSpace;
+  } catch (error) {
+    console.error('Failed to save space to database:', error);
+    showToast('Failed to save space', 'error');
+    return null;
+  }
 }
 
 async function updateSpace(id, updates) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.updateSpace(id, updates);
-      const spaces = await window.LayerDB.loadSpaces();
-      saveSpaces(spaces);
-      return;
-    } catch (error) {
-      console.error('Failed to update space in database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update spaces', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  const spaces = loadSpaces();
-  const index = spaces.findIndex(s => s.id === id);
-  if (index !== -1) {
-    spaces[index] = { ...spaces[index], ...updates, updatedAt: new Date().toISOString() };
+  try {
+    await window.LayerDB.updateSpace(id, updates);
+    const spaces = await window.LayerDB.loadSpaces();
     saveSpaces(spaces);
+  } catch (error) {
+    console.error('Failed to update space in database:', error);
+    showToast('Failed to update space', 'error');
   }
 }
 
 async function deleteSpace(id) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.deleteSpace(id);
-      const spaces = await window.LayerDB.loadSpaces();
-      saveSpaces(spaces);
-      return;
-    } catch (error) {
-      console.error('Failed to delete space from database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete spaces', 'error');
+    return;
   }
   
-  // Fallback to localStorage
-  let spaces = loadSpaces();
-  spaces = spaces.filter(s => s.id !== id);
-  saveSpaces(spaces);
+  try {
+    await window.LayerDB.deleteSpace(id);
+    const spaces = await window.LayerDB.loadSpaces();
+    saveSpaces(spaces);
+  } catch (error) {
+    console.error('Failed to delete space from database:', error);
+    showToast('Failed to delete space', 'error');
+  }
 }
 
 // Minimalistic SVG icons for spaces (instead of emojis)
@@ -15344,6 +15299,12 @@ const SPACE_ICON_SVGS = [
 ];
 
 function openNewSpaceModal() {
+  // Require authentication to create spaces
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spaces', 'error');
+    return;
+  }
+  
   // Close any open dropdowns
   closeSidebarCreateDropdown();
   
@@ -15497,6 +15458,13 @@ function selectSpaceIcon(button) {
 async function handleCreateSpace(event) {
   event.preventDefault();
   
+  // Require authentication (already checked in openNewSpaceModal, but double-check)
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spaces', 'error');
+    closeModal();
+    return;
+  }
+  
   const form = event.target;
   const name = form.name.value.trim();
   const icon = document.getElementById('selectedSpaceIcon').value;
@@ -15522,29 +15490,18 @@ async function handleCreateSpace(event) {
   // Reset pending members
   pendingInvitedMembers = [];
   
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.saveSpace(newSpace);
-      const spaces = await window.LayerDB.loadSpaces();
-      saveSpaces(spaces);
-      closeModal();
-      renderSpacesInSidebar();
-      showToast(`Space "${name}" created!`);
-      return;
-    } catch (error) {
-      console.error('Failed to save space to database:', error);
-    }
+  try {
+    await window.LayerDB.saveSpace(newSpace);
+    const spaces = await window.LayerDB.loadSpaces();
+    saveSpaces(spaces);
+    closeModal();
+    renderSpacesInSidebar();
+    showToast(`Space "${name}" created!`);
+  } catch (error) {
+    console.error('Failed to save space to database:', error);
+    showToast('Failed to create space', 'error');
+    closeModal();
   }
-  
-  // Fallback to localStorage
-  const spaces = loadSpaces();
-  spaces.push(newSpace);
-  saveSpaces(spaces);
-  
-  closeModal();
-  renderSpacesInSidebar();
-  showToast(`Space "${name}" created!`);
 }
 
 function renderSpacesInSidebar() {

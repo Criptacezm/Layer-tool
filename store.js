@@ -141,51 +141,71 @@ function saveProjects(projects) {
   }
 }
 
-async function addProject(projectData) {
-  // Use Supabase if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const newProject = await window.LayerDB.saveProject(projectData);
-      // Refresh local cache
-      const projects = await window.LayerDB.loadProjects();
-      saveProjects(projects);
-      return newProject;
-    } catch (error) {
-      console.error('Failed to save project to database:', error);
+// Enhanced save that always syncs to DB when authenticated
+async function saveProjectsWithSync(projects) {
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    
+    // Always sync all projects to DB if authenticated
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      // Sync each project that has an ID (exists in DB)
+      for (const project of projects) {
+        if (project.id) {
+          try {
+            await window.LayerDB.updateProject(project.id, {
+              name: project.name,
+              description: project.description,
+              status: project.status,
+              startDate: project.startDate,
+              targetDate: project.targetDate,
+              flowchart: project.flowchart,
+              columns: project.columns,
+              updates: project.updates,
+              milestones: project.milestones,
+              grip_diagram: project.gripDiagram,
+              tasks: project.tasks
+            });
+          } catch (error) {
+            console.error('Failed to sync project to DB:', project.id, error);
+          }
+        }
+      }
     }
+  } catch (e) {
+    console.error('Failed to save projects:', e);
+  }
+}
+
+async function addProject(projectData) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create projects', 'error');
+    return null;
   }
   
-  // Fallback to localStorage
-  const projects = loadProjects();
-  const newProject = {
-    id: generateId('PROJ'),
-    name: projectData.name,
-    status: projectData.status || 'todo',
-    startDate: projectData.startDate || new Date().toISOString().split('T')[0],
-    targetDate: projectData.targetDate,
-    description: projectData.description || '',
-    columns: [
-      { title: 'To Do', tasks: [] },
-      { title: 'In Progress', tasks: [] },
-      { title: 'Done', tasks: [] },
-    ],
-    updates: [
-      {
-        actor: 'You',
-        action: 'Project created',
-        time: 'just now'
-      }
-    ]
-  };
-  projects.push(newProject);
-  saveProjects(projects);
-  return newProject;
+  try {
+    const newProject = await window.LayerDB.saveProject(projectData);
+    // Refresh local cache
+    const projects = await window.LayerDB.loadProjects();
+    saveProjects(projects);
+    return newProject;
+  } catch (error) {
+    console.error('Failed to save project to database:', error);
+    showToast('Failed to save project', 'error');
+    return null;
+  }
 }
 
 async function updateProject(index, updates) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update projects', 'error');
+    return loadProjects();
+  }
+  
   const projects = loadProjects();
   
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[index]?.id) {
+  if (projects[index]?.id) {
     try {
       await window.LayerDB.updateProject(projects[index].id, updates);
       const updatedProjects = await window.LayerDB.loadProjects();
@@ -193,20 +213,23 @@ async function updateProject(index, updates) {
       return updatedProjects;
     } catch (error) {
       console.error('Failed to update project in database:', error);
+      showToast('Failed to update project', 'error');
     }
   }
   
-  if (projects[index]) {
-    projects[index] = { ...projects[index], ...updates };
-    saveProjects(projects);
-  }
   return projects;
 }
 
 async function deleteProject(index) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete projects', 'error');
+    return loadProjects();
+  }
+  
   const projects = loadProjects();
   
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[index]?.id) {
+  if (projects[index]?.id) {
     try {
       await window.LayerDB.deleteProject(projects[index].id);
       const updatedProjects = await window.LayerDB.loadProjects();
@@ -214,11 +237,10 @@ async function deleteProject(index) {
       return updatedProjects;
     } catch (error) {
       console.error('Failed to delete project from database:', error);
+      showToast('Failed to delete project', 'error');
     }
   }
   
-  projects.splice(index, 1);
-  saveProjects(projects);
   return projects;
 }
 
@@ -376,82 +398,89 @@ function saveBacklogTasks(tasks) {
 }
 
 async function addBacklogTask(title) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const tasks = await window.LayerDB.addBacklogTask(title);
-      saveBacklogTasks(tasks);
-      return tasks;
-    } catch (error) {
-      console.error('Failed to add backlog task to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to add tasks', 'error');
+    return loadBacklogTasks();
   }
   
-  const tasks = loadBacklogTasks();
-  tasks.push({
-    id: generateId('BACKLOG'),
-    title: title,
-    done: false,
-    createdAt: new Date().toISOString()
-  });
-  saveBacklogTasks(tasks);
-  return tasks;
+  try {
+    const tasks = await window.LayerDB.addBacklogTask(title);
+    saveBacklogTasks(tasks);
+    return tasks;
+  } catch (error) {
+    console.error('Failed to add backlog task to database:', error);
+    showToast('Failed to add task', 'error');
+    return loadBacklogTasks();
+  }
 }
 
 async function toggleBacklogTask(index) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update tasks', 'error');
+    return loadBacklogTasks();
+  }
+  
   const tasks = loadBacklogTasks();
   
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+  if (tasks[index]?.id) {
     try {
       const updatedTasks = await window.LayerDB.toggleBacklogTask(tasks[index].id);
       saveBacklogTasks(updatedTasks);
       return updatedTasks;
     } catch (error) {
       console.error('Failed to toggle backlog task in database:', error);
+      showToast('Failed to update task', 'error');
     }
   }
   
-  if (tasks[index]) {
-    tasks[index].done = !tasks[index].done;
-    saveBacklogTasks(tasks);
-  }
   return tasks;
 }
 
 async function updateBacklogTask(index, title) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update tasks', 'error');
+    return loadBacklogTasks();
+  }
+  
   const tasks = loadBacklogTasks();
   
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+  if (tasks[index]?.id) {
     try {
       const updatedTasks = await window.LayerDB.updateBacklogTask(tasks[index].id, title);
       saveBacklogTasks(updatedTasks);
       return updatedTasks;
     } catch (error) {
       console.error('Failed to update backlog task in database:', error);
+      showToast('Failed to update task', 'error');
     }
   }
   
-  if (tasks[index]) {
-    tasks[index].title = title;
-    saveBacklogTasks(tasks);
-  }
   return tasks;
 }
 
 async function deleteBacklogTask(index) {
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete tasks', 'error');
+    return loadBacklogTasks();
+  }
+  
   const tasks = loadBacklogTasks();
   
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && tasks[index]?.id) {
+  if (tasks[index]?.id) {
     try {
       const updatedTasks = await window.LayerDB.deleteBacklogTask(tasks[index].id);
       saveBacklogTasks(updatedTasks);
       return updatedTasks;
     } catch (error) {
       console.error('Failed to delete backlog task from database:', error);
+      showToast('Failed to delete task', 'error');
     }
   }
   
-  tasks.splice(index, 1);
-  saveBacklogTasks(tasks);
   return tasks;
 }
 
@@ -486,30 +515,21 @@ function saveIssues(issues) {
 }
 
 async function addIssue(issueData) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      const issues = await window.LayerDB.addIssue(issueData);
-      saveIssues(issues);
-      return issues;
-    } catch (error) {
-      console.error('Failed to add issue to database:', error);
-    }
+  // Require authentication - no localStorage fallback
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create issues', 'error');
+    return loadIssues();
   }
   
-  const issues = loadIssues();
-  const newIssue = {
-    id: generateIssueId(),
-    title: issueData.title,
-    description: issueData.description || '',
-    status: issueData.status || 'todo',
-    priority: issueData.priority || 'medium',
-    assignee: issueData.assignee || '',
-    dueDate: issueData.dueDate,
-    updated: 'just now'
-  };
-  issues.unshift(newIssue);
-  saveIssues(issues);
-  return issues;
+  try {
+    const issues = await window.LayerDB.addIssue(issueData);
+    saveIssues(issues);
+    return issues;
+  } catch (error) {
+    console.error('Failed to add issue to database:', error);
+    showToast('Failed to create issue', 'error');
+    return loadIssues();
+  }
 }
 
 // ============================================
