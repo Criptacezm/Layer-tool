@@ -245,6 +245,33 @@ EXCEPTION
 END $$;
 
 -- ============================================
+-- Followers/Following Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS followers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    follower_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    following_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'rejected'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(follower_id, following_id)
+);
+
+-- ============================================
+-- Team Invitations Table (enhanced)
+-- ============================================
+CREATE TABLE IF NOT EXISTS team_invitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    inviter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    invitee_email TEXT NOT NULL,
+    team_name TEXT NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'rejected'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- Project Invitations Table
 -- ============================================
 CREATE TABLE IF NOT EXISTS project_invitations (
@@ -309,6 +336,12 @@ CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitat
 CREATE INDEX IF NOT EXISTS idx_project_invitations_invitee_email ON project_invitations(invitee_email);
 CREATE INDEX IF NOT EXISTS idx_user_presence_user_id ON user_presence(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_presence_watching_project ON user_presence(watching_project_id);
+CREATE INDEX IF NOT EXISTS idx_followers_follower_id ON followers(follower_id);
+CREATE INDEX IF NOT EXISTS idx_followers_following_id ON followers(following_id);
+CREATE INDEX IF NOT EXISTS idx_followers_status ON followers(status);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_inviter_id ON team_invitations(inviter_id);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_invitee_email ON team_invitations(invitee_email);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON team_invitations(status);
 
 -- ============================================
 -- Row Level Security (RLS) - Safe Enable
@@ -464,6 +497,42 @@ CREATE POLICY "Users can insert own presence" ON user_presence FOR INSERT WITH C
 CREATE POLICY "Users can update own presence" ON user_presence FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own presence" ON user_presence FOR DELETE USING (auth.uid() = user_id);
 
+-- Followers policies
+DROP POLICY IF EXISTS "Users can view followers" ON followers;
+DROP POLICY IF EXISTS "Users can insert followers" ON followers;
+DROP POLICY IF EXISTS "Users can update followers" ON followers;
+DROP POLICY IF EXISTS "Users can delete followers" ON followers;
+CREATE POLICY "Users can view followers" ON followers FOR SELECT USING (
+    auth.uid() = follower_id OR 
+    auth.uid() = following_id OR
+    status = 'accepted'
+);
+CREATE POLICY "Users can insert followers" ON followers FOR INSERT WITH CHECK (auth.uid() = follower_id);
+CREATE POLICY "Users can update followers" ON followers FOR UPDATE USING (
+    auth.uid() = follower_id OR 
+    auth.uid() = following_id
+);
+CREATE POLICY "Users can delete followers" ON followers FOR DELETE USING (
+    auth.uid() = follower_id OR 
+    auth.uid() = following_id
+);
+
+-- Team Invitations policies
+DROP POLICY IF EXISTS "Users can view team invitations" ON team_invitations;
+DROP POLICY IF EXISTS "Users can insert team invitations" ON team_invitations;
+DROP POLICY IF EXISTS "Users can update team invitations" ON team_invitations;
+DROP POLICY IF EXISTS "Users can delete team invitations" ON team_invitations;
+CREATE POLICY "Users can view team invitations" ON team_invitations FOR SELECT USING (
+    auth.uid() = inviter_id OR 
+    auth.email() = invitee_email
+);
+CREATE POLICY "Users can insert team invitations" ON team_invitations FOR INSERT WITH CHECK (auth.uid() = inviter_id);
+CREATE POLICY "Users can update team invitations" ON team_invitations FOR UPDATE USING (
+    auth.uid() = inviter_id OR 
+    auth.email() = invitee_email
+);
+CREATE POLICY "Users can delete team invitations" ON team_invitations FOR DELETE USING (auth.uid() = inviter_id);
+
 -- ============================================
 -- Trigger for auto-updating timestamps
 -- ============================================
@@ -501,6 +570,8 @@ CREATE TRIGGER update_spaces_updated_at BEFORE UPDATE ON spaces FOR EACH ROW EXE
 CREATE TRIGGER update_recurring_tasks_updated_at BEFORE UPDATE ON recurring_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_invitations_updated_at BEFORE UPDATE ON project_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_presence_updated_at BEFORE UPDATE ON user_presence FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_followers_updated_at BEFORE UPDATE ON followers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_team_invitations_updated_at BEFORE UPDATE ON team_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- Trigger for auto-creating profile on signup

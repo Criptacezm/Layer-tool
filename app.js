@@ -357,6 +357,12 @@ function setActiveNav(view) {
     }
   });
   
+  // Clear active state from all space items
+  const spaceItems = document.querySelectorAll('.custom-space-item');
+  spaceItems.forEach(item => {
+    item.classList.remove('active');
+  });
+  
   // Mobile bottom nav
   const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
   mobileNavItems.forEach(item => {
@@ -1198,7 +1204,7 @@ function restoreScheduleScrollPosition() {
 }
 
 // Render current view with optional scroll preservation
-function renderCurrentView(preserveScroll = false) {
+async function renderCurrentView(preserveScroll = false) {
   // Create a context signature for this render
   const renderContext = `${currentView}_${selectedProjectIndex}_${currentProjectTab}`;
   
@@ -1274,7 +1280,7 @@ function renderCurrentView(preserveScroll = false) {
       updateBreadcrumb('Projects');
       break;
     case 'team':
-      viewsContainer.innerHTML = renderTeamView();
+      viewsContainer.innerHTML = await renderTeamView();
       updateBreadcrumb('Team');
       break;
     case 'ai':

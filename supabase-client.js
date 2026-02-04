@@ -1323,6 +1323,307 @@ window.LayerDB = {
     }
   },
   
+  // Followers/Following functions
+  followUser: async (followingUserId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('followers')
+      .insert({
+        follower_id: currentUser.id,
+        following_id: followingUserId,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  // Follow user by email (for the Add People feature)
+  followUserByEmail: async (followingEmail) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    console.log('Following user by email:', followingEmail);
+    console.log('Current user:', currentUser.email);
+    
+    // First, get the user ID from email (case-insensitive)
+    let { data: userData, error: userError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .ilike('email', followingEmail)  // ilike for case-insensitive matching
+      .single();
+    
+    // If user doesn't exist in profiles, we need to handle this
+    if (userError || !userData) {
+      console.log('User not found in profiles, checking if they exist in auth.users...');
+      
+      // Check if user exists in auth.users (case-insensitive)
+      const { data: authUsers, error: authError } = await supabaseClient
+        .from('users')
+        .select('id, email')
+        .ilike('email', followingEmail);  // ilike for case-insensitive matching
+      
+      if (authError || !authUsers || authUsers.length === 0) {
+        console.error('User does not exist in the system:', followingEmail);
+        // Provide more helpful error message
+        throw new Error(`User with email ${followingEmail} does not have an account. Please ask them to sign up first or check if the email is spelled correctly.`);
+      }
+      
+      const authUser = authUsers[0];
+      console.log('Found auth user:', authUser);
+      
+      // Try to create profile for this user
+      const { error: createProfileError } = await supabaseClient
+        .from('profiles')
+        .insert({
+          id: authUser.id,
+          email: authUser.email
+        })
+        .select()
+        .single();
+      
+      if (createProfileError) {
+        console.error('Failed to create profile:', createProfileError);
+        // If we can't create profile, try to get existing profile one more time
+        const { data: retryProfile, error: retryError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', authUser.id)
+          .single();
+        
+        if (retryError || !retryProfile) {
+          throw new Error(`Could not create or find profile for user ${followingEmail}. Please contact support.`);
+        }
+        userData = retryProfile;
+      } else {
+        console.log('Created profile for user');
+        userData = { id: authUser.id };
+      }
+    }
+    
+    console.log('Found user ID:', userData.id);
+    
+    // Check if already following
+    const { data: existingFollow } = await supabaseClient
+      .from('followers')
+      .select('id')
+      .match({
+        follower_id: currentUser.id,
+        following_id: userData.id
+      })
+      .maybeSingle();
+    
+    if (existingFollow) {
+      throw new Error('You are already following this user');
+    }
+    
+    // Create follow request
+    const { data, error } = await supabaseClient
+      .from('followers')
+      .insert({
+        follower_id: currentUser.id,
+        following_id: userData.id,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  unfollowUser: async (followingUserId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { error } = await supabaseClient
+      .from('followers')
+      .delete()
+      .match({
+        follower_id: currentUser.id,
+        following_id: followingUserId
+      });
+    
+    if (error) throw error;
+    return true;
+  },
+  
+  acceptFollowRequest: async (followerUserId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('followers')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .match({
+        follower_id: followerUserId,
+        following_id: currentUser.id
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  rejectFollowRequest: async (followerUserId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { error } = await supabaseClient
+      .from('followers')
+      .delete()
+      .match({
+        follower_id: followerUserId,
+        following_id: currentUser.id
+      });
+    
+    if (error) throw error;
+    return true;
+  },
+  
+  getFollowers: async () => {
+    if (!currentUser) return [];
+    
+    const { data, error } = await supabaseClient
+      .from('followers')
+      .select(`
+        *,
+        follower_profile:profiles!followers_follower_id_fkey(email, name, avatar_url),
+        following_profile:profiles!followers_following_id_fkey(email, name, avatar_url)
+      `)
+      .or(`following_id.eq.${currentUser.id},follower_id.eq.${currentUser.id}`)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getPendingFollowRequests: async () => {
+    if (!currentUser) return [];
+    
+    console.log('Fetching pending follow requests for user:', currentUser.id, currentUser.email);
+    
+    const { data, error } = await supabaseClient
+      .from('followers')
+      .select(`
+        *,
+        follower_profile:profiles!followers_follower_id_fkey(email, name, avatar_url)
+      `)
+      .match({
+        following_id: currentUser.id,
+        status: 'pending'
+      })
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching pending follow requests:', error);
+      throw error;
+    }
+    
+    console.log('Found pending follow requests:', data);
+    return data || [];
+  },
+  
+  // Team invitation functions
+  sendTeamInvitation: async (inviteeEmail, teamName, message = '') => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('team_invitations')
+      .insert({
+        inviter_id: currentUser.id,
+        invitee_email: inviteeEmail,
+        team_name: teamName,
+        message: message,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  getTeamInvitations: async () => {
+    if (!currentUser) return [];
+    
+    const { data, error } = await supabaseClient
+      .from('team_invitations')
+      .select(`
+        *,
+        inviter_profile:profiles!team_invitations_inviter_id_fkey(email, name, avatar_url)
+      `)
+      .or(`inviter_id.eq.${currentUser.id},invitee_email.eq.${currentUser.email}`)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  },
+  
+  acceptTeamInvitation: async (invitationId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('team_invitations')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .match({ id: invitationId })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  rejectTeamInvitation: async (invitationId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { error } = await supabaseClient
+      .from('team_invitations')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .match({ id: invitationId });
+    
+    if (error) throw error;
+    return true;
+  },
+  
+  // Email notification function
+  sendFollowerNotificationEmail: async (toEmail, followerName, action = 'follow') => {
+    if (!toEmail) return;
+    
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      
+      if (error || !session) {
+        console.error('No active session found:', error?.message);
+        return false;
+      }
+      
+      const token = session.access_token;
+      
+      const { data, error: invokeError } = await supabaseClient.functions.invoke('send-follower-notification', {
+        body: {
+          email: toEmail,
+          follower_name: followerName,
+          action: action
+        },
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      
+      if (invokeError) {
+        console.error('Failed to send follower notification email:', invokeError);
+        return false;
+      }
+      
+      console.log('Follower notification email sent successfully:', data);
+      return true;
+    } catch (error) {
+      console.error('Error sending follower notification email:', error);
+      return false;
+    }
+  },
+  
   // Direct Supabase access
   supabase: supabaseClient
 };

@@ -319,14 +319,39 @@ function renderInboxView() {
       <!-- Summary of Today Sidebar (Right) -->
       <aside class="dashboard-ai-sidebar">
         <div class="ai-sidebar-header">
-          <span class="ai-title">Summary of Today</span>
+          <div class="ai-header-top">
+            <div class="ai-sparkle-container">
+              <svg class="icon ai-icon-glasses" viewBox="0 0 24 24" fill="none" stroke="url(#aiSidebarGradient)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                <defs>
+                  <linearGradient id="aiSidebarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#6366f1">
+                      <animate attributeName="stop-color" values="#6366f1;#8b5cf6;#3b82f6;#06b6d4;#6366f1" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="50%" stop-color="#a855f7">
+                      <animate attributeName="stop-color" values="#a855f7;#ec4899;#8b5cf6;#3b82f6;#a855f7" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="100%" stop-color="#3b82f6">
+                      <animate attributeName="stop-color" values="#3b82f6;#06b6d4;#6366f1;#8b5cf6;#3b82f6" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                  </linearGradient>
+                </defs>
+                <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z" />
+              </svg>
+            </div>
+            <span class="ai-title">Layer Intelligence</span>
+          </div>
+          <span class="ai-subtitle">Summary of Today • ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </div>
-        <div class="ai-message-container">
-          <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
-            <span class="ai-typing-text"></span>
-            <span class="ai-cursor">|</span>
+        
+        <div class="ai-content-area">
+          <div class="ai-summary-card">
+            <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
+              <span class="ai-typing-text"></span>
+              <span class="ai-cursor"></span>
+            </div>
           </div>
         </div>
+
       </aside>
     </div>
   `;
@@ -393,63 +418,58 @@ async function toggleDashboardGoal(taskId) {
 
 function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   const hour = new Date().getHours();
-  let greeting = 'Hello!';
-  if (hour < 12) greeting = 'Good morning!';
-  else if (hour < 18) greeting = 'Good afternoon!';
-  else greeting = 'Good evening!';
+  let greeting = 'Hello';
+  if (hour < 12) greeting = 'Good morning';
+  else if (hour < 18) greeting = 'Good afternoon';
+  else greeting = 'Good evening';
   
-  let message = `${greeting} Here's your daily overview:\n\n`;
+  let message = `${greeting}. I've prepared your daily intelligence summary.\n\n`;
   
-  // Today's Tasks (using [Tasks] instead of emoji)
-  message += `[Tasks] Today's Tasks:\n`;
+  // Today's Tasks
+  message += `[Tasks] Focus for today:\n`;
   if (todayTasks.length === 0) {
-    message += `No tasks scheduled for today. Great time to plan ahead or tackle pending items.\n\n`;
+    message += `Your schedule is clear for today. It's a perfect opportunity for deep work or planning.\n\n`;
   } else {
     todayTasks.slice(0, 4).forEach(task => {
       const timeStr = task.time ? ` at ${task.time}` : '';
-      message += `- ${task.title}${timeStr}\n`;
+      message += `• ${task.title}${timeStr}\n`;
     });
     if (todayTasks.length > 4) {
-      message += `- ...and ${todayTasks.length - 4} more task${todayTasks.length - 4 > 1 ? 's' : ''}\n`;
+      message += `• ...and ${todayTasks.length - 4} other items\n`;
     }
     message += `\n`;
   }
   
-  // Upcoming This Week (using [Calendar] instead of emoji)
+  // Upcoming This Week
   const futureTasks = upcomingEvents.filter(e => e.date !== new Date().toISOString().split('T')[0]);
-  message += `[Calendar] Upcoming This Week:\n`;
+  message += `[Calendar] Coming up this week:\n`;
   if (futureTasks.length === 0) {
-    message += `No upcoming tasks scheduled. Consider planning your week.\n\n`;
+    message += `No immediate deadlines ahead. Stay proactive with your current projects.\n\n`;
   } else {
     futureTasks.slice(0, 3).forEach(task => {
       const eventDate = new Date(task.date);
       const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      message += `- ${task.title} — ${dayLabel}\n`;
+      message += `• ${task.title} — ${dayLabel}\n`;
     });
-    if (futureTasks.length > 3) {
-      message += `- ...and ${futureTasks.length - 3} more upcoming\n`;
-    }
     message += `\n`;
   }
   
-  // Projects Overview (using [Projects] instead of emoji)
-  message += `[Projects] Active Projects:\n`;
+  // Projects Overview
+  message += `[Projects] Current momentum:\n`;
   if (projects.length === 0) {
-    message += `No active projects. Create one to organize your work.\n\n`;
+    message += `No active projects detected. Start one to track your milestones.\n\n`;
   } else {
-    message += `You have ${projects.length} active project${projects.length > 1 ? 's' : ''} to manage.\n\n`;
+    message += `You are currently managing ${projects.length} active project${projects.length > 1 ? 's' : ''}.\n\n`;
   }
   
-  // Priority Tips (using [Tip] instead of emoji)
-  message += `[Tip] Focus Insight:\n`;
+  // Priority Tips
+  message += `[Tip] Insight:\n`;
   if (todayTasks.length > 3) {
-    message += `You have multiple tasks today. Consider prioritizing the most important ones first.`;
+    message += `With a busy day ahead, focus on your high-impact tasks first to maintain momentum.`;
   } else if (todayTasks.length === 0 && futureTasks.length > 0) {
-    message += `Clear day today. Perfect for deep work or preparing for upcoming tasks.`;
-  } else if (todayTasks.length > 0) {
-    message += `Stay focused and tackle your tasks one at a time.`;
+    message += `A quiet start to the day. Use this time to prepare for your upcoming milestones.`;
   } else {
-    message += `A quiet week ahead. Use this time to set new goals or reflect on progress.`;
+    message += `Maintain focus and tackle your goals one step at a time. Quality over quantity today.`;
   }
   
   return message;
@@ -466,18 +486,31 @@ function startAITypingAnimation() {
   if (!typingEl || !fullText) return;
   
   let charIndex = 0;
-  const typingSpeed = 12; // ms per character - fast and professional
+  const typingSpeed = 10; // Slightly faster for premium feel
   
   function typeChar() {
     if (charIndex < fullText.length) {
-      typingEl.textContent = fullText.substring(0, charIndex + 1);
+      let currentText = fullText.substring(0, charIndex + 1);
+      
+      // Handle formatting markers during typing or after?
+      // For now, let's type the raw text and replace markers at the end
+      typingEl.textContent = currentText;
       charIndex++;
       setTimeout(typeChar, typingSpeed);
     } else {
-      // Done typing, hide cursor after a moment
+      // Done typing, process markers into beautiful tags
+      let finalHTML = typingEl.textContent
+        .replace(/\[Tasks\]/g, '<span class="ai-insight-tag">Today\'s Tasks</span>')
+        .replace(/\[Calendar\]/g, '<span class="ai-insight-tag">Upcoming</span>')
+        .replace(/\[Projects\]/g, '<span class="ai-insight-tag">Active Projects</span>')
+        .replace(/\[Tip\]/g, '<span class="ai-insight-tag">Focus Tip</span>');
+      
+      typingEl.innerHTML = finalHTML;
+      
+      // Hide cursor after a moment
       setTimeout(() => {
         if (cursorEl) cursorEl.style.display = 'none';
-      }, 1000);
+      }, 800);
     }
   }
   
@@ -512,7 +545,8 @@ function getEventLinkedInfo(ev) {
   
   if (ev.projectId) {
     const projects = loadProjects();
-    const project = projects.find(p => p.id === ev.projectId);
+    // Use == for type coercion to handle string vs number IDs
+    const project = projects.find(p => p.id == ev.projectId);
     if (project) {
       links.push(`<span class="event-link-badge project-link" title="Project: ${project.name}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
@@ -525,7 +559,8 @@ function getEventLinkedInfo(ev) {
   
   if (ev.assignmentId) {
     const assignments = loadAssignments();
-    const assignment = assignments.find(a => a.id === ev.assignmentId);
+    // Use == for type coercion to handle string vs number IDs
+    const assignment = assignments.find(a => a.id == ev.assignmentId);
     if (assignment) {
       links.push(`<span class="event-link-badge assignment-link" title="Assignment: ${assignment.title}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
@@ -539,7 +574,8 @@ function getEventLinkedInfo(ev) {
   
   if (ev.spaceId) {
     const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
-    const space = spaces.find(s => s.id === ev.spaceId);
+    // Use == for type coercion to handle string vs number IDs
+    const space = spaces.find(s => s.id == ev.spaceId);
     if (space) {
       links.push(`<span class="event-link-badge space-link" title="Space: ${space.name}" style="--space-color: ${space.color || '#8b5cf6'};">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
@@ -560,7 +596,8 @@ function generateProjectOptions(selectedId = null) {
   const projects = loadProjects();
   let options = '<option value="">No project</option>';
   projects.forEach(p => {
-    const selected = p.id === selectedId ? 'selected' : '';
+    // Use == for type coercion to handle string vs number IDs
+    const selected = p.id == selectedId ? 'selected' : '';
     options += `<option value="${p.id}" ${selected}>${p.name}</option>`;
   });
   return options;
@@ -571,7 +608,8 @@ function generateAssignmentOptions(selectedId = null) {
   const assignments = loadAssignments();
   let options = '<option value="">No assignment</option>';
   assignments.forEach(a => {
-    const selected = a.id === selectedId ? 'selected' : '';
+    // Use == for type coercion to handle string vs number IDs
+    const selected = a.id == selectedId ? 'selected' : '';
     options += `<option value="${a.id}" ${selected}>${a.title}</option>`;
   });
   return options;
@@ -582,7 +620,8 @@ function generateSpaceOptions(selectedId = null) {
   const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
   let options = '<option value="">No space</option>';
   spaces.forEach(s => {
-    const selected = s.id === selectedId ? 'selected' : '';
+    // Use == for type coercion to handle string vs number IDs
+    const selected = s.id == selectedId ? 'selected' : '';
     options += `<option value="${s.id}" ${selected}>${s.name}</option>`;
   });
   return options;
@@ -1671,12 +1710,24 @@ function openEditTaskModal(eventId) {
   const endTime = task.endTime || '';
   const duration = calculateDuration(startTime, endTime);
   const locationValue = task.location || '';
+  const dateValue = task.date || new Date().toISOString().split('T')[0];
 
   const content = `
-    <form id="editEventForm" onsubmit="handleEditEventSubmit(event, ${eventId})">
+    <form id="editEventForm">
       <div class="form-group">
         <label>Title <span class="required">*</span></label>
         <input type="text" name="title" class="form-input" value="${task.title}" required>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+          Date <span class="required">*</span>
+        </label>
+        <input type="date" name="date" class="form-input" value="${dateValue}" required>
       </div>
       
       <div class="form-group">
@@ -1785,26 +1836,45 @@ function openEditTaskModal(eventId) {
     </form>
   `;
   openModal('Edit Task', content);
+  
+  // Attach event listener after modal is opened
+  setTimeout(() => {
+    const form = document.getElementById('editEventForm');
+    if (form) {
+      form.addEventListener('submit', (e) => handleEditEventSubmit(e, eventId));
+    }
+  }, 0);
 }
 
 async function handleEditEventSubmit(e, eventId) {
   e.preventDefault();
+  e.stopPropagation();
+  
   const form = e.target;
   const data = new FormData(form);
 
   const title = data.get('title')?.trim();
+  const date = data.get('date');
   const startTime = data.get('startTime');
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
-  const projectId = data.get('projectId') || null;
-  const assignmentId = data.get('assignmentId') || null;
-  const spaceId = data.get('spaceId') || null;
+  
+  // Handle project/assignment/space IDs - convert empty strings to null
+  const projectIdValue = data.get('projectId');
+  const projectId = projectIdValue && projectIdValue !== '' ? projectIdValue : null;
+  
+  const assignmentIdValue = data.get('assignmentId');
+  const assignmentId = assignmentIdValue && assignmentIdValue !== '' ? assignmentIdValue : null;
+  
+  const spaceIdValue = data.get('spaceId');
+  const spaceId = spaceIdValue && spaceIdValue !== '' ? spaceIdValue : null;
 
-  if (!title) return;
+  if (!title || !date) return;
 
   const updates = {
     title,
+    date,
     time: startTime || null,
     endTime: endTime || null,
     color,
@@ -4787,9 +4857,16 @@ async function handleCreateEventSubmit(e, date) {
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
-  const projectId = data.get('projectId') || null;
-  const assignmentId = data.get('assignmentId') || null;
-  const spaceId = data.get('spaceId') || null;
+  
+  // Handle project/assignment/space IDs - convert empty strings to null
+  const projectIdValue = data.get('projectId');
+  const projectId = projectIdValue && projectIdValue !== '' ? projectIdValue : null;
+  
+  const assignmentIdValue = data.get('assignmentId');
+  const assignmentId = assignmentIdValue && assignmentIdValue !== '' ? assignmentIdValue : null;
+  
+  const spaceIdValue = data.get('spaceId');
+  const spaceId = spaceIdValue && spaceIdValue !== '' ? spaceIdValue : null;
   
   // Repeat options
   const repeatType = data.get('repeatType') || 'none';
@@ -13282,26 +13359,1007 @@ function showComingSoonToast() {
 
 
 /* ============================================
-   Layer - Teams View
+   Layer - Teams View (ClickUp-Inspired Chat & Collaboration)
    ============================================ */
 
-function renderTeamView() {
+// Team View State
+let teamCurrentChannel = 'general';
+let teamCurrentTab = 'chat';
+let teamChannels = [
+  { id: 'general', name: 'General', type: 'channel', unread: 0, icon: 'hash' },
+  { id: 'welcome', name: 'Welcome', type: 'channel', unread: 2, icon: 'hash' },
+  { id: 'announcements', name: 'Announcements', type: 'channel', unread: 0, icon: 'megaphone' }
+];
+let teamDirectMessages = [
+  { id: 'dm-1', name: 'Team Member', avatar: 'TM', status: 'online', unread: 0 },
+  { id: 'dm-2', name: 'Project Lead', avatar: 'PL', status: 'away', unread: 1 }
+];
+let teamGroups = [
+  { id: 'grp-1', name: 'Design Team', members: 5, linkedProject: 'Website Redesign' },
+  { id: 'grp-2', name: 'Development', members: 8, linkedProject: null }
+];
+let teamMessages = {
+  'general': [
+    { id: 1, user: 'System', avatar: 'S', content: 'Welcome to #General! This is the main channel for team discussions.', time: '10:00 AM', isSystem: true }
+  ],
+  'welcome': [
+    { id: 1, user: 'System', avatar: 'S', content: 'Welcome to Layer! Start chatting with your team.', time: '9:00 AM', isSystem: true }
+  ],
+  'announcements': []
+};
+let teamFollowers = [
+  { id: 'f-1', name: 'You', avatar: 'YU', isOwner: true }
+];
+let pendingFollowRequests = [];
+
+async function renderTeamView() {
+  // Load pending follow requests if user is authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      pendingFollowRequests = await window.LayerDB.getPendingFollowRequests();
+      console.log('Loaded pending follow requests:', pendingFollowRequests);
+    } catch (error) {
+      console.error('Failed to load pending follow requests:', error);
+      pendingFollowRequests = [];
+    }
+  } else {
+    console.log('User not authenticated, clearing pending requests');
+    pendingFollowRequests = [];
+  }
+  
   return `
-    <div class="team-container">
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
+    <div class="team-chat-layout">
+      <!-- Chat Sidebar -->
+      <aside class="team-chat-sidebar">
+        <div class="team-chat-sidebar-header">
+          <div class="team-chat-title">
+            <span>Chat</span>
+          </div>
+          <div class="team-chat-header-actions">
+            <button class="team-icon-btn" onclick="openTeamSearchModal()" title="Search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+            </button>
+            <div class="team-create-dropdown-wrapper">
+              <button class="team-icon-btn team-create-btn" onclick="toggleTeamCreateDropdown()" title="Create">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                <svg class="dropdown-chevron-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="team-create-dropdown" id="teamCreateDropdown">
+                <button class="team-create-item" onclick="openCreateMessageModal(); closeTeamCreateDropdown();">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <div>
+                    <span class="create-item-title">Message</span>
+                    <span class="create-item-desc">Start a direct conversation</span>
+                  </div>
+                </button>
+                <button class="team-create-item" onclick="openCreateChannelModal(); closeTeamCreateDropdown();">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
+                  </svg>
+                  <div>
+                    <span class="create-item-title">Channel</span>
+                    <span class="create-item-desc">Conversations on specific topics</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Channel List -->
+        <div class="team-chat-list">
+          ${teamChannels.map(channel => `
+            <button class="team-chat-item ${teamCurrentChannel === channel.id ? 'active' : ''}" onclick="selectTeamChannel('${channel.id}')">
+              <div class="team-chat-item-icon ${channel.icon === 'megaphone' ? 'megaphone' : ''}">
+                ${channel.icon === 'hash' ? '#' : 
+                  channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
+              </div>
+              <span class="team-chat-item-name">${channel.name}</span>
+              ${channel.unread > 0 ? `<span class="team-chat-unread">${channel.unread}</span>` : ''}
+            </button>
+          `).join('')}
+          
+          <!-- Direct Messages Section -->
+          <div class="team-chat-section-divider">
+            <span>Direct Messages</span>
+            <button class="team-icon-btn-sm" onclick="openCreateMessageModal()" title="New Message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+          
+          ${teamDirectMessages.map(dm => `
+            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" onclick="selectTeamChannel('${dm.id}')">
+              <div class="team-dm-avatar ${dm.status}">
+                <span>${dm.avatar}</span>
+                <span class="team-dm-status-dot"></span>
+              </div>
+              <span class="team-chat-item-name">${dm.name}</span>
+              ${dm.unread > 0 ? `<span class="team-chat-unread">${dm.unread}</span>` : ''}
+            </button>
+          `).join('')}
+          
+          <!-- Groups Section -->
+          <div class="team-chat-section-divider">
+            <span>Groups</span>
+            <button class="team-icon-btn-sm" onclick="openCreateGroupModal()" title="Create Group">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+          
+          ${teamGroups.map(group => `
+            <button class="team-chat-item group" onclick="selectTeamGroup('${group.id}')">
+              <div class="team-group-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div class="team-group-info">
+                <span class="team-chat-item-name">${group.name}</span>
+                ${group.linkedProject ? `<span class="team-group-project">🔗 ${group.linkedProject}</span>` : ''}
+              </div>
+              <span class="team-group-members">${group.members}</span>
+            </button>
+          `).join('')}
+        </div>
+      </aside>
+      
+      <!-- Main Chat Area -->
+      <main class="team-chat-main">
+        ${renderTeamChatHeader()}
+        ${renderTeamChatContent()}
+        ${renderTeamMessageInput()}
+      </main>
+      
+      <!-- Members/Followers Panel -->
+      <aside class="team-members-panel" id="teamMembersPanel">
+        ${renderTeamMembersPanel()}
+      </aside>
+    </div>
+  `;
+}
+
+function renderTeamChatHeader() {
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) || 
+                  teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const channelName = channel ? channel.name : 'General';
+  const isChannel = channel?.type === 'channel';
+  
+  return `
+    <header class="team-chat-header">
+      <div class="team-chat-header-left">
+        <div class="team-channel-name">
+          ${isChannel ? '#' : ''} ${channelName}
+        </div>
+        <button class="team-header-action-btn" title="More options">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+          </svg>
+        </button>
+        <button class="team-header-action-btn star" title="Star channel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      </div>
+      
+      <nav class="team-chat-tabs">
+        <button class="team-tab ${teamCurrentTab === 'chat' ? 'active' : ''}" onclick="setTeamTab('chat')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
+          </svg>
+          Channel
+        </button>
+        <button class="team-tab ${teamCurrentTab === 'list' ? 'active' : ''}" onclick="setTeamTab('list')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          List
+        </button>
+        <button class="team-tab ${teamCurrentTab === 'board' ? 'active' : ''}" onclick="setTeamTab('board')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+          Board
+        </button>
+        <button class="team-tab ${teamCurrentTab === 'calendar' ? 'active' : ''}" onclick="setTeamTab('calendar')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Calendar
+        </button>
+        <button class="team-tab ${teamCurrentTab === 'whiteboard' ? 'active' : ''}" onclick="setTeamTab('whiteboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+          </svg>
+          Whiteboard
+        </button>
+        <button class="team-tab add-view" onclick="addTeamView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          View
+        </button>
+      </nav>
+      
+      <div class="team-chat-header-right">
+        <button class="team-header-btn" onclick="openTeamCallModal()" title="Start call">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        </button>
+        <button class="team-header-btn" onclick="toggleAutomation()" title="Automate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+          <span class="badge-count">1</span>
+        </button>
+        <button class="team-header-btn ai-btn" onclick="openTeamAI()" title="Ask AI">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z"/>
+          </svg>
+          Ask AI
+        </button>
+        <button class="team-header-btn share-btn" onclick="openTeamShareModal()" title="Share">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          Share
+        </button>
+        <button class="team-icon-btn" onclick="toggleTeamMembersPanel()" title="Toggle members panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
+        </button>
+      </div>
+    </header>
+  `;
+}
+
+function renderTeamChatContent() {
+  const messages = teamMessages[teamCurrentChannel] || [];
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel);
+  const channelName = channel ? channel.name : 'General';
+  
+  if (messages.length === 0) {
+    return `
+      <div class="team-chat-content">
+        <div class="team-chat-welcome">
+          <div class="team-welcome-bookmark">
+            <div class="bookmark-icons">
+              <span class="bookmark-icon green">📌</span>
+              <span class="bookmark-icon orange">📝</span>
+            </div>
+            <span>Bookmark tasks, add notes, and more</span>
+          </div>
+          
+          <div class="team-welcome-main">
+            <h2>Chat in #${channelName}</h2>
+            <p>Collaborate seamlessly across tasks and conversations. Start chatting with your team or connect tasks to stay on top of your work.</p>
+            
+            <div class="team-welcome-actions">
+              <button class="team-welcome-btn outline" onclick="openAddPeopleModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Add People
+              </button>
+              <button class="team-welcome-btn outline slack" onclick="importFromSlack()">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;">
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                </svg>
+                Import from Slack
+              </button>
+            </div>
+            
+            <div class="team-welcome-features">
+              <button class="team-feature-card" onclick="openTrackTasksModal()">
+                <div class="feature-icon blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                  </svg>
+                </div>
+                <div class="feature-text">
+                  <span class="feature-title">Track Tasks</span>
+                  <span class="feature-desc">Manage tasks, bugs, people, and more</span>
+                </div>
+              </button>
+              
+              <button class="team-feature-card" onclick="openAddDocModal()">
+                <div class="feature-icon green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div class="feature-text">
+                  <span class="feature-title">Add Doc</span>
+                  <span class="feature-desc">Take notes or create detailed documents</span>
+                </div>
+              </button>
+              
+              <button class="team-feature-card" onclick="startSyncUp()">
+                <div class="feature-icon teal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                </div>
+                <div class="feature-text">
+                  <span class="feature-title">Start SyncUp</span>
+                  <span class="feature-desc">Jump on a voice call or video call</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
-        <h3 class="empty-state-title">Team collaboration coming soon</h3>
-        <p class="empty-state-text">Invite team members and collaborate on projects together</p>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="team-chat-content">
+      <div class="team-messages-list">
+        ${messages.map(msg => `
+          <div class="team-message ${msg.isSystem ? 'system' : ''}">
+            <div class="team-message-avatar">
+              <span>${msg.avatar}</span>
+            </div>
+            <div class="team-message-body">
+              <div class="team-message-header">
+                <span class="team-message-user">${msg.user}</span>
+                <span class="team-message-time">${msg.time}</span>
+              </div>
+              <div class="team-message-content">${msg.content}</div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
+}
+
+function renderTeamMessageInput() {
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel);
+  const channelName = channel ? channel.name : 'General';
+  
+  return `
+    <div class="team-message-input-container">
+      <div class="team-message-prompt">
+        <span class="wave-emoji">👋</span>
+        <span>Send a message to #${channelName} to get the conversation started!</span>
+        <button class="dismiss-btn" onclick="dismissMessagePrompt()">Dismiss</button>
+      </div>
+      
+      <div class="team-message-input-wrapper">
+        <div class="team-input-toolbar">
+          <button class="toolbar-btn add" title="Add attachment">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <div class="message-type-dropdown">
+            <button class="toolbar-btn message-type" onclick="toggleMessageTypeDropdown()">
+              Message
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          <button class="toolbar-btn" title="AI">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Formatting">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 4v16M10 4v16M14 12h7M14 8h7M14 16h7"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Attach file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Mention">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Emoji">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="GIF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Record video">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Voice message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Screen record">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="File">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" title="Bookmark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="team-input-area">
+          <input type="text" class="team-message-input" placeholder="Write to ${channelName}, press 'space' for AI, '/' for commands" id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)">
+        </div>
+        
+        <div class="team-input-actions">
+          <button class="team-send-btn" onclick="sendTeamMessage()" title="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+          <button class="team-send-options" onclick="toggleSendOptions()" title="Send options">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTeamMembersPanel() {
+  return `
+    <div class="team-panel-header">
+      <span>Followers</span>
+      <button class="team-panel-close" onclick="toggleTeamMembersPanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="team-panel-tabs">
+      <button class="team-panel-tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        Followers <span class="tab-count">${teamFollowers.length}</span>
+      </button>
+      <button class="team-panel-tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Access <span class="tab-count">1</span>
+      </button>
+    </div>
+    
+    <div class="team-panel-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Search people or invite by email" class="team-search-input">
+    </div>
+    
+    <div class="team-panel-section">
+      <span class="section-label">FOLLOWERS</span>
+      <button class="team-add-people-btn" onclick="openAddPeopleModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add People
+      </button>
+    </div>
+    
+    <div class="team-followers-list">
+      ${teamFollowers.map(f => `
+        <div class="team-follower-item">
+          <div class="team-follower-avatar">
+            <span>${f.avatar}</span>
+          </div>
+          <span class="team-follower-name">${f.name}</span>
+          ${f.isOwner ? '<span class="team-owner-badge">Owner</span>' : ''}
+        </div>
+      `).join('')}
+    </div>
+    
+    <!-- Pending Follow Requests -->
+    ${pendingFollowRequests.length > 0 ? `
+      <div class="team-panel-section">
+        <span class="section-label">PENDING REQUESTS (${pendingFollowRequests.length})</span>
+      </div>
+      <div class="team-pending-requests">
+        ${pendingFollowRequests.map(request => `
+          <div class="team-request-item" data-request-id="${request.id}">
+            <div class="team-request-avatar">
+              <span>${request.follower_profile?.name?.charAt(0) || request.follower_profile?.email?.charAt(0) || '?'}</span>
+            </div>
+            <div class="team-request-info">
+              <span class="team-request-name">${request.follower_profile?.name || request.follower_profile?.email}</span>
+              <span class="team-request-email">${request.follower_profile?.email}</span>
+              <span class="team-request-time">${formatTimeAgo(request.created_at)}</span>
+            </div>
+            <div class="team-request-actions">
+              <button class="btn btn-sm btn-success" onclick="acceptFollowRequest('${request.id}', '${request.follower_id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                  <path d="M5 13l4 4L19 7"/>
+                </svg>
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="rejectFollowRequest('${request.id}', '${request.follower_id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+// Team View Helper Functions
+function selectTeamChannel(channelId) {
+  teamCurrentChannel = channelId;
+  renderCurrentView();
+}
+
+function selectTeamGroup(groupId) {
+  openModal('Group Details', '<p>Group management coming soon!</p>');
+}
+
+function setTeamTab(tab) {
+  teamCurrentTab = tab;
+  renderCurrentView();
+}
+
+function toggleTeamMembersPanel() {
+  const panel = document.getElementById('teamMembersPanel');
+  if (panel) {
+    panel.classList.toggle('collapsed');
+  }
+}
+
+function toggleTeamCreateDropdown() {
+  const dropdown = document.getElementById('teamCreateDropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
+  }
+}
+
+function closeTeamCreateDropdown() {
+  const dropdown = document.getElementById('teamCreateDropdown');
+  if (dropdown) {
+    dropdown.classList.remove('show');
+  }
+}
+
+function sendTeamMessage() {
+  const input = document.getElementById('teamMessageInput');
+  if (!input || !input.value.trim()) return;
+  
+  const message = {
+    id: Date.now(),
+    user: 'You',
+    avatar: 'YU',
+    content: input.value.trim(),
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    isSystem: false
+  };
+  
+  if (!teamMessages[teamCurrentChannel]) {
+    teamMessages[teamCurrentChannel] = [];
+  }
+  teamMessages[teamCurrentChannel].push(message);
+  
+  input.value = '';
+  renderCurrentView();
+}
+
+function handleTeamMessageKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendTeamMessage();
+  }
+}
+
+function dismissMessagePrompt() {
+  const prompt = document.querySelector('.team-message-prompt');
+  if (prompt) {
+    prompt.style.display = 'none';
+  }
+}
+
+// Modal Functions for Team Features
+function openCreateChannelModal() {
+  openModal('Create Channel', `
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Channel Name</label>
+        <input type="text" id="newChannelName" placeholder="e.g., design-team" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea id="newChannelDesc" placeholder="What is this channel about?" class="form-textarea"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createNewChannel()">Create Channel</button>
+      </div>
+    </div>
+  `);
+}
+
+function openCreateMessageModal() {
+  openModal('New Message', `
+    <div class="modal-form">
+      <div class="form-group">
+        <label>To</label>
+        <input type="text" id="dmRecipient" placeholder="Search for a team member..." class="form-input">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="startDirectMessage()">Start Conversation</button>
+      </div>
+    </div>
+  `);
+}
+
+function openCreateGroupModal() {
+  const projects = JSON.parse(localStorage.getItem('layerProjectsData') || '[]');
+  
+  openModal('Create Group', `
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Group Name</label>
+        <input type="text" id="newGroupName" placeholder="e.g., Marketing Team" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Link to Project (optional)</label>
+        <select id="groupLinkedProject" class="form-select">
+          <option value="">No project linked</option>
+          ${projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Add Members</label>
+        <input type="text" id="groupMembers" placeholder="Search for team members..." class="form-input">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createNewGroup()">Create Group</button>
+      </div>
+    </div>
+  `);
+}
+
+function openAddPeopleModal() {
+  // Check if user is authenticated
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in with Google to add people', 'error');
+    openAuthModal();
+    return;
+  }
+  
+  const currentUser = window.LayerDB.getCurrentUser();
+  
+  openModal('Add People', `
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Invite by email</label>
+        <input type="email" id="inviteEmail" placeholder="Enter email addresses..." class="form-input">
+        <small class="form-help">Enter the Google email of the person you want to add</small>
+      </div>
+      <div class="form-group">
+        <label>Your Google Email</label>
+        <div class="current-user-email">
+          <span class="email-display">${currentUser?.email || 'Not signed in'}</span>
+          ${currentUser?.email ? '<span class="email-status verified">Verified</span>' : ''}
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Or search existing team members</label>
+        <input type="text" id="searchMembers" placeholder="Search..." class="form-input">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addPeopleToChannel()">Add People</button>
+      </div>
+    </div>
+  `);
+}
+
+function createNewChannel() {
+  const name = document.getElementById('newChannelName')?.value?.trim();
+  if (!name) {
+    showNotification('Please enter a channel name', 'error');
+    return;
+  }
+  
+  const newChannel = {
+    id: 'ch-' + Date.now(),
+    name: name,
+    type: 'channel',
+    unread: 0,
+    icon: 'hash'
+  };
+  
+  teamChannels.push(newChannel);
+  teamMessages[newChannel.id] = [];
+  teamCurrentChannel = newChannel.id;
+  
+  closeModal();
+  showNotification(`Channel #${name} created!`, 'success');
+  renderCurrentView();
+}
+
+function createNewGroup() {
+  const name = document.getElementById('newGroupName')?.value?.trim();
+  const linkedProject = document.getElementById('groupLinkedProject')?.value;
+  
+  if (!name) {
+    showNotification('Please enter a group name', 'error');
+    return;
+  }
+  
+  const newGroup = {
+    id: 'grp-' + Date.now(),
+    name: name,
+    members: 1,
+    linkedProject: linkedProject || null
+  };
+  
+  teamGroups.push(newGroup);
+  
+  closeModal();
+  showNotification(`Group "${name}" created!`, 'success');
+  renderCurrentView();
+}
+
+function openTeamSearchModal() {
+  openModal('Search', `
+    <div class="modal-form">
+      <input type="text" placeholder="Search messages, channels, people..." class="form-input" autofocus>
+    </div>
+  `);
+}
+
+function openTeamCallModal() {
+  openModal('Start Call', `
+    <div class="modal-form" style="text-align:center;">
+      <p style="margin-bottom:16px;">Start a voice or video call with the channel</p>
+      <div class="form-actions" style="justify-content:center;">
+        <button class="btn btn-secondary" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          </svg>
+          Voice Call
+        </button>
+        <button class="btn btn-primary" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+          Video Call
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+function openTeamShareModal() {
+  openModal('Share Channel', `
+    <div class="modal-form">
+      <p>Share this channel with others</p>
+      <div class="form-group">
+        <input type="text" value="${window.location.href}" readonly class="form-input" onclick="this.select()">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="navigator.clipboard.writeText(window.location.href); showNotification('Link copied!', 'success'); closeModal();">Copy Link</button>
+      </div>
+    </div>
+  `);
+}
+
+function openTeamAI() {
+  showNotification('AI assistant for chat coming soon!', 'info');
+}
+
+function toggleAutomation() {
+  showNotification('Automation features coming soon!', 'info');
+}
+
+function addTeamView() {
+  showNotification('Custom views coming soon!', 'info');
+}
+
+function importFromSlack() {
+  showNotification('Slack import coming soon!', 'info');
+}
+
+function openTrackTasksModal() {
+  showNotification('Task tracking integration coming soon!', 'info');
+}
+
+function openAddDocModal() {
+  if (typeof openDocEditor === 'function') {
+    openDocEditor();
+  } else {
+    showNotification('Doc editor coming soon!', 'info');
+  }
+}
+
+function startSyncUp() {
+  openTeamCallModal();
+}
+
+function startDirectMessage() {
+  closeModal();
+  showNotification('Direct message started!', 'success');
+}
+
+async function addPeopleToChannel() {
+  const emailInput = document.getElementById('inviteEmail');
+  const email = emailInput?.value?.trim();
+  
+  if (!email) {
+    showNotification('Please enter an email address', 'error');
+    return;
+  }
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showNotification('Please enter a valid email address', 'error');
+    return;
+  }
+  
+  // Check if trying to add self
+  const currentUser = window.LayerDB.getCurrentUser();
+  if (currentUser?.email === email) {
+    showNotification('You cannot add yourself', 'error');
+    return;
+  }
+  
+  try {
+    // Follow user by email (creates follow request)
+    await window.LayerDB.followUserByEmail(email);
+    
+    // Send email notification
+    const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
+    await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'follow');
+    
+    closeModal();
+    showNotification(`Follow request sent to ${email}! They will receive an email notification and can accept in their followers sidebar.`, 'success');
+    
+    // Refresh team view to show pending invitations
+    setTimeout(() => {
+      renderCurrentView();
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error sending follow request:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = error.message;
+    if (errorMessage.includes('does not have an account')) {
+      errorMessage += ' Make sure the user has signed up with Google and try again.';
+    } else if (errorMessage.includes('already following')) {
+      errorMessage = 'You are already following this user.';
+    }
+    
+    showNotification('Failed to send follow request: ' + errorMessage, 'error');
+  }
+}
+
+function toggleMessageTypeDropdown() {
+  showNotification('Message types coming soon!', 'info');
+}
+
+function toggleSendOptions() {
+  showNotification('Send options coming soon!', 'info');
+}
+
+async function acceptFollowRequest(requestId, followerId) {
+  try {
+    // Accept the follow request
+    await window.LayerDB.acceptFollowRequest(followerId);
+    
+    // Send acceptance email
+    const currentUser = window.LayerDB.getCurrentUser();
+    const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
+    
+    // Get follower's email (this would need to be fetched from the request data)
+    const request = pendingFollowRequests.find(r => r.id === requestId);
+    if (request?.follower_profile?.email) {
+      await window.LayerDB.sendFollowerNotificationEmail(
+        request.follower_profile.email, 
+        currentUserName, 
+        'accept'
+      );
+    }
+    
+    // Remove from pending requests
+    pendingFollowRequests = pendingFollowRequests.filter(r => r.id !== requestId);
+    
+    // Add to followers list
+    const follower = request?.follower_profile;
+    if (follower) {
+      teamFollowers.push({
+        id: `f-${followerId}`,
+        name: follower.name || follower.email,
+        avatar: follower.name?.charAt(0) || follower.email?.charAt(0) || '?',
+        email: follower.email
+      });
+    }
+    
+    showNotification('Follow request accepted!', 'success');
+    renderCurrentView();
+    
+  } catch (error) {
+    console.error('Error accepting follow request:', error);
+    showNotification('Failed to accept follow request: ' + error.message, 'error');
+  }
+}
+
+async function rejectFollowRequest(requestId, followerId) {
+  try {
+    // Reject the follow request
+    await window.LayerDB.rejectFollowRequest(followerId);
+    
+    // Remove from pending requests
+    pendingFollowRequests = pendingFollowRequests.filter(r => r.id !== requestId);
+    
+    showNotification('Follow request rejected', 'info');
+    renderCurrentView();
+    
+  } catch (error) {
+    console.error('Error rejecting follow request:', error);
+    showNotification('Failed to reject follow request: ' + error.message, 'error');
+  }
 }
 
 
@@ -13329,6 +14387,7 @@ function renderSettingsView() {
     { value: 'purple', label: 'Purple' },
     { value: 'ocean', label: 'Ocean' },
     { value: 'forest', label: 'Forest' },
+    { value: 'darklime', label: 'Dark Lime' },
     { value: 'midnight', label: 'Midnight Blue' },
     { value: 'dracula', label: 'Dracula' },
     { value: 'gruvbox', label: 'Gruvbox Dark' },
@@ -13359,7 +14418,7 @@ function renderSettingsView() {
             `).join('')}
           </select>
         </div>
-        <div class="settings-item" id="themeModeToggleContainer" style="${currentTheme === 'dark' || currentTheme === 'light' ? 'display: none;' : ''}">
+        <div class="settings-item" id="themeModeToggleContainer" style="${currentTheme === 'dark' || currentTheme === 'light' || currentTheme === 'darklime' ? 'display: none;' : ''}">
           <div class="settings-label">
             <span>Theme Mode</span>
             <p class="settings-description">Toggle between light and dark variants of your theme</p>
@@ -13715,7 +14774,7 @@ function initThemeSelector() {
     
     // Show/hide mode toggle based on theme
     if (modeContainer) {
-      if (newTheme === 'dark' || newTheme === 'light') {
+      if (newTheme === 'dark' || newTheme === 'light' || newTheme === 'darklime') {
         modeContainer.style.display = 'none';
       } else {
         modeContainer.style.display = '';
@@ -16441,8 +17500,12 @@ function openSpaceView(spaceId) {
   // Set current space for doc/excel saving
   currentSpaceId = spaceId;
   
-  // Update active nav
-  document.querySelectorAll('.nav-item, .custom-space-item').forEach(item => {
+  // Update active nav - clear all main nav items and set space as active
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  document.querySelectorAll('.custom-space-item').forEach(item => {
     item.classList.remove('active');
   });
   

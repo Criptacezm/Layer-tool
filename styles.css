@@ -1012,12 +1012,12 @@ body {
 }
 
 .focus-toggle-btn .icon {
-  color: var(--primary);
+  color: currentColor;
   transition: color 0.2s ease;
 }
 
 .focus-toggle-btn:hover .icon {
-  color: var(--primary-dark);
+  color: currentColor;
 }
 
 .sidebar.collapsed .focus-toggle-btn span {
@@ -7717,16 +7717,9 @@ body {
   min-height: 100%;
 }
 
+/* AI Sidebar styles moved to components.css for enhanced UI/UX */
 .dashboard-ai-sidebar {
-  width: 300px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  border-left: 1px solid var(--glass-border);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex-shrink: 0;
+  /* See components.css */
 }
 
 .dashboard-main {
@@ -7734,12 +7727,8 @@ body {
   overflow-y: auto;
 }
 
+/* AI Sidebar header moved to components.css */
 .ai-sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
 }
 
 .ai-avatar {
@@ -7753,46 +7742,23 @@ body {
   color: white;
 }
 
+/* AI Title moved to components.css */
 .ai-title {
-  font-family: 'Source Code Pro', monospace;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--foreground);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
+/* AI Message container moved to components.css */
 .ai-message-container {
-  flex: 1;
-  overflow-y: auto;
 }
 
+/* AI Message moved to components.css */
 .ai-message {
-  font-family: 'Source Code Pro', monospace;
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--muted-foreground);
-  white-space: pre-line;
-  border-left: 2px solid var(--primary);
-  padding-left: 12px;
 }
 
+/* AI typing styles moved to components.css */
 .ai-typing-text {
-  font-family: 'Source Code Pro', monospace;
-  display: inline;
-  white-space: pre-wrap;
-  line-height: 1.8;
 }
 
 .ai-cursor {
-  font-family: 'Source Code Pro', monospace;
-  display: inline;
-  animation: cursorBlink 0.6s ease-in-out infinite;
-  color: var(--primary);
-  font-weight: 400;
 }
 
 @keyframes cursorBlink {
@@ -12215,9 +12181,8 @@ body {
   51%, 100% { opacity: 0; }
 }
 
+/* AI typing styles moved to components.css */
 .ai-typing-text {
-  white-space: pre-wrap;
-  line-height: 1.6;
 }
 
 /* Compact Activity Section */
