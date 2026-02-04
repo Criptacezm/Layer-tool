@@ -790,6 +790,12 @@ async function handleAuthSubmit(event) {
       }
       
       closeModal();
+      // Ensure profile exists for newly signed in user
+      try {
+        await window.LayerDB.ensureUserProfile();
+      } catch (profileError) {
+        console.error('Failed to ensure user profile after sign in:', profileError);
+      }
       await loadUserDataFromDB();
       const username = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
       updateUserDisplay({ username: username, email: data.user.email });
@@ -1035,6 +1041,13 @@ async function checkExistingSession() {
     if (user && session) {
       console.log('User session found:', user.email);
       
+      // Ensure profile exists for existing sessions too
+      try {
+        await window.LayerDB.ensureUserProfile();
+      } catch (profileError) {
+        console.error('Failed to ensure user profile for existing session:', profileError);
+      }
+      
       // For Google OAuth users, check if username exists in database
       const username = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
       
@@ -1054,6 +1067,14 @@ async function checkExistingSession() {
       console.log('Auth state changed:', authEvent, authUser?.email);
       
       if (authUser && authSession) {
+        // User signed in - ensure profile exists
+        try {
+          await window.LayerDB.ensureUserProfile();
+        } catch (profileError) {
+          console.error('Failed to ensure user profile:', profileError);
+          // Continue anyway as the app might still work
+        }
+        
         // User signed in
         const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
         
@@ -2683,3 +2704,44 @@ function openExcelFromWhiteboard(excelId) {
     }
   }, 500);
 }
+
+// Test function to verify profile creation (for debugging)
+window.testProfileCreation = async function() {
+  console.log('Testing profile creation...');
+  try {
+    const user = window.LayerDB.getCurrentUser();
+    if (!user) {
+      console.log('No user logged in');
+      return;
+    }
+    
+    console.log('Current user:', user.email);
+    
+    // Test profile creation
+    const profile = await window.LayerDB.ensureUserProfile();
+    console.log('Profile ensured:', profile);
+    
+    // Verify it exists
+    const { data: verifyProfile } = await window.LayerDB.supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', user.email)
+      .maybeSingle();
+      
+    console.log('Verified profile:', verifyProfile);
+    
+    if (verifyProfile) {
+      console.log('✅ Profile creation test PASSED');
+    } else {
+      console.log('❌ Profile creation test FAILED');
+    }
+  } catch (error) {
+    console.error('Profile creation test failed:', error);
+  }
+};
+
+// Utility to fix all missing profiles (run once)
+window.fixAllMissingProfiles = async function() {
+  console.log('Running profile fix utility...');
+  await window.LayerDB.fixMissingProfiles();
+};

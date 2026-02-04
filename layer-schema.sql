@@ -579,10 +579,16 @@ CREATE TRIGGER update_team_invitations_updated_at BEFORE UPDATE ON team_invitati
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email)
-    VALUES (new.id, new.email)
+    -- Insert profile with additional user metadata if available
+    INSERT INTO public.profiles (id, email, name, avatar_url)
+    VALUES (
+        NEW.id, 
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', NEW.email),
+        NEW.raw_user_meta_data->>'avatar_url'
+    )
     ON CONFLICT (id) DO NOTHING;
-    RETURN new;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

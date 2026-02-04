@@ -116,6 +116,132 @@ async function signInWithGoogle() {
   }
 }
 
+// Auto-create profile for new users (especially Google OAuth users)
+async function ensureUserProfile() {
+  if (!currentUser) {
+    console.log('No current user, skipping profile creation');
+    return null;
+  }
+
+  try {
+    // Check if profile already exists
+    const { data: existingProfile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+
+    if (existingProfile) {
+      console.log('Profile already exists for user:', currentUser.email);
+      return existingProfile;
+    }
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('Error checking profile existence:', profileError);
+      // Continue with creation attempt
+    }
+
+    // Create profile for the user
+    console.log('Creating profile for user:', currentUser.email);
+    
+    const userProfileData = {
+      id: currentUser.id,
+      email: currentUser.email,
+      name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+      avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || null
+    };
+
+    const { data: newProfile, error: createError } = await supabaseClient
+      .from('profiles')
+      .insert(userProfileData)
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Failed to create profile:', createError);
+      // Try one more time with minimal data
+      const { data: retryProfile, error: retryError } = await supabaseClient
+        .from('profiles')
+        .insert({
+          id: currentUser.id,
+          email: currentUser.email
+        })
+        .select()
+        .single();
+      
+      if (retryError) {
+        console.error('Retry profile creation failed:', retryError);
+        throw retryError;
+      }
+      
+      console.log('Profile created successfully on retry');
+      return retryProfile;
+    }
+
+    console.log('Profile created successfully:', newProfile);
+    return newProfile;
+  } catch (error) {
+    console.error('Error ensuring user profile:', error);
+    throw error;
+  }
+}
+
+// Utility function to fix missing profiles for all existing users
+async function fixMissingProfiles() {
+  try {
+    console.log('Checking for users without profiles...');
+    
+    // Get all auth users
+    const { data: authUsers, error: authError } = await supabaseClient
+      .from('users')
+      .select('id, email, raw_user_meta_data');
+    
+    if (authError) {
+      console.error('Failed to fetch auth users:', authError);
+      return;
+    }
+    
+    // Get all existing profiles
+    const { data: existingProfiles, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('id');
+    
+    if (profileError) {
+      console.error('Failed to fetch existing profiles:', profileError);
+      return;
+    }
+    
+    const existingProfileIds = new Set(existingProfiles.map(p => p.id));
+    const usersWithoutProfiles = authUsers.filter(user => !existingProfileIds.has(user.id));
+    
+    console.log(`Found ${usersWithoutProfiles.length} users without profiles`);
+    
+    // Create profiles for users without them
+    for (const user of usersWithoutProfiles) {
+      try {
+        const profileData = {
+          id: user.id,
+          email: user.email,
+          name: user.raw_user_meta_data?.full_name || user.raw_user_meta_data?.name || user.email?.split('@')[0] || 'User',
+          avatar_url: user.raw_user_meta_data?.avatar_url || user.raw_user_meta_data?.picture || null
+        };
+        
+        await supabaseClient
+          .from('profiles')
+          .insert(profileData);
+          
+        console.log(`Created profile for ${user.email}`);
+      } catch (error) {
+        console.error(`Failed to create profile for ${user.email}:`, error);
+      }
+    }
+    
+    console.log('Profile fix completed');
+  } catch (error) {
+    console.error('Error fixing missing profiles:', error);
+  }
+}
+
 async function signOut() {
   console.log('Signing out...');
   const { error } = await supabaseClient.auth.signOut();
@@ -1130,6 +1256,8 @@ window.LayerDB = {
   // Profile
   getProfile,
   updateProfile,
+  ensureUserProfile, // Add the new function
+  fixMissingProfiles, // Utility function to fix existing users
   
   // Preferences
   getUserPreferences,
