@@ -5496,7 +5496,17 @@ function renderProjectDetailView(projectIndex) {
         </main>
         
         <!-- Sidebar -->
-        <aside class="pd-sidebar">
+        <aside class="pd-sidebar" id="pdSidebar">
+          <!-- Collapse Toggle Button -->
+          <button class="pd-sidebar-collapse-btn" onclick="togglePdSidebar()" title="Collapse sidebar">
+            <svg class="pd-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            <svg class="pd-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+          
           <!-- Properties Section -->
           <div class="pd-sidebar-section">
             <div class="pd-sidebar-header">
@@ -5697,6 +5707,29 @@ function getActivityIcon(type) {
     create: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>'
   };
   return icons[type] || icons.create;
+}
+
+// Toggle Project Detail Sidebar Collapse
+function togglePdSidebar() {
+  const sidebar = document.getElementById('pdSidebar');
+  if (!sidebar) return;
+  
+  sidebar.classList.toggle('collapsed');
+  
+  // Save state to localStorage
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  localStorage.setItem('pdSidebarCollapsed', isCollapsed);
+}
+
+// Restore sidebar state on load
+function restorePdSidebarState() {
+  const sidebar = document.getElementById('pdSidebar');
+  if (!sidebar) return;
+  
+  const isCollapsed = localStorage.getItem('pdSidebarCollapsed') === 'true';
+  if (isCollapsed) {
+    sidebar.classList.add('collapsed');
+  }
 }
 // Timeline State is defined in Enhanced Timeline section below
 
@@ -7863,13 +7896,13 @@ function generateMilestoneId() {
 
 // Render milestones on a bar
 function renderBarMilestones(projectIndex, barId, barWidth) {
-  const milestones = loadBarMilestones(projectIndex, barId);
+  const milestones = loadBarMilestones(projectIndex, barId);  
   if (milestones.length === 0) return '';
   
   return milestones.map(m => {
     const leftPx = (m.position / 100) * barWidth;
     return `
-      <div class="tl-bar-milestone ${m.completed ? 'completed' : 'filled'}" 
+      <div class="tl-bar-milestone" 
            data-milestone-id="${m.id}"
            data-bar-id="${barId}"
            data-project-index="${projectIndex}"
@@ -7925,9 +7958,9 @@ function showBarContextMenu(x, y, barId, projectIndex, position, barWidth) {
   menu.innerHTML = `
     <div class="tl-bar-context-menu-item" onclick="addMilestoneAtPosition('${barId}', ${projectIndex}, ${position}, ${barWidth})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polygon points="12,2 15,8.5 22,9.27 17,14 18.18,21 12,17.77 5.82,21 7,14 2,9.27 9,8.5"/>
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
       </svg>
-      Add milestone here
+      Add marker here
     </div>
     <div class="tl-bar-context-menu-separator"></div>
     <div class="tl-bar-context-menu-item" onclick="closeAllContextMenus(); openEditColumnModal && openEditColumnModal(parseInt('${barId}'.replace('col_', '')), ${projectIndex})">
@@ -7974,13 +8007,7 @@ function showMilestoneContextMenu(e, milestoneId, barId, projectIndex) {
         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
-      Edit name
-    </div>
-    <div class="tl-bar-context-menu-item" onclick="toggleMilestoneComplete('${milestoneId}', '${barId}', ${projectIndex})">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      ${milestone.completed ? 'Mark incomplete' : 'Mark complete'}
+      Edit label
     </div>
     <div class="tl-bar-context-menu-separator"></div>
     <div class="tl-bar-context-menu-item danger" onclick="deleteMilestone('${milestoneId}', '${barId}', ${projectIndex})">
@@ -7988,7 +8015,7 @@ function showMilestoneContextMenu(e, milestoneId, barId, projectIndex) {
         <polyline points="3 6 5 6 21 6"/>
         <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
       </svg>
-      Delete milestone
+      Delete marker
     </div>
   `;
   
@@ -8024,9 +8051,9 @@ function addMilestoneAtPosition(barId, projectIndex, position, barWidth) {
   popup.style.top = `${barRect.bottom + 20}px`;
   
   popup.innerHTML = `
-    <div class="tl-milestone-input-title">New Milestone</div>
+    <div class="tl-milestone-input-title">New Marker</div>
     <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
-           placeholder="e.g., Beta, GA, Soft launch..." autofocus>
+           placeholder="e.g., POC, Beta, Internal Release..." autofocus>
     <div class="tl-milestone-input-actions">
       <button class="tl-milestone-input-btn cancel" onclick="closeAllContextMenus()">Cancel</button>
       <button class="tl-milestone-input-btn save" onclick="saveMilestoneFromInput('${barId}', ${projectIndex}, ${position})">Add</button>
@@ -8090,7 +8117,7 @@ function editMilestoneName(milestoneId, barId, projectIndex, x, y) {
   popup.style.top = `${y}px`;
   
   popup.innerHTML = `
-    <div class="tl-milestone-input-title">Edit Milestone</div>
+    <div class="tl-milestone-input-title">Edit Marker Label</div>
     <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
            value="${milestone.name}" autofocus>
     <div class="tl-milestone-input-actions">
@@ -12663,8 +12690,8 @@ async function handleInviteMember(event, projectIndex) {
       throw new Error('User not authenticated properly. Please sign in again.');
     }
     
-    // Create project link with current URL and project ID as parameter
-    const url = new URL(window.location.href);
+    // Create project link with base URL and project ID as parameter
+    const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('project', project.id);
     const projectLink = url.toString();
     
@@ -12750,19 +12777,8 @@ async function handleInviteMember(event, projectIndex) {
       // Note: We still continue - the invitation is saved and can be sent later
     }
     
-    // Add member to project locally (optimistic update)
-    if (!project.teamMembers) {
-      project.teamMembers = ['You'];
-    }
-    const memberName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    if (!project.teamMembers.includes(memberName)) {
-      project.teamMembers.push(memberName);
-    }
-    
-    // Update project with new member
-    await window.LayerDB.updateProject(project.id, { teamMembers: project.teamMembers });
-    const updatedProjects = await window.LayerDB.loadProjects();
-    saveProjects(updatedProjects);
+    // We don't add the member to the project yet - they need to accept the invitation
+    // The acceptance happens in checkInvitationAndJoin when they click the link
     
     closeModal();
     showToast(`Invitation sent to ${email}!`, 'success');
@@ -12960,6 +12976,11 @@ async function openProjectDetail(index) {
   }
   
   renderCurrentView();
+  
+  // Restore sidebar collapsed state after render
+  setTimeout(() => {
+    restorePdSidebarState();
+  }, 10);
 }
 
 // Poll for member presence updates

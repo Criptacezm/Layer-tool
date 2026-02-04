@@ -351,9 +351,16 @@ DROP POLICY IF EXISTS "Users can view own projects" ON projects;
 DROP POLICY IF EXISTS "Users can insert own projects" ON projects;
 DROP POLICY IF EXISTS "Users can update own projects" ON projects;
 DROP POLICY IF EXISTS "Users can delete own projects" ON projects;
-CREATE POLICY "Users can view own projects" ON projects FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own projects" ON projects FOR SELECT USING (
+    auth.uid() = user_id OR 
+    (team_members IS NOT NULL AND team_members @> jsonb_build_array(auth.email()))
+);
 CREATE POLICY "Users can insert own projects" ON projects FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own projects" ON projects FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own projects" ON projects FOR UPDATE USING (
+    auth.uid() = user_id OR 
+    (team_members IS NOT NULL AND team_members @> jsonb_build_array(auth.email()))
+);
 CREATE POLICY "Users can delete own projects" ON projects FOR DELETE USING (auth.uid() = user_id);
 
 -- Backlog Tasks policies

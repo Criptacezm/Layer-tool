@@ -85,10 +85,17 @@ async function signInWithGoogle() {
   console.log('Attempting Google sign in...');
   
   try {
+    // Preserve current URL parameters (like project ID) after redirect
+    const redirectTo = new URL(`${window.location.origin}${window.location.pathname}`);
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.forEach((value, key) => {
+      redirectTo.searchParams.set(key, value);
+    });
+
     const { data, error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/layer.html`,
+        redirectTo: redirectTo.toString(),
         queryParams: {
           access_type: 'offline',
           prompt: 'consent'
@@ -101,7 +108,7 @@ async function signInWithGoogle() {
       throw error;
     }
     
-    console.log('Google OAuth redirect initiated');
+    console.log('Google OAuth redirect initiated to:', redirectTo.toString());
     return data;
   } catch (error) {
     console.error('Failed to initiate Google sign in:', error);
@@ -1226,12 +1233,13 @@ window.LayerDB = {
         .from('projects')
         .select('id, team_members')
         .eq('id', projectId)
-        .single();
+        .maybeSingle();
 
       if (projectError) throw projectError;
+      if (!project) return { success: false, error: 'Project not found' };
 
       const teamMembers = project.team_members || [];
-      if (teamMembers.includes(currentUser.email)) {
+      if (Array.isArray(teamMembers) && teamMembers.includes(currentUser.email)) {
         return { success: true, message: 'Already a member' };
       }
 
@@ -1241,13 +1249,13 @@ window.LayerDB = {
         .select('*')
         .eq('project_id', projectId)
         .eq('invitee_email', currentUser.email)
-        .eq('status', 'sent');
+        .in('status', ['sent', 'pending']); // Allow pending too in case email service is slow
 
       if (inviteError) throw inviteError;
 
       if (invitations && invitations.length > 0) {
         // 3. Join project: update team_members and invitation status
-        const updatedMembers = [...teamMembers, currentUser.email];
+        const updatedMembers = Array.isArray(teamMembers) ? [...teamMembers, currentUser.email] : [currentUser.email];
         
         const { error: updateError } = await supabaseClient
           .from('projects')
@@ -1256,7 +1264,7 @@ window.LayerDB = {
 
         if (updateError) throw updateError;
 
-        // Update all pending invitations for this user and project to 'accepted'
+        // Update all pending/sent invitations for this user and project to 'accepted'
         await supabaseClient
           .from('project_invitations')
           .update({ status: 'accepted', updated_at: new Date().toISOString() })
@@ -1265,8 +1273,8 @@ window.LayerDB = {
 
         return { success: true, message: 'Joined project successfully' };
       }
-
-      return { success: false, error: 'No invitation found' };
+      
+      return { success: false, error: 'No valid invitation found for your email' };
     } catch (error) {
       console.error('Error joining project:', error);
       return { success: false, error: error.message };
@@ -1292,24 +1300,22 @@ window.LayerDB = {
       const token = session.access_token;
       
       // Call the Supabase Edge Function to send welcome email
-      const response = await fetch('/supabase/functions/send-welcome-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({
+      const { data, error: invokeError } = await supabaseClient.functions.invoke('send-welcome-email', {
+        body: {
           email: userEmail,
           name: userName || 'User'
-        })
+        },
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
       });
       
-      if (!response.ok) {
-        console.error('Failed to send welcome email:', await response.text());
+      if (invokeError) {
+        console.error('Failed to send welcome email:', invokeError);
         return false;
       }
       
-      console.log('Welcome email sent successfully');
+      console.log('Welcome email sent successfully:', data);
       return true;
     } catch (error) {
       console.error('Error sending welcome email:', error);

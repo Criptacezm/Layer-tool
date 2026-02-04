@@ -1022,6 +1022,10 @@ async function checkExistingSession() {
     // Initialize Supabase auth and check for existing session
     const { user, session } = await window.LayerDB.initAuth();
     
+    // Always check for URL parameters (invitations) even if not logged in yet
+    // handleUrlParameters will redirect to login if needed
+    await handleUrlParameters();
+    
     if (user && session) {
       console.log('User session found:', user.email);
       
@@ -1033,9 +1037,6 @@ async function checkExistingSession() {
       
       // Update UI with user info
       updateUserDisplay({ username: username, email: user.email });
-      
-      // Handle project invitation if present in URL
-      await handleUrlParameters();
       
       renderCurrentView();
     }
@@ -1111,6 +1112,22 @@ async function handleUrlParameters() {
   console.log('Handling URL parameters for project:', projectId);
   
   try {
+    // Check authentication
+    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+      console.log('User not authenticated, showing login for project invitation');
+      // Store project ID to show info in auth modal if we want
+      window.pendingProjectInvite = projectId;
+      
+      // Open auth modal after a small delay to ensure UI is ready
+      setTimeout(() => {
+        if (typeof openAuthModal === 'function') {
+          openAuthModal();
+          showNotification('Please sign in to join the project', 'info');
+        }
+      }, 500);
+      return;
+    }
+
     // 1. Try to find the project in already loaded projects
     let projects = loadProjects();
     let index = projects.findIndex(p => p.id === projectId);
@@ -1128,7 +1145,10 @@ async function handleUrlParameters() {
         index = projects.findIndex(p => p.id === projectId);
       } else {
         console.warn('Could not join project:', joinResult.error);
-        showNotification('Project not found or no invitation', 'error');
+        showNotification(joinResult.error || 'Project not found or no invitation', 'error');
+        // Clean up URL if invitation is invalid to avoid infinite loops/confusion
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
         return;
       }
     }
