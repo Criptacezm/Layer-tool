@@ -186,6 +186,70 @@ async function ensureUserProfile() {
   }
 }
 
+// Enhanced function to add team member directly to project
+async function addTeamMemberToProject(projectId, memberEmail) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  try {
+    console.log('Adding team member:', memberEmail, 'to project:', projectId);
+    
+    // First, ensure the user has a profile
+    const { data: userProfile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .ilike('email', memberEmail) // Case-insensitive email matching
+      .maybeSingle();
+    
+    if (profileError) {
+      console.error('Error checking user profile:', profileError);
+    }
+    
+    // If user doesn't have a profile, we'll still proceed but log it
+    if (!userProfile) {
+      console.warn('User does not have a profile, but proceeding with team addition');
+    }
+    
+    // Get current project team members
+    const { data: project, error: projectError } = await supabaseClient
+      .from('projects')
+      .select('team_members')
+      .eq('id', projectId)
+      .maybeSingle();
+    
+    if (projectError) throw projectError;
+    if (!project) throw new Error('Project not found');
+    
+    // Check if user is already a team member
+    const currentTeamMembers = project.team_members || [];
+    if (Array.isArray(currentTeamMembers) && currentTeamMembers.includes(memberEmail)) {
+      throw new Error('User is already a team member');
+    }
+    
+    // Add new member to team
+    const updatedTeamMembers = [...currentTeamMembers, memberEmail];
+    
+    // Update project with new team members
+    const { data: updatedProject, error: updateError } = await supabaseClient
+      .from('projects')
+      .update({ 
+        team_members: updatedTeamMembers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', projectId)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    
+    console.log('Team member added successfully:', memberEmail);
+    return updatedProject;
+    
+  } catch (error) {
+    console.error('Error adding team member:', error);
+    throw error;
+  }
+}
+
 // Utility function to fix missing profiles for all existing users
 async function fixMissingProfiles() {
   try {
@@ -1257,6 +1321,7 @@ window.LayerDB = {
   getProfile,
   updateProfile,
   ensureUserProfile, // Add the new function
+  addTeamMemberToProject, // Enhanced team member addition
   fixMissingProfiles, // Utility function to fix existing users
   
   // Preferences

@@ -2740,6 +2740,57 @@ window.testProfileCreation = async function() {
   }
 };
 
+// Test function to verify team member addition
+window.testTeamMemberAddition = async function(testEmail = 'test@example.com') {
+  console.log('Testing team member addition...');
+  try {
+    // First ensure we're logged in
+    const user = window.LayerDB.getCurrentUser();
+    if (!user) {
+      console.log('Please log in first');
+      return;
+    }
+    
+    // Create a test project if none exists
+    const projects = loadProjects();
+    let testProject = projects.find(p => p.name.includes('Test'));
+    
+    if (!testProject) {
+      // Create a test project
+      testProject = {
+        name: 'Test Project for Team Addition',
+        description: 'Temporary project for testing team member addition',
+        status: 'todo',
+        startDate: new Date().toISOString().split('T')[0],
+        targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        teamMembers: ['You'],
+        columns: [
+          { title: 'To Do', tasks: [] },
+          { title: 'In Progress', tasks: [] },
+          { title: 'Done', tasks: [] }
+        ]
+      };
+      
+      projects.push(testProject);
+      saveProjects(projects);
+      console.log('Created test project');
+    }
+    
+    const projectIndex = projects.indexOf(testProject);
+    console.log('Using project:', testProject.name);
+    
+    // Test adding team member
+    console.log('Adding team member:', testEmail);
+    await window.LayerDB.addTeamMemberToProject(testProject.id, testEmail);
+    
+    console.log('✅ Team member addition test PASSED');
+    console.log('Team member added successfully to project');
+    
+  } catch (error) {
+    console.error('Team member addition test failed:', error);
+  }
+};
+
 // Utility to fix all missing profiles (run once)
 window.fixAllMissingProfiles = async function() {
   console.log('Running profile fix utility...');

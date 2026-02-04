@@ -12752,7 +12752,7 @@ async function handleInviteMember(event, projectIndex) {
   const originalText = submitBtn?.textContent;
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Sending...';
+    submitBtn.textContent = 'Adding member...';
   }
   
   try {
@@ -12767,122 +12767,58 @@ async function handleInviteMember(event, projectIndex) {
       throw new Error('User not authenticated properly. Please sign in again.');
     }
     
-    // Create project link with base URL and project ID as parameter
-    const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set('project', project.id);
-    const projectLink = url.toString();
+    // Use the enhanced team member addition function
+    console.log('Adding team member directly to project...');
+    await window.LayerDB.addTeamMemberToProject(project.id, email);
     
-    const inviterName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Someone';
-    const inviterEmail = currentUser.email || 'unknown';
-    console.log('Inviter name:', inviterName);
-    console.log('Inviter email:', inviterEmail);
-    console.log('Creating invitation for:', email, 'on project:', project.id);
-    
-    // Create invitation record in database first
-    const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
-      .from('project_invitations')
-      .insert({
-        project_id: project.id,
-        inviter_id: currentUser.id,
-        invitee_email: email,
-        status: 'pending'
-      })
-      .select()
-      .single();
-    
-    if (inviteError) {
-      console.error('Database insert error:', inviteError);
-      throw inviteError;
-    }
-    
-    console.log('Invitation created in database:', invitationData);
-    
-    // Send email invitation via Supabase Edge Function
-    let emailSent = false;
+    // Also create invitation record for tracking (optional)
     try {
-      // Get the current session token for authentication
-      const { data: { session } } = await window.LayerDB.supabase.auth.getSession();
+      const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
+        .from('project_invitations')
+        .insert({
+          project_id: project.id,
+          inviter_id: currentUser.id,
+          invitee_email: email,
+          status: 'accepted' // Since we're adding directly, mark as accepted
+        })
+        .select()
+        .single();
       
-      const { data: emailData, error: emailError } = await window.LayerDB.supabase.functions.invoke('send-project-invitation', {
-        body: {
-          to: email,
-          projectName: project.name,
-          projectId: project.id,
-          inviterName: inviterName,
-          inviterEmail: inviterEmail,
-          projectLink: projectLink,
-          invitationId: invitationData.id
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
-      });
-      
-      if (emailError) {
-        console.error('Email function error:', emailError);
-        // If Edge Function doesn't exist or fails, try alternative
-        throw emailError;
+      if (inviteError) {
+        console.warn('Failed to create invitation record:', inviteError);
+        // Continue anyway since the team member was added successfully
+      } else {
+        console.log('Invitation record created:', invitationData);
       }
-      
-      emailSent = true;
-      console.log('Email sent successfully:', emailData);
-      
-      // Update invitation status to sent
-      await window.LayerDB.supabase
-        .from('project_invitations')
-        .update({ status: 'sent', updated_at: new Date().toISOString() })
-        .eq('id', invitationData.id);
-        
-    } catch (emailError) {
-      console.warn('Edge Function not available or failed:', emailError);
-      
-      // Fallback: For now, we'll save the invitation and show a message
-      // The invitation is already saved in the database
-      // User can configure email service later (see EMAIL_SETUP_INSTRUCTIONS.md)
-      
-      // Update invitation status to indicate it needs to be sent
-      await window.LayerDB.supabase
-        .from('project_invitations')
-        .update({ status: 'pending', updated_at: new Date().toISOString() })
-        .eq('id', invitationData.id);
-      
-      console.log('Invitation saved. Email service needs to be configured. See EMAIL_SETUP_INSTRUCTIONS.md for setup.');
-      
-      // Show warning to user that email might not be sent
-      showToast('Invitation saved but email might not be sent. Please ensure email service is configured.', 'warning');
-      
-      // Note: We still continue - the invitation is saved and can be sent later
+    } catch (inviteRecordError) {
+      console.warn('Error creating invitation record:', inviteRecordError);
     }
     
-    // We don't add the member to the project yet - they need to accept the invitation
-    // The acceptance happens in checkInvitationAndJoin when they click the link
-    
+    // Show success message
+    showToast(`Successfully added ${email} to the team!`, 'success');
     closeModal();
-    showToast(`Invitation sent to ${email}!`, 'success');
+    
+    // Refresh the project view
     renderCurrentView();
+    
   } catch (error) {
-    console.error('Failed to send invitation - Full error details:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Error adding team member:', error);
+    let errorMessage = 'Failed to add team member';
     
-    let errorMessage = 'Failed to send invitation. ';
-    
-    if (error.message?.includes('authenticated')) {
-      errorMessage += 'Please sign in again.';
-    } else if (error.code) {
-      errorMessage += `Database error: ${error.code} - ${error.message}`;
+    if (error.message?.includes('already a team member')) {
+      errorMessage = 'This user is already a team member';
+    } else if (error.message?.includes('Not authenticated')) {
+      errorMessage = 'Please sign in again';
     } else if (error.message) {
-      errorMessage += error.message;
-    } else {
-      errorMessage += 'Please try again.';
+      errorMessage = error.message;
     }
     
     showToast(errorMessage, 'error');
   } finally {
-    if (submitBtn) {
+    // Restore button state
+    if (submitBtn && originalText) {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText || 'Send Invitation';
+      submitBtn.textContent = originalText;
     }
   }
 }
