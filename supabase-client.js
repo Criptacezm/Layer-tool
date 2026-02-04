@@ -81,6 +81,22 @@ async function signIn(email, password) {
   return data;
 }
 
+async function signInWithGoogle() {
+  console.log('Attempting Google sign in...');
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/layer.html'
+    }
+  });
+
+  if (error) {
+    console.error('Google sign in error:', error);
+    throw error;
+  }
+  return data;
+}
+
 async function signOut() {
   console.log('Signing out...');
   const { error } = await supabaseClient.auth.signOut();
@@ -198,7 +214,7 @@ async function loadProjectsFromDB() {
   const { data, error } = await supabaseClient
     .from('projects')
     .select('*')
-    .eq('user_id', currentUser.id)
+    .or(`user_id.eq.${currentUser.id},team_members.cs.["${currentUser.email}"]`)
     .order('created_at', { ascending: false });
   
   if (error) throw error;
@@ -216,7 +232,8 @@ async function loadProjectsFromDB() {
     updates: p.updates,
     milestones: p.milestones || {},
     gripDiagram: p.grip_diagram || null,
-    tasks: p.tasks || []
+    tasks: p.tasks || [],
+    teamMembers: p.team_members || []
   }));
 }
 
@@ -1060,6 +1077,7 @@ window.LayerDB = {
   initAuth,
   signUp,
   signIn,
+  signInWithGoogle,
   signOut,
   getCurrentUser,
   isAuthenticated,
@@ -1159,6 +1177,62 @@ window.LayerDB = {
       return fallbackData || [];
     }
     return data || [];
+  },
+
+  checkInvitationAndJoin: async (projectId) => {
+    if (!currentUser) return { success: false, error: 'Not authenticated' };
+
+    try {
+      // 1. Check if user is already a member
+      const { data: project, error: projectError } = await supabaseClient
+        .from('projects')
+        .select('id, team_members')
+        .eq('id', projectId)
+        .single();
+
+      if (projectError) throw projectError;
+
+      const teamMembers = project.team_members || [];
+      if (teamMembers.includes(currentUser.email)) {
+        return { success: true, message: 'Already a member' };
+      }
+
+      // 2. Check for pending invitation
+      const { data: invitations, error: inviteError } = await supabaseClient
+        .from('project_invitations')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('invitee_email', currentUser.email)
+        .eq('status', 'sent');
+
+      if (inviteError) throw inviteError;
+
+      if (invitations && invitations.length > 0) {
+        // 3. Join project: update team_members and invitation status
+        const updatedMembers = [...teamMembers, currentUser.email];
+        
+        const { error: updateError } = await supabaseClient
+          .from('projects')
+          .update({ team_members: updatedMembers })
+          .eq('id', projectId);
+
+        if (updateError) throw updateError;
+
+        // Update all pending invitations for this user and project to 'accepted'
+        await supabaseClient
+          .from('project_invitations')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('project_id', projectId)
+          .eq('invitee_email', currentUser.email);
+
+        return { success: true, message: 'Joined project successfully' };
+      }
+
+      return { success: false, error: 'No invitation found' };
+    } catch (error) {
+      console.error('Error joining project:', error);
+      return { success: false, error: error.message };
+    }
   },
   
   // Direct Supabase access

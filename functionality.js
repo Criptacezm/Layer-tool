@@ -11669,8 +11669,9 @@ function copyProjectLink(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (project) {
-    const link = `${window.location.origin}/project/${project.id}`;
-    navigator.clipboard.writeText(link).then(() => {
+    const link = new URL(window.location.href);
+    link.searchParams.set('project', project.id);
+    navigator.clipboard.writeText(link.toString()).then(() => {
       showToast('Link copied to clipboard!');
     }).catch(() => {
       showToast('Failed to copy link');
@@ -12475,7 +12476,12 @@ async function handleInviteMember(event, projectIndex) {
   
   try {
     const currentUser = window.LayerDB.getCurrentUser();
-    const projectLink = `${window.location.origin}${window.location.pathname}?project=${project.id}`;
+    
+    // Create project link with current URL and project ID as parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', project.id);
+    const projectLink = url.toString();
+    
     const inviterName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Someone';
     
     // Create invitation record in database first

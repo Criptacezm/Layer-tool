@@ -83,26 +83,25 @@ const themeToggle = document.getElementById('themeToggle');
 // Initialization
 // ============================================
 function init() {
-  // Professional loading sequence - 1s animation + fade
+  // Professional loading sequence - refined timing for smooth animation
   const loadingScreen = document.getElementById('loadingScreen');
   const appContainer = document.getElementById('app');
   
   setTimeout(() => {
     loadingScreen.classList.add('fade-out');
     appContainer.style.opacity = '1';
-    appContainer.style.transition = 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+    appContainer.style.transition = 'opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
     
     // Remove loading screen from DOM after fade
     setTimeout(() => {
       loadingScreen.remove();
-    }, 800);
+    }, 1200);
     
-    // Show beta notification popup after short delay
     // Show beta notification popup after short delay
     setTimeout(() => {
       showBetaNotification();
-    }, 500);
-  }, 900);
+    }, 800);
+  }, 2200); // Increased delay to allow the beautiful reveal animation to play out
 
   // Load theme with mode support
   initTheme();
@@ -519,6 +518,8 @@ function openModal(title, content) {
 
 function closeModal() {
   modalOverlay.classList.remove('active');
+  const modalEl = document.getElementById('modal');
+  if (modalEl) modalEl.classList.remove('modal-auth-variant');
 }
 
 // ============================================
@@ -536,62 +537,114 @@ function renderAuthModal() {
   const title = isSignIn ? 'Sign In' : 'Create Account';
   
   const content = `
-    <div class="auth-form">
-      <div class="auth-tabs">
-        <button class="auth-tab ${isSignIn ? 'active' : ''}" onclick="switchAuthMode('signin')">Sign In</button>
-        <button class="auth-tab ${!isSignIn ? 'active' : ''}" onclick="switchAuthMode('signup')">Sign Up</button>
+    <div class="auth-container">
+      <div class="auth-header-minimal">
+        <h2 class="auth-title-large">${isSignIn ? 'Welcome back' : 'Join Layer'}</h2>
+        <p class="auth-subtitle-minimal">${isSignIn ? 'Sign in to your workspace to continue' : 'Create your professional workspace today'}</p>
+      </div>
+
+      <div class="auth-tabs-modern">
+        <button class="auth-tab-modern ${isSignIn ? 'active' : ''}" onclick="switchAuthMode('signin')">Sign In</button>
+        <button class="auth-tab-modern ${!isSignIn ? 'active' : ''}" onclick="switchAuthMode('signup')">Sign Up</button>
       </div>
       
-      <form id="authForm" onsubmit="handleAuthSubmit(event)">
-        <div class="form-group">
-          <label class="form-label">Email <span class="required">*</span></label>
-          <input type="email" class="form-input" id="authEmail" placeholder="Enter your email" required />
+      <form id="authForm" class="auth-form-modern" onsubmit="handleAuthSubmit(event)">
+        <div class="form-group-modern">
+          <label class="form-label-modern">Email Address</label>
+          <div class="input-wrapper-modern">
+            <svg class="input-icon-modern" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+            </svg>
+            <input type="email" class="form-input-modern" id="authEmail" placeholder="name@company.com" required />
+          </div>
         </div>
         
         ${!isSignIn ? `
-        <div class="form-group">
-          <label class="form-label">Username <span class="required">*</span></label>
-          <input type="text" class="form-input" id="authUsername" placeholder="Choose a username" required />
+        <div class="form-group-modern">
+          <label class="form-label-modern">Username</label>
+          <div class="input-wrapper-modern">
+            <svg class="input-icon-modern" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input type="text" class="form-input-modern" id="authUsername" placeholder="Your name" required />
+          </div>
         </div>
         ` : ''}
         
-        <div class="form-group">
-          <label class="form-label">Password <span class="required">*</span></label>
-          <input type="password" class="form-input" id="authPassword" placeholder="Enter your password" required minlength="6" />
+        <div class="form-group-modern">
+          <label class="form-label-modern">Password</label>
+          <div class="input-wrapper-modern">
+            <svg class="input-icon-modern" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <input type="password" class="form-input-modern" id="authPassword" placeholder="••••••••" required minlength="6" />
+          </div>
         </div>
         
         ${!isSignIn ? `
-        <div class="form-group">
-          <label class="form-label">Confirm Password <span class="required">*</span></label>
-          <input type="password" class="form-input" id="authConfirmPassword" placeholder="Confirm your password" required minlength="6" />
+        <div class="form-group-modern">
+          <label class="form-label-modern">Confirm Password</label>
+          <div class="input-wrapper-modern">
+            <svg class="input-icon-modern" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <input type="password" class="form-input-modern" id="authConfirmPassword" placeholder="••••••••" required minlength="6" />
+          </div>
         </div>
         ` : ''}
         
-        <div id="authError" class="auth-error" style="display: none;"></div>
+        <div id="authError" class="auth-error-modern" style="display: none;"></div>
         
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">${isSignIn ? 'Sign In' : 'Create Account'}</button>
-        </div>
+        <button type="submit" class="auth-submit-btn">
+          <span>${isSignIn ? 'Sign In' : 'Create Account'}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
       </form>
+
+      <div class="auth-divider-modern">
+        <span>or continue with</span>
+      </div>
+
+      <button type="button" class="google-auth-btn-modern" onclick="handleGoogleSignIn()">
+        <svg viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"></path>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+        </svg>
+        <span>Google</span>
+      </button>
       
-      <div class="auth-footer">
+      <div class="auth-footer-modern">
         ${isSignIn ? 
-          '<p>Don\'t have an account? <a href="#" onclick="switchAuthMode(\'signup\'); return false;">Sign up</a></p>' :
-          '<p>Already have an account? <a href="#" onclick="switchAuthMode(\'signin\'); return false;">Sign in</a></p>'
+          'Don\'t have an account? <button onclick="switchAuthMode(\'signup\')">Create one</button>' :
+          'Already have an account? <button onclick="switchAuthMode(\'signin\')">Sign in</button>'
         }
       </div>
     </div>
   `;
   
-  modalTitle.textContent = title;
+  modalTitle.textContent = ''; // Hide default title as we have a custom header
   modalContent.innerHTML = content;
+  const modalEl = document.getElementById('modal');
+  if (modalEl) modalEl.classList.add('modal-auth-variant');
   modalOverlay.classList.add('active');
 }
 
 function switchAuthMode(mode) {
   authMode = mode;
   renderAuthModal();
+}
+
+async function handleGoogleSignIn() {
+  try {
+    await window.LayerDB.signInWithGoogle();
+  } catch (error) {
+    console.error('Google sign in error:', error);
+    showAuthError(error.message || 'Failed to sign in with Google');
+  }
 }
 
 async function handleAuthSubmit(event) {
@@ -608,7 +661,12 @@ async function handleAuthSubmit(event) {
   // Disable button during submission
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = authMode === 'signup' ? 'Creating Account...' : 'Signing In...';
+    const btnText = submitBtn.querySelector('span');
+    if (btnText) {
+      btnText.textContent = authMode === 'signup' ? 'Creating Account...' : 'Signing In...';
+    } else {
+      submitBtn.textContent = authMode === 'signup' ? 'Creating Account...' : 'Signing In...';
+    }
   }
   
   try {
@@ -709,8 +767,19 @@ async function handleAuthSubmit(event) {
 
 function showAuthError(message) {
   const errorEl = document.getElementById('authError');
+  if (!errorEl) return;
   errorEl.textContent = message;
   errorEl.style.display = 'block';
+  
+  // Re-enable submit button if it exists
+  const submitBtn = document.querySelector('.auth-submit-btn');
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    const btnText = submitBtn.querySelector('span');
+    if (btnText) {
+      btnText.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+    }
+  }
 }
 
 function updateUserDisplay(user) {
@@ -904,6 +973,10 @@ async function checkExistingSession() {
       const username = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
       updateUserDisplay({ username: username, email: user.email });
       await loadUserDataFromDB();
+      
+      // Handle project invitation if present in URL
+      await handleUrlParameters();
+      
       renderCurrentView();
     }
     
@@ -915,6 +988,9 @@ async function checkExistingSession() {
         const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
         updateUserDisplay({ username: username, email: authUser.email });
         await loadUserDataFromDB();
+        
+        // Handle project invitation after sign in
+        await handleUrlParameters();
       } else {
         // User signed out
         const userInfo = document.getElementById('userInfo');
@@ -935,6 +1011,54 @@ async function checkExistingSession() {
     });
   } catch (error) {
     console.error('Session check error:', error);
+  }
+}
+
+/**
+ * Handles project invitations and specific project views via URL parameters
+ */
+async function handleUrlParameters() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectId = urlParams.get('project');
+  
+  if (!projectId) return;
+  
+  console.log('Handling URL parameters for project:', projectId);
+  
+  try {
+    // 1. Try to find the project in already loaded projects
+    let projects = loadProjects();
+    let index = projects.findIndex(p => p.id === projectId);
+    
+    if (index === -1) {
+      // 2. If not found, try to join if invited
+      showNotification('Checking invitation...', 'info');
+      const joinResult = await window.LayerDB.checkInvitationAndJoin(projectId);
+      
+      if (joinResult.success) {
+        showNotification(joinResult.message, 'success');
+        // Reload projects to include the newly joined one
+        await loadUserDataFromDB();
+        projects = loadProjects();
+        index = projects.findIndex(p => p.id === projectId);
+      } else {
+        console.warn('Could not join project:', joinResult.error);
+        showNotification('Project not found or no invitation', 'error');
+        return;
+      }
+    }
+    
+    // 3. Open project detail
+    if (index !== -1) {
+      selectedProjectIndex = index;
+      currentView = 'activity'; // Ensure we are in project view mode
+      
+      // Clean up URL without refreshing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  } catch (error) {
+    console.error('Error handling URL parameters:', error);
   }
 }
 
