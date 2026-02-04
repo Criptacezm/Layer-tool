@@ -5290,13 +5290,13 @@ function renderProjectDetailView(projectIndex) {
           </nav>
           
           <div class="pd-tabs">
-            <button class="pd-tab active" data-tab="overview" onclick="switchProjectTab('overview', ${projectIndex})">
+            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'overview' ? 'active' : (typeof currentProjectTab !== 'undefined' && currentProjectTab === 'timeline' ? '' : 'active')}" data-tab="overview" onclick="switchProjectTab('overview', ${projectIndex})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>
               </svg>
               Project detail
             </button>
-            <button class="pd-tab" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
+            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'timeline' ? 'active' : ''}" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="19" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
               </svg>
@@ -5715,6 +5715,11 @@ function switchProjectTab(tabName, projectIndex) {
     }
   });
   
+  // Update the global current project tab variable
+  if (typeof currentProjectTab !== 'undefined') {
+    currentProjectTab = tabName;
+  }
+  
   // Get the content container
   const contentScroll = document.querySelector('.pd-content-scroll');
   if (!contentScroll) return;
@@ -5740,8 +5745,180 @@ function switchProjectTab(tabName, projectIndex) {
 
 
 function renderOverviewTab(projectIndex, container) {
-  // Re-render the full project detail view (this reloads the entire project detail)
-  openProjectDetail(projectIndex);
+  // Re-render only the project detail content without calling openProjectDetail to avoid recursion
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (!project) return;
+  
+  const { total, completed, percentage } = calculateProgress(project.columns);
+  
+  // Dynamic status based on progress
+  let dynamicStatus = 'backlog';
+  if (percentage === 0) {
+    dynamicStatus = 'backlog';
+  } else if (percentage > 0 && percentage < 100) {
+    dynamicStatus = 'in-progress';
+  } else if (percentage === 100) {
+    dynamicStatus = 'done';
+  }
+  
+  const statusColor = getStatusColor(dynamicStatus);
+  const teamMembers = project.teamMembers || ['You'];
+  const projectPriority = project.priority;
+  const projectComments = project.comments || [];
+  const milestones = project.milestones || [];
+  
+  // Generate activity log
+  const activityLog = generateActivityLog(project, projectIndex);
+  
+  // Format dates
+  const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
+  const targetDateFormatted = formatDateAdvanced(project.targetDate);
+  
+  // Render the overview content directly into the container
+  container.innerHTML = `
+    <!-- Project Title Section -->
+    <div class="pd-title-section">
+      <div class="pd-project-icon">
+        <span>◇</span>
+      </div>
+      <div class="pd-title-content">
+        <h1 class="pd-title" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
+        <p class="pd-summary" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
+      </div>
+    </div>
+    
+    <!-- Properties Bar -->
+    <div class="pd-properties-bar">
+      <span class="pd-props-label">Properties</span>
+      
+      <button class="pd-prop-chip status" onclick="toggleStatusDropdown(${projectIndex}, event)">
+        <span class="pd-chip-dot" style="background: ${statusColor};"></span>
+        <span>${dynamicStatus.charAt(0).toUpperCase() + dynamicStatus.slice(1)}</span>
+      </button>
+      
+      <button class="pd-prop-chip priority" onclick="togglePriorityDropdown(${projectIndex}, event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        </svg>
+        <span>${projectPriority ? projectPriority.charAt(0).toUpperCase() + projectPriority.slice(1) : 'Medium'}</span>
+      </button>
+      
+      <button class="pd-prop-chip member">
+        <div class="pd-chip-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
+        <span>${teamMembers[0] || 'You'}</span>
+      </button>
+      
+      <button class="pd-prop-chip date" onclick="openEditStartDateModal(${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        <span>${startDateFormatted}</span>
+      </button>
+      
+      <span class="pd-date-arrow">→</span>
+      
+      <button class="pd-prop-chip date target" onclick="openEditTargetDateModal(${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        <span>${targetDateFormatted}</span>
+      </button>
+      
+      <button class="pd-prop-chip team">
+        <span class="pd-team-icon">✦</span>
+        <span>${project.team || 'Default'}</span>
+      </button>
+      
+      <button class="pd-more-props" onclick="showMorePropertiesMenu(${projectIndex}, event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Resources Section -->
+    <div class="pd-resources">
+      <span class="pd-resources-label">Resources</span>
+      <button class="pd-add-resource" onclick="openAddResourceModal(${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add document or link...
+      </button>
+      ${(project.resources || []).map((res, idx) => `
+        <div class="pd-resource-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>${res.name}</span>
+          <button class="pd-resource-remove" onclick="removeProjectResource(${projectIndex}, ${idx})">×</button>
+        </div>
+      `).join('')}
+    </div>
+    
+    
+    <!-- Description Section -->
+    <div class="pd-section">
+      <h3 class="pd-section-title">Description</h3>
+      <div class="pd-description-editor" contenteditable="true" onblur="handleUpdateProjectDescription(${projectIndex}, this.textContent)" data-placeholder="Add description...">${project.description || ''}</div>
+    </div>
+    
+    <!-- Tasks Kanban Section -->
+    <div class="pd-section pd-tasks-section">
+      <div class="pd-section-header">
+        <h3 class="pd-section-title">Tasks</h3>
+        <button class="pd-btn-secondary" onclick="handleAddColumn(${projectIndex})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add Column
+        </button>
+      </div>
+      <div class="pd-kanban">
+        ${project.columns.map((column, colIndex) => `
+          <div class="pd-kanban-col" data-col-index="${colIndex}">
+            <div class="pd-kanban-header">
+              <h4 class="pd-kanban-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
+              <div class="pd-kanban-meta">
+                <span class="pd-kanban-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
+                <button class="pd-kanban-del" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="pd-kanban-tasks">
+              ${column.tasks.map((task, taskIndex) => `
+                <div class="pd-task ${task.done ? 'done' : ''}" draggable="true" data-task-index="${taskIndex}">
+                  <label class="pd-task-check">
+                    <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
+                    <span class="pd-checkmark">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <span class="pd-task-title">${task.title}</span>
+                  <button class="pd-task-del" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="pd-add-task">
+              <input type="text" placeholder="+ Add a task..." onkeypress="handleAddProjectTaskKeypress(event, ${projectIndex}, ${colIndex})">
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 const RESOURCE_CAPACITY = 8;
@@ -5759,7 +5936,7 @@ if (typeof timelineState === 'undefined') {
     showDone: false,
     isDragging: false,
     isResizing: false,
-    zoom: 1, // 0.15 to 2 (0.15 = ~6 months view)
+    zoom: 0.5, // 0.15 to 2 (0.15 = ~6 months view, 0.5 = 50% zoomed out)
     panX: 0,
     showCriticalPath: false,
     selectedTaskIds: [],
@@ -10410,6 +10587,9 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
             <div class="tl-bar-priority-line" style="background: ${priorityColors[priority]};"></div>
           ` : ''}
           
+          <!-- Task label outside the bar -->
+          <span class="tl-bar-label" style="color: ${statusColor.text};">${displayLabel}</span>
+          
           <!-- Main bar body -->
           <div class="tl-bar-body" style="background: ${barBgColor}; border-color: ${barBorderColor};">
             <!-- Resize handle left -->
@@ -10420,9 +10600,6 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
             
             <!-- Bar content -->
             <div class="tl-bar-content">
-              <!-- Task label -->
-              <span class="tl-bar-label" style="color: ${statusColor.text};">${displayLabel}</span>
-              
               <!-- Right side indicators -->
               <div class="tl-bar-indicators">
                 ${item.dependsOn && item.dependsOn.length > 0 ? `
@@ -12475,7 +12652,16 @@ async function handleInviteMember(event, projectIndex) {
   }
   
   try {
+    // Refresh user data to ensure we have the latest session
+    console.log('Refreshing user session...');
+    await window.LayerDB.refreshUser();
+    
     const currentUser = window.LayerDB.getCurrentUser();
+    console.log('Current user:', currentUser);
+    
+    if (!currentUser || !currentUser.id) {
+      throw new Error('User not authenticated properly. Please sign in again.');
+    }
     
     // Create project link with current URL and project ID as parameter
     const url = new URL(window.location.href);
@@ -12483,6 +12669,10 @@ async function handleInviteMember(event, projectIndex) {
     const projectLink = url.toString();
     
     const inviterName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Someone';
+    const inviterEmail = currentUser.email || 'unknown';
+    console.log('Inviter name:', inviterName);
+    console.log('Inviter email:', inviterEmail);
+    console.log('Creating invitation for:', email, 'on project:', project.id);
     
     // Create invitation record in database first
     const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
@@ -12496,7 +12686,12 @@ async function handleInviteMember(event, projectIndex) {
       .select()
       .single();
     
-    if (inviteError) throw inviteError;
+    if (inviteError) {
+      console.error('Database insert error:', inviteError);
+      throw inviteError;
+    }
+    
+    console.log('Invitation created in database:', invitationData);
     
     // Send email invitation via Supabase Edge Function
     let emailSent = false;
@@ -12510,7 +12705,7 @@ async function handleInviteMember(event, projectIndex) {
           projectName: project.name,
           projectId: project.id,
           inviterName: inviterName,
-          inviterEmail: currentUser.email,
+          inviterEmail: inviterEmail,
           projectLink: projectLink,
           invitationId: invitationData.id
         },
@@ -12548,6 +12743,10 @@ async function handleInviteMember(event, projectIndex) {
         .eq('id', invitationData.id);
       
       console.log('Invitation saved. Email service needs to be configured. See EMAIL_SETUP_INSTRUCTIONS.md for setup.');
+      
+      // Show warning to user that email might not be sent
+      showToast('Invitation saved but email might not be sent. Please ensure email service is configured.', 'warning');
+      
       // Note: We still continue - the invitation is saved and can be sent later
     }
     
@@ -12569,8 +12768,24 @@ async function handleInviteMember(event, projectIndex) {
     showToast(`Invitation sent to ${email}!`, 'success');
     renderCurrentView();
   } catch (error) {
-    console.error('Failed to send invitation:', error);
-    showToast('Failed to send invitation. Please try again.', 'error');
+    console.error('Failed to send invitation - Full error details:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    let errorMessage = 'Failed to send invitation. ';
+    
+    if (error.message?.includes('authenticated')) {
+      errorMessage += 'Please sign in again.';
+    } else if (error.code) {
+      errorMessage += `Database error: ${error.code} - ${error.message}`;
+    } else if (error.message) {
+      errorMessage += error.message;
+    } else {
+      errorMessage += 'Please try again.';
+    }
+    
+    showToast(errorMessage, 'error');
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -12621,8 +12836,20 @@ function generateTeamChartData(project, teamMembers) {
 function handleAddColumn(projectIndex) {
   const columnName = prompt('Enter column name:', 'New Column');
   if (columnName && columnName.trim()) {
+    // Save the current active tab before re-render
+    const activeTab = document.querySelector('.pd-tab.active');
+    const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+    
     addColumnToProject(projectIndex, columnName.trim());
+    
     renderCurrentView();
+    
+    // Restore the active tab if we're in project detail view and timeline was active
+    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+      requestAnimationFrame(() => {
+        switchProjectTab('timeline', projectIndex);
+      });
+    }
   }
 }
 
@@ -12638,8 +12865,20 @@ function handleDeleteColumn(projectIndex, columnIndex) {
     }
   }
   
+  // Save the current active tab before re-render
+  const activeTab = document.querySelector('.pd-tab.active');
+  const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+  
   deleteColumnFromProject(projectIndex, columnIndex);
+  
   renderCurrentView();
+  
+  // Restore the active tab if we're in project detail view and timeline was active
+  if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+    requestAnimationFrame(() => {
+      switchProjectTab('timeline', projectIndex);
+    });
+  }
 }
 
 function handleRenameColumn(projectIndex, columnIndex, newTitle) {
@@ -13516,10 +13755,15 @@ function openFocusModeModal() {
   
   if (projects.length === 0) {
     openModal('Focus Mode', `
-      <div style="padding: 24px; text-align: center;">
-        <div style="font-size: 48px; margin-bottom: 16px;">🎯</div>
-        <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600;">No Projects Yet</h3>
-        <p style="color: var(--muted-foreground); margin-bottom: 24px;">
+      <div style="padding: 32px; text-align: center;">
+        <div style="margin-bottom: 20px;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--muted-foreground);">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: var(--foreground);">No Projects Yet</h3>
+        <p style="color: var(--muted-foreground); margin-bottom: 24px; font-size: 14px;">
           Create a project first to start focus mode.
         </p>
         <button class="btn btn-primary" onclick="closeModal(); currentView = 'activity'; renderCurrentView();">
@@ -13531,35 +13775,40 @@ function openFocusModeModal() {
   }
   
   const content = `
-    <div style="padding: 8px;">
+    <div style="padding: 24px 24px 16px 24px;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <div style="font-size: 48px; margin-bottom: 12px;">🎯</div>
-        <p style="color: var(--muted-foreground); font-size: 14px;">
+        <div style="margin-bottom: 12px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--muted-foreground);">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <p style="color: var(--muted-foreground); font-size: 14px; margin: 0;">
           Select a project to focus on and track your time
         </p>
       </div>
       
-      <div class="form-group">
-        <label class="form-label">Choose Project</label>
-        <select id="focusProjectSelect" class="form-select" style="font-size: 15px; padding: 12px;">
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--foreground); font-size: 14px;">Choose Project</label>
+        <select id="focusProjectSelect" class="form-select" style="font-size: 15px; padding: 12px 14px; width: 100%; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--foreground);">
           ${projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('')}
         </select>
       </div>
       
-      <div class="form-group">
-        <label class="form-label">Focus Duration (optional)</label>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="focus-duration-btn" data-duration="25" onclick="selectFocusDuration(this)">25 min</button>
-          <button type="button" class="focus-duration-btn" data-duration="45" onclick="selectFocusDuration(this)">45 min</button>
-          <button type="button" class="focus-duration-btn" data-duration="60" onclick="selectFocusDuration(this)">1 hour</button>
-          <button type="button" class="focus-duration-btn selected" data-duration="0" onclick="selectFocusDuration(this)">No limit</button>
+      <div class="form-group" style="margin-bottom: 28px;">
+        <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--foreground); font-size: 14px;">Focus Duration (optional)</label>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+          <button type="button" class="focus-duration-btn" data-duration="25" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">25 min</button>
+          <button type="button" class="focus-duration-btn" data-duration="45" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">45 min</button>
+          <button type="button" class="focus-duration-btn" data-duration="60" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">1 hour</button>
+          <button type="button" class="focus-duration-btn selected" data-duration="0" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">No limit</button>
         </div>
       </div>
       
-      <div class="form-actions" style="margin-top: 28px;">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="startFocusMode()" style="background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%)); border: none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+      <div class="form-actions" style="display: flex; gap: 12px; margin-top: 0; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeModal()" style="padding: 10px 16px; border-radius: 8px; font-weight: 500;">Cancel</button>
+        <button class="btn btn-primary" onclick="startFocusMode()" style="padding: 10px 20px; border-radius: 8px; font-weight: 500; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
           Start Focus
@@ -13575,8 +13824,10 @@ function openFocusModeModal() {
     const style = document.createElement('style');
     style.textContent = `
       .focus-duration-btn {
-        flex: 1;
-        padding: 10px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -13584,11 +13835,13 @@ function openFocusModeModal() {
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.2s ease;
+        text-align: center;
       }
       .focus-duration-btn:hover {
         border-color: var(--primary);
         color: var(--foreground);
+        background: var(--surface-hover);
       }
       .focus-duration-btn.selected {
         background: var(--primary);
@@ -19081,19 +19334,20 @@ function renderAIChatView() {
       <div class="ai-chat-panel">
         <!-- Header with Back Button and History Button -->
         <div class="ai-chat-header clickup-header">
-          <button class="ai-chat-back-btn" onclick="goBackToAILanding()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            <span>Back</span>
-          </button>
-          <button class="ai-chat-history-btn" onclick="toggleAIChatHistorySidebar()" title="Chat History">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span>History</span>
-          </button>
+          <h3 class="ai-chat-header-title">AI Assistant</h3>
+          <div class="ai-chat-header-actions">
+            <button class="ai-chat-back-btn" onclick="goBackToAILanding()" title="Back to AI Hub">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <button class="ai-chat-history-btn" onclick="toggleAIChatHistorySidebar()" title="Chat History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </button>
+          </div>
         </div>
         
         <!-- Messages Container - Centered -->

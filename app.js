@@ -9,6 +9,10 @@ let currentView = 'inbox';
 let currentFilter = 'all';
 let searchQuery = '';
 let selectedProjectIndex = null;
+let currentProjectTab = 'overview'; // Track the current tab within project detail view
+let lastRenderTime = 0; // Track last render time to prevent rapid renders
+let lastRenderContext = null; // Track render context to prevent redundant renders
+const RENDER_DEBOUNCE = 100; // Minimum time between renders in ms
 
 // ============================================
 // Notification System
@@ -639,11 +643,44 @@ function switchAuthMode(mode) {
 }
 
 async function handleGoogleSignIn() {
+  const googleBtn = document.querySelector('.google-auth-btn-modern');
+  const originalContent = googleBtn?.innerHTML;
+  
   try {
+    // Show loading state
+    if (googleBtn) {
+      googleBtn.disabled = true;
+      googleBtn.innerHTML = `
+        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+        </svg>
+        <span>Connecting...</span>
+      `;
+    }
+    
+    // Initiate Google OAuth
     await window.LayerDB.signInWithGoogle();
+    // User will be redirected to Google, then back to app
+    
   } catch (error) {
     console.error('Google sign in error:', error);
-    showAuthError(error.message || 'Failed to sign in with Google');
+    
+    // Restore button state
+    if (googleBtn && originalContent) {
+      googleBtn.disabled = false;
+      googleBtn.innerHTML = originalContent;
+    }
+    
+    // Show user-friendly error
+    let errorMessage = 'Failed to sign in with Google';
+    if (error.message?.includes('popup')) {
+      errorMessage = 'Popup blocked. Please allow popups for this site.';
+    } else if (error.message?.includes('redirect')) {
+      errorMessage = 'Redirect failed. Please check your configuration.';
+    }
+    
+    showAuthError(errorMessage);
   }
 }
 
@@ -783,11 +820,17 @@ function showAuthError(message) {
 }
 
 function updateUserDisplay(user) {
-  const signInBtn = document.getElementById('signInBtn');
-  if (signInBtn && user) {
+  console.log('Updating user display:', user);
+  
+  let signInBtn = document.getElementById('signInBtn');
+  let userInfo = document.getElementById('userInfo');
+  
+  // If user is logged in
+  if (user && user.email) {
     const displayName = user.username || user.email?.split('@')[0] || 'User';
     const initials = displayName.slice(0, 2).toUpperCase();
-    signInBtn.outerHTML = `
+    
+    const userInfoHTML = `
       <div class="user-info" id="userInfo">
         <div class="user-avatar-wrapper">
           <div class="user-avatar">${initials}</div>
@@ -803,6 +846,16 @@ function updateUserDisplay(user) {
         </button>
       </div>
     `;
+    
+    if (signInBtn) {
+      // Replace sign in button with user info
+      signInBtn.outerHTML = userInfoHTML;
+    } else if (userInfo) {
+      // Update existing user info
+      userInfo.outerHTML = userInfoHTML;
+    } else {
+      console.warn('Neither signInBtn nor userInfo found in DOM');
+    }
   }
 }
 
@@ -970,9 +1023,16 @@ async function checkExistingSession() {
     const { user, session } = await window.LayerDB.initAuth();
     
     if (user && session) {
+      console.log('User session found:', user.email);
+      
+      // For Google OAuth users, check if username exists in database
       const username = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
-      updateUserDisplay({ username: username, email: user.email });
+      
+      // Load user data from database
       await loadUserDataFromDB();
+      
+      // Update UI with user info
+      updateUserDisplay({ username: username, email: user.email });
       
       // Handle project invitation if present in URL
       await handleUrlParameters();
@@ -982,17 +1042,42 @@ async function checkExistingSession() {
     
     // Listen for auth state changes
     window.addEventListener('authStateChanged', async (event) => {
-      const { user: authUser, session: authSession } = event.detail;
+      const { user: authUser, session: authSession, event: authEvent } = event.detail;
+      
+      console.log('Auth state changed:', authEvent, authUser?.email);
       
       if (authUser && authSession) {
+        // User signed in
         const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
-        updateUserDisplay({ username: username, email: authUser.email });
+        
+        // Load user data
         await loadUserDataFromDB();
+        
+        // Update UI
+        updateUserDisplay({ username: username, email: authUser.email });
+        
+        // Close any open modals
+        closeModal();
+        
+        // Show success notification
+        showNotification(`Welcome back, ${username}!`, 'success');
+        
+        // Send welcome email to user's Google account
+        if (window.LayerDB && typeof window.LayerDB.sendWelcomeEmail === 'function') {
+          try {
+            await window.LayerDB.sendWelcomeEmail(authUser.email, username);
+          } catch (error) {
+            console.error('Failed to send welcome email:', error);
+          }
+        }
         
         // Handle project invitation after sign in
         await handleUrlParameters();
+        
+        renderCurrentView();
       } else {
         // User signed out
+        console.log('User signed out');
         const userInfo = document.getElementById('userInfo');
         if (userInfo) {
           userInfo.outerHTML = `
@@ -1006,8 +1091,8 @@ async function checkExistingSession() {
             </button>
           `;
         }
+        renderCurrentView();
       }
-      renderCurrentView();
     });
   } catch (error) {
     console.error('Session check error:', error);
@@ -1094,14 +1179,40 @@ function restoreScheduleScrollPosition() {
 
 // Render current view with optional scroll preservation
 function renderCurrentView(preserveScroll = false) {
+  // Create a context signature for this render
+  const renderContext = `${currentView}_${selectedProjectIndex}_${currentProjectTab}`;
+  
+  // Debounce rapid renders
+  const now = Date.now();
+  if ((now - lastRenderTime < RENDER_DEBOUNCE) && lastRenderContext === renderContext) {
+    // Skip rendering if called too rapidly with same context
+    return;
+  }
+  lastRenderTime = now;
+  lastRenderContext = renderContext;
+  
   // Save scroll position if we're on schedule view and preserving scroll
   if (preserveScroll && currentView === 'schedule') {
     saveScheduleScrollPosition();
   }
   
-  if (selectedProjectIndex !== null) {
+  // Only render project detail view if current view is not project-specific
+  if (selectedProjectIndex !== null && currentView !== 'schedule') {
     viewsContainer.innerHTML = renderProjectDetailView(selectedProjectIndex);
     updateBreadcrumb('Project Details');
+    
+    // Switch to the current project tab after rendering, with a small delay
+    // Only do this if we're not already on the correct tab
+    setTimeout(() => {
+      if (typeof switchProjectTab === 'function' && typeof currentProjectTab !== 'undefined') {
+        // Check if we need to switch tabs (avoid unnecessary switching)
+        const currentActiveTab = document.querySelector('.pd-tab.active');
+        if (!currentActiveTab || currentActiveTab.dataset.tab !== currentProjectTab) {
+          switchProjectTab(currentProjectTab, selectedProjectIndex);
+        }
+      }
+    }, 50);
+    
     return;
   }
 

@@ -83,18 +83,30 @@ async function signIn(email, password) {
 
 async function signInWithGoogle() {
   console.log('Attempting Google sign in...');
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin + '/layer.html'
-    }
-  });
+  
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/layer.html`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
+      }
+    });
 
-  if (error) {
-    console.error('Google sign in error:', error);
+    if (error) {
+      console.error('Google sign in error:', error);
+      throw error;
+    }
+    
+    console.log('Google OAuth redirect initiated');
+    return data;
+  } catch (error) {
+    console.error('Failed to initiate Google sign in:', error);
     throw error;
   }
-  return data;
 }
 
 async function signOut() {
@@ -107,7 +119,32 @@ async function signOut() {
 }
 
 function getCurrentUser() {
+  // If currentUser is not set, try to get it from session
+  if (!currentUser) {
+    // Attempt to get session synchronously from storage
+    const sessionStr = localStorage.getItem('supabase.auth.token');
+    if (sessionStr) {
+      try {
+        const sessionData = JSON.parse(sessionStr);
+        if (sessionData?.currentSession?.user) {
+          currentUser = sessionData.currentSession.user;
+        }
+      } catch (e) {
+        console.warn('Failed to parse stored session:', e);
+      }
+    }
+  }
   return currentUser;
+}
+
+async function refreshUser() {
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error) {
+    console.error('Failed to refresh user:', error);
+    return null;
+  }
+  currentUser = user;
+  return user;
 }
 
 function isAuthenticated() {
@@ -1080,6 +1117,7 @@ window.LayerDB = {
   signInWithGoogle,
   signOut,
   getCurrentUser,
+  refreshUser,
   isAuthenticated,
   
   // Profile
@@ -1232,6 +1270,50 @@ window.LayerDB = {
     } catch (error) {
       console.error('Error joining project:', error);
       return { success: false, error: error.message };
+    }
+  },
+  
+  // Send welcome email to user
+  sendWelcomeEmail: async (userEmail, userName) => {
+    if (!userEmail) return;
+    
+    try {
+      // Log for debugging
+      console.log('Sending welcome email to:', userEmail);
+      
+      // Get the current user session token for authentication
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      
+      if (error || !session) {
+        console.error('No active session found:', error?.message);
+        return false;
+      }
+      
+      const token = session.access_token;
+      
+      // Call the Supabase Edge Function to send welcome email
+      const response = await fetch('/supabase/functions/send-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          name: userName || 'User'
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to send welcome email:', await response.text());
+        return false;
+      }
+      
+      console.log('Welcome email sent successfully');
+      return true;
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      return false;
     }
   },
   

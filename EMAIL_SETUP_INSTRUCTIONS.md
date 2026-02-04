@@ -1,83 +1,70 @@
-# Email Invitation Setup Instructions
+# Email Welcome Notification Setup
 
-To enable automatic email sending for project invitations, you need to set up a Supabase Edge Function with an email service provider.
+This document explains how to set up the welcome email notification that is sent to users when they sign in with Google to your Layer application.
 
-## Quick Setup: Using Resend (Recommended - 5 minutes)
+## How It Works
 
-### Step 1: Get Resend API Key
-1. Sign up for free at [resend.com](https://resend.com) (free tier: 3,000 emails/month)
-2. Go to API Keys in your dashboard
-3. Create a new API key and copy it
-4. Add and verify your domain (or use Resend's test domain for testing)
+When a user successfully signs in with their Google account, the application will automatically trigger a welcome email notification to their registered email address. This provides immediate confirmation that they've successfully logged in to Layer.
 
-### Step 2: Deploy the Edge Function
+## Implementation Details
 
-1. **Install Supabase CLI** (if not already installed):
-   ```bash
-   npm install -g supabase
-   ```
+### 1. Frontend Integration
+- The `signInWithGoogle()` function in `supabase-client.js` initiates the OAuth flow
+- When authentication succeeds, an `authStateChanged` event is fired
+- The event handler in `app.js` calls `window.LayerDB.sendWelcomeEmail()` with the user's email and name
+- This triggers an HTTP request to the Supabase Edge Function
 
-2. **Login to Supabase**:
-   ```bash
-   supabase login
-   ```
+### 2. Backend Service (Supabase Edge Function)
+- Located at `supabase/functions/send-welcome-email/index.ts`
+- Receives the user's email and name via HTTP POST
+- Contains both HTML and plain text email templates
+- Designed to integrate with email services like Resend, SendGrid, etc.
 
-3. **Link your project**:
-   ```bash
-   supabase link --project-ref uqfnadlyrbprzxgjkvtc
-   ```
-   (Replace with your actual project ref if different)
+## Required Setup for Production
 
-4. **Deploy the function**:
-   ```bash
-   supabase functions deploy send-project-invitation
-   ```
+### 1. Deploy the Supabase Edge Function
+```bash
+# Navigate to your Supabase project
+supabase functions deploy send-welcome-email
+```
 
-### Step 3: Set Environment Variables
+### 2. Configure Email Service
+The current implementation includes commented code for using Resend as the email service. To activate:
 
-In your Supabase dashboard:
-1. Go to **Project Settings** > **Edge Functions** > **Secrets**
-2. Click **Add new secret** and add:
-   - **Name**: `RESEND_API_KEY`
-   - **Value**: Your Resend API key (starts with `re_`)
-   
-3. Add another secret:
-   - **Name**: `RESEND_FROM_EMAIL`
-   - **Value**: Your verified email (e.g., `noreply@yourdomain.com` or use Resend's test email)
+1. Sign up for an email service (recommended: [Resend](https://resend.com))
+2. Obtain your API key
+3. Uncomment and configure the email service code in `supabase/functions/send-welcome-email/index.ts`
+4. Add your API key as a secret to Supabase:
+```bash
+supabase secrets set RESEND_API_KEY=your_api_key_here
+```
 
-### Step 4: Test
+### 3. Update CORS Settings
+Ensure your Supabase project allows requests from your frontend origin by configuring CORS appropriately.
 
-1. Try inviting a member to a project
-2. Check the invited user's email inbox
-3. The email should arrive within seconds!
+## Email Template
 
-## Alternative: Using EmailJS (No Server Setup Required)
+The welcome email includes:
+- Personalized greeting with the user's name
+- Confirmation of successful Google login
+- Welcome message about Layer features
+- Invitation to start using the application
+- Professional footer with explanation of why the email was sent
 
-If you prefer not to use Edge Functions, you can use EmailJS:
+## Security Considerations
 
-1. Sign up at [emailjs.com](https://www.emailjs.com)
-2. Create an email service (Gmail, Outlook, etc.)
-3. Create an email template
-4. Get your Service ID, Template ID, and Public Key
-5. Add EmailJS script to `layer.html`:
-   ```html
-   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-   ```
-6. Update the constants in `functionality.js` (line ~12490) with your EmailJS credentials
+- The email service is called server-side to prevent abuse
+- Input validation occurs on the backend
+- No sensitive information is included in the email
+- Email sending is rate-limited by the email service provider
+
+## Testing
+
+During development, the function logs email requests to the console. When properly configured with an email service, it will send actual welcome emails to users upon signing in with Google.
 
 ## Troubleshooting
 
-- **Function not found**: Make sure you've deployed the Edge Function using `supabase functions deploy`
-- **Email not sending**: 
-  - Check your Resend API key is correct
-  - Verify your FROM email is verified in Resend
-  - Check Supabase Edge Function logs in the dashboard
-- **Unauthorized error**: The function automatically handles authentication - make sure you're signed in
-- **"Email service not configured"**: The Edge Function wasn't found - deploy it first
-
-## File Location
-
-The Edge Function code is located at:
-`supabase/functions/send-project-invitation/index.ts`
-
-You can modify this file to use a different email service (SendGrid, Mailgun, etc.) if preferred.
+- If emails aren't being sent, check the browser console for errors
+- Verify that the Supabase Edge Function is deployed and accessible
+- Confirm your email service API keys are properly configured
+- Check CORS settings if requests are being blocked

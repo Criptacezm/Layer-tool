@@ -304,6 +304,11 @@ CREATE INDEX IF NOT EXISTS idx_excels_user_id ON excels(user_id);
 CREATE INDEX IF NOT EXISTS idx_excels_favorite ON excels(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_invitations_project_id ON project_invitations(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitations(inviter_id);
+CREATE INDEX IF NOT EXISTS idx_project_invitations_invitee_email ON project_invitations(invitee_email);
+CREATE INDEX IF NOT EXISTS idx_user_presence_user_id ON user_presence(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_presence_watching_project ON user_presence(watching_project_id);
 
 -- ============================================
 -- Row Level Security (RLS) - Safe Enable
@@ -318,6 +323,8 @@ ALTER TABLE docs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE excels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_presence ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- RLS Policies (Drop and recreate for safety)
@@ -419,6 +426,37 @@ CREATE POLICY "Users can insert own recurring_tasks" ON recurring_tasks FOR INSE
 CREATE POLICY "Users can update own recurring_tasks" ON recurring_tasks FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own recurring_tasks" ON recurring_tasks FOR DELETE USING (auth.uid() = user_id);
 
+-- Project Invitations policies
+DROP POLICY IF EXISTS "Users can view project invitations" ON project_invitations;
+DROP POLICY IF EXISTS "Users can insert project invitations" ON project_invitations;
+DROP POLICY IF EXISTS "Users can update project invitations" ON project_invitations;
+DROP POLICY IF EXISTS "Users can delete project invitations" ON project_invitations;
+CREATE POLICY "Users can view project invitations" ON project_invitations FOR SELECT USING (
+  auth.uid() = inviter_id OR 
+  auth.email() = invitee_email
+);
+CREATE POLICY "Users can insert project invitations" ON project_invitations FOR INSERT WITH CHECK (
+  auth.uid() = inviter_id
+);
+CREATE POLICY "Users can update project invitations" ON project_invitations FOR UPDATE USING (
+  auth.uid() = inviter_id OR 
+  auth.email() = invitee_email
+);
+CREATE POLICY "Users can delete project invitations" ON project_invitations FOR DELETE USING (
+  auth.uid() = inviter_id
+);
+
+-- User Presence policies
+DROP POLICY IF EXISTS "Users can view own presence" ON user_presence;
+DROP POLICY IF EXISTS "Users can insert own presence" ON user_presence;
+DROP POLICY IF EXISTS "Users can update own presence" ON user_presence;
+DROP POLICY IF EXISTS "Users can delete own presence" ON user_presence;
+DROP POLICY IF EXISTS "Users can view all presence" ON user_presence;
+CREATE POLICY "Users can view all presence" ON user_presence FOR SELECT USING (true);
+CREATE POLICY "Users can insert own presence" ON user_presence FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own presence" ON user_presence FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own presence" ON user_presence FOR DELETE USING (auth.uid() = user_id);
+
 -- ============================================
 -- Trigger for auto-updating timestamps
 -- ============================================
@@ -441,6 +479,8 @@ DROP TRIGGER IF EXISTS update_docs_updated_at ON docs;
 DROP TRIGGER IF EXISTS update_excels_updated_at ON excels;
 DROP TRIGGER IF EXISTS update_spaces_updated_at ON spaces;
 DROP TRIGGER IF EXISTS update_recurring_tasks_updated_at ON recurring_tasks;
+DROP TRIGGER IF EXISTS update_project_invitations_updated_at ON project_invitations;
+DROP TRIGGER IF EXISTS update_user_presence_updated_at ON user_presence;
 
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -452,6 +492,8 @@ CREATE TRIGGER update_docs_updated_at BEFORE UPDATE ON docs FOR EACH ROW EXECUTE
 CREATE TRIGGER update_excels_updated_at BEFORE UPDATE ON excels FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_spaces_updated_at BEFORE UPDATE ON spaces FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_recurring_tasks_updated_at BEFORE UPDATE ON recurring_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_project_invitations_updated_at BEFORE UPDATE ON project_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_presence_updated_at BEFORE UPDATE ON user_presence FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- Trigger for auto-creating profile on signup
