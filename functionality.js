@@ -13343,6 +13343,9 @@ async function renderTeamView() {
     pendingFollowRequests = [];
   }
   
+  // Load team members panel HTML (await the async function)
+  const teamMembersPanelHTML = await renderTeamMembersPanel();
+  
   return `
     <div class="team-chat-layout">
       <!-- Chat Sidebar -->
@@ -13464,7 +13467,7 @@ async function renderTeamView() {
       
       <!-- Members/Followers Panel -->
       <aside class="team-members-panel" id="teamMembersPanel">
-        ${renderTeamMembersPanel()}
+        ${teamMembersPanelHTML}
       </aside>
     </div>
   `;
@@ -13785,10 +13788,28 @@ function renderTeamMessageInput() {
   `;
 }
 
-function renderTeamMembersPanel() {
+async function renderTeamMembersPanel() {
+  // Load real team members data
+  let realFollowers = [];
+  let realPendingRequests = [];
+  
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const followers = await window.LayerDB.getFollowers();
+      realFollowers = followers.filter(f => f.status === 'accepted');
+      realPendingRequests = await window.LayerDB.getPendingFollowRequests();
+    } catch (error) {
+      console.error('Error loading team members:', error);
+    }
+  }
+  
+  // Use real data if available, otherwise fall back to mock data
+  const displayFollowers = realFollowers.length > 0 ? realFollowers : teamFollowers;
+  const displayPending = realPendingRequests.length > 0 ? realPendingRequests : pendingFollowRequests;
+  
   return `
     <div class="team-panel-header">
-      <span>Followers</span>
+      <span>Team Members</span>
       <button class="team-panel-close" onclick="toggleTeamMembersPanel()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
           <path d="M18 6L6 18M6 6l12 12"/>
@@ -13797,14 +13818,16 @@ function renderTeamMembersPanel() {
     </div>
     
     <div class="team-panel-tabs">
-      <button class="team-panel-tab active">
+      <button class="team-panel-tab active" onclick="switchTeamPanelTab('members')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
-        Followers <span class="tab-count">${teamFollowers.length}</span>
+        Members <span class="tab-count">${displayFollowers.length}</span>
       </button>
-      <button class="team-panel-tab">
+      <button class="team-panel-tab" onclick="switchTeamPanelTab('access')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
@@ -13816,11 +13839,11 @@ function renderTeamMembersPanel() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
-      <input type="text" placeholder="Search people or invite by email" class="team-search-input">
+      <input type="text" placeholder="Search people or invite by email" class="team-search-input" onkeyup="searchTeamMembers(this.value)">
     </div>
     
     <div class="team-panel-section">
-      <span class="section-label">FOLLOWERS</span>
+      <span class="section-label">TEAM MEMBERS</span>
       <button class="team-add-people-btn" onclick="openAddPeopleModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
           <path d="M12 5v14M5 12h14"/>
@@ -13829,51 +13852,93 @@ function renderTeamMembersPanel() {
       </button>
     </div>
     
-    <div class="team-followers-list">
-      ${teamFollowers.map(f => `
-        <div class="team-follower-item">
-          <div class="team-follower-avatar">
-            <span>${f.avatar}</span>
+    <div class="team-followers-list" id="teamMembersList">
+      ${displayFollowers.map(f => {
+        const email = f.following_email || f.follower_email || f.email || '';
+        const name = f.following_name || f.follower_name || f.name || email.split('@')[0] || 'Unknown';
+        const avatar = f.following_avatar || f.follower_avatar || f.avatar_url || '';
+        const initial = name.charAt(0).toUpperCase();
+        
+        return `
+          <div class="team-follower-item" data-email="${email}">
+            <div class="team-follower-avatar">
+              ${avatar ? `<img src="${avatar}" alt="${name}">` : `<span>${initial}</span>`}
+            </div>
+            <div class="team-follower-info">
+              <span class="team-follower-name">${name}</span>
+              <span class="team-follower-email">${email}</span>
+            </div>
+            ${f.isOwner ? '<span class="team-owner-badge">Owner</span>' : ''}
           </div>
-          <span class="team-follower-name">${f.name}</span>
-          ${f.isOwner ? '<span class="team-owner-badge">Owner</span>' : ''}
+        `;
+      }).join('')}
+      ${displayFollowers.length === 0 ? `
+        <div class="team-empty-state">
+          <p>No team members yet</p>
+          <button class="btn btn-sm btn-primary" onclick="openAddPeopleModal()">Add People</button>
         </div>
-      `).join('')}
+      ` : ''}
     </div>
     
     <!-- Pending Follow Requests -->
-    ${pendingFollowRequests.length > 0 ? `
+    ${displayPending.length > 0 ? `
       <div class="team-panel-section">
-        <span class="section-label">PENDING REQUESTS (${pendingFollowRequests.length})</span>
+        <span class="section-label">PENDING REQUESTS (${displayPending.length})</span>
       </div>
       <div class="team-pending-requests">
-        ${pendingFollowRequests.map(request => `
+        ${displayPending.map(request => {
+          const profile = request.follower_profile || request.inviter_profile || {};
+          const name = profile.name || profile.email?.split('@')[0] || 'Unknown';
+          const email = profile.email || request.invitee_email || request.following_email || '';
+          const initial = name.charAt(0).toUpperCase();
+          
+          return `
           <div class="team-request-item" data-request-id="${request.id}">
             <div class="team-request-avatar">
-              <span>${request.follower_profile?.name?.charAt(0) || request.follower_profile?.email?.charAt(0) || '?'}</span>
+              ${profile.avatar_url ? `<img src="${profile.avatar_url}" alt="${name}">` : `<span>${initial}</span>`}
             </div>
             <div class="team-request-info">
-              <span class="team-request-name">${request.follower_profile?.name || request.follower_profile?.email}</span>
-              <span class="team-request-email">${request.follower_profile?.email}</span>
+              <span class="team-request-name">${name}</span>
+              <span class="team-request-email">${email}</span>
               <span class="team-request-time">${formatTimeAgo(request.created_at)}</span>
             </div>
             <div class="team-request-actions">
-              <button class="btn btn-sm btn-success" onclick="acceptFollowRequest('${request.id}', '${request.follower_id}')">
+              <button class="btn btn-sm btn-success" onclick="acceptFollowRequest('${request.id}', '${request.follower_id || request.id}')" title="Accept">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                   <path d="M5 13l4 4L19 7"/>
                 </svg>
               </button>
-              <button class="btn btn-sm btn-danger" onclick="rejectFollowRequest('${request.id}', '${request.follower_id}')">
+              <button class="btn btn-sm btn-danger" onclick="rejectFollowRequest('${request.id}', '${request.follower_id || request.id}')" title="Reject">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
               </button>
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     ` : ''}
   `;
+}
+
+function switchTeamPanelTab(tab) {
+  // Switch between members and access tabs
+  document.querySelectorAll('.team-panel-tab').forEach(t => t.classList.remove('active'));
+  event.target.closest('.team-panel-tab').classList.add('active');
+  // TODO: Implement tab switching logic
+}
+
+function searchTeamMembers(query) {
+  const items = document.querySelectorAll('.team-follower-item');
+  const searchTerm = query.toLowerCase();
+  
+  items.forEach(item => {
+    const email = item.dataset.email || '';
+    const name = item.querySelector('.team-follower-name')?.textContent || '';
+    const matches = email.toLowerCase().includes(searchTerm) || name.toLowerCase().includes(searchTerm);
+    item.style.display = matches ? '' : 'none';
+  });
 }
 
 // Team View Helper Functions
@@ -13891,10 +13956,17 @@ function setTeamTab(tab) {
   renderCurrentView();
 }
 
-function toggleTeamMembersPanel() {
+async function toggleTeamMembersPanel() {
   const panel = document.getElementById('teamMembersPanel');
   if (panel) {
+    const isCollapsed = panel.classList.contains('collapsed');
     panel.classList.toggle('collapsed');
+    
+    // Refresh panel content when opening
+    if (isCollapsed) {
+      const newContent = await renderTeamMembersPanel();
+      panel.innerHTML = newContent;
+    }
   }
 }
 
@@ -14011,7 +14083,7 @@ function openCreateGroupModal() {
   `);
 }
 
-function openAddPeopleModal() {
+async function openAddPeopleModal() {
   // Check if user is authenticated
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showNotification('Please sign in with Google to add people', 'error');
@@ -14021,30 +14093,206 @@ function openAddPeopleModal() {
   
   const currentUser = window.LayerDB.getCurrentUser();
   
-  openModal('Add People', `
-    <div class="modal-form">
-      <div class="form-group">
-        <label>Invite by email</label>
-        <input type="email" id="inviteEmail" placeholder="Enter email addresses..." class="form-input">
-        <small class="form-help">Enter the Google email of the person you want to add</small>
+  // Load existing team members and followers
+  let existingMembers = [];
+  let pendingInvitations = [];
+  
+  try {
+    // Get accepted followers
+    const followers = await window.LayerDB.getFollowers();
+    existingMembers = followers.filter(f => f.status === 'accepted').map(f => ({
+      id: f.following_id || f.follower_id,
+      email: f.following_email || f.follower_email,
+      name: f.following_name || f.follower_name || 'Unknown',
+      avatar: f.following_avatar || f.follower_avatar,
+      status: 'accepted'
+    }));
+    
+    // Get pending invitations
+    pendingInvitations = await window.LayerDB.getPendingFollowRequests();
+  } catch (error) {
+    console.error('Error loading team members:', error);
+  }
+  
+  openModal('Add People to Team', `
+    <div class="team-add-people-modal">
+      <div class="team-auth-section">
+        <div class="current-user-info">
+          <div class="user-avatar-large">
+            ${currentUser?.user_metadata?.avatar_url ? 
+              `<img src="${currentUser.user_metadata.avatar_url}" alt="Avatar">` :
+              `<span>${(currentUser?.email?.[0] || 'U').toUpperCase()}</span>`
+            }
+          </div>
+          <div class="user-details">
+            <div class="user-name">${currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'User'}</div>
+            <div class="user-email">
+              <span>${currentUser?.email || 'Not signed in'}</span>
+              ${currentUser?.email ? '<span class="email-status verified">✓ Verified with Google</span>' : ''}
+            </div>
+          </div>
+        </div>
+        ${!currentUser?.email ? `
+          <div class="auth-prompt">
+            <button class="btn btn-primary google-signin-btn" onclick="window.LayerDB.signInWithGoogle(); closeModal();">
+              <svg viewBox="0 0 24 24" style="width:18px;height:18px;margin-right:8px;">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+        ` : ''}
       </div>
-      <div class="form-group">
-        <label>Your Google Email</label>
-        <div class="current-user-email">
-          <span class="email-display">${currentUser?.email || 'Not signed in'}</span>
-          ${currentUser?.email ? '<span class="email-status verified">Verified</span>' : ''}
+      
+      <div class="team-invite-section">
+        <div class="section-header">
+          <h3>Invite by Email</h3>
+          <p class="section-description">Send an invitation to collaborate. They'll receive an email and can join with their Google account.</p>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="inviteEmail" placeholder="colleague@example.com" class="form-input" autocomplete="email">
+          <small class="form-help">Enter the Google email address of the person you want to invite</small>
+        </div>
+        <div class="form-group">
+          <label>Custom Message (Optional)</label>
+          <textarea id="inviteMessage" placeholder="Hey! I'd like to collaborate with you on Layer..." class="form-textarea" rows="3"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="inviteTeamMember()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+            Send Invitation
+          </button>
         </div>
       </div>
-      <div class="form-group">
-        <label>Or search existing team members</label>
-        <input type="text" id="searchMembers" placeholder="Search..." class="form-input">
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="addPeopleToChannel()">Add People</button>
-      </div>
+      
+      ${existingMembers.length > 0 ? `
+        <div class="team-members-section">
+          <div class="section-header">
+            <h3>Team Members (${existingMembers.length})</h3>
+          </div>
+          <div class="team-members-list">
+            ${existingMembers.map(member => `
+              <div class="team-member-item">
+                <div class="member-avatar">
+                  ${member.avatar ? 
+                    `<img src="${member.avatar}" alt="${member.name}">` :
+                    `<span>${member.name[0].toUpperCase()}</span>`
+                  }
+                </div>
+                <div class="member-info">
+                  <div class="member-name">${member.name}</div>
+                  <div class="member-email">${member.email}</div>
+                </div>
+                <div class="member-status">
+                  <span class="status-badge active">Active</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      ${pendingInvitations.length > 0 ? `
+        <div class="team-pending-section">
+          <div class="section-header">
+            <h3>Pending Invitations (${pendingInvitations.length})</h3>
+          </div>
+          <div class="pending-invitations-list">
+            ${pendingInvitations.map(inv => `
+              <div class="pending-invitation-item">
+                <div class="invitation-info">
+                  <div class="invitation-email">${inv.invitee_email || inv.following_email || 'Unknown'}</div>
+                  <div class="invitation-time">Sent ${formatTimeAgo(inv.created_at)}</div>
+                </div>
+                <div class="invitation-status">
+                  <span class="status-badge pending">Pending</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
     </div>
   `);
+}
+
+async function inviteTeamMember(event) {
+  const emailInput = document.getElementById('inviteEmail');
+  const messageInput = document.getElementById('inviteMessage');
+  const email = emailInput?.value?.trim();
+  const message = messageInput?.value?.trim() || '';
+  
+  if (!email) {
+    showNotification('Please enter an email address', 'error');
+    return;
+  }
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showNotification('Please enter a valid email address', 'error');
+    return;
+  }
+  
+  // Check if trying to add self
+  const currentUser = window.LayerDB.getCurrentUser();
+  if (!currentUser) {
+    showNotification('Please sign in first', 'error');
+    openAuthModal();
+    return;
+  }
+  
+  if (currentUser?.email === email) {
+    showNotification('You cannot invite yourself', 'error');
+    return;
+  }
+  
+  // Show loading state
+  const submitBtn = event?.target || document.querySelector('.btn-primary');
+  const originalText = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
+  }
+  
+  try {
+    // Send team invitation
+    const teamName = 'Layer Workspace';
+    await window.LayerDB.sendTeamInvitation(email, teamName, message);
+    
+    // Also create a follow request for compatibility
+    try {
+      await window.LayerDB.followUserByEmail(email);
+    } catch (followError) {
+      console.log('Follow request creation skipped or failed:', followError);
+    }
+    
+    // Send email notification
+    const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
+    await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'invite');
+    
+    closeModal();
+    showNotification(`Invitation sent to ${email}! They will receive an email and can join with their Google account.`, 'success');
+    
+    // Refresh team view to show updated members
+    if (typeof renderCurrentView === 'function') {
+      await renderCurrentView();
+    }
+  } catch (error) {
+    console.error('Error inviting team member:', error);
+    showNotification(error.message || 'Failed to send invitation. Please try again.', 'error');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  }
 }
 
 function createNewChannel() {
@@ -17466,251 +17714,737 @@ function renderSpaceDetailView(space) {
   const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
   const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
   
-  // Recent docs (last 5)
-  const recentDocs = [...docs].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
+  // Recent items (last 5 docs + excels combined)
+  const allItems = [
+    ...docs.map(d => ({ ...d, type: 'doc', updatedAt: d.updatedAt })),
+    ...excels.map(e => ({ ...e, type: 'excel', updatedAt: e.updatedAt }))
+  ];
+  const recentItems = [...allItems]
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+    .slice(0, 5);
+  
+  // Bookmarked items
+  const bookmarkedItems = allItems.filter(item => 
+    (item.type === 'doc' && item.isFavorite) || 
+    (item.type === 'excel' && isExcelFavorited(item.id))
+  ).slice(0, 3);
   
   // Initialize checklist after render
   setTimeout(() => renderChecklistSidebar(space.id), 100);
   
   return `
-    <div class="clickup-docs-container" style="display: flex;">
-      <!-- Feature 3: Checklist Sidebar on Right -->
-      ${renderChecklistSidebarHTML(space.id)}
-      <!-- Docs Sidebar -->
-      <div class="docs-sidebar">
-        <div class="docs-sidebar-header">
-          <div class="docs-sidebar-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            ${space.name}
-          </div>
-          <div class="docs-search-wrapper">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" class="docs-search-input" placeholder="Search docs..." id="docsSearchInput" oninput="filterSpaceDocs(${space.id})" />
+    <div class="space-overview-container">
+      <!-- Top Navigation Bar -->
+      <div class="space-top-bar">
+        <div class="space-top-left">
+          <div class="space-breadcrumb">
+            <span class="breadcrumb-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+              ${space.name}
+            </span>
           </div>
         </div>
         
-        <div class="docs-tree" id="docsTreeContainer">
-          <!-- Recent Section -->
-          <div class="docs-tree-section">
-            <div class="docs-tree-label">
-              <span>Recent</span>
-            </div>
-            ${recentDocs.length > 0 ? recentDocs.map(doc => `
-              <div class="docs-tree-item" onclick="openDocEditor('${doc.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                <span class="docs-tree-item-text">${doc.title}</span>
-                <span class="docs-tree-item-date">${formatTimeAgo(doc.updatedAt)}</span>
-              </div>
-            `).join('') : `
-              <div style="padding: 12px; font-size: 12px; color: var(--muted-foreground); text-align: center;">
-                No recent docs
-              </div>
-            `}
+        <div class="space-top-center">
+          <div class="space-view-tabs">
+            <button class="view-tab active">Overview</button>
+            <button class="view-tab">List</button>
+            <button class="view-tab">Board</button>
+            <button class="view-tab">Calendar</button>
+            <button class="view-tab">Gantt</button>
+            <button class="view-tab">Table</button>
+            <button class="view-tab add-view">+</button>
           </div>
-          
-          <!-- All Documents -->
-          <div class="docs-tree-section">
-            <div class="docs-tree-label">
-              <span>All Documents</span>
-              <button class="docs-tree-add-btn" onclick="openDocEditor()" title="Create new doc">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-            </div>
-            ${docs.length > 0 ? docs.map(doc => `
-              <div class="docs-tree-item" onclick="openDocEditor('${doc.id}')" data-doc-id="${doc.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                <span class="docs-tree-item-text">${doc.title}</span>
-              </div>
-            `).join('') : ''}
-          </div>
-          
-          <!-- Spreadsheets -->
-          <div class="docs-tree-section">
-            <div class="docs-tree-label">
-              <span>Spreadsheets</span>
-              <button class="docs-tree-add-btn" onclick="openExcelEditor()" title="Create new spreadsheet">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-            </div>
-            ${excels.length > 0 ? excels.map(excel => `
-              <div class="docs-tree-item" onclick="openExcelEditor(${excel.id})" data-excel-id="${excel.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="3" y1="9" x2="21" y2="9"/>
-                  <line x1="9" y1="3" x2="9" y2="21"/>
-                </svg>
-                <span class="docs-tree-item-text">${excel.title}</span>
-              </div>
-            `).join('') : ''}
-          </div>
+        </div>
+        
+        <div class="space-top-right">
+          <button class="space-action-btn" onclick="openSpaceAgents('${space.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 11v6"/><path d="M9 14l6-3"/>
+            </svg>
+            Agents
+          </button>
+          <button class="space-action-btn" onclick="openSpaceAutomation('${space.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+            Automate
+          </button>
+          <button class="space-action-btn" onclick="openSpaceAsk('${space.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            </svg>
+            Ask
+          </button>
+          <button class="space-action-btn" onclick="openSpaceShare('${space.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Share
+          </button>
+        </div>
+      </div>
+      
+      <!-- Notification Banner -->
+      <div class="notification-banner">
+        <div class="banner-content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>Layer needs your permission to send notifications</span>
+        </div>
+        <div class="banner-actions">
+          <button class="banner-btn secondary">Remind me</button>
+          <button class="banner-btn primary">Enable</button>
         </div>
       </div>
       
       <!-- Main Content Area -->
-      <div class="docs-main-area">
-        ${docs.length > 0 || excels.length > 0 ? `
-          <!-- Docs Header -->
-          <div class="docs-header">
-            <div class="docs-header-left">
-              <div class="docs-breadcrumb">
-                <span class="docs-breadcrumb-item" onclick="currentView = 'activity'; renderCurrentView();">Spaces</span>
-                <span class="docs-breadcrumb-separator">›</span>
-                <span class="docs-breadcrumb-item">${space.name}</span>
-              </div>
+      <div class="space-main-content">
+        <!-- Top Cards Row -->
+        <div class="space-cards-row">
+          <!-- Recent Card -->
+          <div class="space-card">
+            <div class="card-header">
+              <h3 class="card-title">Recent</h3>
             </div>
-            <div class="docs-header-actions">
-              <button class="docs-action-btn" onclick="openExcelEditor()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <line x1="3" y1="9" x2="21" y2="9"/>
-                  <line x1="9" y1="3" x2="9" y2="21"/>
-                </svg>
-                New Spreadsheet
-              </button>
-              <button class="docs-action-btn primary" onclick="openDocEditor()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                New Doc
-              </button>
+            <div class="card-content">
+              ${recentItems.length > 0 ? recentItems.map(item => `
+                <div class="card-item" onclick="${item.type === 'doc' ? `openDocEditor('${item.id}')` : `openExcelEditor('${item.id}')`}">
+                  <div class="item-icon">
+                    ${item.type === 'doc' ? `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                    ` : `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="9" y1="3" x2="9" y2="21"/>
+                      </svg>
+                    `}
+                  </div>
+                  <div class="item-info">
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-meta">in ${space.name}</div>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="empty-state-small">
+                  <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="empty-text">No recent items</div>
+                </div>
+              `}
             </div>
           </div>
           
-          <!-- Documents Grid -->
-          <div class="docs-editor-wrapper" style="padding: 24px;">
-            <div style="width: 100%; max-width: 1200px;">
-              <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;vertical-align:-4px;margin-right:8px;color:hsl(217, 91%, 60%);">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                Documents (${docs.length})
-              </h3>
-              
-              ${docs.length > 0 ? `
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 40px;">
-                  ${docs.map(doc => `
-                    <div class="card doc-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
-                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteDoc('${doc.id}', '${doc.title.replace(/'/g, "\\'")}')" title="Delete document">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                      </button>
-                      <div onclick="openDocEditor('${doc.id}')">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                          <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                              <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                          </div>
-                          <div style="flex: 1;">
-                            <div style="font-weight: 600; color: var(--foreground); margin-bottom: 2px;">${doc.title}</div>
-                            <div style="font-size: 12px; color: var(--muted-foreground);">Updated ${formatTimeAgo(doc.updatedAt)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-              
-              ${excels.length > 0 ? `
-                <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;vertical-align:-4px;margin-right:8px;color:hsl(142, 71%, 45%);">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <line x1="3" y1="9" x2="21" y2="9"/>
-                    <line x1="9" y1="3" x2="9" y2="21"/>
-                  </svg>
-                  Spreadsheets (${excels.length})
-                </h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-                  ${excels.map(excel => {
-                    const isFavorited = isExcelFavorited(excel.id);
-                    return `
-                    <div class="card excel-card" style="padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
-                      <button class="delete-card-btn" onclick="event.stopPropagation(); confirmDeleteExcel('${excel.id}', '${excel.title.replace(/'/g, "\\'")}')" title="Delete spreadsheet">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                      </button>
-                      <div onclick="openExcelEditor('${excel.id}')">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(142, 71%, 35%)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:20px;height:20px;">
-                              <rect x="3" y="3" width="18" height="18" rx="2"/>
-                              <line x1="3" y1="9" x2="21" y2="9"/>
-                              <line x1="9" y1="3" x2="9" y2="21"/>
-                            </svg>
-                          </div>
-                          <div style="flex: 1;">
-                            <div style="font-weight: 600; color: var(--foreground); margin-bottom: 2px;">${excel.title}</div>
-                            <div style="font-size: 12px; color: var(--muted-foreground);">Updated ${formatTimeAgo(excel.updatedAt)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  `}).join('')}
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        ` : `
-          <!-- Empty State with ClickUp Style -->
-          <div class="docs-empty-state">
-            <div class="docs-empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="12" y1="18" x2="12" y2="12"/>
-                <line x1="9" y1="15" x2="15" y2="15"/>
-              </svg>
-            </div>
-            <h3 class="docs-empty-title">Create your first document</h3>
-            <p class="docs-empty-text">
-              Documents help you organize information, collaborate with your team, and keep everything in one place.
-            </p>
-            <div style="display: flex; gap: 12px;">
-              <button class="docs-create-btn" onclick="openDocEditor()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <!-- Docs Card -->
+          <div class="space-card docs-card-hover">
+            <div class="card-header">
+              <h3 class="card-title">Docs</h3>
+              <button class="card-add-doc-btn" onclick="openDocEditor()" title="Create new Doc">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M12 5v14M5 12h14"/>
                 </svg>
-                Create Doc
-              </button>
-              <button class="docs-action-btn" onclick="openExcelEditor()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <line x1="3" y1="9" x2="21" y2="9"/>
-                  <line x1="9" y1="3" x2="9" y2="21"/>
-                </svg>
-                Create Spreadsheet
               </button>
             </div>
+            <div class="card-content">
+              ${docs.length > 0 ? docs.slice(0, 3).map(doc => `
+                <div class="card-item" onclick="openDocEditor('${doc.id}')">
+                  <div class="item-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="item-info">
+                    <div class="item-title">${doc.title}</div>
+                    <div class="item-meta">in ${space.name}</div>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="empty-state-small">
+                  <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="empty-text">No documents</div>
+                </div>
+              `}
+            </div>
           </div>
-        `}
+          
+          <!-- Bookmarks Card -->
+          <div class="space-card">
+            <div class="card-header">
+              <h3 class="card-title">Bookmarks</h3>
+            </div>
+            <div class="card-content">
+              ${bookmarkedItems.length > 0 ? bookmarkedItems.map(item => `
+                <div class="card-item bookmark-item" data-item-id="${item.id}" data-item-type="${item.type}">
+                  <div class="item-icon bookmark-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </div>
+                  <div class="item-info">
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-meta">in ${space.name}</div>
+                  </div>
+                  <button class="bookmark-remove-btn" onclick="removeBookmark('${item.id}', '${item.type}')" title="Remove bookmark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              `).join('') : `
+                <div class="bookmarks-empty">
+                  <div class="bookmark-large-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </div>
+                  <div class="bookmarks-text">
+                    Bookmarks make it easy to save Layer items or any URL from around the web.
+                  </div>
+                  <button class="add-bookmark-btn" onclick="openBookmarkManager('${space.id}')">
+                    Manage Bookmarks
+                  </button>
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Folders Section -->
+        <div class="space-section">
+          <div class="section-header">
+            <h2 class="section-title">Folders</h2>
+          </div>
+          <div class="folders-placeholder">
+            <div class="folder-icon-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div class="folders-text">Add new Folder to your Space</div>
+            <button class="add-folder-btn" onclick="showToast('Folder feature coming soon!', 'info')">
+              Add Folder
+            </button>
+          </div>
+        </div>
+        
+        <!-- Lists Section -->
+        <div class="space-section">
+          <div class="section-header">
+            <h2 class="section-title">Lists</h2>
+          </div>
+          <div class="lists-table">
+            <div class="table-header">
+              <div class="table-cell">Name</div>
+              <div class="table-cell">Color</div>
+              <div class="table-cell">Progress</div>
+              <div class="table-cell">Start</div>
+              <div class="table-cell">End</div>
+              <div class="table-cell">Priority</div>
+              <div class="table-cell">Owner</div>
+              <div class="table-cell add-column">
+                <button class="add-list-btn" onclick="showToast('Add list feature coming soon!', 'info')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v8M8 12h8"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="table-placeholder">
+              <div class="placeholder-text">No lists created yet</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
 }
 
-// Filter docs in space sidebar
+// ============================================
+// Advanced Space Action Functions
+// ============================================
+
+// Space Agents - AI-powered automation and assistance
+function openSpaceAgents(spaceId) {
+  const space = getSpaceById(spaceId);
+  if (!space) return;
+
+  const content = `
+    <div class="space-agents-container">
+      <div class="agents-header">
+        <h3>AI Agents for ${space.name}</h3>
+        <p>Automate workflows and get intelligent assistance</p>
+      </div>
+      
+      <div class="agents-grid">
+        <div class="agent-card" onclick="configureAgent('${spaceId}', 'document-assistant')">
+          <div class="agent-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <h4>Document Assistant</h4>
+          <p>Help with writing, editing, and organizing documents</p>
+          <div class="agent-status active">Active</div>
+        </div>
+        
+        <div class="agent-card" onclick="configureAgent('${spaceId}', 'task-manager')">
+          <div class="agent-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </div>
+          <h4>Task Manager</h4>
+          <p>Automatically organize and prioritize tasks</p>
+          <div class="agent-status inactive">Inactive</div>
+        </div>
+        
+        <div class="agent-card" onclick="configureAgent('${spaceId}', 'meeting-assistant')">
+          <div class="agent-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h4>Meeting Assistant</h4>
+          <p>Schedule meetings and send reminders</p>
+          <div class="agent-status inactive">Inactive</div>
+        </div>
+        
+        <div class="agent-card" onclick="configureAgent('${spaceId}', 'analytics-bot')">
+          <div class="agent-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10M18 20V4M6 20v-6"/>
+            </svg>
+          </div>
+          <h4>Analytics Bot</h4>
+          <p>Generate reports and insights from your data</p>
+          <div class="agent-status inactive">Inactive</div>
+        </div>
+      </div>
+      
+      <div class="agents-actions">
+        <button class="btn btn-primary" onclick="createCustomAgent('${spaceId}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+          </svg>
+          Create Custom Agent
+        </button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Space Agents', content, 'large');
+}
+
+// Space Automation - Workflow automation
+function openSpaceAutomation(spaceId) {
+  const space = getSpaceById(spaceId);
+  if (!space) return;
+
+  const automations = getSpaceAutomations(spaceId);
+  
+  const content = `
+    <div class="space-automation-container">
+      <div class="automation-header">
+        <h3>Automation for ${space.name}</h3>
+        <p>Streamline repetitive tasks and workflows</p>
+      </div>
+      
+      <div class="automation-toolbar">
+        <button class="btn btn-primary" onclick="createNewAutomation('${spaceId}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+          </svg>
+          New Automation
+        </button>
+        <div class="automation-filters">
+          <select onchange="filterAutomations(this.value)">
+            <option value="all">All Automations</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="draft">Draft</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="automation-list">
+        ${automations.length > 0 ? automations.map(auto => `
+          <div class="automation-item ${auto.status}" onclick="editAutomation('${auto.id}')">
+            <div class="automation-info">
+              <h4>${auto.name}</h4>
+              <p>${auto.description}</p>
+              <div class="automation-meta">
+                <span class="automation-trigger">${auto.trigger}</span>
+                <span class="automation-actions">${auto.actions.length} actions</span>
+                <span class="automation-runs">${auto.runCount || 0} runs</span>
+              </div>
+            </div>
+            <div class="automation-status">
+              <div class="status-indicator ${auto.status}"></div>
+              <span>${auto.status}</span>
+            </div>
+          </div>
+        `).join('') : `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+            </div>
+            <h3>No automations yet</h3>
+            <p>Create your first automation to streamline workflows</p>
+            <button class="btn btn-primary" onclick="createNewAutomation('${spaceId}')">Create Automation</button>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+  
+  openModal('Space Automation', content, 'large');
+}
+
+// Space Ask - AI-powered Q&A
+function openSpaceAsk(spaceId) {
+  const space = getSpaceById(spaceId);
+  if (!space) return;
+
+  const content = `
+    <div class="space-ask-container">
+      <div class="ask-header">
+        <h3>Ask about ${space.name}</h3>
+        <p>Get instant answers about your space, documents, and tasks</p>
+      </div>
+      
+      <div class="ask-interface">
+        <div class="ask-history" id="askHistory">
+          <!-- Chat history will be populated here -->
+        </div>
+        
+        <div class="ask-input-area">
+          <div class="ask-input-container">
+            <textarea 
+              id="askInput" 
+              placeholder="Ask anything about this space..." 
+              onkeypress="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendAskQuestion('${spaceId}');}"
+            ></textarea>
+            <button class="ask-send-btn" onclick="sendAskQuestion('${spaceId}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="ask-suggestions">
+            <button class="suggestion-chip" onclick="setAskQuestion('What documents are in this space?')">What documents are in this space?</button>
+            <button class="suggestion-chip" onclick="setAskQuestion('Show me upcoming deadlines')">Show me upcoming deadlines</button>
+            <button class="suggestion-chip" onclick="setAskQuestion('Who are the team members?')">Who are the team members?</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  openModal('Ask AI', content, 'medium');
+  
+  // Load chat history
+  loadAskHistory(spaceId);
+}
+
+// Space Share - Collaboration and sharing
+function openSpaceShare(spaceId) {
+  const space = getSpaceById(spaceId);
+  if (!space) return;
+
+  const members = getSpaceMembers(spaceId);
+  const invites = getSpaceInvites(spaceId);
+  
+  const content = `
+    <div class="space-share-container">
+      <div class="share-header">
+        <h3>Share ${space.name}</h3>
+        <p>Invite team members and manage permissions</p>
+      </div>
+      
+      <div class="share-tabs">
+        <button class="share-tab active" onclick="switchShareTab('members')">Members</button>
+        <button class="share-tab" onclick="switchShareTab('invites')">Pending Invites</button>
+        <button class="share-tab" onclick="switchShareTab('settings')">Settings</button>
+      </div>
+      
+      <div class="share-content">
+        <div class="share-tab-content active" id="members-tab">
+          <div class="invite-section">
+            <h4>Invite Members</h4>
+            <div class="invite-form">
+              <input type="email" id="inviteEmail" placeholder="Enter email address" />
+              <select id="inviteRole">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <button class="btn btn-primary" onclick="sendSpaceInvite('${spaceId}')">Send Invite</button>
+            </div>
+          </div>
+          
+          <div class="members-list">
+            <h4>Current Members (${members.length})</h4>
+            ${members.map(member => `
+              <div class="member-item">
+                <div class="member-info">
+                  <div class="member-avatar">
+                    ${member.avatar ? `<img src="${member.avatar}" alt="${member.name}">` : member.name.charAt(0)}
+                  </div>
+                  <div class="member-details">
+                    <div class="member-name">${member.name}</div>
+                    <div class="member-email">${member.email}</div>
+                  </div>
+                </div>
+                <div class="member-role">
+                  <select onchange="updateMemberRole('${spaceId}', '${member.id}', this.value)" value="${member.role}">
+                    <option value="member" ${member.role === 'member' ? 'selected' : ''}>Member</option>
+                    <option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+                  </select>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="removeSpaceMember('${spaceId}', '${member.id}')">Remove</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        
+        <div class="share-tab-content" id="invites-tab">
+          <h4>Pending Invites (${invites.length})</h4>
+          ${invites.length > 0 ? invites.map(invite => `
+            <div class="invite-item">
+              <div class="invite-email">${invite.email}</div>
+              <div class="invite-role">${invite.role}</div>
+              <div class="invite-date">Sent ${formatDate(invite.sentAt)}</div>
+              <div class="invite-actions">
+                <button class="btn btn-secondary btn-sm" onclick="resendInvite('${invite.id}')">Resend</button>
+                <button class="btn btn-danger btn-sm" onclick="cancelInvite('${invite.id}')">Cancel</button>
+              </div>
+            </div>
+          `).join('') : `
+            <div class="empty-state-small">
+              <p>No pending invites</p>
+            </div>
+          `}
+        </div>
+        
+        <div class="share-tab-content" id="settings-tab">
+          <h4>Sharing Settings</h4>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="publicAccess" ${space.public ? 'checked' : ''} onchange="togglePublicAccess('${spaceId}', this.checked)">
+              Public access
+            </label>
+            <p class="setting-description">Allow anyone with the link to view this space</p>
+          </div>
+          
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="inviteLinks" ${space.inviteLinks ? 'checked' : ''} onchange="toggleInviteLinks('${spaceId}', this.checked)">
+              Enable invite links
+            </label>
+            <p class="setting-description">Generate shareable links for easy inviting</p>
+          </div>
+          
+          ${space.inviteLinks ? `
+            <div class="invite-link-section">
+              <h5>Invite Link</h5>
+              <div class="invite-link-container">
+                <input type="text" id="inviteLink" value="${window.location.origin}/invite/${space.id}" readonly>
+                <button class="btn btn-secondary" onclick="copyInviteLink()">Copy Link</button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  openModal('Share Space', content, 'medium');
+}
+
+// Helper functions for space actions
+function configureAgent(spaceId, agentType) {
+  showToast(`Configuring ${agentType} for space ${spaceId}`, 'info');
+  // Implementation would open agent configuration modal
+}
+
+function createCustomAgent(spaceId) {
+  showToast('Creating custom agent...', 'info');
+  // Implementation would open custom agent creation wizard
+}
+
+function getSpaceAutomations(spaceId) {
+  // Mock data - would fetch from database
+  return [
+    {
+      id: 'auto-1',
+      name: 'Daily Report Generator',
+      description: 'Creates daily summary of completed tasks',
+      trigger: 'Daily at 9 AM',
+      actions: ['generate-report', 'send-email'],
+      status: 'active',
+      runCount: 42
+    }
+  ];
+}
+
+function createNewAutomation(spaceId) {
+  showToast('Creating new automation...', 'info');
+  // Implementation would open automation builder
+}
+
+function editAutomation(automationId) {
+  showToast(`Editing automation ${automationId}`, 'info');
+  // Implementation would open automation editor
+}
+
+function sendAskQuestion(spaceId) {
+  const input = document.getElementById('askInput');
+  const question = input.value.trim();
+  if (!question) return;
+  
+  // Add question to history
+  addToAskHistory(spaceId, { role: 'user', content: question });
+  
+  // Clear input
+  input.value = '';
+  
+  // Simulate AI response (would call actual AI service)
+  setTimeout(() => {
+    const response = `I understand you're asking about "${question}". This is a simulated response. In a real implementation, this would connect to an AI service to provide accurate answers based on your space data.`;
+    addToAskHistory(spaceId, { role: 'assistant', content: response });
+  }, 1000);
+}
+
+function loadAskHistory(spaceId) {
+  // Would load from localStorage or database
+  const history = [];
+  const container = document.getElementById('askHistory');
+  if (container) {
+    container.innerHTML = history.map(msg => `
+      <div class="ask-message ${msg.role}">
+        <div class="message-content">${msg.content}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function addToAskHistory(spaceId, message) {
+  const container = document.getElementById('askHistory');
+  if (container) {
+    const messageEl = document.createElement('div');
+    messageEl.className = `ask-message ${message.role}`;
+    messageEl.innerHTML = `<div class="message-content">${message.content}</div>`;
+    container.appendChild(messageEl);
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function setAskQuestion(question) {
+  const input = document.getElementById('askInput');
+  if (input) {
+    input.value = question;
+    input.focus();
+  }
+}
+
+function getSpaceMembers(spaceId) {
+  // Mock data - would fetch from database
+  return [
+    { id: 'user-1', name: 'John Doe', email: 'john@example.com', role: 'admin', avatar: null },
+    { id: 'user-2', name: 'Jane Smith', email: 'jane@example.com', role: 'member', avatar: null }
+  ];
+}
+
+function getSpaceInvites(spaceId) {
+  // Mock data - would fetch from database
+  return [];
+}
+
+function sendSpaceInvite(spaceId) {
+  const email = document.getElementById('inviteEmail').value;
+  const role = document.getElementById('inviteRole').value;
+  
+  if (!email) {
+    showToast('Please enter an email address', 'error');
+    return;
+  }
+  
+  // Implementation would send invite via email/SMS
+  showToast(`Invite sent to ${email}`, 'success');
+  document.getElementById('inviteEmail').value = '';
+}
+
+function updateMemberRole(spaceId, memberId, role) {
+  showToast(`Updated member role to ${role}`, 'success');
+  // Implementation would update database
+}
+
+function removeSpaceMember(spaceId, memberId) {
+  if (confirm('Are you sure you want to remove this member?')) {
+    showToast('Member removed', 'success');
+    // Implementation would update database
+  }
+}
+
+function switchShareTab(tabName) {
+  // Hide all tabs
+  document.querySelectorAll('.share-tab-content').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  document.querySelectorAll('.share-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Show selected tab
+  document.getElementById(`${tabName}-tab`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function togglePublicAccess(spaceId, enabled) {
+  showToast(`Public access ${enabled ? 'enabled' : 'disabled'}`, 'success');
+  // Implementation would update space settings
+}
+
+function toggleInviteLinks(spaceId, enabled) {
+  showToast(`Invite links ${enabled ? 'enabled' : 'disabled'}`, 'success');
+  // Implementation would update space settings and regenerate/regenerate link
+}
+
+function copyInviteLink() {
+  const linkInput = document.getElementById('inviteLink');
+  if (linkInput) {
+    linkInput.select();
+    document.execCommand('copy');
+    showToast('Invite link copied to clipboard', 'success');
+  }
+}
 function filterSpaceDocs(spaceId) {
   const searchInput = document.getElementById('docsSearchInput');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
@@ -23592,3 +24326,562 @@ function showMilestoneContextMenu() {}
 function renameMilestone() {}
 function deleteMilestone() {}
 function renderCustomMilestonesOnBar() { return ''; }
+
+// ============================================
+// Advanced Bookmark System
+// ============================================
+
+const BOOKMARKS_STORAGE_KEY = 'layerBookmarks';
+
+// Initialize bookmarks storage
+function initializeBookmarks() {
+  if (!localStorage.getItem(BOOKMARKS_STORAGE_KEY)) {
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify([]));
+  }
+}
+
+// Get all bookmarks
+function getAllBookmarks() {
+  try {
+    return JSON.parse(localStorage.getItem(BOOKMARKS_STORAGE_KEY)) || [];
+  } catch (error) {
+    console.error('Error loading bookmarks:', error);
+    return [];
+  }
+}
+
+// Save bookmarks
+function saveBookmarks(bookmarks) {
+  try {
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+    return true;
+  } catch (error) {
+    console.error('Error saving bookmarks:', error);
+    return false;
+  }
+}
+
+// Add bookmark
+function addBookmark(itemId, itemType, title, spaceId, metadata = {}) {
+  const bookmarks = getAllBookmarks();
+  const existingBookmark = bookmarks.find(b => b.itemId === itemId && b.itemType === itemType);
+  
+  if (existingBookmark) {
+    showToast('Already bookmarked!', 'warning');
+    return false;
+  }
+  
+  const newBookmark = {
+    id: generateId(),
+    itemId,
+    itemType,
+    title,
+    spaceId,
+    createdAt: new Date().toISOString(),
+    metadata,
+    tags: [],
+    notes: ''
+  };
+  
+  bookmarks.push(newBookmark);
+  
+  if (saveBookmarks(bookmarks)) {
+    showToast('Added to bookmarks!', 'success');
+    return true;
+  }
+  
+  return false;
+}
+
+// Remove bookmark
+function removeBookmark(itemId, itemType) {
+  const bookmarks = getAllBookmarks();
+  const filteredBookmarks = bookmarks.filter(b => !(b.itemId === itemId && b.itemType === itemType));
+  
+  if (saveBookmarks(filteredBookmarks)) {
+    showToast('Removed from bookmarks', 'success');
+    // Refresh the current view if we're on a space view
+    const currentView = document.querySelector('[data-view].active');
+    if (currentView && currentView.dataset.view === 'activity') {
+      const activeSpace = document.querySelector('.custom-space-item.active');
+      if (activeSpace) {
+        openSpaceView(activeSpace.dataset.spaceId);
+      }
+    }
+    return true;
+  }
+  
+  return false;
+}
+
+// Get bookmarks for a specific space
+function getSpaceBookmarks(spaceId) {
+  const bookmarks = getAllBookmarks();
+  return bookmarks.filter(bookmark => bookmark.spaceId === spaceId);
+}
+
+// Get bookmarked items for space view
+function getBookmarkedItemsForSpace(spaceId) {
+  const bookmarks = getSpaceBookmarks(spaceId);
+  const docs = loadDocs().filter(d => String(d.spaceId) === String(spaceId));
+  const excels = loadExcels().filter(e => String(e.spaceId) === String(spaceId));
+  
+  return bookmarks.map(bookmark => {
+    if (bookmark.itemType === 'doc') {
+      const doc = docs.find(d => d.id === bookmark.itemId);
+      return doc ? { ...doc, type: 'doc', bookmarkId: bookmark.id } : null;
+    } else if (bookmark.itemType === 'excel') {
+      const excel = excels.find(e => e.id === bookmark.itemId);
+      return excel ? { ...excel, type: 'excel', bookmarkId: bookmark.id } : null;
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+// Open bookmark manager modal
+function openBookmarkManager(spaceId) {
+  const bookmarks = spaceId ? getSpaceBookmarks(spaceId) : getAllBookmarks();
+  const space = spaceId ? getSpaceById(spaceId) : null;
+  
+  const content = `
+    <div class="bookmark-manager">
+      <div class="bookmark-header">
+        <h3>${space ? `Bookmarks in ${space.name}` : 'All Bookmarks'}</h3>
+        <div class="bookmark-actions">
+          <button class="btn btn-secondary" onclick="exportBookmarks()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export
+          </button>
+          <button class="btn btn-primary" onclick="openAddBookmarkModal('${spaceId || ''}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+            </svg>
+            Add Bookmark
+          </button>
+        </div>
+      </div>
+      
+      <div class="bookmark-filters">
+        <div class="filter-group">
+          <label>Type:</label>
+          <select onchange="filterBookmarks('type', this.value)">
+            <option value="all">All Types</option>
+            <option value="doc">Documents</option>
+            <option value="excel">Spreadsheets</option>
+            <option value="web">Web Links</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Sort:</label>
+          <select onchange="sortBookmarks(this.value)">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="title">Title A-Z</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="bookmark-list" id="bookmarkList">
+        ${renderBookmarkList(bookmarks)}
+      </div>
+    </div>
+  `;
+  
+  openModal('Bookmark Manager', content, 'large');
+}
+
+// Render bookmark list
+function renderBookmarkList(bookmarks) {
+  if (bookmarks.length === 0) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h3>No bookmarks yet</h3>
+        <p>Start bookmarking items to organize your favorite content</p>
+        <button class="btn btn-primary" onclick="openAddBookmarkModal()">Add Bookmark</button>
+      </div>
+    `;
+  }
+  
+  return bookmarks.map(bookmark => `
+    <div class="bookmark-item-card" data-bookmark-id="${bookmark.id}">
+      <div class="bookmark-item-header">
+        <div class="bookmark-item-icon">
+          ${getBookmarkIcon(bookmark.itemType)}
+        </div>
+        <div class="bookmark-item-info">
+          <h4 class="bookmark-title" onclick="openBookmarkItem('${bookmark.itemId}', '${bookmark.itemType}')">${bookmark.title}</h4>
+          <div class="bookmark-meta">
+            <span class="bookmark-type">${formatBookmarkType(bookmark.itemType)}</span>
+            <span class="bookmark-date">${formatDate(bookmark.createdAt)}</span>
+          </div>
+        </div>
+        <div class="bookmark-item-actions">
+          <button class="btn btn-icon" onclick="editBookmark('${bookmark.id}')" title="Edit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="btn btn-icon btn-danger" onclick="removeBookmarkById('${bookmark.id}')" title="Remove">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      ${bookmark.notes ? `<div class="bookmark-notes">${bookmark.notes}</div>` : ''}
+      ${bookmark.tags && bookmark.tags.length > 0 ? `
+        <div class="bookmark-tags">
+          ${bookmark.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+// Helper functions for bookmarks
+function getBookmarkIcon(type) {
+  switch (type) {
+    case 'doc':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>`;
+    case 'excel':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>`;
+    case 'web':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>`;
+    default:
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>`;
+  }
+}
+
+function formatBookmarkType(type) {
+  const types = {
+    'doc': 'Document',
+    'excel': 'Spreadsheet',
+    'web': 'Web Link'
+  };
+  return types[type] || type;
+}
+
+function openBookmarkItem(itemId, itemType) {
+  switch (itemType) {
+    case 'doc':
+      openDocEditor(itemId);
+      break;
+    case 'excel':
+      openExcelEditor(itemId);
+      break;
+    case 'web':
+      // Handle web links
+      const bookmarks = getAllBookmarks();
+      const bookmark = bookmarks.find(b => b.itemId === itemId && b.itemType === itemType);
+      if (bookmark && bookmark.metadata && bookmark.metadata.url) {
+        window.open(bookmark.metadata.url, '_blank');
+      }
+      break;
+  }
+  closeModal();
+}
+
+function removeBookmarkById(bookmarkId) {
+  const bookmarks = getAllBookmarks();
+  const filteredBookmarks = bookmarks.filter(b => b.id !== bookmarkId);
+  
+  if (saveBookmarks(filteredBookmarks)) {
+    showToast('Bookmark removed', 'success');
+    // Refresh the bookmark list
+    const bookmarkList = document.getElementById('bookmarkList');
+    if (bookmarkList) {
+      bookmarkList.innerHTML = renderBookmarkList(filteredBookmarks);
+    }
+  }
+}
+
+function editBookmark(bookmarkId) {
+  const bookmarks = getAllBookmarks();
+  const bookmark = bookmarks.find(b => b.id === bookmarkId);
+  
+  if (!bookmark) return;
+  
+  const content = `
+    <div class="edit-bookmark-form">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="editBookmarkTitle" value="${escapeHtml(bookmark.title)}" />
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="editBookmarkNotes" placeholder="Add notes...">${escapeHtml(bookmark.notes || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="editBookmarkTags" value="${bookmark.tags ? bookmark.tags.join(', ') : ''}" placeholder="work, important, review" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditedBookmark('${bookmarkId}')">Save Changes</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Edit Bookmark', content);
+}
+
+function saveEditedBookmark(bookmarkId) {
+  const title = document.getElementById('editBookmarkTitle').value.trim();
+  const notes = document.getElementById('editBookmarkNotes').value.trim();
+  const tags = document.getElementById('editBookmarkTags').value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => tag.length > 0);
+  
+  if (!title) {
+    showToast('Title is required', 'error');
+    return;
+  }
+  
+  const bookmarks = getAllBookmarks();
+  const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
+  
+  if (bookmarkIndex !== -1) {
+    bookmarks[bookmarkIndex] = {
+      ...bookmarks[bookmarkIndex],
+      title,
+      notes,
+      tags
+    };
+    
+    if (saveBookmarks(bookmarks)) {
+      showToast('Bookmark updated', 'success');
+      closeModal();
+      // Refresh bookmark manager if open
+      const modalTitle = document.querySelector('.modal-title');
+      if (modalTitle && modalTitle.textContent === 'Bookmark Manager') {
+        const bookmarkList = document.getElementById('bookmarkList');
+        if (bookmarkList) {
+          bookmarkList.innerHTML = renderBookmarkList(bookmarks);
+        }
+      }
+    }
+  }
+}
+
+function openAddBookmarkModal(spaceId = '') {
+  const content = `
+    <div class="add-bookmark-form">
+      <div class="form-tabs">
+        <button class="form-tab active" onclick="switchBookmarkTab('existing')">Existing Item</button>
+        <button class="form-tab" onclick="switchBookmarkTab('web')">Web Link</button>
+      </div>
+      
+      <div class="form-tab-content active" id="existing-tab">
+        <div class="form-group">
+          <label>Select Item</label>
+          <select id="bookmarkItemType">
+            <option value="">Choose item type...</option>
+            <option value="doc">Document</option>
+            <option value="excel">Spreadsheet</option>
+          </select>
+        </div>
+        <div class="form-group" id="itemSelectionGroup" style="display: none;">
+          <label>Select Specific Item</label>
+          <select id="bookmarkItemId">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-tab-content" id="web-tab">
+        <div class="form-group">
+          <label>URL</label>
+          <input type="url" id="bookmarkUrl" placeholder="https://example.com" />
+        </div>
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="bookmarkWebTitle" placeholder="Website title" />
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="bookmarkNotes" placeholder="Add notes about this bookmark..."></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="bookmarkTags" placeholder="work, important, review" />
+      </div>
+      
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveNewBookmark('${spaceId}')">Add Bookmark</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Add Bookmark', content);
+  
+  // Set up event listeners
+  document.getElementById('bookmarkItemType').addEventListener('change', function() {
+    const itemSelectionGroup = document.getElementById('itemSelectionGroup');
+    const itemIdSelect = document.getElementById('bookmarkItemId');
+    
+    if (this.value) {
+      itemSelectionGroup.style.display = 'block';
+      populateItemSelection(this.value, itemIdSelect);
+    } else {
+      itemSelectionGroup.style.display = 'none';
+    }
+  });
+}
+
+function switchBookmarkTab(tabName) {
+  // Hide all tabs
+  document.querySelectorAll('.form-tab-content').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  document.querySelectorAll('.form-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Show selected tab
+  document.getElementById(`${tabName}-tab`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function populateItemSelection(itemType, selectElement) {
+  let items = [];
+  
+  if (itemType === 'doc') {
+    items = loadDocs();
+  } else if (itemType === 'excel') {
+    items = loadExcels();
+  }
+  
+  selectElement.innerHTML = '<option value="">Select an item...</option>' +
+    items.map(item => `<option value="${item.id}">${escapeHtml(item.title)}</option>`).join('');
+}
+
+function saveNewBookmark(spaceId) {
+  const activeTab = document.querySelector('.form-tab-content.active').id;
+  
+  if (activeTab === 'existing-tab') {
+    const itemType = document.getElementById('bookmarkItemType').value;
+    const itemId = document.getElementById('bookmarkItemId').value;
+    const notes = document.getElementById('bookmarkNotes').value.trim();
+    const tags = document.getElementById('bookmarkTags').value
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+    
+    if (!itemType || !itemId) {
+      showToast('Please select an item', 'error');
+      return;
+    }
+    
+    const items = itemType === 'doc' ? loadDocs() : loadExcels();
+    const item = items.find(i => i.id === itemId);
+    
+    if (item) {
+      if (addBookmark(itemId, itemType, item.title, spaceId || item.spaceId, { notes, tags })) {
+        closeModal();
+      }
+    }
+  } else {
+    // Web link bookmark
+    const url = document.getElementById('bookmarkUrl').value.trim();
+    const title = document.getElementById('bookmarkWebTitle').value.trim();
+    const notes = document.getElementById('bookmarkNotes').value.trim();
+    const tags = document.getElementById('bookmarkTags').value
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+    
+    if (!url || !title) {
+      showToast('URL and title are required', 'error');
+      return;
+    }
+    
+    const bookmarkId = 'web-' + generateId();
+    const bookmarks = getAllBookmarks();
+    
+    const newBookmark = {
+      id: bookmarkId,
+      itemId: bookmarkId,
+      itemType: 'web',
+      title,
+      spaceId: spaceId || 'global',
+      createdAt: new Date().toISOString(),
+      metadata: { url, notes, tags },
+      tags,
+      notes
+    };
+    
+    bookmarks.push(newBookmark);
+    
+    if (saveBookmarks(bookmarks)) {
+      showToast('Web link bookmarked!', 'success');
+      closeModal();
+    }
+  }
+}
+
+// Utility functions
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+}
+
+function exportBookmarks() {
+  const bookmarks = getAllBookmarks();
+  const dataStr = JSON.stringify(bookmarks, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `layer-bookmarks-${new Date().toISOString().split('T')[0]}.json`;
+  link.click();
+  
+  URL.revokeObjectURL(url);
+  showToast('Bookmarks exported!', 'success');
+}
+
+// Initialize bookmarks on app load
+initializeBookmarks();
+
+// Update the space view rendering to use the new bookmark system
+function getBookmarkedItemsForSpaceView(spaceId) {
+  return getBookmarkedItemsForSpace(spaceId);
+}

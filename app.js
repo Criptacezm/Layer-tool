@@ -798,7 +798,7 @@ async function handleAuthSubmit(event) {
       }
       await loadUserDataFromDB();
       const username = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
-      updateUserDisplay({ username: username, email: data.user.email });
+      await updateUserDisplay({ username: username, email: data.user.email });
       showNotification('Signed in successfully!', 'success');
       renderCurrentView();
     }
@@ -831,7 +831,7 @@ function showAuthError(message) {
   }
 }
 
-function updateUserDisplay(user) {
+async function updateUserDisplay(user) {
   console.log('Updating user display:', user);
   
   let signInBtn = document.getElementById('signInBtn');
@@ -842,10 +842,27 @@ function updateUserDisplay(user) {
     const displayName = user.username || user.email?.split('@')[0] || 'User';
     const initials = displayName.slice(0, 2).toUpperCase();
     
+    // Try to get user profile for avatar
+    let avatarElement = `<div class="user-avatar">${initials}</div>`;
+    
+    try {
+      if (window.LayerDB && typeof window.LayerDB.getProfile === 'function') {
+        const profile = await window.LayerDB.getProfile();
+        if (profile && profile.avatar_url) {
+          // Use Google avatar if available
+          avatarElement = `<img class="user-avatar-img" src="${profile.avatar_url}" alt="${displayName}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` +
+                         `<div class="user-avatar fallback" style="display:none;">${initials}</div>`;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load user profile for avatar:', error);
+      // Fall back to initials
+    }
+    
     const userInfoHTML = `
       <div class="user-info" id="userInfo">
         <div class="user-avatar-wrapper">
-          <div class="user-avatar">${initials}</div>
+          ${avatarElement}
           <div class="user-status-indicator" title="Connected to database"></div>
         </div>
         <span class="user-name">${displayName}</span>
@@ -1055,7 +1072,7 @@ async function checkExistingSession() {
       await loadUserDataFromDB();
       
       // Update UI with user info
-      updateUserDisplay({ username: username, email: user.email });
+      await updateUserDisplay({ username: username, email: user.email });
       
       renderCurrentView();
     }
@@ -1082,7 +1099,7 @@ async function checkExistingSession() {
         await loadUserDataFromDB();
         
         // Update UI
-        updateUserDisplay({ username: username, email: authUser.email });
+        await updateUserDisplay({ username: username, email: authUser.email });
         
         // Close any open modals
         closeModal();
@@ -1914,24 +1931,8 @@ function renderActivityView(searchQuery = '') {
   `;
 }
 
-function renderTeamView() {
-  return `
-    <div class="team-container">
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </div>
-        <h3 class="empty-state-title">Team collaboration coming soon</h3>
-        <p class="empty-state-text">Invite team members and collaborate on projects together</p>
-      </div>
-    </div>
-  `;
-}
+// renderTeamView() is now defined in functionality.js as an async function
+// This placeholder is removed to use the enhanced version from functionality.js
 
 function renderProjectDetailView(projectIndex) {
   const projects = loadProjects();
@@ -2788,6 +2789,38 @@ window.testTeamMemberAddition = async function(testEmail = 'test@example.com') {
     
   } catch (error) {
     console.error('Team member addition test failed:', error);
+  }
+};
+
+// Test function to verify avatar functionality
+window.testAvatarDisplay = async function() {
+  console.log('Testing avatar display...');
+  try {
+    const user = window.LayerDB.getCurrentUser();
+    if (!user) {
+      console.log('No user logged in');
+      return;
+    }
+    
+    console.log('Current user:', user.email);
+    console.log('User metadata:', user.user_metadata);
+    
+    // Test profile fetching
+    const profile = await window.LayerDB.getProfile();
+    console.log('User profile:', profile);
+    
+    if (profile && profile.avatar_url) {
+      console.log('✅ Avatar URL found:', profile.avatar_url);
+      // Force refresh the user display
+      const displayName = profile.name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+      await updateUserDisplay({ username: displayName, email: user.email });
+      console.log('✅ Avatar should now be displayed');
+    } else {
+      console.log('❌ No avatar URL found in profile');
+      console.log('Profile data:', profile);
+    }
+  } catch (error) {
+    console.error('Avatar test failed:', error);
   }
 };
 
