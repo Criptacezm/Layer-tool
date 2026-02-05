@@ -12767,11 +12767,43 @@ async function handleInviteMember(event, projectIndex) {
       throw new Error('User not authenticated properly. Please sign in again.');
     }
     
-    // Use the enhanced team member addition function
-    console.log('Adding team member directly to project...');
-    await window.LayerDB.addTeamMemberToProject(project.id, email);
+    // Get current user's name for email
+    const currentUserName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'A team member';
     
-    // Also create invitation record for tracking (optional)
+    // Send invitation email first
+    console.log('Sending invitation email...');
+    const projectLink = `${window.location.origin}${window.location.pathname}?project=${project.id}`;
+    
+    try {
+      // Call the project invitation Edge Function
+      const { data: emailResult, error: emailError } = await window.LayerDB.supabase.functions.invoke('send-project-invitation', {
+        body: {
+          to: email,
+          projectName: project.name,
+          projectId: project.id,
+          inviterName: currentUserName,
+          inviterEmail: currentUser.email,
+          projectLink: projectLink,
+          invitationId: null // Will be created in the function
+        },
+        headers: {
+          'Authorization': 'Bearer ' + (await window.LayerDB.supabase.auth.getSession()).data.session.access_token
+        }
+      });
+      
+      if (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        throw new Error('Failed to send invitation email: ' + emailError.message);
+      }
+      
+      console.log('Email sent successfully:', emailResult);
+    } catch (emailSendError) {
+      console.error('Error sending email:', emailSendError);
+      // Don't throw here - we want to continue with database operations
+      showToast('Email failed to send, but invitation created in system', 'warning');
+    }
+    
+    // Create invitation record in database
     try {
       const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
         .from('project_invitations')
@@ -12779,14 +12811,14 @@ async function handleInviteMember(event, projectIndex) {
           project_id: project.id,
           inviter_id: currentUser.id,
           invitee_email: email,
-          status: 'accepted' // Since we're adding directly, mark as accepted
+          status: 'sent' // Mark as sent since we attempted to send email
         })
         .select()
         .single();
       
       if (inviteError) {
         console.warn('Failed to create invitation record:', inviteError);
-        // Continue anyway since the team member was added successfully
+        // Continue anyway
       } else {
         console.log('Invitation record created:', invitationData);
       }
@@ -12795,19 +12827,17 @@ async function handleInviteMember(event, projectIndex) {
     }
     
     // Show success message
-    showToast(`Successfully added ${email} to the team!`, 'success');
+    showToast(`Invitation sent to ${email}! They will receive an email with instructions to join.`, 'success');
     closeModal();
     
     // Refresh the project view
     renderCurrentView();
     
   } catch (error) {
-    console.error('Error adding team member:', error);
-    let errorMessage = 'Failed to add team member';
+    console.error('Error sending invitation:', error);
+    let errorMessage = 'Failed to send invitation';
     
-    if (error.message?.includes('already a team member')) {
-      errorMessage = 'This user is already a team member';
-    } else if (error.message?.includes('Not authenticated')) {
+    if (error.message?.includes('Not authenticated')) {
       errorMessage = 'Please sign in again';
     } else if (error.message) {
       errorMessage = error.message;
@@ -14276,7 +14306,15 @@ async function inviteTeamMember(event) {
     
     // Send email notification
     const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
-    await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'invite');
+    
+    try {
+      await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'invite');
+      console.log('Invitation email sent successfully');
+    } catch (emailError) {
+      console.error('Failed to send invitation email:', emailError);
+      // Don't fail the whole operation if email fails
+      showNotification('Invitation created in system but email failed to send', 'warning');
+    }
     
     closeModal();
     showNotification(`Invitation sent to ${email}! They will receive an email and can join with their Google account.`, 'success');
@@ -14287,7 +14325,16 @@ async function inviteTeamMember(event) {
     }
   } catch (error) {
     console.error('Error inviting team member:', error);
-    showNotification(error.message || 'Failed to send invitation. Please try again.', 'error');
+    
+    // Provide more specific error messages
+    let errorMessage = error.message || 'Failed to send invitation. Please try again.';
+    if (errorMessage.includes('Email service not configured')) {
+      errorMessage = 'Email service is not configured. Please contact the administrator.';
+    } else if (errorMessage.includes('does not have an account')) {
+      errorMessage += ' Make sure the user has signed up with Google and try again.';
+    }
+    
+    showNotification(errorMessage, 'error');
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;

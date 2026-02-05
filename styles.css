@@ -7647,7 +7647,6 @@ body {
 
 .btn-danger:hover {
   background: hsl(0, 84%, 55%);
-}
   transition: opacity 0.15s;
 }
 
