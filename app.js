@@ -84,6 +84,214 @@ const modalClose = document.getElementById('modalClose');
 const themeToggle = document.getElementById('themeToggle');
 
 // ============================================
+// Realtime Subscriptions
+// ============================================
+
+let realtimeChannel = null;
+let projectDetailChannel = null;
+
+function setupRealtimeSubscription() {
+  if (!window.LayerDB?.isAuthenticated()) {
+    console.log('User not authenticated, skipping realtime subscription');
+    return;
+  }
+
+  // Clean up existing subscription
+  if (realtimeChannel) {
+    window.LayerDB.unsubscribeFromProjects();
+    realtimeChannel = null;
+  }
+
+  console.log('Setting up realtime subscription for projects...');
+  
+  // Subscribe to all user projects with proper handling
+  realtimeChannel = window.LayerDB.subscribeToUserProjects(async (payload) => {
+    console.log('Realtime change received:', payload.table, payload.eventType);
+    
+    try {
+      // Refresh projects from database
+      const freshProjects = await window.LayerDB.loadProjects();
+      saveProjectsToCache(freshProjects);
+      
+      // Handle project_members changes
+      if (payload.table === 'project_members') {
+        await handleMemberRealtimeUpdate(payload, freshProjects);
+        return;
+      }
+      
+      // Handle projects table changes
+      if (payload.table === 'projects') {
+        await handleProjectRealtimeUpdate(payload, freshProjects);
+        return;
+      }
+      
+      // Fallback: re-render current view
+      renderCurrentView();
+      
+    } catch (error) {
+      console.error('Error handling realtime update:', error);
+      renderCurrentView();
+    }
+  });
+  
+  console.log('Realtime subscription established');
+}
+
+// Handle member add/remove/leave realtime events
+async function handleMemberRealtimeUpdate(payload, freshProjects) {
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  const record = newRecord || oldRecord;
+  
+  if (!record) return;
+  
+  // Check if this affects the current user
+  const affectsCurrentUser = record.user_id === currentUser?.id;
+  
+  if (eventType === 'INSERT') {
+    // New member added
+    if (affectsCurrentUser) {
+      showNotification('You were added to a project!', 'success');
+    } else {
+      showNotification('A new member joined the project', 'success');
+    }
+  } else if (eventType === 'DELETE') {
+    // Member removed or left
+    if (affectsCurrentUser) {
+      // Current user was removed - navigate away from project
+      showNotification('You have been removed from the project', 'warning');
+      if (currentView === 'project-detail') {
+        currentView = 'activity';
+        selectedProjectIndex = null;
+      }
+    } else {
+      showNotification('A member left the project', 'info');
+    }
+  }
+  
+  // Refresh the current view
+  if (currentView === 'project-detail' && selectedProjectIndex !== null) {
+    // Try to find the project by ID after refresh
+    const currentProject = loadProjects()[selectedProjectIndex];
+    if (currentProject && record.project_id === currentProject.id) {
+      if (typeof refreshTeamMembersDisplay === 'function') {
+        refreshTeamMembersDisplay(selectedProjectIndex);
+      } else {
+        renderCurrentView();
+      }
+    } else {
+      renderCurrentView();
+    }
+  } else {
+    renderCurrentView();
+  }
+}
+
+// Handle project update/delete realtime events
+async function handleProjectRealtimeUpdate(payload, freshProjects) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'UPDATE') {
+    // Check if team members changed (legacy support)
+    const oldMembers = oldRecord?.team_members || [];
+    const newMembers = newRecord?.team_members || [];
+    
+    if (JSON.stringify(oldMembers.sort()) !== JSON.stringify(newMembers.sort())) {
+      const addedMembers = newMembers.filter(m => !oldMembers.includes(m));
+      const removedMembers = oldMembers.filter(m => !newMembers.includes(m));
+      
+      if (addedMembers.length > 0) {
+        showNotification(`${addedMembers.join(', ')} joined the project`, 'success');
+      }
+      if (removedMembers.length > 0) {
+        showNotification(`${removedMembers.join(', ')} left the project`, 'info');
+      }
+    } else {
+      // General project update (no notification needed for every update)
+    }
+  } else if (eventType === 'INSERT') {
+    showNotification('New project added', 'success');
+  } else if (eventType === 'DELETE') {
+    // If we're viewing the deleted project, go back to list
+    if (currentView === 'project-detail' && selectedProjectIndex !== null) {
+      const currentProject = loadProjects()[selectedProjectIndex];
+      if (!currentProject || currentProject.id === oldRecord?.id) {
+        selectedProjectIndex = null;
+        currentView = 'activity';
+        showNotification('Project deleted', 'warning');
+      }
+    } else {
+      showNotification('Project deleted', 'warning');
+    }
+  }
+  
+  // Refresh current view
+  renderCurrentView();
+}
+
+// Setup realtime for specific project detail view
+function setupProjectDetailRealtime(projectId) {
+  if (!window.LayerRealtime || !projectId) return;
+  
+  console.log('Setting up project detail realtime for:', projectId);
+  
+  // Subscribe with specific callbacks
+  projectDetailChannel = window.LayerRealtime.subscribeToProjectDetail(projectId, {
+    onProjectUpdate: async (payload) => {
+      console.log('Project detail updated:', payload);
+      await refreshProjects();
+      if (currentView === 'project-detail') {
+        renderCurrentView();
+      }
+    },
+    onMemberAdded: async (payload) => {
+      console.log('Member added to project:', payload);
+      await refreshProjects();
+      if (currentView === 'project-detail' && typeof refreshTeamMembersDisplay === 'function') {
+        refreshTeamMembersDisplay(selectedProjectIndex);
+      }
+      showNotification('New member added to the project', 'success');
+    },
+    onMemberRemoved: async (payload) => {
+      console.log('Member removed from project:', payload);
+      const currentUser = window.LayerDB?.getCurrentUser();
+      
+      // Check if current user was removed
+      if (payload.old?.user_id === currentUser?.id) {
+        showNotification('You have been removed from this project', 'warning');
+        currentView = 'activity';
+        selectedProjectIndex = null;
+        await refreshProjects();
+        renderCurrentView();
+        return;
+      }
+      
+      await refreshProjects();
+      if (currentView === 'project-detail' && typeof refreshTeamMembersDisplay === 'function') {
+        refreshTeamMembersDisplay(selectedProjectIndex);
+      }
+      showNotification('A member left the project', 'info');
+    },
+    onProjectDeleted: async (payload) => {
+      console.log('Project deleted:', payload);
+      showNotification('This project has been deleted', 'warning');
+      currentView = 'activity';
+      selectedProjectIndex = null;
+      await refreshProjects();
+      renderCurrentView();
+    }
+  });
+}
+
+// Cleanup project detail realtime
+function cleanupProjectDetailRealtime() {
+  if (window.LayerRealtime) {
+    window.LayerRealtime.unsubscribeFromProjectDetail();
+  }
+  projectDetailChannel = null;
+}
+
+// ============================================
 // Initialization
 // ============================================
 function init() {
@@ -1024,6 +1232,9 @@ async function loadUserDataFromDB() {
         }
       }, 30000);
     }
+    
+    // Initialize realtime subscriptions for live updates
+    setupRealtimeSubscription();
   } catch (error) {
     console.error('Failed to load user data:', error);
     // On error, ensure empty arrays so user sees clean state
@@ -1092,11 +1303,19 @@ async function checkExistingSession() {
           // Continue anyway as the app might still work
         }
         
+        // Set up realtime subscription for projects
+        setupRealtimeSubscription();
+        
         // User signed in
         const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
         
         // Load user data
         await loadUserDataFromDB();
+        
+        // Initialize realtime subscriptions
+        if (typeof initializeRealtimeSubscriptions === 'function') {
+          await initializeRealtimeSubscriptions();
+        }
         
         // Update UI
         await updateUserDisplay({ username: username, email: authUser.email });
@@ -1123,6 +1342,12 @@ async function checkExistingSession() {
       } else {
         // User signed out
         console.log('User signed out');
+        
+        // Cleanup realtime subscriptions
+        if (typeof cleanupRealtimeSubscriptions === 'function') {
+          cleanupRealtimeSubscriptions();
+        }
+        
         const userInfo = document.getElementById('userInfo');
         if (userInfo) {
           userInfo.outerHTML = `
@@ -1265,6 +1490,13 @@ async function renderCurrentView(preserveScroll = false) {
     viewsContainer.innerHTML = renderProjectDetailView(selectedProjectIndex);
     updateBreadcrumb('Project Details');
     
+    // Setup project-specific realtime subscription for live updates
+    const projects = loadProjects();
+    const currentProject = projects[selectedProjectIndex];
+    if (currentProject && currentProject.id) {
+      setupProjectDetailRealtime(currentProject.id);
+    }
+    
     // Switch to the current project tab after rendering, with a small delay
     // Only do this if we're not already on the correct tab
     setTimeout(() => {
@@ -1278,6 +1510,11 @@ async function renderCurrentView(preserveScroll = false) {
     }, 50);
     
     return;
+  }
+  
+  // Cleanup project detail realtime when not viewing a project
+  if (typeof cleanupProjectDetailRealtime === 'function') {
+    cleanupProjectDetailRealtime();
   }
 
   switch (currentView) {
@@ -1502,9 +1739,21 @@ async function handleDeleteProject(index) {
 }
 
 async function handleDeleteProjectFromDetail(index) {
-  if (confirm('Delete this project permanently?')) {
-    await deleteProject(index);
-    closeProjectDetail();
+  // Check if user is owner before allowing deletion
+  if (typeof isProjectOwner === 'function' && !isProjectOwner(index)) {
+    showNotification('Only the project owner can delete this project', 'error');
+    return;
+  }
+  
+  if (confirm('Delete this project permanently? This cannot be undone.')) {
+    try {
+      await deleteProject(index);
+      showNotification('Project deleted successfully', 'success');
+      closeProjectDetail();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      showNotification(error.message || 'Failed to delete project', 'error');
+    }
   }
 }
 
@@ -1529,22 +1778,8 @@ async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, eve
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
   
-  // Toggle task done state
-  const projects = loadProjects();
-  const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
-  if (task) {
-    task.done = !task.done;
-    saveProjects(projects);
-    
-    // Sync to DB if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
-      try {
-        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
-      } catch (error) {
-        console.error('Failed to sync task toggle to database:', error);
-      }
-    }
-  }
+  // Toggle task done state with attribution (handled by data-store's toggleTaskDone)
+  await toggleTaskDone(projectIndex, columnIndex, taskIndex);
   
   renderCurrentView();
   
@@ -1556,7 +1791,7 @@ async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, eve
   }
 }
 
-function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
+async function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   // Prevent event bubbling that could trigger tab switches
   if (event) {
     event.stopPropagation();
@@ -1567,11 +1802,7 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
   
   if (confirm('Delete this task?')) {
-    const projects = loadProjects();
-    if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
-      projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
-      saveProjects(projects);
-    }
+    await deleteTask(projectIndex, columnIndex, taskIndex);
     renderCurrentView();
     
     // Restore the active tab if we're in project detail view and timeline was active
@@ -1974,9 +2205,12 @@ function renderProjectDetailView(projectIndex) {
                   Grip Diagram
                 </button>
 
-                <button class="project-detail-delete" onclick="handleDeleteProjectFromDetail(${projectIndex})">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
+                <!-- DELETE PROJECT BUTTON - ONLY FOR PROJECT OWNERS -->
+                ${window.isProjectOwner && window.isProjectOwner(projectIndex) ? `
+                  <button class="project-detail-delete" onclick="handleDeleteProjectFromDetail(${projectIndex})" title="Delete project (only project creator can do this)">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -1994,6 +2228,14 @@ function renderProjectDetailView(projectIndex) {
         <div class="project-description-section">
           <h3 class="section-title">Description</h3>
           <p class="project-description-text" contenteditable="true" onblur="handleUpdateProjectDescription(${projectIndex}, this.textContent)">${project.description || 'Add description...'}</p>
+        </div>
+
+        <!-- Team Members Section -->
+        <div class="pd-team-members">
+          <h3 class="section-title">Team Members</h3>
+          <div class="team-members-list">
+            ${renderTeamMembersList(project, projectIndex)}
+          </div>
         </div>
 
         <div>
@@ -2056,7 +2298,12 @@ function renderProjectDetailView(projectIndex) {
           </div>
           <div class="property-item">
             <span class="property-label">Lead</span>
-            <span class="property-value property-link">Add lead</span>
+            <span class="property-value" style="display: flex; align-items: center; gap: 8px;">
+              <div class="member-avatar" style="width: 24px; height: 24px; font-size: 12px; background: ${getNameColor(project.leader || project.userEmail || 'Unknown')}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                ${(project.leader || project.userEmail || 'U').charAt(0).toUpperCase()}
+              </div>
+              ${project.leader || project.userEmail || 'Project Creator'}
+            </span>
           </div>
           <div class="property-item">
             <span class="property-label">Target date</span>
@@ -2077,6 +2324,77 @@ function renderProjectDetailView(projectIndex) {
       </aside>
     </div>
   `;
+}
+
+// Render team members list for project detail view
+function renderTeamMembersList(project, projectIndex) {
+  const teamMembers = project.teamMembers || [];
+  const isOwner = window.isProjectOwner ? window.isProjectOwner(projectIndex) : false;
+  
+  let html = '';
+  
+  teamMembers.forEach((member, index) => {
+    const isCurrentUser = member === (window.getCurrentUserEmail ? window.getCurrentUserEmail() : '') || member === 'You';
+    const memberName = member === 'You' ? (window.getCurrentUserName ? window.getCurrentUserName() : 'You') : member;
+    
+    html += `
+      <div class="team-member-item ${isCurrentUser ? 'current-user' : ''}" 
+           ${isOwner && !isCurrentUser ? `oncontextmenu="window.showMemberContextMenu ? window.showMemberContextMenu(event, '${member}', ${projectIndex}, ${index}) : ''"` : ''}>
+        <div class="member-avatar">${memberName.charAt(0).toUpperCase()}</div>
+        <div class="member-info">
+          <div class="member-name">${memberName}</div>
+          ${isCurrentUser ? '<div class="member-role">You</div>' : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  if (isOwner) {
+    html += `
+      <button class="btn btn-secondary btn-sm" onclick="window.openInviteMemberModal ? window.openInviteMemberModal(${projectIndex}) : ''">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Member
+      </button>
+    `;
+  } else {
+    // Show Leave Project button for non-owners who are team members
+    const currentUserEmail = window.getCurrentUserEmail ? window.getCurrentUserEmail() : '';
+    const isCurrentUserMember = teamMembers.includes(currentUserEmail) || teamMembers.includes('You');
+    
+    if (isCurrentUserMember) {
+      html += `
+        <button class="btn btn-danger btn-sm" onclick="window.leaveProject ? window.leaveProject(${projectIndex}) : ''" title="Leave this project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16,17 21,12 16,7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Leave Project
+        </button>
+      `;
+    }
+  }
+  
+  return html;
+}
+
+// Generate vibrant color based on name
+function getNameColor(name) {
+  // Vibrant color palette
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 }
 
 // ============================================

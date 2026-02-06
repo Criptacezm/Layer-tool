@@ -316,6 +316,29 @@ CREATE TABLE IF NOT EXISTS recurring_tasks (
 );
 
 -- ============================================
+-- Team Chat Messages Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS team_chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    channel_id TEXT NOT NULL DEFAULT 'general',
+    channel_type TEXT NOT NULL DEFAULT 'channel', -- 'channel', 'dm', 'group'
+    recipient_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- For DMs
+    message TEXT NOT NULL,
+    message_type TEXT DEFAULT 'text', -- 'text', 'file', 'image', 'system'
+    file_url TEXT,
+    file_name TEXT,
+    file_size INTEGER,
+    is_edited BOOLEAN DEFAULT FALSE,
+    edited_at TIMESTAMP WITH TIME ZONE,
+    reply_to UUID REFERENCES team_chat_messages(id) ON DELETE SET NULL,
+    reactions JSONB DEFAULT '[]',
+    mentions JSONB DEFAULT '[]',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- Indexes (Safe Creation with IF NOT EXISTS)
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
@@ -330,6 +353,11 @@ CREATE INDEX IF NOT EXISTS idx_docs_favorite ON docs(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_excels_user_id ON excels(user_id);
 CREATE INDEX IF NOT EXISTS idx_excels_favorite ON excels(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id);
+CREATE INDEX IF NOT EXISTS idx_team_chat_messages_user_id ON team_chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_id ON team_chat_messages(channel_id);
+CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_type ON team_chat_messages(channel_type);
+CREATE INDEX IF NOT EXISTS idx_team_chat_messages_recipient_id ON team_chat_messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_team_chat_messages_created_at ON team_chat_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_project_invitations_project_id ON project_invitations(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitations(inviter_id);
@@ -356,6 +384,7 @@ ALTER TABLE docs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE excels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE team_chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_presence ENABLE ROW LEVEL SECURITY;
 
@@ -384,6 +413,8 @@ DROP POLICY IF EXISTS "Users can view own projects" ON projects;
 DROP POLICY IF EXISTS "Users can insert own projects" ON projects;
 DROP POLICY IF EXISTS "Users can update own projects" ON projects;
 DROP POLICY IF EXISTS "Users can delete own projects" ON projects;
+DROP POLICY IF EXISTS "Team members can view projects" ON projects;
+DROP POLICY IF EXISTS "Team members can update projects" ON projects;
 
 CREATE POLICY "Users can view own projects" ON projects FOR SELECT USING (
     auth.uid() = user_id OR 
@@ -394,7 +425,17 @@ CREATE POLICY "Users can update own projects" ON projects FOR UPDATE USING (
     auth.uid() = user_id OR 
     (team_members IS NOT NULL AND team_members @> jsonb_build_array(auth.email()))
 );
-CREATE POLICY "Users can delete own projects" ON projects FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Only owner can delete projects" ON projects FOR DELETE USING (auth.uid() = user_id);
+
+-- Enhanced policies for team member management
+CREATE POLICY "Team members can view projects" ON projects FOR SELECT USING (
+    auth.uid() = user_id OR 
+    (team_members IS NOT NULL AND team_members @> jsonb_build_array(auth.email()))
+);
+CREATE POLICY "Team members can update projects" ON projects FOR UPDATE USING (
+    auth.uid() = user_id OR 
+    (team_members IS NOT NULL AND team_members @> jsonb_build_array(auth.email()))
+);
 
 -- Backlog Tasks policies
 DROP POLICY IF EXISTS "Users can view own backlog_tasks" ON backlog_tasks;
@@ -486,6 +527,20 @@ CREATE POLICY "Users can delete project invitations" ON project_invitations FOR 
   auth.uid() = inviter_id
 );
 
+-- Team Chat Messages policies
+DROP POLICY IF EXISTS "Users can view team chat messages" ON team_chat_messages;
+DROP POLICY IF EXISTS "Users can insert team chat messages" ON team_chat_messages;
+DROP POLICY IF EXISTS "Users can update own team chat messages" ON team_chat_messages;
+DROP POLICY IF EXISTS "Users can delete own team chat messages" ON team_chat_messages;
+CREATE POLICY "Users can view team chat messages" ON team_chat_messages FOR SELECT USING (
+    auth.uid() = user_id OR 
+    auth.uid() = recipient_id OR
+    channel_type = 'channel'
+);
+CREATE POLICY "Users can insert team chat messages" ON team_chat_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own team chat messages" ON team_chat_messages FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own team chat messages" ON team_chat_messages FOR DELETE USING (auth.uid() = user_id);
+
 -- User Presence policies
 DROP POLICY IF EXISTS "Users can view own presence" ON user_presence;
 DROP POLICY IF EXISTS "Users can insert own presence" ON user_presence;
@@ -555,8 +610,11 @@ DROP TRIGGER IF EXISTS update_docs_updated_at ON docs;
 DROP TRIGGER IF EXISTS update_excels_updated_at ON excels;
 DROP TRIGGER IF EXISTS update_spaces_updated_at ON spaces;
 DROP TRIGGER IF EXISTS update_recurring_tasks_updated_at ON recurring_tasks;
+DROP TRIGGER IF EXISTS update_team_chat_messages_updated_at ON team_chat_messages;
 DROP TRIGGER IF EXISTS update_project_invitations_updated_at ON project_invitations;
 DROP TRIGGER IF EXISTS update_user_presence_updated_at ON user_presence;
+DROP TRIGGER IF EXISTS update_followers_updated_at ON followers;
+DROP TRIGGER IF EXISTS update_team_invitations_updated_at ON team_invitations;
 
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -568,6 +626,7 @@ CREATE TRIGGER update_docs_updated_at BEFORE UPDATE ON docs FOR EACH ROW EXECUTE
 CREATE TRIGGER update_excels_updated_at BEFORE UPDATE ON excels FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_spaces_updated_at BEFORE UPDATE ON spaces FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_recurring_tasks_updated_at BEFORE UPDATE ON recurring_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_team_chat_messages_updated_at BEFORE UPDATE ON team_chat_messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_invitations_updated_at BEFORE UPDATE ON project_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_presence_updated_at BEFORE UPDATE ON user_presence FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_followers_updated_at BEFORE UPDATE ON followers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

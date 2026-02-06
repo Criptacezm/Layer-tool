@@ -1795,7 +1795,7 @@ function openEditTaskModal(eventId) {
       
       <!-- Link to Project, Assignment, or Space -->
       <div class="form-group-collapsible">
-        <div class="form-collapsible-header" onclick="toggleEventLinksSection()">
+        <div class="form-collapsible-header collapsed" onclick="toggleEventLinksSection()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -1805,7 +1805,7 @@ function openEditTaskModal(eventId) {
             <path d="M6 9l6 6 6-6"/>
           </svg>
         </div>
-        <div class="form-collapsible-content" id="eventLinksSection">
+        <div class="form-collapsible-content collapsed" id="eventLinksSection">
           <div class="form-row-triple">
             <div class="form-group-inline">
               <label>Project</label>
@@ -4804,7 +4804,7 @@ function openCreateEventModal(defaultDate = null) {
       
       <!-- Link to Project, Assignment, or Space -->
       <div class="form-group-collapsible">
-        <div class="form-collapsible-header" onclick="toggleEventLinksSection()">
+        <div class="form-collapsible-header collapsed" onclick="toggleEventLinksSection()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -4814,7 +4814,7 @@ function openCreateEventModal(defaultDate = null) {
             <path d="M6 9l6 6 6-6"/>
           </svg>
         </div>
-        <div class="form-collapsible-content" id="eventLinksSection">
+        <div class="form-collapsible-content collapsed" id="eventLinksSection">
           <div class="form-row-triple">
             <div class="form-group-inline">
               <label>Project</label>
@@ -5335,6 +5335,11 @@ function renderProjectDetailView(projectIndex) {
   const projectComments = project.comments || [];
   const milestones = project.milestones || [];
   
+  // Check if current user is project leader
+  const isLeader = isProjectLeader(project);
+  const currentUserEmail = window.LayerDB?.getCurrentUser()?.email || getCurrentUserEmail();
+  const isTeamMember = teamMembers.includes(currentUserEmail) || teamMembers.includes('You');
+  
   // Generate activity log
   const activityLog = generateActivityLog(project, projectIndex);
   
@@ -5397,11 +5402,22 @@ function renderProjectDetailView(projectIndex) {
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
           </button>
+          ${!isProjectOwner(projectIndex) ? `
+            <button class="pd-action-btn pd-action-warning" onclick="leaveProject(${projectIndex})" title="Leave project">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          ` : ''}
+          ${isProjectOwner(projectIndex) ? `
           <button class="pd-action-btn pd-action-danger" onclick="handleDeleteProjectFromDetail(${projectIndex})" title="Delete project">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h.01M15 9h.01M9 15h6"/>
             </svg>
           </button>
+          ` : ''}
         </div>
       </header>
       
@@ -5602,8 +5618,8 @@ function renderProjectDetailView(projectIndex) {
               <div class="pd-prop-row">
                 <span class="pd-prop-label">Lead</span>
                 <button class="pd-prop-value clickable" onclick="openAssignLeadModal(${projectIndex})">
-                  <div class="pd-mini-avatar">${getCurrentUserInitials()}</div>
-                  ${getCurrentUserName()}
+                  <div class="pd-mini-avatar">${getProjectLeaderInitials(project)}</div>
+                  ${getProjectLeaderDisplayName(project)}
                 </button>
               </div>
               <div class="pd-prop-row">
@@ -12766,6 +12782,18 @@ async function handleInviteMember(event, projectIndex) {
     console.log('Adding team member directly to project...');
     await window.LayerDB.addTeamMemberToProject(project.id, email);
     
+    // Immediately update local state for instant UI feedback
+    const projects = loadProjects();
+    const localProject = projects[projectIndex];
+    if (localProject && localProject.teamMembers) {
+      // Add email to team members array if not already present
+      if (!localProject.teamMembers.includes(email)) {
+        localProject.teamMembers.push(email);
+        saveProjects(projects);
+        console.log('Updated local team members:', localProject.teamMembers);
+      }
+    }
+    
     // Also create invitation record for tracking (optional)
     try {
       const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
@@ -12793,8 +12821,12 @@ async function handleInviteMember(event, projectIndex) {
     showToast(`Successfully added ${email} to the team!`, 'success');
     closeModal();
     
-    // Refresh the project view
-    renderCurrentView();
+    // Refresh the team members display immediately for better UX
+    if (currentView === 'project-detail') {
+      refreshTeamMembersDisplay(projectIndex);
+    } else {
+      renderCurrentView();
+    }
     
     // Re-initialize presence polling for the updated member list
     setTimeout(() => {
@@ -13218,9 +13250,21 @@ async function handleDeleteProject(index) {
 }
 
 async function handleDeleteProjectFromDetail(index) {
-  if (confirm('Delete this project permanently?')) {
-    await deleteProject(index);
-    closeProjectDetail();
+  // Check if user is owner before allowing deletion
+  if (!isProjectOwner(index)) {
+    showNotification('Only the project owner can delete this project', 'error');
+    return;
+  }
+  
+  if (confirm('Delete this project permanently? This cannot be undone.')) {
+    try {
+      await deleteProject(index);
+      showNotification('Project deleted successfully', 'success');
+      closeProjectDetail();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      showNotification(error.message || 'Failed to delete project', 'error');
+    }
   }
 }
 
@@ -14365,8 +14409,20 @@ function searchTeamMembers(query) {
 }
 
 // Team View Helper Functions
-function selectTeamChannel(channelId) {
+async function selectTeamChannel(channelId) {
   teamCurrentChannel = channelId;
+  
+  // Determine channel type
+  const channel = teamChannels.find(c => c.id === channelId) || 
+                 teamDirectMessages.find(d => d.id === channelId);
+  const channelType = channel?.type || 'channel';
+  
+  // Load messages from database
+  await loadTeamMessages(channelId, channelType);
+  
+  // Setup realtime subscription
+  await setupTeamChatRealtime(channelId);
+  
   renderCurrentView();
 }
 
@@ -14407,26 +14463,492 @@ function closeTeamCreateDropdown() {
   }
 }
 
-function sendTeamMessage() {
+async function sendTeamMessage() {
   const input = document.getElementById('teamMessageInput');
   if (!input || !input.value.trim()) return;
   
-  const message = {
-    id: Date.now(),
-    user: 'You',
-    avatar: 'YU',
-    content: input.value.trim(),
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    isSystem: false
-  };
-  
-  if (!teamMessages[teamCurrentChannel]) {
-    teamMessages[teamCurrentChannel] = [];
+  try {
+    // Determine channel type based on current channel
+    const channel = teamChannels.find(c => c.id === teamCurrentChannel) || 
+                   teamDirectMessages.find(d => d.id === teamCurrentChannel);
+    const channelType = channel?.type || 'channel';
+    let recipientId = null;
+    
+    // For DMs, get the recipient ID
+    if (channelType === 'dm') {
+      // This would need to be resolved from the user's email to ID
+      // For now, we'll use the channel ID as recipient identifier
+      recipientId = teamCurrentChannel;
+    }
+    
+    // Send message to database
+    const messageData = await api.sendTeamMessage(
+      teamCurrentChannel,
+      channelType,
+      input.value.trim(),
+      recipientId
+    );
+    
+    // Clear input and refresh UI
+    input.value = '';
+    
+    // The message will be updated via realtime subscription
+    // For immediate feedback, we can add it to local state
+    if (!teamMessages[teamCurrentChannel]) {
+      teamMessages[teamCurrentChannel] = [];
+    }
+    
+    // Convert database message to local format
+    const localMessage = {
+      id: messageData.id,
+      user: messageData.user_profile?.name || 'Unknown',
+      avatar: messageData.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      content: messageData.message,
+      time: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystem: false,
+      userId: messageData.user_id,
+      isEdited: messageData.is_edited,
+      editedAt: messageData.edited_at
+    };
+    
+    teamMessages[teamCurrentChannel].push(localMessage);
+    renderCurrentView();
+    
+  } catch (error) {
+    console.error('Failed to send team message:', error);
+    showNotification('Failed to send message. Please try again.', 'error');
   }
-  teamMessages[teamCurrentChannel].push(message);
+}
+
+// Load team messages from database
+async function loadTeamMessages(channelId, channelType = 'channel') {
+  try {
+    const messages = await api.getTeamMessages(channelId, channelType);
+    
+    // Convert database messages to local format
+    const localMessages = messages.map(msg => ({
+      id: msg.id,
+      user: msg.user_profile?.name || 'Unknown',
+      avatar: msg.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      content: msg.message,
+      time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystem: msg.message_type === 'system',
+      userId: msg.user_id,
+      isEdited: msg.is_edited,
+      editedAt: msg.edited_at,
+      messageType: msg.message_type,
+      fileUrl: msg.file_url,
+      fileName: msg.file_name,
+      replyTo: msg.reply_to
+    }));
+    
+    // Update local state
+    teamMessages[channelId] = localMessages;
+    
+    return localMessages;
+  } catch (error) {
+    console.error('Failed to load team messages:', error);
+    return [];
+  }
+}
+
+// Setup realtime subscription for team messages
+let currentTeamChatSubscription = null;
+
+async function setupTeamChatRealtime(channelId) {
+  // Remove existing subscription
+  if (currentTeamChatSubscription) {
+    api.unsubscribeFromTeamMessages(currentTeamChatSubscription);
+    currentTeamChatSubscription = null;
+  }
   
-  input.value = '';
-  renderCurrentView();
+  // Setup new subscription
+  currentTeamChatSubscription = api.subscribeToTeamMessages(channelId, (payload) => {
+    handleTeamChatRealtimeUpdate(payload);
+  });
+}
+
+// Handle realtime updates for team chat
+function handleTeamChatRealtimeUpdate(payload) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'INSERT') {
+    // Add new message to local state
+    const localMessage = {
+      id: newRecord.id,
+      user: newRecord.user_profile?.name || 'Unknown',
+      avatar: newRecord.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      content: newRecord.message,
+      time: new Date(newRecord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystem: newRecord.message_type === 'system',
+      userId: newRecord.user_id,
+      isEdited: newRecord.is_edited,
+      editedAt: newRecord.edited_at,
+      messageType: newRecord.message_type,
+      fileUrl: newRecord.file_url,
+      fileName: newRecord.file_name,
+      replyTo: newRecord.reply_to
+    };
+    
+    if (!teamMessages[newRecord.channel_id]) {
+      teamMessages[newRecord.channel_id] = [];
+    }
+    teamMessages[newRecord.channel_id].push(localMessage);
+    
+    // Update UI if we're viewing this channel
+    if (teamCurrentChannel === newRecord.channel_id) {
+      renderCurrentView();
+    }
+  } else if (eventType === 'UPDATE') {
+    // Update existing message in local state
+    const channelId = newRecord.channel_id;
+    if (teamMessages[channelId]) {
+      const messageIndex = teamMessages[channelId].findIndex(msg => msg.id === newRecord.id);
+      if (messageIndex !== -1) {
+        teamMessages[channelId][messageIndex] = {
+          ...teamMessages[channelId][messageIndex],
+          content: newRecord.message,
+          isEdited: newRecord.is_edited,
+          editedAt: newRecord.edited_at
+        };
+        
+        // Update UI if we're viewing this channel
+        if (teamCurrentChannel === channelId) {
+          renderCurrentView();
+        }
+      }
+    }
+  } else if (eventType === 'DELETE') {
+    // Remove message from local state
+    const channelId = oldRecord.channel_id;
+    if (teamMessages[channelId]) {
+      teamMessages[channelId] = teamMessages[channelId].filter(msg => msg.id !== oldRecord.id);
+      
+      // Update UI if we're viewing this channel
+      if (teamCurrentChannel === channelId) {
+        renderCurrentView();
+      }
+    }
+  }
+}
+
+// ============================================
+// Realtime Subscriptions
+// ============================================
+
+let realtimeSubscriptions = {
+  projects: null,
+  calendarEvents: null,
+  docs: null
+};
+
+// Initialize all realtime subscriptions
+async function initializeRealtimeSubscriptions() {
+  if (!currentUser) return;
+  
+  try {
+    // Subscribe to projects changes
+    realtimeSubscriptions.projects = api.subscribeToProjects((payload) => {
+      handleProjectRealtimeUpdate(payload);
+    });
+    
+    // Subscribe to calendar events changes
+    realtimeSubscriptions.calendarEvents = api.subscribeToCalendarEvents((payload) => {
+      handleCalendarEventRealtimeUpdate(payload);
+    });
+    
+    // Subscribe to docs changes
+    realtimeSubscriptions.docs = api.subscribeToDocs((payload) => {
+      handleDocRealtimeUpdate(payload);
+    });
+    
+    console.log('Realtime subscriptions initialized');
+  } catch (error) {
+    console.error('Failed to initialize realtime subscriptions:', error);
+  }
+}
+
+// Refresh team members display in project detail view
+function refreshTeamMembersDisplay(projectIndex) {
+  console.log('Refreshing team members display for project:', projectIndex);
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) {
+    console.error('Project not found:', projectIndex);
+    return;
+  }
+  
+  console.log('Project team members:', project.teamMembers);
+  
+  // Update team members section if it exists
+  const teamMembersSection = document.querySelector('.pd-team-members .team-members-list');
+  if (teamMembersSection) {
+    const teamMembersHtml = window.renderTeamMembersList ? window.renderTeamMembersList(project, projectIndex) : generateTeamMembersHtml(project, projectIndex);
+    teamMembersSection.innerHTML = teamMembersHtml;
+    console.log('Team members section updated');
+  } else {
+    console.warn('Team members section not found');
+  }
+  
+  // Update project header members if it exists
+  const projectHeaderMembers = document.querySelector('.pd-project-members');
+  if (projectHeaderMembers) {
+    const membersHtml = generateProjectMembersHtml(project);
+    projectHeaderMembers.innerHTML = membersHtml;
+    console.log('Project header members updated');
+  }
+}
+
+// Make function globally available
+window.refreshTeamMembersDisplay = refreshTeamMembersDisplay;
+
+// Generate vibrant color based on name
+function getNameColor(name) {
+  // Vibrant color palette
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Generate team members HTML for project detail view
+function generateTeamMembersHtml(project, projectIndex) {
+  const teamMembers = project.teamMembers || [];
+  const isOwner = isProjectOwner(projectIndex);
+  
+  let html = `
+    <div class="pd-team-members">
+      <div class="pd-section-header">
+        <h3 class="pd-section-title">Team Members</h3>
+        <div class="pd-team-stats">
+          <span class="pd-team-count">${teamMembers.length} member${teamMembers.length !== 1 ? 's' : ''}</span>
+          ${project.leader ? `<span class="pd-team-leader">Lead: ${project.leader}</span>` : ''}
+        </div>
+      </div>
+      <div class="team-members-list">
+  `;
+  
+  teamMembers.forEach((member, index) => {
+    const isCurrentUser = member === (window.getCurrentUserEmail ? window.getCurrentUserEmail() : '') || member === 'You';
+    const memberName = member === 'You' ? (window.getCurrentUserName ? window.getCurrentUserName() : 'You') : member;
+    const isLeader = project.leader === memberName;
+    
+    html += `
+      <div class="team-member-item ${isCurrentUser ? 'current-user' : ''} ${isLeader ? 'team-leader' : ''}" 
+           ${isOwner && !isCurrentUser ? `oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${index})"` : ''}>
+        <div class="member-avatar" style="background: ${getNameColor(memberName)}; color: white;">
+          ${memberName.charAt(0).toUpperCase()}
+        </div>
+        <div class="member-info">
+          <div class="member-name">
+            ${memberName}
+            ${isLeader ? '<i class="fas fa-crown" style="color: gold; margin-left: 4px; font-size: 12px;" title="Project Leader"></i>' : ''}
+          </div>
+          ${isCurrentUser ? '<div class="member-role">You</div>' : isLeader ? '<div class="member-role">Leader</div>' : ''}
+        </div>
+        ${isOwner && !isCurrentUser && !isLeader ? `
+          <button class="team-member-action" onclick="showMemberContextMenu(event, '${member}', ${projectIndex}, ${index})" title="Manage member">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+        ` : ''}
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  // Add member button - only for project owners
+  if (isOwner) {
+    html += `
+      <button class="pd-add-member-btn" onclick="openInviteMemberModal(${projectIndex})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Team Member
+      </button>
+    `;
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+// Generate project members HTML for project header
+function generateProjectMembersHtml(project) {
+  const teamMembers = project.teamMembers || [];
+  const maxDisplay = 3;
+  const displayMembers = teamMembers.slice(0, maxDisplay);
+  const remainingCount = teamMembers.length - maxDisplay;
+  
+  let html = '<div class="pd-project-members">';
+  
+  displayMembers.forEach(member => {
+    const memberName = member === 'You' ? getCurrentUserName() : member;
+    const initial = memberName.charAt(0).toUpperCase();
+    
+    html += `
+      <div class="pd-member-avatar" title="${memberName}">
+        ${initial}
+      </div>
+    `;
+  });
+  
+  if (remainingCount > 0) {
+    html += `
+      <div class="pd-member-avatar pd-more-members" title="${remainingCount} more members">
+        +${remainingCount}
+      </div>
+    `;
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+// Handle project updates
+function handleProjectRealtimeUpdate(payload) {
+  console.log('Real-time project update received:', payload);
+  
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'INSERT') {
+    // Add new project to local state
+    projects.push(newRecord);
+  } else if (eventType === 'UPDATE') {
+    // Update existing project
+    const index = projects.findIndex(p => p.id === newRecord.id);
+    if (index !== -1) {
+      const oldProject = projects[index];
+      projects[index] = newRecord;
+      
+      // Check if team members changed
+      const oldMembers = oldProject.team_members || [];
+      const newMembers = newRecord.team_members || [];
+      const membersChanged = JSON.stringify(oldMembers.sort()) !== JSON.stringify(newMembers.sort());
+      
+      console.log('Team members change detected:', {
+        oldMembers,
+        newMembers,
+        membersChanged,
+        currentView
+      });
+      
+      if (membersChanged) {
+        console.log('Team members changed, refreshing team display');
+        
+        // Refresh only the team members display for better UX
+        if (currentView === 'project-detail') {
+          refreshTeamMembersDisplay(index);
+        }
+        
+        // Show notification for member changes
+        const addedMembers = newMembers.filter(m => !oldMembers.includes(m));
+        const removedMembers = oldMembers.filter(m => !newMembers.includes(m));
+        
+        if (addedMembers.length > 0) {
+          showNotification(`${addedMembers.join(', ')} joined the project`, 'success');
+        }
+        if (removedMembers.length > 0) {
+          showNotification(`${removedMembers.join(', ')} left the project`, 'info');
+        }
+        
+        // Also update local storage to keep in sync
+        const localProjects = loadProjects();
+        if (localProjects[index]) {
+          localProjects[index].teamMembers = newMembers;
+          saveProjects(localProjects);
+        }
+        
+        return; // Don't do full refresh if only members changed
+      }
+    }
+  } else if (eventType === 'DELETE') {
+    // Remove project from local state
+    projects = projects.filter(p => p.id !== oldRecord.id);
+  }
+  
+  // Refresh current view if needed (for non-member changes)
+  if (currentView === 'projects' || currentView === 'project-detail') {
+    renderCurrentView();
+  }
+}
+
+// Handle calendar event updates
+function handleCalendarEventRealtimeUpdate(payload) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'INSERT') {
+    // Add new event to calendar
+    calendarEvents.push(newRecord);
+  } else if (eventType === 'UPDATE') {
+    // Update existing event
+    const index = calendarEvents.findIndex(e => e.id === newRecord.id);
+    if (index !== -1) {
+      calendarEvents[index] = newRecord;
+    }
+  } else if (eventType === 'DELETE') {
+    // Remove event from calendar
+    calendarEvents = calendarEvents.filter(e => e.id !== oldRecord.id);
+  }
+  
+  // Refresh calendar view if needed
+  if (currentView === 'calendar') {
+    renderCurrentView();
+  }
+}
+
+// Handle doc updates
+function handleDocRealtimeUpdate(payload) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'INSERT') {
+    // Add new doc
+    docs.push(newRecord);
+  } else if (eventType === 'UPDATE') {
+    // Update existing doc
+    const index = docs.findIndex(d => d.id === newRecord.id);
+    if (index !== -1) {
+      docs[index] = newRecord;
+    }
+  } else if (eventType === 'DELETE') {
+    // Remove doc
+    docs = docs.filter(d => d.id !== oldRecord.id);
+  }
+  
+  // Refresh docs view if needed
+  if (currentView === 'docs') {
+    renderCurrentView();
+  }
+}
+
+// Cleanup all realtime subscriptions
+function cleanupRealtimeSubscriptions() {
+  Object.values(realtimeSubscriptions).forEach(subscription => {
+    if (subscription) {
+      api.supabase.removeChannel(subscription);
+    }
+  });
+  
+  // Cleanup team chat subscription
+  if (currentTeamChatSubscription) {
+    api.unsubscribeFromTeamMessages(currentTeamChatSubscription);
+    currentTeamChatSubscription = null;
+  }
+  
+  realtimeSubscriptions = {
+    projects: null,
+    calendarEvents: null,
+    docs: null
+  };
 }
 
 function handleTeamMessageKeydown(event) {
@@ -14618,7 +15140,7 @@ async function addPeopleFromDropdown() {
 async function openAddPeopleModal() {
   // Check if user is authenticated
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
-    showNotification('Please sign in with Google to add people', 'error');
+    showNotification('Please sign in to add people', 'error');
     openAuthModal();
     return;
   }
@@ -25452,6 +25974,106 @@ function getBookmarkedItemsForSpaceView(spaceId) {
   return getBookmarkedItemsForSpace(spaceId);
 }
 
+// Helper function to check if current user is project owner (creator/leader)
+function isProjectOwner(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return false;
+
+  // Primary check: Use the isOwner flag from DB if available (most reliable)
+  if (typeof project.isOwner !== 'undefined') {
+    console.log('✓ Using isOwner flag from DB:', project.isOwner);
+    return project.isOwner;
+  }
+  
+  const currentUserEmail = window.LayerDB?.getCurrentUser()?.email || getCurrentUserEmail();
+  const currentUserId = window.LayerDB?.getCurrentUser()?.id;
+  const currentUserName = window.LayerDB?.getCurrentUser()?.user_metadata?.name || getCurrentUserName();
+  
+  console.log('Checking project ownership:', {
+    projectIndex,
+    projectLeader: project.leader,
+    projectUserId: project.userId || project.user_id,
+    projectUserEmail: project.userEmail,
+    currentUserEmail,
+    currentUserId,
+    currentUserName
+  });
+  
+  // Secondary check: User ID match
+  const projectUserId = project.userId || project.user_id;
+  if (projectUserId && currentUserId && projectUserId === currentUserId) {
+    console.log('✓ User is project creator (by ID)');
+    return true;
+  }
+  
+  // Tertiary check: User email match
+  if (project.userEmail === currentUserEmail) {
+    console.log('✓ User is project creator (by email)');
+    return true;
+  }
+  
+  // Fallback check: Leader name match (for backward compatibility)
+  if (project.leader === currentUserName) {
+    console.log('✓ User is project leader (by name)');
+    return true;
+  }
+  
+  console.log('✗ User is not project owner');
+  return false;
+}
+
+// Make isProjectOwner globally available
+window.isProjectOwner = isProjectOwner;
+
+// Helper function to check if current user is the project leader specifically
+function isProjectLeader(project) {
+  if (!project) return false;
+  
+  const currentUser = window.LayerDB?.getCurrentUser();
+  if (!currentUser) return false;
+  
+  // Check if current user ID matches project creator ID
+  return project.user_id === currentUser.id;
+}
+
+// Helper function to get project leader name for display
+function getProjectLeaderName(project) {
+  if (!project) return 'Unknown';
+  
+  // Use leader field if set
+  if (project.leader) return project.leader;
+  
+  // Fallback to user email
+  if (project.userEmail) return project.userEmail;
+  
+  return 'Project Creator';
+}
+
+// Helper function to get project leader display name (for properties panel)
+function getProjectLeaderDisplayName(project) {
+  if (!project) return 'Unknown';
+  if (project.leader) return project.leader;
+  if (project.userEmail) return project.userEmail.split('@')[0];
+  return 'Project Creator';
+}
+
+// Helper function to get project leader initials (for avatar)
+function getProjectLeaderInitials(project) {
+  const name = getProjectLeaderDisplayName(project);
+  if (!name) return '?';
+  const parts = name.split(/[\s@]/);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+// Make functions globally available
+window.getProjectLeaderName = getProjectLeaderName;
+window.getProjectLeaderDisplayName = getProjectLeaderDisplayName;
+window.getProjectLeaderInitials = getProjectLeaderInitials;
+
 // Context menu functions for member avatars
 window.showMemberContextMenu = function(event, memberName, projectIndex, memberIndex) {
   event.preventDefault();
@@ -25460,20 +26082,38 @@ window.showMemberContextMenu = function(event, memberName, projectIndex, memberI
   const existingMenus = document.querySelectorAll('.context-menu');
   existingMenus.forEach(menu => menu.remove());
   
-  // Create context menu
-  const contextMenu = document.createElement('div');
-  contextMenu.className = 'context-menu';
-  contextMenu.style.top = `${event.clientY}px`;
-  contextMenu.style.left = `${event.clientX}px`;
+  // Check if current user is project owner
+  const isOwner = isProjectOwner(projectIndex);
+  
+  // Don't show context menu if user is not owner (no admin actions available)
+  if (!isOwner) {
+    showNotification('Only project creator can manage team members', 'info');
+    return;
+  }
   
   // Load projects and check if user is already leader
   const projects = loadProjects();
   const project = projects[projectIndex];
   const isLeader = project?.leader === memberName;
   
+  // Don't allow actions on the project creator
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const memberIsOwner = (project.user_id && memberName === (currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0])) ||
+                       (project.userEmail === memberName) ||
+                       (project.leader === memberName && project.user_id === currentUser?.id);
+  
+  if (memberIsOwner) {
+    showNotification('Cannot perform actions on project creator', 'info');
+    return;
+  }
+  
+  // Create context menu
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'context-menu';
+  
   // Extract email from member name if it contains @
   const displayName = memberName === 'You' ? getCurrentUserName() : memberName;
-  const email = memberName.includes('@') ? memberName : '';
+  const email = memberName.includes('@') ? memberName : null;
   
   contextMenu.innerHTML = `
     <div class="context-menu-header">
@@ -25487,16 +26127,19 @@ window.showMemberContextMenu = function(event, memberName, projectIndex, memberI
     </div>
     <div class="context-menu-item danger" onclick="kickFromProject('${memberName}', ${projectIndex}, ${memberIndex})">
       <i class="fas fa-user-minus" style="width: 16px; text-align: center;"></i>
-      <span>Kick from Project</span>
+      <span>Remove from Project</span>
     </div>
   `;
   
   document.body.appendChild(contextMenu);
   
-  // Adjust position if menu goes off screen
+  // Position the context menu
   const rect = contextMenu.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  
+  contextMenu.style.top = `${event.clientY}px`;
+  contextMenu.style.left = `${event.clientX}px`;
   
   if (rect.right > viewportWidth) {
     contextMenu.style.left = `${event.clientX - contextMenu.offsetWidth}px`;
@@ -25505,13 +26148,30 @@ window.showMemberContextMenu = function(event, memberName, projectIndex, memberI
   if (rect.bottom > viewportHeight) {
     contextMenu.style.top = `${event.clientY - contextMenu.offsetHeight}px`;
   }
+  
+  // Close context menu when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeContextMenu() {
+      const contextMenu = document.querySelector('.context-menu');
+      if (contextMenu) {
+        contextMenu.remove();
+      }
+      document.removeEventListener('click', closeContextMenu);
+    });
+  }, 100);
 };
 
 window.makeLeader = async function(memberName, projectIndex, memberIndex) {
+  // Check if current user is project owner before allowing leader assignment
+  if (!isProjectOwner(projectIndex)) {
+    showNotification('Only the project creator can assign new leaders', 'error');
+    return;
+  }
+  
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
-    console.error('Project not found at index:', projectIndex);
+    console.error('Project not found:', projectIndex);
     return;
   }
   
@@ -25521,44 +26181,44 @@ window.makeLeader = async function(memberName, projectIndex, memberIndex) {
   // Save to localStorage
   saveProjects(projects);
   
-  // Also update database if authenticated
+  // Update database if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
     try {
       await window.LayerDB.updateProject(project.id, {
-        name: project.name,
-        description: project.description,
-        status: project.status,
-        startDate: project.startDate,
-        targetDate: project.targetDate,
-        flowchart: project.flowchart,
-        columns: project.columns,
-        updates: project.updates,
-        milestones: project.milestones,
-        grip_diagram: project.gripDiagram,
-        tasks: project.tasks,
-        team_members: project.teamMembers,
-        leader: project.leader  // Sync leader change
+        leader: memberName  // Sync leader change
       });
-      console.log('✓ Project updated in database after leader change');
+      console.log(' Project leader updated in database');
     } catch (error) {
-      console.error('✗ Failed to update project in database:', error);
+      console.error(' Failed to update project leader in database:', error);
       showNotification('Leader updated locally but failed to sync to server', 'error');
       return;
     }
   }
   
-  // Update UI
-  renderCurrentView();
+  // Update UI - refresh team members display for immediate feedback
+  if (currentView === 'project-detail') {
+    refreshTeamMembersDisplay(projectIndex);
+  } else {
+    renderCurrentView();
+  }
   
   // Show notification
   showNotification(`${memberName} is now the project leader`, 'success');
   
   // Close context menu
   const contextMenu = document.querySelector('.context-menu');
-  if (contextMenu) contextMenu.remove();
+  if (contextMenu) {
+    contextMenu.remove();
+  }
 };
 
 window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
+  // Check if current user is project owner before allowing member removal
+  if (!isProjectOwner(projectIndex)) {
+    showNotification('Only project creator can remove members', 'error');
+    return;
+  }
+  
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
@@ -25566,57 +26226,114 @@ window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
     return;
   }
   
-  // Remove member from project teamMembers
-  const memberIndexInArray = project.teamMembers.indexOf(memberName);
-  if (memberIndexInArray !== -1) {
-    project.teamMembers.splice(memberIndexInArray, 1);
-  } else {
-    showNotification(`Member ${memberName} not found in project`, 'error');
+  // Don't allow kicking the project creator
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const memberIsOwner = (project.userId && memberName === (currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0])) ||
+                       (project.userEmail === memberName) ||
+                       (project.leader === memberName);
+  
+  if (memberIsOwner) {
+    showNotification('Cannot remove project creator from the project', 'error');
     return;
   }
   
-  // If kicked member was the leader, assign new leader
-  if (project.leader === memberName) {
-    project.leader = project.teamMembers.length > 0 ? project.teamMembers[0] : null;
-  }
-  
-  // Save to localStorage
-  saveProjects(projects);
-  
-  // Also update database if authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+  if (confirm(`Remove ${memberName} from the project?`)) {
     try {
-      await window.LayerDB.updateProject(project.id, {
-        name: project.name,
-        description: project.description,
-        status: project.status,
-        startDate: project.startDate,
-        targetDate: project.targetDate,
-        flowchart: project.flowchart,
-        columns: project.columns,
-        updates: project.updates,
-        milestones: project.milestones,
-        grip_diagram: project.gripDiagram,
-        tasks: project.tasks,
-        team_members: project.teamMembers  // This is the key fix!
-      });
-      console.log('✓ Project updated in database after kicking member');
+      // Check if using new project_members system
+      if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+        // Try to find the user ID from the member's email/name
+        // First check if we have project_members data with user IDs
+        if (project.projectMembers && Array.isArray(project.projectMembers)) {
+          const memberRecord = project.projectMembers.find(m => 
+            m.email === memberName || m.name === memberName || m.memberId === memberName
+          );
+          
+          if (memberRecord && memberRecord.memberId) {
+            await window.LayerDB.removeProjectMember(project.id, memberRecord.memberId);
+            console.log('✓ Member removed via project_members table');
+          } else {
+            // Fallback to legacy team_members approach
+            await window.LayerDB.removeTeamMemberFromProject(project.id, memberName);
+            console.log('✓ Member removed via legacy team_members array');
+          }
+        } else {
+          // Fallback to legacy team_members approach
+          await window.LayerDB.removeTeamMemberFromProject(project.id, memberName);
+          console.log('✓ Member removed via legacy team_members array');
+        }
+        
+        // Refresh projects from DB to get updated data
+        if (typeof refreshProjects === 'function') {
+          await refreshProjects();
+        }
+      }
+      
+      // Update UI - refresh team members display for immediate feedback
+      if (currentView === 'project-detail') {
+        refreshTeamMembersDisplay(projectIndex);
+      } else {
+        renderCurrentView();
+      }
+      
+      // Show notification
+      showNotification(`${memberName} has been removed from the project`, 'warning');
+      
+      // Close context menu
+      const contextMenu = document.querySelector('.context-menu');
+      if (contextMenu) {
+        contextMenu.remove();
+      }
+      
     } catch (error) {
-      console.error('✗ Failed to update project in database:', error);
-      showNotification('Member removed locally but failed to sync to server', 'error');
-      return;
+      console.error('Error removing member from project:', error);
+      showNotification(error.message || 'Failed to remove member', 'error');
     }
   }
+};
+
+window.leaveProject = async function(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) {
+    console.error('Project not found at index:', projectIndex);
+    return;
+  }
   
-  // Update UI
-  renderCurrentView();
+  // Check if user is owner - they can't leave, must delete or transfer
+  if (isProjectOwner(projectIndex)) {
+    showNotification('Project owners cannot leave. Transfer ownership or delete the project instead.', 'error');
+    return;
+  }
   
-  // Show notification
-  showNotification(`${memberName} has been removed from the project`, 'warning');
+  // Confirm before leaving
+  if (!confirm(`Are you sure you want to leave the project "${project.name}"? You'll lose access to all project data.`)) {
+    return;
+  }
   
-  // Close context menu
-  const contextMenu = document.querySelector('.context-menu');
-  if (contextMenu) contextMenu.remove();
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+      // Use the new leaveProject function which handles project_members
+      await window.LayerDB.leaveProject(project.id);
+      console.log('✓ User left project via project_members table');
+      
+      // Refresh projects from DB to get updated data
+      if (typeof refreshProjects === 'function') {
+        await refreshProjects();
+      }
+    }
+    
+    // Show notification
+    showNotification(`You have left the project "${project.name}"`, 'info');
+    
+    // Navigate back to projects view
+    currentView = 'activity';
+    selectedProjectIndex = null;
+    renderCurrentView();
+    
+  } catch (error) {
+    console.error('Error leaving project:', error);
+    showNotification(error.message || 'Failed to leave project. Please try again.', 'error');
+  }
 };
 
 // Helper function to show notifications

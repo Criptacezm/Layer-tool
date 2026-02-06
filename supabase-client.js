@@ -250,6 +250,57 @@ async function addTeamMemberToProject(projectId, memberEmail) {
   }
 }
 
+// Remove team member from project
+async function removeTeamMemberFromProject(projectId, userEmail) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  try {
+    console.log('Removing team member:', userEmail, 'from project:', projectId);
+    
+    // Get current project team members
+    const { data: project, error: projectError } = await supabaseClient
+      .from('projects')
+      .select('team_members, user_id')
+      .eq('id', projectId)
+      .maybeSingle();
+    
+    if (projectError) throw projectError;
+    if (!project) throw new Error('Project not found');
+    
+    // Check if user is trying to remove themselves or is the project owner
+    const isOwner = project.user_id === currentUser.id;
+    const isRemovingSelf = currentUser.email === userEmail;
+    
+    if (!isOwner && !isRemovingSelf) {
+      throw new Error('You can only remove yourself from the project');
+    }
+    
+    // Remove member from team
+    const currentTeamMembers = project.team_members || [];
+    const updatedTeamMembers = currentTeamMembers.filter(member => member !== userEmail);
+    
+    // Update project with new team members
+    const { data: updatedProject, error: updateError } = await supabaseClient
+      .from('projects')
+      .update({ 
+        team_members: updatedTeamMembers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', projectId)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    
+    console.log('Team member removed successfully:', userEmail);
+    return updatedProject;
+    
+  } catch (error) {
+    console.error('Error removing team member:', error);
+    throw error;
+  }
+}
+
 // Utility function to fix missing profiles for all existing users
 async function fixMissingProfiles() {
   try {
@@ -436,8 +487,17 @@ async function saveUserPreferences(prefs) {
 }
 
 // ============================================
-// Projects Functions
+// Projects Functions (with proper membership support)
 // ============================================
+
+// Global realtime subscription channels (deprecated - use LayerRealtime)
+let projectsChannel = null;
+let projectMembersChannel = null;
+
+// Load realtime module if available
+if (typeof window.LayerRealtime === 'undefined') {
+  console.warn('LayerRealtime module not loaded. Realtime features will be limited.');
+}
 
 async function loadProjectsFromDB() {
   if (!currentUser) {
@@ -445,17 +505,45 @@ async function loadProjectsFromDB() {
     return loadProjects();
   }
   
-  const { data, error } = await supabaseClient
-    .from('projects')
-    .select('*')
-    .or(`user_id.eq.${currentUser.id},team_members.cs.["${currentUser.email}"]`)
-    .order('created_at', { ascending: false });
+  try {
+    // Get all projects user has access to via project_members table
+    const { data, error } = await supabaseClient
+      .from('projects')
+      .select(`
+        *,
+        project_members!inner(user_id, role, accepted_at)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    // Transform to match existing format with isOwner flag
+    return data.map(p => transformProject(p, currentUser.id));
+  } catch (error) {
+    console.error('Error loading projects with project_members:', error);
+    
+    // Fallback to old method if project_members doesn't exist yet
+    const { data: fallbackData, error: fallbackError } = await supabaseClient
+      .from('projects')
+      .select('*')
+      .or(`user_id.eq.${currentUser.id},team_members.cs.["${currentUser.email}"]`)
+      .order('created_at', { ascending: false });
+    
+    if (fallbackError) throw fallbackError;
+    
+    return fallbackData.map(p => transformProject(p, currentUser.id));
+  }
+}
+
+// Transform DB project to app format
+function transformProject(p, userId) {
+  const isOwner = p.user_id === userId;
+  const userMembership = p.project_members?.find(m => m.user_id === userId);
   
-  if (error) throw error;
-  
-  // Transform to match existing format
-  return data.map(p => ({
+  return {
     id: p.id,
+    userId: p.user_id,
+    user_id: p.user_id,
     name: p.name,
     description: p.description,
     status: p.status,
@@ -467,8 +555,360 @@ async function loadProjectsFromDB() {
     milestones: p.milestones || {},
     gripDiagram: p.grip_diagram || null,
     tasks: p.tasks || [],
-    teamMembers: p.team_members || []
+    activity: p.activity || [],
+    teamMembers: p.team_members || [],
+    projectMembers: p.project_members || [],
+    isOwner: isOwner,
+    memberRole: userMembership?.role || (isOwner ? 'owner' : 'member'),
+    leader: p.leader || null,
+    userEmail: p.user_email || null
+  };
+}
+
+// Get a single project by ID with full membership info
+async function getProjectById(projectId) {
+  if (!currentUser) return null;
+  
+  const { data, error } = await supabaseClient
+    .from('projects')
+    .select(`
+      *,
+      project_members(
+        id,
+        user_id,
+        role,
+        invited_at,
+        accepted_at,
+        profiles:user_id(id, email, name, avatar_url)
+      )
+    `)
+    .eq('id', projectId)
+    .single();
+  
+  if (error) {
+    console.error('Error getting project:', error);
+    throw error;
+  }
+  
+  return transformProject(data, currentUser.id);
+}
+
+// Get project members with profile info
+async function getProjectMembers(projectId) {
+  if (!currentUser) return [];
+  
+  const { data, error } = await supabaseClient
+    .from('project_members')
+    .select(`
+      id,
+      user_id,
+      role,
+      invited_at,
+      accepted_at,
+      profiles:user_id(id, email, name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .order('role', { ascending: true }); // owner first
+  
+  if (error) {
+    console.error('Error getting project members:', error);
+    return [];
+  }
+  
+  return data.map(m => ({
+    id: m.id,
+    memberId: m.user_id,
+    role: m.role,
+    invitedAt: m.invited_at,
+    acceptedAt: m.accepted_at,
+    email: m.profiles?.email,
+    name: m.profiles?.name,
+    avatarUrl: m.profiles?.avatar_url
   }));
+}
+
+// Add member to project (owner only - RLS enforced)
+async function addProjectMemberByEmail(projectId, memberEmail) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  console.log('Adding project member:', memberEmail, 'to project:', projectId);
+  
+  // First find the user by email
+  const { data: targetUser, error: userError } = await supabaseClient
+    .from('profiles')
+    .select('id, email, name')
+    .ilike('email', memberEmail)
+    .single();
+  
+  if (userError || !targetUser) {
+    throw new Error(`User with email "${memberEmail}" not found. They need to sign up first.`);
+  }
+  
+  // Check if already a member
+  const { data: existingMember } = await supabaseClient
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', targetUser.id)
+    .maybeSingle();
+  
+  if (existingMember) {
+    throw new Error('User is already a member of this project');
+  }
+  
+  // Add member
+  const { data, error } = await supabaseClient
+    .from('project_members')
+    .insert({
+      project_id: projectId,
+      user_id: targetUser.id,
+      role: 'member',
+      accepted_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error adding project member:', error);
+    throw error;
+  }
+  
+  console.log('Project member added successfully:', memberEmail);
+  return { ...data, email: targetUser.email, name: targetUser.name };
+}
+
+// Remove member from project (owner can kick anyone, members can leave)
+async function removeProjectMember(projectId, userId) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  console.log('Removing project member:', userId, 'from project:', projectId);
+  
+  // Can't remove owner (they must delete the project instead)
+  const { data: project } = await supabaseClient
+    .from('projects')
+    .select('user_id')
+    .eq('id', projectId)
+    .single();
+  
+  if (project && project.user_id === userId) {
+    throw new Error('Cannot remove the project owner. Delete the project instead.');
+  }
+  
+  const { error } = await supabaseClient
+    .from('project_members')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('user_id', userId);
+  
+  if (error) {
+    console.error('Error removing project member:', error);
+    throw error;
+  }
+  
+  console.log('Project member removed successfully');
+  return true;
+}
+
+// Leave project (for non-owners) - Fixed with proper error handling
+async function leaveProject(projectId) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  console.log('User attempting to leave project:', projectId);
+  
+  try {
+    // First check if user is the owner
+    const { data: project, error: projectError } = await supabaseClient
+      .from('projects')
+      .select('user_id, name')
+      .eq('id', projectId)
+      .single();
+    
+    if (projectError) {
+      console.error('Error checking project ownership:', projectError);
+      throw new Error('Failed to check project ownership');
+    }
+    
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    
+    if (project.user_id === currentUser.id) {
+      throw new Error('Project owners cannot leave their project. Transfer ownership or delete the project instead.');
+    }
+    
+    console.log(`User ${currentUser.email} leaving project: ${project.name}`);
+    
+    // Remove user from project_members table
+    const { error: leaveError } = await supabaseClient
+      .from('project_members')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('user_id', currentUser.id);
+    
+    if (leaveError) {
+      console.error('Error leaving project:', leaveError);
+      throw new Error(`Failed to leave project: ${leaveError.message}`);
+    }
+    
+    console.log('Successfully left project:', project.name);
+    
+    // Also remove from legacy team_members JSON array if it exists
+    try {
+      const { data: currentProject } = await supabaseClient
+        .from('projects')
+        .select('team_members')
+        .eq('id', projectId)
+        .single();
+      
+      if (currentProject?.team_members && Array.isArray(currentProject.team_members)) {
+        const updatedTeamMembers = currentProject.team_members.filter(email => email !== currentUser.email);
+        await supabaseClient
+          .from('projects')
+          .update({ team_members: updatedTeamMembers })
+          .eq('id', projectId);
+      }
+    } catch (updateError) {
+      console.warn('Failed to update legacy team_members array:', updateError);
+      // Don't fail the operation if legacy update fails
+    }
+    
+    return { success: true, projectName: project.name };
+    
+  } catch (error) {
+    console.error('Leave project error:', error);
+    throw error;
+  }
+}
+
+// Transfer project ownership
+async function transferProjectOwnership(projectId, newOwnerUserId) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  // Verify current user is owner
+  const { data: project, error: projectError } = await supabaseClient
+    .from('projects')
+    .select('user_id')
+    .eq('id', projectId)
+    .single();
+  
+  if (projectError || !project) throw new Error('Project not found');
+  if (project.user_id !== currentUser.id) throw new Error('Only the owner can transfer ownership');
+  
+  // Verify new owner is a member
+  const { data: newOwnerMembership } = await supabaseClient
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', newOwnerUserId)
+    .single();
+  
+  if (!newOwnerMembership) throw new Error('New owner must be a project member first');
+  
+  // Update project owner
+  const { error: updateProjectError } = await supabaseClient
+    .from('projects')
+    .update({ user_id: newOwnerUserId })
+    .eq('id', projectId);
+  
+  if (updateProjectError) throw updateProjectError;
+  
+  // Update membership roles
+  await supabaseClient
+    .from('project_members')
+    .update({ role: 'member' })
+    .eq('project_id', projectId)
+    .eq('user_id', currentUser.id);
+  
+  await supabaseClient
+    .from('project_members')
+    .update({ role: 'owner' })
+    .eq('project_id', projectId)
+    .eq('user_id', newOwnerUserId);
+  
+  console.log('Ownership transferred successfully');
+  return true;
+}
+
+// Delete project (owner only - RLS enforced)
+async function deleteProjectFromDB(projectId) {
+  if (!currentUser) throw new Error('Not authenticated');
+  
+  console.log('Deleting project:', projectId);
+  
+  const { error } = await supabaseClient
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
+    .eq('user_id', currentUser.id); // RLS ensures only owner can delete
+  
+  if (error) {
+    console.error('Error deleting project:', error);
+    throw error;
+  }
+  
+  console.log('Project deleted successfully');
+  return await loadProjectsFromDB();
+}
+
+// ============================================
+// Realtime Subscriptions
+// ============================================
+
+// Subscribe to all project changes for current user (using new LayerRealtime)
+function subscribeToUserProjects(callback) {
+  if (!currentUser) return null;
+  
+  // Use new LayerRealtime module if available
+  if (window.LayerRealtime) {
+    return window.LayerRealtime.subscribeToAllUserProjects(callback);
+  }
+  
+  // Fallback to legacy implementation
+  console.warn('Using legacy realtime subscription. Consider loading realtime.js module.');
+  
+  // Unsubscribe from existing channels
+  unsubscribeFromProjects();
+  
+  // Subscribe to projects table changes
+  projectsChannel = supabaseClient
+    .channel('user_projects_realtime')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'projects' }, 
+      (payload) => {
+        console.log('Project change detected:', payload.eventType);
+        callback(payload);
+      }
+    )
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'project_members' }, 
+      (payload) => {
+        console.log('Project member change detected:', payload.eventType);
+        callback(payload);
+      }
+    )
+    .subscribe((status) => {
+      console.log('Project subscription status:', status);
+    });
+  
+  return projectsChannel;
+}
+
+// Unsubscribe from project changes (using new LayerRealtime)
+function unsubscribeFromProjects() {
+  // Use new LayerRealtime module if available
+  if (window.LayerRealtime) {
+    return window.LayerRealtime.unsubscribeFromAllProjects();
+  }
+  
+  // Fallback to legacy implementation
+  if (projectsChannel) {
+    supabaseClient.removeChannel(projectsChannel);
+    projectsChannel = null;
+  }
+  if (projectMembersChannel) {
+    supabaseClient.removeChannel(projectMembersChannel);
+    projectMembersChannel = null;
+  }
 }
 
 async function saveProjectToDB(projectData) {
@@ -525,12 +965,15 @@ async function updateProjectInDB(projectId, updates) {
   if (updates.milestones !== undefined) dbUpdates.milestones = updates.milestones;
   if (updates.grip_diagram !== undefined) dbUpdates.grip_diagram = updates.grip_diagram;
   if (updates.tasks !== undefined) dbUpdates.tasks = updates.tasks;
+  if (updates.activity !== undefined) dbUpdates.activity = updates.activity;
+  if (updates.leader !== undefined) dbUpdates.leader = updates.leader;
   
+  // Don't filter by user_id - RLS policies handle permissions
+  // This allows project members to update tasks/columns too
   const { data, error } = await supabaseClient
     .from('projects')
     .update(dbUpdates)
     .eq('id', projectId)
-    .eq('user_id', currentUser.id)
     .select()
     .single();
   
@@ -540,7 +983,6 @@ async function updateProjectInDB(projectId, updates) {
 
 async function deleteProjectFromDB(projectId) {
   if (!currentUser) {
-    // Fall back to localStorage
     const projects = loadProjects();
     const index = projects.findIndex(p => p.id === projectId);
     if (index !== -1) {
@@ -549,14 +991,31 @@ async function deleteProjectFromDB(projectId) {
     return projects;
   }
   
+  // RLS policy ensures only owner can delete
   const { error } = await supabaseClient
     .from('projects')
     .delete()
-    .eq('id', projectId)
-    .eq('user_id', currentUser.id);
+    .eq('id', projectId);
   
   if (error) throw error;
   return await loadProjectsFromDB();
+}
+
+// Get profile by user ID (for displaying who completed tasks, etc.)
+async function getProfileById(userId) {
+  if (!userId) return null;
+  
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, email, name, avatar_url')
+    .eq('id', userId)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error getting profile:', error);
+    return null;
+  }
+  return data;
 }
 
 // ============================================
@@ -1320,19 +1779,33 @@ window.LayerDB = {
   // Profile
   getProfile,
   updateProfile,
-  ensureUserProfile, // Add the new function
-  addTeamMemberToProject, // Enhanced team member addition
-  fixMissingProfiles, // Utility function to fix existing users
+  ensureUserProfile,
+  addTeamMemberToProject, // Legacy - use addProjectMemberByEmail instead
+  removeTeamMemberFromProject, // Legacy - use removeProjectMember instead
+  fixMissingProfiles,
   
   // Preferences
   getUserPreferences,
   saveUserPreferences,
   
-  // Projects
+  // Projects (updated with membership support)
   loadProjects: loadProjectsFromDB,
   saveProject: saveProjectToDB,
   updateProject: updateProjectInDB,
   deleteProject: deleteProjectFromDB,
+  getProjectById,
+  getProfileById,
+  
+  // Project Members (NEW)
+  getProjectMembers,
+  addProjectMember: addProjectMemberByEmail,
+  removeProjectMember,
+  leaveProject,
+  transferOwnership: transferProjectOwnership,
+  
+  // Realtime Subscriptions (NEW)
+  subscribeToUserProjects,
+  unsubscribeFromProjects,
   
   // Backlog
   loadBacklogTasks: loadBacklogTasksFromDB,
@@ -1777,6 +2250,193 @@ window.LayerDB = {
     
     if (error) throw error;
     return true;
+  },
+  
+  // ============================================
+  // Team Chat Functions
+  // ============================================
+  
+  // Send a team chat message
+  sendTeamMessage: async (channelId, channelType, message, recipientId = null, messageType = 'text') => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('team_chat_messages')
+      .insert({
+        user_id: currentUser.id,
+        channel_id: channelId,
+        channel_type: channelType,
+        recipient_id: recipientId,
+        message: message,
+        message_type: messageType
+      })
+      .select(`
+        *,
+        user_profile:profiles!team_chat_messages_user_id_fkey(email, name, avatar_url)
+      `)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  // Get team chat messages for a channel
+  getTeamMessages: async (channelId, channelType = 'channel') => {
+    if (!currentUser) return [];
+    
+    let query = supabaseClient
+      .from('team_chat_messages')
+      .select(`
+        *,
+        user_profile:profiles!team_chat_messages_user_id_fkey(email, name, avatar_url)
+      `)
+      .eq('channel_id', channelId)
+      .eq('channel_type', channelType)
+      .order('created_at', { ascending: true });
+    
+    // For DMs, also include messages where current user is the recipient
+    if (channelType === 'dm') {
+      query = query.or(`channel_id.eq.${channelId},recipient_id.eq.${currentUser.id}`);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data || [];
+  },
+  
+  // Subscribe to team chat messages for realtime updates
+  subscribeToTeamMessages: (channelId, callback) => {
+    if (!currentUser) return null;
+    
+    const channel = supabaseClient
+      .channel(`team_chat_${channelId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'team_chat_messages',
+          filter: `channel_id=eq.${channelId}`
+        }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return channel;
+  },
+  
+  // Unsubscribe from team chat messages
+  unsubscribeFromTeamMessages: (channel) => {
+    if (channel) {
+      supabaseClient.removeChannel(channel);
+    }
+  },
+  
+  // Edit a team chat message
+  editTeamMessage: async (messageId, newMessage) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabaseClient
+      .from('team_chat_messages')
+      .update({ 
+        message: newMessage,
+        is_edited: true,
+        edited_at: new Date().toISOString()
+      })
+      .match({ 
+        id: messageId,
+        user_id: currentUser.id 
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+  
+  // Delete a team chat message
+  deleteTeamMessage: async (messageId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    
+    const { error } = await supabaseClient
+      .from('team_chat_messages')
+      .delete()
+      .match({ 
+        id: messageId,
+        user_id: currentUser.id 
+      });
+    
+    if (error) throw error;
+    return true;
+  },
+  
+  // ============================================
+  // Realtime Subscriptions for other tables
+  // ============================================
+  
+  // Subscribe to projects for realtime updates
+  subscribeToProjects: (callback) => {
+    if (!currentUser) return null;
+    
+    const channel = supabaseClient
+      .channel('projects_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'projects'
+        }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return channel;
+  },
+  
+  // Subscribe to calendar events for realtime updates
+  subscribeToCalendarEvents: (callback) => {
+    if (!currentUser) return null;
+    
+    const channel = supabaseClient
+      .channel('calendar_events_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'calendar_events'
+        }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return channel;
+  },
+  
+  // Subscribe to docs for realtime updates
+  subscribeToDocs: (callback) => {
+    if (!currentUser) return null;
+    
+    const channel = supabaseClient
+      .channel('docs_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'docs'
+        }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return channel;
   },
   
   // Email notification function

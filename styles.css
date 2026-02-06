@@ -16456,6 +16456,17 @@ body {
   color: #ef4444;
 }
 
+.pd-action-btn.pd-action-warning {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.pd-action-btn.pd-action-warning:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
 /* Layout Grid */
 .pd-layout {
   display: grid;
@@ -16595,6 +16606,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.pd-chip-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .pd-date-arrow {
@@ -17307,6 +17325,26 @@ body {
   color: var(--muted-foreground);
 }
 
+/* Task completer avatar */
+.pd-task-completer-avatar {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--background);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.pd-task-completer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Task Checkbox - Premium Style */
 .pd-task-check {
   position: relative;
@@ -17820,6 +17858,22 @@ body {
 .pd-activity-icon.date svg { color: #3b82f6; }
 .pd-activity-icon.priority svg { color: #ef4444; }
 .pd-activity-icon.milestone svg { color: #22c55e; }
+.pd-activity-icon.task svg { color: #8b5cf6; }
+
+.pd-activity-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+
+.pd-activity-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .pd-activity-content {
   flex: 1;

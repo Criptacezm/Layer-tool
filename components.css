@@ -9279,7 +9279,7 @@ h4.ai-heading { font-size: 14px; }
   background: var(--muted);
 }
 
-.form-collapsible-header.open {
+.form-collapsible-header:not(.collapsed) {
   background: var(--muted);
   border-bottom: 1px solid var(--border);
 }
@@ -9302,17 +9302,16 @@ h4.ai-heading { font-size: 14px; }
   flex-shrink: 0;
 }
 
-.form-collapsible-header.open .form-collapsible-chevron {
+.form-collapsible-header:not(.collapsed) .form-collapsible-chevron {
   transform: rotate(180deg);
 }
 
 .form-collapsible-content {
-  display: none;
   padding: 16px;
 }
 
-.form-collapsible-content.open {
-  display: block;
+.form-collapsible-content.collapsed {
+  display: none;
 }
 
 /* Repeat Section Specific Styles */

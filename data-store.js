@@ -89,99 +89,71 @@ function generateIssueId() {
 }
 
 // ============================================
-// Projects - Use Supabase when authenticated
+// Projects - Supabase as Source of Truth
 // ============================================
 
-// Get projects from localStorage (internal use only)
+// In-memory cache for projects (backed by localStorage for sync access)
+// localStorage is ONLY a read cache - never the source of truth
+
+// Get projects from localStorage cache (for synchronous render calls)
 function loadProjectsFromLocal() {
   try {
     const data = localStorage.getItem(PROJECTS_KEY);
     if (data) {
       const projects = JSON.parse(data);
       return projects.map(project => {
-        // Migration: ensure flowchart exists
-        if (!project.flowchart) {
-          project.flowchart = { nodes: [], edges: [] };
-          if (project.description && project.description.trim()) {
-            project.flowchart.nodes.push({
-              id: 'migrated-text',
-              type: 'flowNode',
-              position: { x: 50, y: 50 },
-              data: { label: project.description.trim(), headerColor: '#89b4fa' }
-            });
-          }
-        }
         project.columns = project.columns || [
           { title: 'To Do', tasks: [] },
           { title: 'In Progress', tasks: [] },
           { title: 'Done', tasks: [] },
         ];
+        project.activity = project.activity || [];
         return project;
       });
     }
   } catch (e) {
-    console.error('Failed to load projects:', e);
+    console.error('Failed to load projects from cache:', e);
   }
   return [];
 }
 
-// Main loadProjects function - loads from localStorage (sync)
-// Database sync happens separately in save operations
+// Main loadProjects function - reads from localStorage cache (synchronous)
 function loadProjects() {
   return loadProjectsFromLocal();
 }
 
-// Debounce timer for DB sync
-let saveProjectsDebounceTimer = null;
-const SAVE_DEBOUNCE_MS = 0; // MODIFIED: Removed delay (was 800) for snappier interactions
+// Update localStorage cache only (NO DB write)
+function saveProjectsToCache(projects) {
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  } catch (e) {
+    console.error('Failed to update projects cache:', e);
+  }
+}
 
+// DEPRECATED: saveProjects now only updates cache, not DB
 function saveProjects(projects) {
+  saveProjectsToCache(projects);
+}
+
+// Refresh projects from DB and update localStorage cache
+async function refreshProjects() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return loadProjects();
+  }
+  
   try {
-    // Save to localStorage (for UI consistency)
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    
-    // Note: Database updates happen directly in kickFromProject and makeLeader functions
-    // This keeps the UI responsive while database operations happen in the background
-    
-  } catch (e) {
-    console.error('Failed to save projects:', e);
+    const projects = await window.LayerDB.loadProjects();
+    saveProjectsToCache(projects);
+    return projects;
+  } catch (error) {
+    console.error('Failed to refresh projects from DB:', error);
+    return loadProjects();
   }
 }
 
-// Enhanced save that always syncs to DB when authenticated
-async function saveProjectsWithSync(projects) {
-  try {
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    
-    // Always sync all projects to DB if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-      // Sync each project that has an ID (exists in DB)
-      for (const project of projects) {
-        if (project.id) {
-          try {
-            await window.LayerDB.updateProject(project.id, {
-              name: project.name,
-              description: project.description,
-              status: project.status,
-              startDate: project.startDate,
-              targetDate: project.targetDate,
-              flowchart: project.flowchart,
-              columns: project.columns,
-              updates: project.updates,
-              milestones: project.milestones,
-              grip_diagram: project.gripDiagram,
-              tasks: project.tasks
-            });
-          } catch (error) {
-            console.error('Failed to sync project to DB:', project.id, error);
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.error('Failed to save projects:', e);
-  }
-}
+// Make refreshProjects globally available
+window.refreshProjects = refreshProjects;
 
 async function addProject(projectData) {
   // Require authentication - no localStorage fallback
@@ -193,11 +165,21 @@ async function addProject(projectData) {
   }
   
   try {
-    const newProject = await window.LayerDB.saveProject(projectData);
+    // Add creator information to project data
+    const currentUser = window.LayerDB.getCurrentUser();
+    const projectWithCreator = {
+      ...projectData,
+      leader: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Project Creator',
+      userEmail: currentUser?.email,
+      user_id: currentUser?.id,
+      teamMembers: [currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You'] // Add creator as first team member
+    };
+    
+    const newProject = await window.LayerDB.saveProject(projectWithCreator);
     // Refresh local cache from database
     const projects = await window.LayerDB.loadProjects();
     saveProjects(projects);
-    console.log('Project created, localStorage updated with', projects.length, 'projects');
+    console.log('Project created with leader:', projectWithCreator.leader, 'localStorage updated with', projects.length, 'projects');
     if (typeof showNotification === 'function') {
       showNotification('Project created successfully', 'success');
     }
@@ -206,9 +188,14 @@ async function addProject(projectData) {
     console.error('Failed to save project to database:', error);
     // Fallback to localStorage on error
     const projects = loadProjects();
+    const currentUser = window.LayerDB?.getCurrentUser();
     const newProject = {
       ...projectData,
       id: generateId(),
+      leader: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Project Creator',
+      userEmail: currentUser?.email,
+      user_id: currentUser?.id,
+      teamMembers: [currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You'], // Add creator as first team member
       columns: [
         { title: 'To Do', tasks: [] },
         { title: 'In Progress', tasks: [] },
@@ -219,7 +206,7 @@ async function addProject(projectData) {
     };
     projects.push(newProject);
     saveProjects(projects);
-    console.log('Project created locally, localStorage updated with', projects.length, 'projects');
+    console.log('Project created locally with leader:', newProject.leader, 'localStorage updated with', projects.length, 'projects');
     if (typeof showNotification === 'function') {
       showNotification('Project saved locally (sync failed)', 'warning');
     }
@@ -280,23 +267,30 @@ async function deleteProject(index) {
 }
 
 // ============================================
-// Project Tasks
+// Project Tasks - DB-first with task attribution
 // ============================================
 async function addTaskToColumn(projectIndex, columnIndex, title) {
   const projects = loadProjects();
   if (projects[projectIndex] && projects[projectIndex].columns[columnIndex]) {
-    projects[projectIndex].columns[columnIndex].tasks.push({
+    const currentUser = window.LayerDB?.getCurrentUser();
+    const newTask = {
       id: generateId('TASK'),
       title: title,
       done: false,
-      createdAt: new Date().toISOString()
-    });
-    saveProjects(projects);
+      createdAt: new Date().toISOString(),
+      created_by: currentUser?.id || null
+    };
+    projects[projectIndex].columns[columnIndex].tasks.push(newTask);
     
-    // Sync to DB if authenticated
+    // Optimistic update to cache
+    saveProjectsToCache(projects);
+    
+    // Sync to DB
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
       try {
-        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+        await window.LayerDB.updateProject(projects[projectIndex].id, { 
+          columns: projects[projectIndex].columns 
+        });
       } catch (error) {
         console.error('Failed to sync task to database:', error);
       }
@@ -307,18 +301,47 @@ async function addTaskToColumn(projectIndex, columnIndex, title) {
 
 async function toggleTaskDone(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
-  const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
+  const project = projects[projectIndex];
+  const task = project?.columns[columnIndex]?.tasks[taskIndex];
   if (task) {
+    const currentUser = window.LayerDB?.getCurrentUser();
     task.done = !task.done;
-    saveProjects(projects);
     
-    // Sync to DB if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
-      // Do not await the sync to avoid UI delay
-      window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns })
-        .catch(error => {
-          console.error('Failed to sync task toggle to database:', error);
-        });
+    // Add attribution
+    if (task.done) {
+      task.completed_by = currentUser?.id || null;
+      task.completed_at = new Date().toISOString();
+    } else {
+      task.completed_by = null;
+      task.completed_at = null;
+    }
+    
+    // Add activity entry
+    if (!project.activity) project.activity = [];
+    project.activity.unshift({
+      user_id: currentUser?.id || null,
+      user_name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Unknown',
+      action: task.done ? 'completed_task' : 'uncompleted_task',
+      task_title: task.title,
+      column_title: project.columns[columnIndex]?.title || '',
+      timestamp: new Date().toISOString()
+    });
+    // Keep activity log to last 100 entries
+    if (project.activity.length > 100) {
+      project.activity = project.activity.slice(0, 100);
+    }
+    
+    // Optimistic update to cache
+    saveProjectsToCache(projects);
+    
+    // Sync to DB (don't await for snappy UX)
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+      window.LayerDB.updateProject(project.id, { 
+        columns: project.columns,
+        activity: project.activity 
+      }).catch(error => {
+        console.error('Failed to sync task toggle to database:', error);
+      });
     }
   }
   return projects;
@@ -326,14 +349,32 @@ async function toggleTaskDone(projectIndex, columnIndex, taskIndex) {
 
 async function deleteTask(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
-  if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
-    projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
-    saveProjects(projects);
+  const project = projects[projectIndex];
+  if (project?.columns[columnIndex]?.tasks[taskIndex]) {
+    const deletedTask = project.columns[columnIndex].tasks[taskIndex];
+    project.columns[columnIndex].tasks.splice(taskIndex, 1);
     
-    // Sync to DB if authenticated
-    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+    // Add activity entry
+    const currentUser = window.LayerDB?.getCurrentUser();
+    if (!project.activity) project.activity = [];
+    project.activity.unshift({
+      user_id: currentUser?.id || null,
+      user_name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Unknown',
+      action: 'deleted_task',
+      task_title: deletedTask.title,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Optimistic update to cache
+    saveProjectsToCache(projects);
+    
+    // Sync to DB
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
       try {
-        await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
+        await window.LayerDB.updateProject(project.id, { 
+          columns: project.columns,
+          activity: project.activity 
+        });
       } catch (error) {
         console.error('Failed to sync task deletion to database:', error);
       }
@@ -343,18 +384,14 @@ async function deleteTask(projectIndex, columnIndex, taskIndex) {
 }
 
 // ============================================
-// Column Management
+// Column Management - DB-first
 // ============================================
 async function addColumnToProject(projectIndex, title) {
   const projects = loadProjects();
   if (projects[projectIndex]) {
-    projects[projectIndex].columns.push({
-      title: title,
-      tasks: []
-    });
-    saveProjects(projects);
+    projects[projectIndex].columns.push({ title: title, tasks: [] });
+    saveProjectsToCache(projects);
     
-    // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
       try {
         await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
@@ -370,9 +407,8 @@ async function deleteColumnFromProject(projectIndex, columnIndex) {
   const projects = loadProjects();
   if (projects[projectIndex]?.columns[columnIndex]) {
     projects[projectIndex].columns.splice(columnIndex, 1);
-    saveProjects(projects);
+    saveProjectsToCache(projects);
     
-    // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
       try {
         await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
@@ -388,9 +424,8 @@ async function renameColumn(projectIndex, columnIndex, newTitle) {
   const projects = loadProjects();
   if (projects[projectIndex]?.columns[columnIndex]) {
     projects[projectIndex].columns[columnIndex].title = newTitle;
-    saveProjects(projects);
+    saveProjectsToCache(projects);
     
-    // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
       try {
         await window.LayerDB.updateProject(projects[projectIndex].id, { columns: projects[projectIndex].columns });
