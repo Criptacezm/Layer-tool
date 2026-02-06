@@ -5457,8 +5457,8 @@ function renderProjectDetailView(projectIndex) {
               </button>
               
               <button class="pd-prop-chip member">
-                <div class="pd-chip-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
-                <span>${teamMembers[0] || 'You'}</span>
+                <div class="pd-chip-avatar">${getCurrentUserInitials()}</div>
+                <span>${getCurrentUserName()}</span>
               </button>
               
               <button class="pd-prop-chip date" onclick="openEditStartDateModal(${projectIndex})">
@@ -5574,15 +5574,6 @@ function renderProjectDetailView(projectIndex) {
         
         <!-- Sidebar -->
         <aside class="pd-sidebar" id="pdSidebar">
-          <!-- Collapse Toggle Button -->
-          <button class="pd-sidebar-collapse-btn" onclick="togglePdSidebar()" title="Collapse sidebar">
-            <svg class="pd-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M15 18l-6-6 6-6"/>
-            </svg>
-            <svg class="pd-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </button>
           
           <!-- Properties Section -->
           <div class="pd-sidebar-section">
@@ -5611,23 +5602,27 @@ function renderProjectDetailView(projectIndex) {
               <div class="pd-prop-row">
                 <span class="pd-prop-label">Lead</span>
                 <button class="pd-prop-value clickable" onclick="openAssignLeadModal(${projectIndex})">
-                  <div class="pd-mini-avatar">${teamMembers[0]?.charAt(0) || 'Y'}</div>
-                  ${teamMembers[0] || 'You'}
+                  <div class="pd-mini-avatar">${getCurrentUserInitials()}</div>
+                  ${getCurrentUserName()}
                 </button>
               </div>
               <div class="pd-prop-row">
                 <span class="pd-prop-label">Members</span>
                 <div class="pd-members-list" id="pdMembersList-${projectIndex}">
-                  ${teamMembers.map((member, idx) => `
-                    <div class="pd-member-item" data-member="${member}">
-                      <div class="pd-member-avatar">${member.charAt(0)}</div>
-                      <span class="pd-member-name">${member}</span>
+                  ${teamMembers.map((member, idx) => {
+                    const initials = getMemberAvatarInitialsWithFullNames(member);
+                    const backgroundColor = getNameColor(member);
+                    return `
+                    <div class="pd-member-item" data-member="${member}" data-member-id="${idx}" data-project-index="${projectIndex}">
+                      <div class="pd-member-avatar" id="memberAvatar-${projectIndex}-${idx}" style="background: ${backgroundColor}" oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${idx})" title="${member === 'You' ? getCurrentUserName() : member}">
+                        ${initials}
+                      </div>
+                      <span class="pd-member-name">${getMemberDisplayName(member)}</span>
                       <span class="pd-member-status" id="memberStatus-${projectIndex}-${idx}">
                         <span class="status-dot offline"></span>
-                        <span class="status-text">Offline</span>
                       </span>
                     </div>
-                  `).join('')}
+                  `;}).join('')}
                   <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
@@ -12801,6 +12796,15 @@ async function handleInviteMember(event, projectIndex) {
     // Refresh the project view
     renderCurrentView();
     
+    // Re-initialize presence polling for the updated member list
+    setTimeout(() => {
+      const projects = loadProjects();
+      const project = projects[projectIndex];
+      if (project && project.id) {
+        startPresencePolling(project.id, projectIndex);
+      }
+    }, 1000);
+    
   } catch (error) {
     console.error('Error adding team member:', error);
     let errorMessage = 'Failed to add team member';
@@ -13013,6 +13017,76 @@ function startPresencePolling(projectId, projectIndex) {
   }, 5000);
 }
 
+// Generate vibrant color based on name
+function getNameColor(name) {
+  // Vibrant color palette
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Get initials with first letter of first and last name
+function getMemberAvatarInitialsWithFullNames(member) {
+  if (member === 'You' || member === getCurrentUserName()) {
+    return getCurrentUserInitials();
+  }
+  
+  // Split name by spaces and take first letter of first and last name
+  const parts = member.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return member.charAt(0).toUpperCase();
+}
+
+// Helper function to get member avatar initials
+function getMemberAvatarInitials(member) {
+  if (member === 'You' || member === getCurrentUserName()) {
+    return getCurrentUserInitials();
+  }
+  return member.charAt(0).toUpperCase();
+}
+
+// Helper function to get member display name
+function getMemberDisplayName(member) {
+  if (member === 'You' || member === getCurrentUserName()) {
+    return getCurrentUserName();
+  }
+  return member;
+}
+
+// Helper function to get current user initials
+function getCurrentUserInitials() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    const user = window.LayerDB.getCurrentUser();
+    if (user) {
+      const name = user.user_metadata?.name || user.email?.split('@')[0] || 'U';
+      return name.substring(0, 2).toUpperCase();
+    }
+  }
+  return 'U';
+}
+
+// Helper function to get current user name
+function getCurrentUserName() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    const user = window.LayerDB.getCurrentUser();
+    if (user) {
+      return user.user_metadata?.name || user.email?.split('@')[0] || 'You';
+    }
+  }
+  return 'You';
+}
+
+// Enhanced member presence update with avatar loading
 async function updateMemberPresence(projectId, projectIndex) {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
   
@@ -13024,31 +13098,97 @@ async function updateMemberPresence(projectId, projectIndex) {
     
     const teamMembers = project.teamMembers || ['You'];
     
-    // Update status indicators
-    teamMembers.forEach((member, idx) => {
+    // Update status indicators and avatars
+    teamMembers.forEach(async (member, idx) => {
       const statusEl = document.getElementById(`memberStatus-${projectIndex}-${idx}`);
+      const avatarEl = document.getElementById(`memberAvatar-${projectIndex}-${idx}`);
+      
+      if (avatarEl) {
+        // Load Google avatar if available
+        await loadMemberAvatar(member, avatarEl, projectIndex, idx);
+      }
+      
       if (statusEl) {
         // Check if member is online and watching
-        const memberPresence = members.find(m => 
-          m.profiles?.email?.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) === member ||
-          m.profiles?.name === member
-        );
+        const memberPresence = members.find(m => {
+          // Match by email or name
+          const memberEmail = m.profiles?.email;
+          const memberName = m.profiles?.name;
+          
+          if (member === 'You' || member === getCurrentUserName()) {
+            const currentUser = window.LayerDB.getCurrentUser();
+            return currentUser && (
+              memberEmail === currentUser.email ||
+              memberName === currentUser.user_metadata?.name
+            );
+          }
+          
+          // For other members, match by name or email prefix
+          return memberName === member || 
+                 (memberEmail && memberEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) === member);
+        });
         
         if (memberPresence) {
-          statusEl.innerHTML = `
-            <span class="status-dot online"></span>
-            <span class="status-text">Watching</span>
-          `;
+          statusEl.innerHTML = `<span class="status-dot online" title="Online - Watching"></span>`;
         } else {
-          statusEl.innerHTML = `
-            <span class="status-dot offline"></span>
-            <span class="status-text">Offline</span>
-          `;
+          statusEl.innerHTML = `<span class="status-dot offline" title="Offline"></span>`;
         }
       }
     });
   } catch (error) {
     console.error('Failed to update member presence:', error);
+  }
+}
+
+// Load member avatar from Google
+async function loadMemberAvatar(memberName, avatarElement, projectIndex, memberIndex) {
+  try {
+    // For current user
+    if (memberName === 'You' || memberName === getCurrentUserName()) {
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        const profile = await window.LayerDB.getProfile();
+        if (profile?.avatar_url) {
+          avatarElement.innerHTML = `<img src="${profile.avatar_url}" alt="${memberName}" onerror="this.style.display='none';this.parentElement.innerHTML='${getMemberAvatarInitials(memberName)}';">`;
+          return;
+        }
+      }
+    }
+    
+    // For other members, try to find their profile from project members
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      // Try to get project members and find matching profile
+      const projects = loadProjects();
+      const project = projects[projectIndex];
+      
+      if (project && project.teamMembers) {
+        // Look for member in project followers
+        try {
+          const followers = await window.LayerDB.getProjectFollowers(project.id);
+          const memberFollower = followers.find(f => {
+            const followerName = f.follower_name || f.name || '';
+            const followerEmail = f.follower_email || f.email || '';
+            const emailPrefix = followerEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            return followerName === memberName || emailPrefix === memberName;
+          });
+          
+          if (memberFollower && memberFollower.follower_avatar) {
+            avatarElement.innerHTML = `<img src="${memberFollower.follower_avatar}" alt="${memberName}" onerror="this.style.display='none';this.parentElement.innerHTML='${getMemberAvatarInitials(memberName)}';">`;
+            return;
+          }
+        } catch (followersError) {
+          console.debug('Could not fetch followers for avatar:', followersError);
+        }
+      }
+    }
+    
+    // For other members, try to find their profile from all users
+    // This would require a more comprehensive user lookup
+    // For now, fall back to initials
+    avatarElement.innerHTML = getMemberAvatarInitials(memberName);
+  } catch (error) {
+    console.warn('Failed to load avatar for member:', memberName, error);
+    avatarElement.innerHTML = getMemberAvatarInitials(memberName);
   }
 }
 
@@ -13792,9 +13932,18 @@ async function renderTeamMembersPanel() {
   // Load real team members data
   let realFollowers = [];
   let realPendingRequests = [];
+  let currentUserInfo = null;
   
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     try {
+      const currentUser = window.LayerDB.getCurrentUser();
+      currentUserInfo = {
+        id: currentUser?.id,
+        email: currentUser?.email,
+        name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'User',
+        avatar_url: currentUser?.user_metadata?.avatar_url
+      };
+      
       const followers = await window.LayerDB.getFollowers();
       realFollowers = followers.filter(f => f.status === 'accepted');
       realPendingRequests = await window.LayerDB.getPendingFollowRequests();
@@ -13803,8 +13952,31 @@ async function renderTeamMembersPanel() {
     }
   }
   
-  // Use real data if available, otherwise fall back to mock data
-  const displayFollowers = realFollowers.length > 0 ? realFollowers : teamFollowers;
+  // Create the current user as the owner
+  let ownerItem = [];
+  if (currentUserInfo) {
+    ownerItem = [{
+      id: 'current-user',
+      name: currentUserInfo.name,
+      email: currentUserInfo.email,
+      avatar_url: currentUserInfo.avatar_url,
+      isOwner: true
+    }];
+  } else {
+    // Fallback for unauthenticated users
+    ownerItem = [{
+      id: 'f-1', 
+      name: 'You', 
+      avatar: 'YU', 
+      isOwner: true
+    }];
+  }
+  
+  // Combine owner with real followers (excluding self-follows)
+  const displayFollowers = [...ownerItem, ...realFollowers.filter(f => 
+    f.following_id !== currentUserInfo?.id && f.follower_id !== currentUserInfo?.id
+  )];
+  
   const displayPending = realPendingRequests.length > 0 ? realPendingRequests : pendingFollowRequests;
   
   return `
@@ -13818,14 +13990,13 @@ async function renderTeamMembersPanel() {
     </div>
     
     <div class="team-panel-tabs">
-      <button class="team-panel-tab active" onclick="switchTeamPanelTab('members')">
+      <button class="team-panel-tab active">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          <path d="M2 12h4l1.5-3 2 6 1.5-3 1.5 3 2-6 1.5 3h4"/>
         </svg>
-        Members <span class="tab-count">${displayFollowers.length}</span>
+        Invites <span class="tab-count" id="invitesCount">0</span>
       </button>
       <button class="team-panel-tab" onclick="switchTeamPanelTab('access')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
@@ -13844,12 +14015,45 @@ async function renderTeamMembersPanel() {
     
     <div class="team-panel-section">
       <span class="section-label">TEAM MEMBERS</span>
-      <button class="team-add-people-btn" onclick="openAddPeopleModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
-        Add People
-      </button>
+      <div class="team-add-people-dropdown-wrapper">
+        <button class="team-add-people-btn" onclick="toggleAddPeopleDropdown()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add People
+        </button>
+        <div class="team-add-people-dropdown" id="addPeopleDropdown" style="display: none;">
+          <div class="dropdown-content">
+            <div class="dropdown-header">
+              <h4>Add People to Team</h4>
+              <button class="dropdown-close" onclick="toggleAddPeopleDropdown()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="dropdown-body">
+              <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="dropdownInviteEmail" placeholder="colleague@example.com" class="form-input" autocomplete="email">
+                <small class="form-help">Enter the Google email address of the person you want to invite</small>
+              </div>
+              <div class="form-group">
+                <label>Custom Message (Optional)</label>
+                <textarea id="dropdownInviteMessage" placeholder="Hey! I'd like to collaborate with you on Layer..." class="form-textarea" rows="2"></textarea>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" onclick="addPeopleFromDropdown()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                  </svg>
+                  Send Invitation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="team-followers-list" id="teamMembersList">
@@ -13927,6 +14131,225 @@ function switchTeamPanelTab(tab) {
   document.querySelectorAll('.team-panel-tab').forEach(t => t.classList.remove('active'));
   event.target.closest('.team-panel-tab').classList.add('active');
   // TODO: Implement tab switching logic
+}
+
+async function checkInviteNotifications() {
+  // Switch to the invites tab
+  document.querySelectorAll('.team-panel-tab').forEach(t => t.classList.remove('active'));
+  event.target.closest('.team-panel-tab').classList.add('active');
+  
+  // Load pending invitations/requests
+  let pendingRequests = [];
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      pendingRequests = await window.LayerDB.getPendingFollowRequests();
+      console.log('Loaded pending invitations:', pendingRequests);
+    } catch (error) {
+      console.error('Failed to load pending invitations:', error);
+      pendingRequests = [];
+    }
+  }
+  
+  // Update the invites count
+  const invitesCountElement = document.getElementById('invitesCount');
+  if (invitesCountElement) {
+    invitesCountElement.textContent = pendingRequests.length;
+  }
+  
+  // Toggle the invites dropdown/content container
+  toggleInvitesDropdown(pendingRequests);
+}
+
+// Toggle invites dropdown/content container
+function toggleInvitesDropdown(requests) {
+  // Remove any existing invites dropdown
+  const existingDropdown = document.getElementById('invitesDropdownContainer');
+  if (existingDropdown) {
+    existingDropdown.remove();
+  }
+  
+  // If no requests, show message directly
+  if (requests.length === 0) {
+    showNotification('You have no pending team invitations at this time.', 'info');
+    return;
+  }
+  
+  // Create dropdown container
+  const dropdownContainer = document.createElement('div');
+  dropdownContainer.id = 'invitesDropdownContainer';
+  dropdownContainer.className = 'team-invites-dropdown';
+  
+  // Generate content
+  const content = `
+    <div class="dropdown-content">
+      <div class="dropdown-header">
+        <h4>Pending Team Invitations (${requests.length})</h4>
+      </div>
+      <div class="dropdown-body">
+        <div class="invite-list">
+          ${requests.map(request => `
+            <div class="invite-item" data-request-id="${request.id}">
+              <div class="invite-info">
+                <div class="invite-sender">${request.follower_email || request.email || 'Unknown User'}</div>
+                <div class="invite-date">${new Date(request.created_at).toLocaleDateString()}</div>
+              </div>
+              <div class="invite-actions">
+                <button class="btn btn-sm btn-primary" onclick="acceptInvite('${request.id}', '${request.follower_id || request.id}')">
+                  Accept
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="rejectInvite('${request.id}', '${request.follower_id || request.id}')">
+                  Decline
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  dropdownContainer.innerHTML = content;
+  
+  // Insert after the invites tab button
+  const invitesTab = event.target.closest('.team-panel-tab');
+  if (invitesTab) {
+    invitesTab.parentNode.insertBefore(dropdownContainer, invitesTab.nextSibling);
+  }
+  
+  // Close dropdown when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!dropdownContainer.contains(e.target) && !e.target.closest('.team-panel-tab')) {
+        dropdownContainer.remove();
+        document.removeEventListener('click', closeDropdown);
+      }
+    });
+  }, 10);
+}
+
+function showInviteNotificationsModal(requests) {
+  const modalContent = `
+    <div class="invite-notifications-modal">
+      <h3>Pending Team Invitations (${requests.length})</h3>
+      <div class="invite-list">
+        ${requests.map(request => `
+          <div class="invite-item" data-request-id="${request.id}">
+            <div class="invite-info">
+              <div class="invite-sender">${request.follower_email || request.email || 'Unknown User'}</div>
+              <div class="invite-date">${new Date(request.created_at).toLocaleDateString()}</div>
+            </div>
+            <div class="invite-actions">
+              <button class="btn btn-sm btn-primary" onclick="acceptInvite('${request.id}', '${request.follower_id || request.id}')">
+                Accept
+              </button>
+              <button class="btn btn-sm btn-secondary" onclick="rejectInvite('${request.id}', '${request.follower_id || request.id}')">
+                Decline
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  openModal('Team Invitations', modalContent);
+}
+
+async function acceptInvite(requestId, followerId) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.acceptFollowRequest(requestId, followerId);
+      console.log('Invite accepted successfully');
+      
+      // Close the invites dropdown
+      const dropdown = document.getElementById('invitesDropdownContainer');
+      if (dropdown) {
+        dropdown.remove();
+      }
+      
+      // Refresh the team members panel
+      const panel = document.getElementById('teamMembersPanel');
+      if (panel) {
+        const newContent = await renderTeamMembersPanel();
+        panel.innerHTML = newContent;
+      }
+      
+      // Show success message
+      showNotification('Invite accepted successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to accept invite:', error);
+      showNotification('Failed to accept invite. Please try again.', 'error');
+    }
+  }
+}
+
+async function rejectInvite(requestId, followerId) {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.rejectFollowRequest(requestId, followerId);
+      console.log('Invite rejected successfully');
+      
+      // Close the invites dropdown
+      const dropdown = document.getElementById('invitesDropdownContainer');
+      if (dropdown) {
+        dropdown.remove();
+      }
+      
+      // Refresh the team members panel
+      const panel = document.getElementById('teamMembersPanel');
+      if (panel) {
+        const newContent = await renderTeamMembersPanel();
+        panel.innerHTML = newContent;
+      }
+      
+      // Show success message
+      showNotification('Invite declined.', 'info');
+    } catch (error) {
+      console.error('Failed to reject invite:', error);
+      showNotification('Failed to decline invite. Please try again.', 'error');
+    }
+  }
+}
+
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  // Add basic styling
+  Object.assign(notification.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '12px 20px',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '500',
+    zIndex: '10000',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    maxWidth: '300px',
+    wordWrap: 'break-word'
+  });
+  
+  // Set background color based on type
+  const colors = {
+    success: '#10b981',
+    error: '#ef4444',
+    info: '#3b82f6',
+    warning: '#f59e0b'
+  };
+  notification.style.backgroundColor = colors[type] || colors.info;
+  
+  // Add to document
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
 }
 
 function searchTeamMembers(query) {
@@ -14081,6 +14504,115 @@ function openCreateGroupModal() {
       </div>
     </div>
   `);
+}
+
+// Toggle Add People Dropdown
+function toggleAddPeopleDropdown() {
+  const dropdown = document.getElementById('addPeopleDropdown');
+  if (dropdown) {
+    const isVisible = dropdown.style.display !== 'none';
+    dropdown.style.display = isVisible ? 'none' : 'block';
+    
+    // Adjust position to stay within viewport
+    if (!isVisible) {
+      // Wait for the dropdown to be displayed to get accurate measurements
+      setTimeout(() => {
+        const rect = dropdown.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        
+        // If dropdown extends beyond right edge, adjust position
+        if (rect.right > viewportWidth) {
+          const overflow = rect.right - viewportWidth;
+          dropdown.style.left = `-${overflow + 10}px`;
+        } else {
+          // Reset to default position
+          dropdown.style.left = '0';
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function closeDropdown(e) {
+          if (!dropdown.contains(e.target) && !e.target.closest('.team-add-people-btn')) {
+            dropdown.style.display = 'none';
+            dropdown.style.left = '0'; // Reset position
+            document.removeEventListener('click', closeDropdown);
+          }
+        });
+      }, 10);
+    } else {
+      // Reset position when hiding
+      dropdown.style.left = '0';
+    }
+  }
+}
+
+// Add people from dropdown
+async function addPeopleFromDropdown() {
+  const emailInput = document.getElementById('dropdownInviteEmail');
+  const messageInput = document.getElementById('dropdownInviteMessage');
+  const email = emailInput?.value?.trim();
+  const message = messageInput?.value?.trim();
+  
+  if (!email) {
+    showNotification('Please enter an email address', 'error');
+    return;
+  }
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showNotification('Please enter a valid email address', 'error');
+    return;
+  }
+  
+  // Check if trying to add self
+  const currentUser = window.LayerDB.getCurrentUser();
+  if (currentUser?.email === email) {
+    showNotification('You cannot add yourself', 'error');
+    return;
+  }
+  
+  try {
+    // Follow user by email (creates follow request)
+    await window.LayerDB.followUserByEmail(email);
+    
+    // Send email notification
+    const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
+    await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'follow');
+    
+    // Close dropdown
+    const dropdown = document.getElementById('addPeopleDropdown');
+    if (dropdown) {
+      dropdown.style.display = 'none';
+    }
+    
+    // Clear form
+    emailInput.value = '';
+    messageInput.value = '';
+    
+    showNotification(`Follow request sent to ${email}! They will receive an email notification and can accept in their followers sidebar.`, 'success');
+    
+    // Refresh team view to show pending invitations
+    setTimeout(() => {
+      renderCurrentView();
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error sending follow request:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = error.message;
+    if (errorMessage?.includes('already following')) {
+      errorMessage = 'You are already following this user';
+    } else if (errorMessage?.includes('Not authenticated')) {
+      errorMessage = 'Please sign in again';
+    } else if (errorMessage?.includes('Invalid email')) {
+      errorMessage = 'Please enter a valid email address';
+    } else if (!errorMessage) {
+      errorMessage = 'Failed to send follow request. Please try again.';
+    }
+    
+    showNotification(errorMessage, 'error');
+  }
 }
 
 async function openAddPeopleModal() {
@@ -24854,6 +25386,40 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// User data helper functions
+function getCurrentUserName() {
+  if (window.LayerDB && typeof window.LayerDB.getCurrentUser === 'function') {
+    const user = window.LayerDB.getCurrentUser();
+    if (user) {
+      // Try to get name from user metadata (Google login)
+      if (user.user_metadata?.name) {
+        return user.user_metadata.name;
+      }
+      // Try to get name from profile
+      if (user.profile?.name) {
+        return user.profile.name;
+      }
+      // Fallback to email prefix
+      if (user.email) {
+        return user.email.split('@')[0];
+      }
+    }
+  }
+  return 'User';
+}
+
+function getCurrentUserInitials() {
+  const name = getCurrentUserName();
+  if (!name || name === 'User') return 'U';
+  
+  // Get first letter of first name, and first letter of last name if available
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase();
+}
+
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { 
@@ -24885,3 +25451,243 @@ initializeBookmarks();
 function getBookmarkedItemsForSpaceView(spaceId) {
   return getBookmarkedItemsForSpace(spaceId);
 }
+
+// Context menu functions for member avatars
+window.showMemberContextMenu = function(event, memberName, projectIndex, memberIndex) {
+  event.preventDefault();
+  
+  // Remove any existing context menus
+  const existingMenus = document.querySelectorAll('.context-menu');
+  existingMenus.forEach(menu => menu.remove());
+  
+  // Create context menu
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'context-menu';
+  contextMenu.style.top = `${event.clientY}px`;
+  contextMenu.style.left = `${event.clientX}px`;
+  
+  // Load projects and check if user is already leader
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  const isLeader = project?.leader === memberName;
+  
+  // Extract email from member name if it contains @
+  const displayName = memberName === 'You' ? getCurrentUserName() : memberName;
+  const email = memberName.includes('@') ? memberName : '';
+  
+  contextMenu.innerHTML = `
+    <div class="context-menu-header">
+      <div class="context-menu-user-name">${displayName}</div>
+      ${email ? `<div class="context-menu-user-email">${email}</div>` : ''}
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item ${isLeader ? 'disabled' : ''}" onclick="makeLeader('${memberName}', ${projectIndex}, ${memberIndex})">
+      <i class="fas fa-crown" style="width: 16px; text-align: center;"></i>
+      <span>${isLeader ? 'Already Leader' : 'Make Leader'}</span>
+    </div>
+    <div class="context-menu-item danger" onclick="kickFromProject('${memberName}', ${projectIndex}, ${memberIndex})">
+      <i class="fas fa-user-minus" style="width: 16px; text-align: center;"></i>
+      <span>Kick from Project</span>
+    </div>
+  `;
+  
+  document.body.appendChild(contextMenu);
+  
+  // Adjust position if menu goes off screen
+  const rect = contextMenu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  if (rect.right > viewportWidth) {
+    contextMenu.style.left = `${event.clientX - contextMenu.offsetWidth}px`;
+  }
+  
+  if (rect.bottom > viewportHeight) {
+    contextMenu.style.top = `${event.clientY - contextMenu.offsetHeight}px`;
+  }
+};
+
+window.makeLeader = async function(memberName, projectIndex, memberIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) {
+    console.error('Project not found at index:', projectIndex);
+    return;
+  }
+  
+  // Update project leader
+  project.leader = memberName;
+  
+  // Save to localStorage
+  saveProjects(projects);
+  
+  // Also update database if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, {
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        startDate: project.startDate,
+        targetDate: project.targetDate,
+        flowchart: project.flowchart,
+        columns: project.columns,
+        updates: project.updates,
+        milestones: project.milestones,
+        grip_diagram: project.gripDiagram,
+        tasks: project.tasks,
+        team_members: project.teamMembers,
+        leader: project.leader  // Sync leader change
+      });
+      console.log('✓ Project updated in database after leader change');
+    } catch (error) {
+      console.error('✗ Failed to update project in database:', error);
+      showNotification('Leader updated locally but failed to sync to server', 'error');
+      return;
+    }
+  }
+  
+  // Update UI
+  renderCurrentView();
+  
+  // Show notification
+  showNotification(`${memberName} is now the project leader`, 'success');
+  
+  // Close context menu
+  const contextMenu = document.querySelector('.context-menu');
+  if (contextMenu) contextMenu.remove();
+};
+
+window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) {
+    console.error('Project not found at index:', projectIndex);
+    return;
+  }
+  
+  // Remove member from project teamMembers
+  const memberIndexInArray = project.teamMembers.indexOf(memberName);
+  if (memberIndexInArray !== -1) {
+    project.teamMembers.splice(memberIndexInArray, 1);
+  } else {
+    showNotification(`Member ${memberName} not found in project`, 'error');
+    return;
+  }
+  
+  // If kicked member was the leader, assign new leader
+  if (project.leader === memberName) {
+    project.leader = project.teamMembers.length > 0 ? project.teamMembers[0] : null;
+  }
+  
+  // Save to localStorage
+  saveProjects(projects);
+  
+  // Also update database if authenticated
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, {
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        startDate: project.startDate,
+        targetDate: project.targetDate,
+        flowchart: project.flowchart,
+        columns: project.columns,
+        updates: project.updates,
+        milestones: project.milestones,
+        grip_diagram: project.gripDiagram,
+        tasks: project.tasks,
+        team_members: project.teamMembers  // This is the key fix!
+      });
+      console.log('✓ Project updated in database after kicking member');
+    } catch (error) {
+      console.error('✗ Failed to update project in database:', error);
+      showNotification('Member removed locally but failed to sync to server', 'error');
+      return;
+    }
+  }
+  
+  // Update UI
+  renderCurrentView();
+  
+  // Show notification
+  showNotification(`${memberName} has been removed from the project`, 'warning');
+  
+  // Close context menu
+  const contextMenu = document.querySelector('.context-menu');
+  if (contextMenu) contextMenu.remove();
+};
+
+// Helper function to show notifications
+window.showNotification = function(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    backdrop-filter: blur(10px);
+    animation: slideInRight 0.3s ease;
+  `;
+  
+  // Set background color based on type
+  switch(type) {
+    case 'success':
+      notification.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      break;
+    case 'warning':
+      notification.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+      break;
+    case 'error':
+      notification.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+      break;
+    default:
+      notification.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+};
+
+// Add CSS for notifications
+const notificationStyles = `
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+  }
+`;
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = notificationStyles;
+document.head.appendChild(styleSheet);
+
+// Close context menu when clicking elsewhere
+document.addEventListener('click', function(e) {
+  const contextMenu = document.querySelector('.context-menu');
+  if (contextMenu && !contextMenu.contains(e.target)) {
+    contextMenu.remove();
+  }
+});

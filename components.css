@@ -1937,6 +1937,84 @@
   font-size: 11px;
 }
 
+/* Invite Notifications Modal Styles */
+.invite-notifications-modal {
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.invite-notifications-modal h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invite-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--surface-hover);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.invite-info {
+  flex: 1;
+}
+
+.invite-sender {
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 4px;
+}
+
+.invite-date {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.invite-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-actions .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.invite-actions .btn-primary {
+  background: hsl(217 91% 60%);
+  color: white;
+  border: none;
+}
+
+.invite-actions .btn-primary:hover {
+  background: hsl(217 91% 55%);
+}
+
+.invite-actions .btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.invite-actions .btn-secondary:hover {
+  background: var(--surface-hover);
+}
+
 .team-panel-search {
   display: flex;
   align-items: center;
@@ -1979,13 +2057,13 @@
 .team-add-people-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 3px;
+  padding: 3px 6px;
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: 6px;
+  border-radius: 3px;
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -1993,6 +2071,8 @@
 .team-add-people-btn:hover {
   border-color: var(--muted-foreground);
   color: var(--foreground);
+  background: var(--surface-hover);
+  border-style: solid;
 }
 
 .team-followers-list {
@@ -2026,6 +2106,14 @@
   font-size: 11px;
   font-weight: 600;
   color: white;
+  overflow: hidden;
+}
+
+.team-follower-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .team-follower-name {
@@ -2040,6 +2128,8 @@
   background: var(--surface-hover);
   padding: 2px 8px;
   border-radius: 4px;
+  position: relative;
+  top: -12px;
 }
 
 /* Responsive */
@@ -2047,6 +2137,242 @@
   .team-members-panel {
     display: none;
   }
+}
+
+/* Add People Dropdown Styles */
+.team-add-people-dropdown-wrapper {
+  position: relative;
+}
+
+.team-add-people-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 320px;
+  max-width: calc(100vw - 20px);
+  z-index: 1000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin-top: 4px;
+  animation: dropdownSlideIn 0.2s ease-out;
+}
+
+/* Invites Dropdown Styles */
+.team-invites-dropdown {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: dropdownSlideIn 0.2s ease-out;
+  z-index: 1000;
+}
+
+.team-invites-dropdown .dropdown-content {
+  padding: 12px;
+}
+
+.team-invites-dropdown .dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.team-invites-dropdown .dropdown-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.team-invites-dropdown .dropdown-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-invites-dropdown .invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-invites-dropdown .invite-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--surface-hover);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.team-invites-dropdown .invite-info {
+  flex: 1;
+}
+
+.team-invites-dropdown .invite-sender {
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.team-invites-dropdown .invite-date {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.team-invites-dropdown .invite-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.team-invites-dropdown .invite-actions .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.team-invites-dropdown .invite-actions .btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* Ensure dropdown stays within viewport */
+.team-add-people-dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-content {
+  padding: 8px;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropdown-header h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.dropdown-close {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdown-close:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.dropdown-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.form-input, .form-textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.form-input:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+.form-help {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.btn {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-primary:hover {
+  background: hsl(217, 91%, 55%);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
 /* Pending Follow Requests */

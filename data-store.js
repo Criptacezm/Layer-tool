@@ -125,11 +125,9 @@ function loadProjectsFromLocal() {
   return [];
 }
 
-// Main loadProjects function - uses cached data from localStorage
-// Data is synced to localStorage after DB operations
+// Main loadProjects function - loads from localStorage (sync)
+// Database sync happens separately in save operations
 function loadProjects() {
-  // When authenticated, we use the cached localStorage data that was
-  // populated from the database during login/data load
   return loadProjectsFromLocal();
 }
 
@@ -139,50 +137,12 @@ const SAVE_DEBOUNCE_MS = 0; // MODIFIED: Removed delay (was 800) for snappier in
 
 function saveProjects(projects) {
   try {
+    // Save to localStorage (for UI consistency)
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
     
-    // Auto-sync to DB when authenticated (debounced)
-    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-      // Clear previous timer
-      if (saveProjectsDebounceTimer) {
-        clearTimeout(saveProjectsDebounceTimer);
-      }
-      
-      // Debounce the DB sync
-      saveProjectsDebounceTimer = setTimeout(async () => {
-        const projectsToSync = loadProjectsFromLocal();
-        let syncSuccess = true;
-        
-        for (const project of projectsToSync) {
-          if (project.id) {
-            try {
-              await window.LayerDB.updateProject(project.id, {
-                name: project.name,
-                description: project.description,
-                status: project.status,
-                startDate: project.startDate,
-                targetDate: project.targetDate,
-                flowchart: project.flowchart,
-                columns: project.columns,
-                updates: project.updates,
-                milestones: project.milestones,
-                grip_diagram: project.gripDiagram,
-                tasks: project.tasks
-              });
-              console.log('✓ Auto-synced project to DB:', project.id);
-            } catch (error) {
-              console.error('✗ Failed to auto-sync project to DB:', project.id, error);
-              syncSuccess = false;
-            }
-          }
-        }
-        
-        // Show sync status to user (optional subtle indicator)
-        if (syncSuccess && projectsToSync.some(p => p.id)) {
-          console.log('✓ All changes synced to cloud');
-        }
-      }, SAVE_DEBOUNCE_MS);
-    }
+    // Note: Database updates happen directly in kickFromProject and makeLeader functions
+    // This keeps the UI responsive while database operations happen in the background
+    
   } catch (e) {
     console.error('Failed to save projects:', e);
   }
