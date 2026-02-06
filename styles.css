@@ -1076,7 +1076,6 @@ body {
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 15px rgba(120, 180, 255, 0.3);
 }
 
 .user-avatar.fallback {
@@ -16784,6 +16783,142 @@ body {
   color: #ef4444;
 }
 
+/* Inline Resource Form Container - Dropdown Style */
+.pd-resource-form-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 280px;
+  margin-top: 8px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.2s ease-out;
+  z-index: 1000;
+}
+
+/* Dropdown arrow indicator */
+.pd-resource-form-container::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--border);
+  z-index: 1001;
+}
+
+.pd-resource-form-container::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 21px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid var(--surface);
+  z-index: 1002;
+}
+
+/* Improve dropdown positioning */
+.pd-resources {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pd-resource-form-container .form-group {
+  margin-bottom: 16px;
+}
+
+.pd-resource-form-container .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.pd-resource-form-container .form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pd-resource-form-container .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--foreground);
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.pd-resource-form-container .form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.pd-resource-form-container .form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.pd-resource-form-container .btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+
+.pd-resource-form-container .btn.btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.pd-resource-form-container .btn.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--muted-foreground);
+}
+
+.pd-resource-form-container .btn.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.pd-resource-form-container .btn.btn-primary:hover {
+  opacity: 0.9;
+}
+
 /* Latest Update Card */
 .pd-update-card {
   background: var(--surface);
@@ -17618,14 +17753,14 @@ body {
 .pd-props-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1px;
 }
 
 .pd-prop-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: 2px 0;
   min-height: 44px;
   border-bottom: 1px solid var(--border);
   transition: background-color 0.2s ease;
@@ -17765,6 +17900,9 @@ body {
   border-radius: 6px;
   transition: all 0.2s ease;
   font-weight: 500;
+  /* Ensure consistent height and alignment */
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .pd-prop-value.clickable:hover {
@@ -17784,10 +17922,9 @@ body {
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  flex-shrink: 0;
-  white-space: nowrap;
+  /* Maintain consistent dimensions with clickable buttons */
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .pd-status-dot {

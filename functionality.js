@@ -5508,7 +5508,7 @@ function renderProjectDetailView(projectIndex) {
             <!-- Resources Section -->
             <div class="pd-resources">
               <span class="pd-resources-label">Resources</span>
-              <button class="pd-add-resource" onclick="openAddResourceModal(${projectIndex})">
+              <button class="pd-add-resource" onclick="openAddResourceModal(this, ${projectIndex})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 5v14M5 12h14"/>
                 </svg>
@@ -5962,7 +5962,7 @@ function renderOverviewTab(projectIndex, container) {
     <!-- Resources Section -->
     <div class="pd-resources">
       <span class="pd-resources-label">Resources</span>
-      <button class="pd-add-resource" onclick="openAddResourceModal(${projectIndex})">
+      <button class="pd-add-resource" onclick="openAddResourceModal(this, ${projectIndex})">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14M5 12h14"/>
         </svg>
@@ -12042,8 +12042,29 @@ function showMilestoneMenu(projectIndex, milestoneIndex, event) {
   showComingSoonToast();
 }
 
-function openAddResourceModal(projectIndex) {
-  const content = `
+function openAddResourceModal(button, projectIndex) {
+  // Check if container already exists
+  const existingContainer = document.getElementById(`resource-form-container-${projectIndex}`);
+  if (existingContainer) {
+    // Toggle visibility
+    if (existingContainer.style.display === 'none') {
+      existingContainer.style.display = 'block';
+      // Focus the name input
+      setTimeout(() => {
+        const nameInput = existingContainer.querySelector('input[name="name"]');
+        if (nameInput) nameInput.focus();
+      }, 100);
+    } else {
+      existingContainer.style.display = 'none';
+    }
+    return;
+  }
+  
+  // Create inline container
+  const container = document.createElement('div');
+  container.id = `resource-form-container-${projectIndex}`;
+  container.className = 'pd-resource-form-container';
+  container.innerHTML = `
     <form onsubmit="handleAddResource(event, ${projectIndex})">
       <div class="form-group">
         <label class="form-label">Resource Name</label>
@@ -12054,12 +12075,29 @@ function openAddResourceModal(projectIndex) {
         <input type="url" name="link" class="form-input" placeholder="https://...">
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-secondary" onclick="closeResourceForm(${projectIndex})">Cancel</button>
         <button type="submit" class="btn btn-primary">Add Resource</button>
       </div>
     </form>
   `;
-  openModal('Add Resource', content);
+  
+  // Insert container after the button
+  const resourcesContainer = button.closest('.pd-resources');
+  resourcesContainer.style.position = 'relative';
+  resourcesContainer.appendChild(container);
+  
+  // Focus the name input
+  setTimeout(() => {
+    const nameInput = container.querySelector('input[name="name"]');
+    if (nameInput) nameInput.focus();
+  }, 100);
+}
+
+function closeResourceForm(projectIndex) {
+  const container = document.getElementById(`resource-form-container-${projectIndex}`);
+  if (container) {
+    container.style.display = 'none';
+  }
 }
 
 function handleAddResource(event, projectIndex) {
@@ -12075,7 +12113,10 @@ function handleAddResource(event, projectIndex) {
   
   projects[projectIndex].resources.push({ name, link, addedAt: new Date().toISOString() });
   saveProjects(projects);
-  closeModal();
+  
+  // Close the resource form
+  closeResourceForm(projectIndex);
+  
   renderCurrentView();
 }
 

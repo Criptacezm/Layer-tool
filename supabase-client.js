@@ -2477,6 +2477,34 @@ window.LayerDB = {
     }
   },
   
+  // ============================================
+  // Profile Cache & Batch Fetch (for team collaboration)
+  // ============================================
+  _profileCache: {},
+  
+  fetchProfiles: async function(userIds) {
+    const cache = window.LayerDB._profileCache;
+    const uniqueIds = [...new Set(userIds.filter(id => id && !cache[id]))];
+    if (uniqueIds.length > 0) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('id, email, name, avatar_url')
+          .in('id', uniqueIds);
+        if (!error && data) {
+          data.forEach(p => { cache[p.id] = p; });
+        }
+      } catch (e) {
+        console.error('Failed to fetch profiles:', e);
+      }
+    }
+    return userIds.map(id => cache[id] || null);
+  },
+  
+  getCachedProfile: function(userId) {
+    return window.LayerDB._profileCache[userId] || null;
+  },
+  
   // Direct Supabase access
   supabase: supabaseClient
 };

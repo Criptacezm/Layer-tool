@@ -1466,6 +1466,64 @@ function restoreScheduleScrollPosition() {
   });
 }
 
+// ============================================
+// Async Profile Loading for Project Detail View
+// ============================================
+async function loadProjectDetailProfiles(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+
+  // 1. Collect all user IDs we need (owner + task completers)
+  const userIds = [project.user_id];
+  if (project.columns) {
+    project.columns.forEach(col => {
+      col.tasks.forEach(task => {
+        if (task.completed_by) userIds.push(task.completed_by);
+      });
+    });
+  }
+
+  // 2. Batch fetch all profiles
+  try {
+    await window.LayerDB.fetchProfiles(userIds);
+  } catch (e) {
+    console.error('Failed to batch fetch profiles:', e);
+    return;
+  }
+
+  // 3. Update Lead display
+  const ownerProfile = window.LayerDB.getCachedProfile(project.user_id);
+  const leadValueEl = document.getElementById('projectLeadValue');
+  if (leadValueEl && ownerProfile) {
+    const displayName = ownerProfile.name || ownerProfile.email?.split('@')[0] || 'Unknown';
+    const avatarHtml = ownerProfile.avatar_url
+      ? `<img src="${ownerProfile.avatar_url}" alt="${displayName}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+         <div class="member-avatar" style="width:24px;height:24px;font-size:12px;background:${getNameColor(displayName)};color:white;border-radius:50%;display:none;align-items:center;justify-content:center;">${displayName.charAt(0).toUpperCase()}</div>`
+      : `<div class="member-avatar" style="width:24px;height:24px;font-size:12px;background:${getNameColor(displayName)};color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;">${displayName.charAt(0).toUpperCase()}</div>`;
+    leadValueEl.innerHTML = `${avatarHtml}<span style="color:var(--foreground);">${displayName}</span>`;
+  }
+
+  // 4. Update task completer avatars
+  document.querySelectorAll('.task-completer-avatar[data-completer-id]').forEach(el => {
+    const userId = el.getAttribute('data-completer-id');
+    const profile = window.LayerDB.getCachedProfile(userId);
+    if (profile) {
+      const name = profile.name || profile.email?.split('@')[0] || 'User';
+      el.title = `Completed by ${name}`;
+      if (profile.avatar_url) {
+        el.innerHTML = `<img src="${profile.avatar_url}" alt="${name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.parentElement.innerHTML='${name.charAt(0).toUpperCase()}'">`;
+      } else {
+        el.innerHTML = name.charAt(0).toUpperCase();
+        el.style.background = getNameColor(name);
+        el.style.color = 'white';
+        el.style.fontSize = '10px';
+        el.style.fontWeight = '600';
+      }
+    }
+  });
+}
+
 // Render current view with optional scroll preservation
 async function renderCurrentView(preserveScroll = false) {
   // Create a context signature for this render
@@ -1496,6 +1554,9 @@ async function renderCurrentView(preserveScroll = false) {
     if (currentProject && currentProject.id) {
       setupProjectDetailRealtime(currentProject.id);
     }
+    
+    // Async load profiles for lead and task completion avatars
+    loadProjectDetailProfiles(selectedProjectIndex);
     
     // Switch to the current project tab after rendering, with a small delay
     // Only do this if we're not already on the correct tab
@@ -2257,6 +2318,11 @@ function renderProjectDetailView(projectIndex) {
                         </div>
                       </label>
                       <span class="kanban-task-title">${task.title}</span>
+                      ${task.done && task.completed_by ? `
+                        <div class="task-completer-avatar" data-completer-id="${task.completed_by}" title="Loading...">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;opacity:0.5;"><path d="M20 6L9 17l-5-5"/></svg>
+                        </div>
+                      ` : ''}
                       <button class="kanban-task-delete" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
                         <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                       </button>
@@ -2296,13 +2362,13 @@ function renderProjectDetailView(projectIndex) {
             <span class="property-label">Priority</span>
             <span class="property-value" style="color: var(--muted-foreground);">No priority</span>
           </div>
-          <div class="property-item">
+          <div class="property-item" id="projectLeadProperty">
             <span class="property-label">Lead</span>
-            <span class="property-value" style="display: flex; align-items: center; gap: 8px;">
-              <div class="member-avatar" style="width: 24px; height: 24px; font-size: 12px; background: ${getNameColor(project.leader || project.userEmail || 'Unknown')}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                ${(project.leader || project.userEmail || 'U').charAt(0).toUpperCase()}
+            <span class="property-value" id="projectLeadValue" style="display: flex; align-items: center; gap: 8px;">
+              <div class="member-avatar lead-avatar-placeholder" style="width: 24px; height: 24px; font-size: 12px; background: var(--muted); color: var(--muted-foreground); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;animation:pulse 1.5s infinite;"><circle cx="12" cy="12" r="3"/></svg>
               </div>
-              ${project.leader || project.userEmail || 'Project Creator'}
+              <span class="lead-name-text" style="color: var(--muted-foreground);">Loading...</span>
             </span>
           </div>
           <div class="property-item">
