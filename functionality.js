@@ -5384,18 +5384,20 @@ function renderProjectDetailView(projectIndex) {
               </svg>
               Gantt
             </button>
+            <button class="pd-tab" onclick="openGripDiagram(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              Whiteboard
+            </button>
           </div>
         </div>
         
         <div class="pd-header-right">
-          <button class="pd-action-btn" onclick="openGripDiagram(${projectIndex})" title="Open Whiteboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </button>
+
           <button class="pd-action-btn" onclick="copyProjectLink(${projectIndex})" title="Copy link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -13766,6 +13768,14 @@ function renderTeamView() {
       if (typeof setupGlobalDMListener === 'function') {
         setupGlobalDMListener();
       }
+
+      // Setup realtime subscriptions for all DM conversations
+      if (typeof setupAllDMSubscriptions === 'function') {
+        await setupAllDMSubscriptions();
+      }
+
+      // Request notification permissions
+      requestNotificationPermission();
     } catch (error) {
       console.error('Error loading team data in background:', error);
     }
@@ -15062,11 +15072,13 @@ function updateTeamChatArea() {
 }
 
 async function selectTeamChannel(channelId) {
+  // Normalize channel ID to lowercase for consistency
+  channelId = channelId ? channelId.toLowerCase() : channelId;
   teamCurrentChannel = channelId;
 
-  // Determine channel type
-  const channel = teamChannels.find(c => c.id === channelId) ||
-    teamDirectMessages.find(d => d.id === channelId);
+  // Determine channel type (case-insensitive finding)
+  const channel = teamChannels.find(c => c.id.toLowerCase() === channelId) ||
+    teamDirectMessages.find(d => d.id.toLowerCase() === channelId);
   const channelType = channel?.type || 'channel';
 
   // IDEMPOTENT: Clear unread count locally
@@ -15148,18 +15160,54 @@ async function sendTeamMessage() {
   console.log('🔵 Attempting to send message:', messageText);
   console.log('🔵 Current channel:', teamCurrentChannel);
 
+  // Optimistic UI update - add message immediately
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  const optimisticMessage = {
+    id: tempId,
+    user: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You',
+    avatar: (currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'U').charAt(0).toUpperCase(),
+    avatarUrl: currentUser?.user_metadata?.avatar_url || null,
+    content: messageText,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    isSystem: false,
+    userId: currentUser?.id,
+    isOptimistic: true // Flag to identify optimistic messages
+  };
+
+  // Add to UI immediately
+  if (!teamMessages[teamCurrentChannel]) {
+    teamMessages[teamCurrentChannel] = [];
+  }
+  teamMessages[teamCurrentChannel].push(optimisticMessage);
+  updateTeamChatArea();
+
+  // Auto-scroll to bottom
+  setTimeout(() => {
+    const chatContent = document.querySelector('.team-messages-list');
+    if (chatContent) {
+      chatContent.scrollTop = chatContent.scrollHeight;
+    }
+  }, 50);
+
   try {
     // Check if user is authenticated
     if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
       console.error('❌ User not authenticated');
+
+      // Remove optimistic message
+      teamMessages[teamCurrentChannel] = teamMessages[teamCurrentChannel].filter(m => m.id !== tempId);
+      updateTeamChatArea();
+
       showNotification('Please sign in to send messages', 'error');
       input.value = messageText; // Restore message
       return;
     }
 
     // Determine channel type based on current channel
-    const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
-      teamDirectMessages.find(d => d.id === teamCurrentChannel);
+    const channel = teamChannels.find(c => c.id.toLowerCase() === teamCurrentChannel.toLowerCase()) ||
+      teamDirectMessages.find(d => d.id.toLowerCase() === teamCurrentChannel.toLowerCase());
 
     console.log('🔵 Found channel:', channel);
 
@@ -15204,6 +15252,11 @@ async function sendTeamMessage() {
         console.error('❌ Could not determine recipient ID from channel:', teamCurrentChannel);
         console.error('❌ Channel without prefix:', channelWithoutPrefix);
         console.error('❌ UUID matches:', uuidMatches);
+
+        // Remove optimistic message
+        teamMessages[teamCurrentChannel] = teamMessages[teamCurrentChannel].filter(m => m.id !== tempId);
+        updateTeamChatArea();
+
         showNotification('Error sending message: Invalid conversation', 'error');
         input.value = messageText; // Restore message
         return;
@@ -15224,29 +15277,25 @@ async function sendTeamMessage() {
 
     console.log('✅ Message sent successfully:', messageData);
 
-    // Add message locally (with DB id to prevent duplicate from realtime)
-    if (!teamMessages[teamCurrentChannel]) {
-      teamMessages[teamCurrentChannel] = [];
+    // Replace optimistic message with real one
+    const messageIndex = teamMessages[teamCurrentChannel].findIndex(m => m.id === tempId);
+    if (messageIndex !== -1) {
+      teamMessages[teamCurrentChannel][messageIndex] = {
+        id: messageData.id,
+        user: messageData.user_profile?.name || messageData.message ? (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'You') : 'Unknown',
+        avatar: (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'U').charAt(0).toUpperCase(),
+        content: messageData.message,
+        time: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isSystem: false,
+        userId: messageData.user_id,
+        avatarUrl: messageData.user_profile?.avatar_url || null,
+        isEdited: messageData.is_edited,
+        editedAt: messageData.edited_at
+      };
+      updateTeamChatArea();
     }
 
-    // Convert database message to local format
-    const localMessage = {
-      id: messageData.id,
-      user: messageData.user_profile?.name || messageData.message ? (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'You') : 'Unknown',
-      avatar: (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'U').charAt(0).toUpperCase(),
-      content: messageData.message,
-      time: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isSystem: false,
-      userId: messageData.user_id,
-      avatarUrl: messageData.user_profile?.avatar_url || null,
-      isEdited: messageData.is_edited,
-      editedAt: messageData.edited_at
-    };
-
-    teamMessages[teamCurrentChannel].push(localMessage);
-    updateTeamChatArea();
-
-    console.log('✅ Message added to UI');
+    console.log('✅ Message confirmed in UI');
 
   } catch (error) {
     console.error('❌ Failed to send team message:', error);
@@ -15255,6 +15304,10 @@ async function sendTeamMessage() {
       stack: error.stack,
       error: error
     });
+
+    // Remove optimistic message on error
+    teamMessages[teamCurrentChannel] = teamMessages[teamCurrentChannel].filter(m => m.id !== tempId);
+    updateTeamChatArea();
 
     // Show user-friendly error message
     let errorMessage = 'Failed to send message. Please try again.';
@@ -15277,6 +15330,9 @@ async function sendTeamMessage() {
 // Load team messages from database
 async function loadTeamMessages(channelId, channelType = 'channel') {
   try {
+    // Ensure lowercase key usage
+    channelId = channelId.toLowerCase();
+
     const messages = await window.LayerDB.getChatMessages(channelId);
 
     // Convert database messages to local format
@@ -15297,7 +15353,7 @@ async function loadTeamMessages(channelId, channelType = 'channel') {
       replyTo: msg.reply_to
     }));
 
-    // Update local state
+    // Update local state (safe assumption that key is lowercase)
     teamMessages[channelId] = localMessages;
 
     return localMessages;
@@ -15351,7 +15407,7 @@ async function setupGlobalDMListener() {
         if (profile) {
           // Add to local state
           const newDM = {
-            id: newRecord.channel_id,
+            id: newRecord.channel_id.toLowerCase(),
             type: 'dm',
             partnerId: senderId,
             name: profile.name || profile.email,
@@ -15444,37 +15500,100 @@ async function setupGlobalDMListener() {
   });
 }
 
+// Store multiple channel subscriptions for simultaneous real-time updates
+let activeChannelSubscriptions = new Map();
+
 async function setupTeamChatRealtime(channelId) {
-  // Remove existing subscription
-  if (currentTeamChatSubscription) {
-    window.LayerDB.unsubscribeFromTeamMessages(currentTeamChatSubscription);
-    currentTeamChatSubscription = null;
+  // Don't re-subscribe if already subscribed
+  if (activeChannelSubscriptions.has(channelId)) {
+    console.log('✓ Already subscribed to channel:', channelId);
+    return;
   }
 
-  // Setup new subscription
-  currentTeamChatSubscription = window.LayerDB.subscribeToTeamMessages(channelId, (payload) => {
-    handleTeamChatRealtimeUpdate(payload);
+  console.log('🎧 Setting up realtime for channel:', channelId);
+
+  // Setup new subscription for this channel
+  const subscription = window.LayerDB.subscribeToTeamMessages(channelId, (payload) => {
+    handleTeamChatRealtimeUpdate(payload, channelId);
   });
+
+  // Store the subscription
+  activeChannelSubscriptions.set(channelId, subscription);
+
+  console.log('✓ Subscribed to channel:', channelId, '| Total subscriptions:', activeChannelSubscriptions.size);
+}
+
+// Setup subscriptions for all active DM conversations
+async function setupAllDMSubscriptions() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+
+  console.log('🎧 Setting up subscriptions for all DM conversations...');
+
+  // Subscribe to each DM conversation
+  for (const dm of teamDirectMessages) {
+    await setupTeamChatRealtime(dm.id);
+  }
+
+  console.log('✓ All DM subscriptions active:', activeChannelSubscriptions.size);
+}
+
+// Cleanup a specific channel subscription
+function unsubscribeFromChannel(channelId) {
+  const subscription = activeChannelSubscriptions.get(channelId);
+  if (subscription) {
+    window.LayerDB.unsubscribeFromTeamMessages(subscription);
+    activeChannelSubscriptions.delete(channelId);
+    console.log('🔇 Unsubscribed from channel:', channelId);
+  }
+}
+
+// Cleanup all subscriptions (call on logout or page unload)
+function cleanupAllChatSubscriptions() {
+  console.log('🔇 Cleaning up all chat subscriptions...');
+  activeChannelSubscriptions.forEach((subscription, channelId) => {
+    window.LayerDB.unsubscribeFromTeamMessages(subscription);
+  });
+  activeChannelSubscriptions.clear();
+
+  if (globalDMSubscription) {
+    window.LayerDB.unsubscribeFromTeamMessages(globalDMSubscription);
+    globalDMSubscription = null;
+  }
 }
 
 // Handle realtime updates for team chat
-async function handleTeamChatRealtimeUpdate(payload) {
+async function handleTeamChatRealtimeUpdate(payload, subscriptionChannelId) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
+  const currentUser = window.LayerDB?.getCurrentUser();
 
   if (eventType === 'INSERT') {
-    const channelId = newRecord.channel_id;
+    const channelId = newRecord.channel_id.toLowerCase();
 
-    // Skip if message already exists locally (sent by us)
+    // Skip if this is our own message (already added optimistically)
+    if (newRecord.user_id === currentUser?.id) {
+      // Check if we already have this message
+      if (teamMessages[channelId]) {
+        const exists = teamMessages[channelId].some(m => m.id === newRecord.id);
+        if (exists) {
+          console.log('⏭️ Skipping own message (already in UI)');
+          return;
+        }
+      }
+    }
+
+    // Skip if message already exists locally
     if (teamMessages[channelId]) {
       const exists = teamMessages[channelId].some(m => m.id === newRecord.id);
-      if (exists) return;
+      if (exists) {
+        console.log('⏭️ Skipping duplicate message');
+        return;
+      }
     }
 
     // Resolve user profile for the message sender
     let userName = 'User';
     let userAvatar = 'U';
     let avatarUrl = null;
-    const currentUser = window.LayerDB?.getCurrentUser();
 
     if (newRecord.user_id === currentUser?.id) {
       userName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You';
@@ -15515,9 +15634,68 @@ async function handleTeamChatRealtimeUpdate(payload) {
     }
     teamMessages[channelId].push(localMessage);
 
-    // Update UI if we're viewing this channel (partial update, no full re-render)
-    if (teamCurrentChannel === channelId) {
-      updateTeamChatArea();
+    console.log('📨 New message received:', {
+      channel: channelId,
+      from: userName,
+      isCurrentChannel: teamCurrentChannel === channelId
+    });
+
+    // Check if we're viewing this channel (case-insensitive)
+    const isCurrentChannel = teamCurrentChannel &&
+      (teamCurrentChannel.toLowerCase() === channelId.toLowerCase() ||
+        (subscriptionChannelId && teamCurrentChannel.toLowerCase() === subscriptionChannelId.toLowerCase()));
+
+    console.log('🔄 UI Update Check:', {
+      isCurrentChannel,
+      teamCurrentChannel,
+      channelId,
+      subscriptionChannelId
+    });
+
+    if (isCurrentChannel) {
+      // Update UI immediately for current channel
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        updateTeamChatArea();
+
+        // Auto-scroll to bottom
+        setTimeout(() => {
+          const chatContent = document.querySelector('.team-messages-list');
+          if (chatContent) {
+            chatContent.scrollTop = chatContent.scrollHeight;
+          }
+        }, 50);
+      });
+    } else {
+      // Update unread count for other channels
+      const dm = teamDirectMessages.find(d => d.id.toLowerCase() === channelId.toLowerCase());
+      if (dm) {
+        dm.unread = (dm.unread || 0) + 1;
+        dm.lastMessage = newRecord;
+
+        // Update sidebar to show unread badge
+        updateTeamSidebar();
+
+        // Show notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`New message from ${userName}`, {
+            body: newRecord.message.substring(0, 100),
+            icon: avatarUrl || '/default-avatar.png',
+            tag: channelId
+          });
+        } else {
+          try {
+            // Only show toast if not visible to avoid spam
+            const existingToast = document.querySelector(`.notification[data-channel="${channelId}"]`);
+            if (!existingToast) {
+              showNotification(`New message from ${userName}`, 'info');
+            }
+          } catch (e) { }
+        }
+
+        // Play notification sound (optional)
+        playNotificationSound();
+      }
     }
   } else if (eventType === 'UPDATE') {
     const channelId = newRecord.channel_id;
@@ -15545,6 +15723,30 @@ async function handleTeamChatRealtimeUpdate(payload) {
         updateTeamChatArea();
       }
     }
+  }
+}
+
+// Play notification sound for new messages
+function playNotificationSound() {
+  try {
+    // Create a subtle notification sound using Web Audio API
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  } catch (e) {
+    // Silently fail if audio not supported
   }
 }
 
@@ -27312,3 +27514,91 @@ document.addEventListener('click', function (e) {
     contextMenu.remove();
   }
 });
+
+// ============================================
+// Chat Realtime Cleanup
+// ============================================
+
+// Cleanup all chat subscriptions on page unload
+window.addEventListener('beforeunload', () => {
+  if (typeof cleanupAllChatSubscriptions === 'function') {
+    cleanupAllChatSubscriptions();
+  }
+});
+
+// Request notification permissions when user opens Team view
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('✓ Notification permission granted');
+      }
+    });
+  }
+}
+// ============================================
+// Gantt Guide Logic
+// ============================================
+
+function dismissGanttGuide(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  // Save to localStorage
+  localStorage.setItem('layer_hasSeenGanttGuide', 'true');
+
+  // Remove from DOM with animation
+  const bubble = document.querySelector('.gantt-guide-bubble');
+  if (bubble) {
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'translate(-50%, -10px)';
+    bubble.style.transition = 'all 0.2s ease';
+
+    setTimeout(() => {
+      bubble.remove();
+    }, 200);
+  }
+}
+
+// ============================================
+// Guide Bubble Logic (Generic)
+// ============================================
+
+function dismissGuide(event, storageKey) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  if (storageKey) {
+    localStorage.setItem(storageKey, 'true');
+  }
+
+  // Remove from DOM with animation
+  let bubble;
+  if (event && event.target) {
+    bubble = event.target.closest('.guide-bubble');
+  }
+
+  // Fallback: remove all if no specific bubble found (for programmatic calls without event)
+  if (!bubble) {
+    const bubbles = document.querySelectorAll('.guide-bubble');
+    bubbles.forEach(b => {
+      b.style.opacity = '0';
+      setTimeout(() => b.remove(), 200);
+    });
+    return;
+  }
+
+  if (bubble) {
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'translate(-50%, -10px)';
+    bubble.style.transition = 'all 0.2s ease';
+
+    setTimeout(() => {
+      bubble.remove();
+    }, 200);
+  }
+}
