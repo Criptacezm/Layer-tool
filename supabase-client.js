@@ -19,31 +19,31 @@ let currentSession = null;
 async function initAuth() {
   // Get initial session first
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-  
+
   if (sessionError) {
     console.error('Failed to get session:', sessionError);
   }
-  
+
   currentSession = session;
   currentUser = session?.user ?? null;
-  
-  console.log('Initial auth state:', { 
-    hasSession: !!session, 
-    userEmail: currentUser?.email 
+
+  console.log('Initial auth state:', {
+    hasSession: !!session,
+    userEmail: currentUser?.email
   });
-  
+
   // Set up auth state listener AFTER checking initial session
   supabaseClient.auth.onAuthStateChange((event, session) => {
     console.log('Auth state changed:', event, session?.user?.email);
     currentSession = session;
     currentUser = session?.user ?? null;
-    
+
     // Dispatch custom event for UI updates
-    window.dispatchEvent(new CustomEvent('authStateChanged', { 
-      detail: { user: currentUser, session: currentSession, event } 
+    window.dispatchEvent(new CustomEvent('authStateChanged', {
+      detail: { user: currentUser, session: currentSession, event }
     }));
   });
-  
+
   return { user: currentUser, session: currentSession };
 }
 
@@ -55,35 +55,35 @@ async function signUp(email, password) {
       emailRedirectTo: window.location.origin + '/layer.html'
     }
   });
-  
+
   if (error) throw error;
   return data;
 }
 
 async function signIn(email, password) {
   console.log('Attempting sign in for:', email);
-  
+
   const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
-  
+
   if (error) {
     console.error('Sign in error:', error);
     throw error;
   }
-  
+
   // Update local state immediately
   currentSession = data.session;
   currentUser = data.user;
-  
+
   console.log('Sign in successful:', data.user?.email);
   return data;
 }
 
 async function signInWithGoogle() {
   console.log('Attempting Google sign in...');
-  
+
   try {
     // Preserve current URL parameters (like project ID) after redirect
     const redirectTo = new URL(`${window.location.origin}${window.location.pathname}`);
@@ -107,7 +107,7 @@ async function signInWithGoogle() {
       console.error('Google sign in error:', error);
       throw error;
     }
-    
+
     console.log('Google OAuth redirect initiated to:', redirectTo.toString());
     return data;
   } catch (error) {
@@ -143,7 +143,7 @@ async function ensureUserProfile() {
 
     // Create profile for the user
     console.log('Creating profile for user:', currentUser.email);
-    
+
     const userProfileData = {
       id: currentUser.id,
       email: currentUser.email,
@@ -168,12 +168,12 @@ async function ensureUserProfile() {
         })
         .select()
         .single();
-      
+
       if (retryError) {
         console.error('Retry profile creation failed:', retryError);
         throw retryError;
       }
-      
+
       console.log('Profile created successfully on retry');
       return retryProfile;
     }
@@ -189,61 +189,61 @@ async function ensureUserProfile() {
 // Enhanced function to add team member directly to project
 async function addTeamMemberToProject(projectId, memberEmail) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   try {
     console.log('Adding team member:', memberEmail, 'to project:', projectId);
-    
+
     // First, ensure the user has a profile
     const { data: userProfile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('id')
       .ilike('email', memberEmail) // Case-insensitive email matching
       .maybeSingle();
-    
+
     if (profileError) {
       console.error('Error checking user profile:', profileError);
     }
-    
+
     // If user doesn't have a profile, we'll still proceed but log it
     if (!userProfile) {
       console.warn('User does not have a profile, but proceeding with team addition');
     }
-    
+
     // Get current project team members
     const { data: project, error: projectError } = await supabaseClient
       .from('projects')
       .select('team_members')
       .eq('id', projectId)
       .maybeSingle();
-    
+
     if (projectError) throw projectError;
     if (!project) throw new Error('Project not found');
-    
+
     // Check if user is already a team member
     const currentTeamMembers = project.team_members || [];
     if (Array.isArray(currentTeamMembers) && currentTeamMembers.includes(memberEmail)) {
       throw new Error('User is already a team member');
     }
-    
+
     // Add new member to team
     const updatedTeamMembers = [...currentTeamMembers, memberEmail];
-    
+
     // Update project with new team members
     const { data: updatedProject, error: updateError } = await supabaseClient
       .from('projects')
-      .update({ 
+      .update({
         team_members: updatedTeamMembers,
         updated_at: new Date().toISOString()
       })
       .eq('id', projectId)
       .select()
       .single();
-    
+
     if (updateError) throw updateError;
-    
+
     console.log('Team member added successfully:', memberEmail);
     return updatedProject;
-    
+
   } catch (error) {
     console.error('Error adding team member:', error);
     throw error;
@@ -253,48 +253,48 @@ async function addTeamMemberToProject(projectId, memberEmail) {
 // Remove team member from project
 async function removeTeamMemberFromProject(projectId, userEmail) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   try {
     console.log('Removing team member:', userEmail, 'from project:', projectId);
-    
+
     // Get current project team members
     const { data: project, error: projectError } = await supabaseClient
       .from('projects')
       .select('team_members, user_id')
       .eq('id', projectId)
       .maybeSingle();
-    
+
     if (projectError) throw projectError;
     if (!project) throw new Error('Project not found');
-    
+
     // Check if user is trying to remove themselves or is the project owner
     const isOwner = project.user_id === currentUser.id;
     const isRemovingSelf = currentUser.email === userEmail;
-    
+
     if (!isOwner && !isRemovingSelf) {
       throw new Error('You can only remove yourself from the project');
     }
-    
+
     // Remove member from team
     const currentTeamMembers = project.team_members || [];
     const updatedTeamMembers = currentTeamMembers.filter(member => member !== userEmail);
-    
+
     // Update project with new team members
     const { data: updatedProject, error: updateError } = await supabaseClient
       .from('projects')
-      .update({ 
+      .update({
         team_members: updatedTeamMembers,
         updated_at: new Date().toISOString()
       })
       .eq('id', projectId)
       .select()
       .single();
-    
+
     if (updateError) throw updateError;
-    
+
     console.log('Team member removed successfully:', userEmail);
     return updatedProject;
-    
+
   } catch (error) {
     console.error('Error removing team member:', error);
     throw error;
@@ -305,32 +305,32 @@ async function removeTeamMemberFromProject(projectId, userEmail) {
 async function fixMissingProfiles() {
   try {
     console.log('Checking for users without profiles...');
-    
+
     // Get all auth users
     const { data: authUsers, error: authError } = await supabaseClient
       .from('users')
       .select('id, email, raw_user_meta_data');
-    
+
     if (authError) {
       console.error('Failed to fetch auth users:', authError);
       return;
     }
-    
+
     // Get all existing profiles
     const { data: existingProfiles, error: profileError } = await supabaseClient
       .from('profiles')
       .select('id');
-    
+
     if (profileError) {
       console.error('Failed to fetch existing profiles:', profileError);
       return;
     }
-    
+
     const existingProfileIds = new Set(existingProfiles.map(p => p.id));
     const usersWithoutProfiles = authUsers.filter(user => !existingProfileIds.has(user.id));
-    
+
     console.log(`Found ${usersWithoutProfiles.length} users without profiles`);
-    
+
     // Create profiles for users without them
     for (const user of usersWithoutProfiles) {
       try {
@@ -340,17 +340,17 @@ async function fixMissingProfiles() {
           name: user.raw_user_meta_data?.full_name || user.raw_user_meta_data?.name || user.email?.split('@')[0] || 'User',
           avatar_url: user.raw_user_meta_data?.avatar_url || user.raw_user_meta_data?.picture || null
         };
-        
+
         await supabaseClient
           .from('profiles')
           .insert(profileData);
-          
+
         console.log(`Created profile for ${user.email}`);
       } catch (error) {
         console.error(`Failed to create profile for ${user.email}:`, error);
       }
     }
-    
+
     console.log('Profile fix completed');
   } catch (error) {
     console.error('Error fixing missing profiles:', error);
@@ -405,27 +405,27 @@ function isAuthenticated() {
 
 async function getProfile() {
   if (!currentUser) return null;
-  
+
   const { data, error } = await supabaseClient
     .from('profiles')
     .select('*')
     .eq('id', currentUser.id)
     .single();
-  
+
   if (error && error.code !== 'PGRST116') throw error;
   return data;
 }
 
 async function updateProfile(updates) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   const { data, error } = await supabaseClient
     .from('profiles')
     .update(updates)
     .eq('id', currentUser.id)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -442,13 +442,13 @@ async function getUserPreferences() {
       left_panel_width: parseInt(localStorage.getItem('layerLeftPanelWidth')) || 280
     };
   }
-  
+
   const { data, error } = await supabaseClient
     .from('user_preferences')
     .select('*')
     .eq('user_id', currentUser.id)
     .single();
-  
+
   if (error && error.code === 'PGRST116') {
     // No preferences yet, create default
     const { data: newData, error: insertError } = await supabaseClient
@@ -456,11 +456,11 @@ async function getUserPreferences() {
       .insert({ user_id: currentUser.id })
       .select()
       .single();
-    
+
     if (insertError) throw insertError;
     return newData;
   }
-  
+
   if (error) throw error;
   return data;
 }
@@ -472,16 +472,16 @@ async function saveUserPreferences(prefs) {
     if (prefs.left_panel_width) localStorage.setItem('layerLeftPanelWidth', prefs.left_panel_width);
     return prefs;
   }
-  
+
   const { data, error } = await supabaseClient
     .from('user_preferences')
-    .upsert({ 
+    .upsert({
       user_id: currentUser.id,
-      ...prefs 
+      ...prefs
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -504,7 +504,7 @@ async function loadProjectsFromDB() {
     // Fall back to localStorage
     return loadProjects();
   }
-  
+
   try {
     // Get all projects user has access to via project_members table
     const { data, error } = await supabaseClient
@@ -514,23 +514,23 @@ async function loadProjectsFromDB() {
         project_members!inner(user_id, role, accepted_at)
       `)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     // Transform to match existing format with isOwner flag
     return data.map(p => transformProject(p, currentUser.id));
   } catch (error) {
     console.error('Error loading projects with project_members:', error);
-    
+
     // Fallback to old method if project_members doesn't exist yet
     const { data: fallbackData, error: fallbackError } = await supabaseClient
       .from('projects')
       .select('*')
       .or(`user_id.eq.${currentUser.id},team_members.cs.["${currentUser.email}"]`)
       .order('created_at', { ascending: false });
-    
+
     if (fallbackError) throw fallbackError;
-    
+
     return fallbackData.map(p => transformProject(p, currentUser.id));
   }
 }
@@ -539,7 +539,7 @@ async function loadProjectsFromDB() {
 function transformProject(p, userId) {
   const isOwner = p.user_id === userId;
   const userMembership = p.project_members?.find(m => m.user_id === userId);
-  
+
   return {
     id: p.id,
     userId: p.user_id,
@@ -568,7 +568,7 @@ function transformProject(p, userId) {
 // Get a single project by ID with full membership info
 async function getProjectById(projectId) {
   if (!currentUser) return null;
-  
+
   const { data, error } = await supabaseClient
     .from('projects')
     .select(`
@@ -584,19 +584,19 @@ async function getProjectById(projectId) {
     `)
     .eq('id', projectId)
     .single();
-  
+
   if (error) {
     console.error('Error getting project:', error);
     throw error;
   }
-  
+
   return transformProject(data, currentUser.id);
 }
 
 // Get project members with profile info
 async function getProjectMembers(projectId) {
   if (!currentUser) return [];
-  
+
   const { data, error } = await supabaseClient
     .from('project_members')
     .select(`
@@ -609,12 +609,12 @@ async function getProjectMembers(projectId) {
     `)
     .eq('project_id', projectId)
     .order('role', { ascending: true }); // owner first
-  
+
   if (error) {
     console.error('Error getting project members:', error);
     return [];
   }
-  
+
   return data.map(m => ({
     id: m.id,
     memberId: m.user_id,
@@ -630,20 +630,20 @@ async function getProjectMembers(projectId) {
 // Add member to project (owner only - RLS enforced)
 async function addProjectMemberByEmail(projectId, memberEmail) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   console.log('Adding project member:', memberEmail, 'to project:', projectId);
-  
+
   // First find the user by email
   const { data: targetUser, error: userError } = await supabaseClient
     .from('profiles')
     .select('id, email, name')
     .ilike('email', memberEmail)
     .single();
-  
+
   if (userError || !targetUser) {
     throw new Error(`User with email "${memberEmail}" not found. They need to sign up first.`);
   }
-  
+
   // Check if already a member
   const { data: existingMember } = await supabaseClient
     .from('project_members')
@@ -651,11 +651,11 @@ async function addProjectMemberByEmail(projectId, memberEmail) {
     .eq('project_id', projectId)
     .eq('user_id', targetUser.id)
     .maybeSingle();
-  
+
   if (existingMember) {
     throw new Error('User is already a member of this project');
   }
-  
+
   // Add member
   const { data, error } = await supabaseClient
     .from('project_members')
@@ -667,12 +667,12 @@ async function addProjectMemberByEmail(projectId, memberEmail) {
     })
     .select()
     .single();
-  
+
   if (error) {
     console.error('Error adding project member:', error);
     throw error;
   }
-  
+
   console.log('Project member added successfully:', memberEmail);
   return { ...data, email: targetUser.email, name: targetUser.name };
 }
@@ -680,31 +680,31 @@ async function addProjectMemberByEmail(projectId, memberEmail) {
 // Remove member from project (owner can kick anyone, members can leave)
 async function removeProjectMember(projectId, userId) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   console.log('Removing project member:', userId, 'from project:', projectId);
-  
+
   // Can't remove owner (they must delete the project instead)
   const { data: project } = await supabaseClient
     .from('projects')
     .select('user_id')
     .eq('id', projectId)
     .single();
-  
+
   if (project && project.user_id === userId) {
     throw new Error('Cannot remove the project owner. Delete the project instead.');
   }
-  
+
   const { error } = await supabaseClient
     .from('project_members')
     .delete()
     .eq('project_id', projectId)
     .eq('user_id', userId);
-  
+
   if (error) {
     console.error('Error removing project member:', error);
     throw error;
   }
-  
+
   console.log('Project member removed successfully');
   return true;
 }
@@ -712,9 +712,9 @@ async function removeProjectMember(projectId, userId) {
 // Leave project (for non-owners) - Fixed with proper error handling
 async function leaveProject(projectId) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   console.log('User attempting to leave project:', projectId);
-  
+
   try {
     // First check if user is the owner
     const { data: project, error: projectError } = await supabaseClient
@@ -722,36 +722,36 @@ async function leaveProject(projectId) {
       .select('user_id, name')
       .eq('id', projectId)
       .single();
-    
+
     if (projectError) {
       console.error('Error checking project ownership:', projectError);
       throw new Error('Failed to check project ownership');
     }
-    
+
     if (!project) {
       throw new Error('Project not found');
     }
-    
+
     if (project.user_id === currentUser.id) {
       throw new Error('Project owners cannot leave their project. Transfer ownership or delete the project instead.');
     }
-    
+
     console.log(`User ${currentUser.email} leaving project: ${project.name}`);
-    
+
     // Remove user from project_members table
     const { error: leaveError } = await supabaseClient
       .from('project_members')
       .delete()
       .eq('project_id', projectId)
       .eq('user_id', currentUser.id);
-    
+
     if (leaveError) {
       console.error('Error leaving project:', leaveError);
       throw new Error(`Failed to leave project: ${leaveError.message}`);
     }
-    
+
     console.log('Successfully left project:', project.name);
-    
+
     // Also remove from legacy team_members JSON array if it exists
     try {
       const { data: currentProject } = await supabaseClient
@@ -759,7 +759,7 @@ async function leaveProject(projectId) {
         .select('team_members')
         .eq('id', projectId)
         .single();
-      
+
       if (currentProject?.team_members && Array.isArray(currentProject.team_members)) {
         const updatedTeamMembers = currentProject.team_members.filter(email => email !== currentUser.email);
         await supabaseClient
@@ -771,9 +771,9 @@ async function leaveProject(projectId) {
       console.warn('Failed to update legacy team_members array:', updateError);
       // Don't fail the operation if legacy update fails
     }
-    
+
     return { success: true, projectName: project.name };
-    
+
   } catch (error) {
     console.error('Leave project error:', error);
     throw error;
@@ -783,17 +783,17 @@ async function leaveProject(projectId) {
 // Transfer project ownership
 async function transferProjectOwnership(projectId, newOwnerUserId) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   // Verify current user is owner
   const { data: project, error: projectError } = await supabaseClient
     .from('projects')
     .select('user_id')
     .eq('id', projectId)
     .single();
-  
+
   if (projectError || !project) throw new Error('Project not found');
   if (project.user_id !== currentUser.id) throw new Error('Only the owner can transfer ownership');
-  
+
   // Verify new owner is a member
   const { data: newOwnerMembership } = await supabaseClient
     .from('project_members')
@@ -801,30 +801,30 @@ async function transferProjectOwnership(projectId, newOwnerUserId) {
     .eq('project_id', projectId)
     .eq('user_id', newOwnerUserId)
     .single();
-  
+
   if (!newOwnerMembership) throw new Error('New owner must be a project member first');
-  
+
   // Update project owner
   const { error: updateProjectError } = await supabaseClient
     .from('projects')
     .update({ user_id: newOwnerUserId })
     .eq('id', projectId);
-  
+
   if (updateProjectError) throw updateProjectError;
-  
+
   // Update membership roles
   await supabaseClient
     .from('project_members')
     .update({ role: 'member' })
     .eq('project_id', projectId)
     .eq('user_id', currentUser.id);
-  
+
   await supabaseClient
     .from('project_members')
     .update({ role: 'owner' })
     .eq('project_id', projectId)
     .eq('user_id', newOwnerUserId);
-  
+
   console.log('Ownership transferred successfully');
   return true;
 }
@@ -832,20 +832,20 @@ async function transferProjectOwnership(projectId, newOwnerUserId) {
 // Delete project (owner only - RLS enforced)
 async function deleteProjectFromDB(projectId) {
   if (!currentUser) throw new Error('Not authenticated');
-  
+
   console.log('Deleting project:', projectId);
-  
+
   const { error } = await supabaseClient
     .from('projects')
     .delete()
     .eq('id', projectId)
     .eq('user_id', currentUser.id); // RLS ensures only owner can delete
-  
+
   if (error) {
     console.error('Error deleting project:', error);
     throw error;
   }
-  
+
   console.log('Project deleted successfully');
   return await loadProjectsFromDB();
 }
@@ -857,30 +857,30 @@ async function deleteProjectFromDB(projectId) {
 // Subscribe to all project changes for current user (using new LayerRealtime)
 function subscribeToUserProjects(callback) {
   if (!currentUser) return null;
-  
+
   // Use new LayerRealtime module if available
   if (window.LayerRealtime) {
     return window.LayerRealtime.subscribeToAllUserProjects(callback);
   }
-  
+
   // Fallback to legacy implementation
   console.warn('Using legacy realtime subscription. Consider loading realtime.js module.');
-  
+
   // Unsubscribe from existing channels
   unsubscribeFromProjects();
-  
+
   // Subscribe to projects table changes
   projectsChannel = supabaseClient
     .channel('user_projects_realtime')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'projects' }, 
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'projects' },
       (payload) => {
         console.log('Project change detected:', payload.eventType);
         callback(payload);
       }
     )
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'project_members' }, 
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'project_members' },
       (payload) => {
         console.log('Project member change detected:', payload.eventType);
         callback(payload);
@@ -889,7 +889,7 @@ function subscribeToUserProjects(callback) {
     .subscribe((status) => {
       console.log('Project subscription status:', status);
     });
-  
+
   return projectsChannel;
 }
 
@@ -899,7 +899,7 @@ function unsubscribeFromProjects() {
   if (window.LayerRealtime) {
     return window.LayerRealtime.unsubscribeFromAllProjects();
   }
-  
+
   // Fallback to legacy implementation
   if (projectsChannel) {
     supabaseClient.removeChannel(projectsChannel);
@@ -916,7 +916,7 @@ async function saveProjectToDB(projectData) {
     // Fall back to localStorage
     return addProject(projectData);
   }
-  
+
   const { data, error } = await supabaseClient
     .from('projects')
     .insert({
@@ -937,7 +937,7 @@ async function saveProjectToDB(projectData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -952,7 +952,7 @@ async function updateProjectInDB(projectId, updates) {
     }
     return projects;
   }
-  
+
   const dbUpdates = {};
   if (updates.name !== undefined) dbUpdates.name = updates.name;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -967,7 +967,7 @@ async function updateProjectInDB(projectId, updates) {
   if (updates.tasks !== undefined) dbUpdates.tasks = updates.tasks;
   if (updates.activity !== undefined) dbUpdates.activity = updates.activity;
   if (updates.leader !== undefined) dbUpdates.leader = updates.leader;
-  
+
   // Don't filter by user_id - RLS policies handle permissions
   // This allows project members to update tasks/columns too
   const { data, error } = await supabaseClient
@@ -976,7 +976,7 @@ async function updateProjectInDB(projectId, updates) {
     .eq('id', projectId)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -990,13 +990,13 @@ async function deleteProjectFromDB(projectId) {
     }
     return projects;
   }
-  
+
   // RLS policy ensures only owner can delete
   const { error } = await supabaseClient
     .from('projects')
     .delete()
     .eq('id', projectId);
-  
+
   if (error) throw error;
   return await loadProjectsFromDB();
 }
@@ -1004,13 +1004,13 @@ async function deleteProjectFromDB(projectId) {
 // Get profile by user ID (for displaying who completed tasks, etc.)
 async function getProfileById(userId) {
   if (!userId) return null;
-  
+
   const { data, error } = await supabaseClient
     .from('profiles')
     .select('id, email, name, avatar_url')
     .eq('id', userId)
     .maybeSingle();
-  
+
   if (error) {
     console.error('Error getting profile:', error);
     return null;
@@ -1026,15 +1026,15 @@ async function loadBacklogTasksFromDB() {
   if (!currentUser) {
     return loadBacklogTasks();
   }
-  
+
   const { data, error } = await supabaseClient
     .from('backlog_tasks')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   return data.map(t => ({
     id: t.id,
     title: t.title,
@@ -1047,7 +1047,7 @@ async function addBacklogTaskToDB(title) {
   if (!currentUser) {
     return addBacklogTask(title);
   }
-  
+
   const { data, error } = await supabaseClient
     .from('backlog_tasks')
     .insert({
@@ -1056,7 +1056,7 @@ async function addBacklogTaskToDB(title) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return await loadBacklogTasksFromDB();
 }
@@ -1068,20 +1068,20 @@ async function toggleBacklogTaskInDB(taskId) {
     if (index !== -1) return toggleBacklogTask(index);
     return tasks;
   }
-  
+
   // Get current state
   const { data: task } = await supabaseClient
     .from('backlog_tasks')
     .select('done')
     .eq('id', taskId)
     .single();
-  
+
   const { error } = await supabaseClient
     .from('backlog_tasks')
     .update({ done: !task.done })
     .eq('id', taskId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadBacklogTasksFromDB();
 }
@@ -1093,13 +1093,13 @@ async function updateBacklogTaskInDB(taskId, title) {
     if (index !== -1) return updateBacklogTask(index, title);
     return tasks;
   }
-  
+
   const { error } = await supabaseClient
     .from('backlog_tasks')
     .update({ title })
     .eq('id', taskId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadBacklogTasksFromDB();
 }
@@ -1111,13 +1111,13 @@ async function deleteBacklogTaskFromDB(taskId) {
     if (index !== -1) return deleteBacklogTask(index);
     return tasks;
   }
-  
+
   const { error } = await supabaseClient
     .from('backlog_tasks')
     .delete()
     .eq('id', taskId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadBacklogTasksFromDB();
 }
@@ -1130,15 +1130,15 @@ async function loadIssuesFromDB() {
   if (!currentUser) {
     return loadIssues();
   }
-  
+
   const { data, error } = await supabaseClient
     .from('issues')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   return data.map(i => ({
     id: i.issue_id,
     dbId: i.id,
@@ -1156,7 +1156,7 @@ async function addIssueToDB(issueData) {
   if (!currentUser) {
     return addIssue(issueData);
   }
-  
+
   const { data, error } = await supabaseClient
     .from('issues')
     .insert({
@@ -1171,7 +1171,7 @@ async function addIssueToDB(issueData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return await loadIssuesFromDB();
 }
@@ -1186,7 +1186,7 @@ async function updateIssueInDB(issueDbId, updates) {
     }
     return issues;
   }
-  
+
   const dbUpdates = {};
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -1194,13 +1194,13 @@ async function updateIssueInDB(issueDbId, updates) {
   if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
   if (updates.assignee !== undefined) dbUpdates.assignee = updates.assignee;
   if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
-  
+
   const { error } = await supabaseClient
     .from('issues')
     .update(dbUpdates)
     .eq('id', issueDbId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadIssuesFromDB();
 }
@@ -1215,13 +1215,13 @@ async function deleteIssueFromDB(issueDbId) {
     }
     return issues;
   }
-  
+
   const { error } = await supabaseClient
     .from('issues')
     .delete()
     .eq('id', issueDbId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadIssuesFromDB();
 }
@@ -1234,15 +1234,15 @@ async function loadCalendarEventsFromDB() {
   if (!currentUser) {
     return [];
   }
-  
+
   const { data, error } = await supabaseClient
     .from('calendar_events')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('date', { ascending: true });
-  
+
   if (error) throw error;
-  
+
   // Transform to match existing format
   return data.map(e => ({
     id: e.id,
@@ -1283,7 +1283,7 @@ async function saveCalendarEventToDB(eventData) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { data, error } = await supabaseClient
     .from('calendar_events')
     .insert({
@@ -1303,7 +1303,7 @@ async function saveCalendarEventToDB(eventData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -1312,7 +1312,7 @@ async function updateCalendarEventInDB(eventId, updates) {
   if (!currentUser) {
     return null;
   }
-  
+
   const dbUpdates = {};
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.date !== undefined) dbUpdates.date = updates.date;
@@ -1327,13 +1327,13 @@ async function updateCalendarEventInDB(eventId, updates) {
   if (updates.description !== undefined) dbUpdates.notes = updates.description;
   if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
   if (updates.category !== undefined) dbUpdates.category = updates.category;
-  
+
   const { error } = await supabaseClient
     .from('calendar_events')
     .update(dbUpdates)
     .eq('id', eventId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadCalendarEventsFromDB();
 }
@@ -1342,13 +1342,13 @@ async function deleteCalendarEventFromDB(eventId) {
   if (!currentUser) {
     return [];
   }
-  
+
   const { error } = await supabaseClient
     .from('calendar_events')
     .delete()
     .eq('id', eventId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadCalendarEventsFromDB();
 }
@@ -1357,13 +1357,13 @@ async function deleteRecurringEventsFromDB(recurringId) {
   if (!currentUser) {
     return [];
   }
-  
+
   const { error } = await supabaseClient
     .from('calendar_events')
     .delete()
     .eq('recurring_id', recurringId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadCalendarEventsFromDB();
 }
@@ -1376,15 +1376,15 @@ async function loadDocsFromDB() {
   if (!currentUser) {
     return [];
   }
-  
+
   const { data, error } = await supabaseClient
     .from('docs')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('updated_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   return data.map(d => ({
     id: d.id,
     title: d.title,
@@ -1400,7 +1400,7 @@ async function saveDocToDB(docData) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { data, error } = await supabaseClient
     .from('docs')
     .insert({
@@ -1412,7 +1412,7 @@ async function saveDocToDB(docData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return {
     id: data.id,
@@ -1429,19 +1429,19 @@ async function updateDocInDB(docId, updates) {
   if (!currentUser) {
     return null;
   }
-  
+
   const dbUpdates = { updated_at: new Date().toISOString() };
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.content !== undefined) dbUpdates.content = updates.content;
   if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
   if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
-  
+
   const { error } = await supabaseClient
     .from('docs')
     .update(dbUpdates)
     .eq('id', docId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadDocsFromDB();
 }
@@ -1450,13 +1450,13 @@ async function deleteDocFromDB(docId) {
   if (!currentUser) {
     return [];
   }
-  
+
   const { error } = await supabaseClient
     .from('docs')
     .delete()
     .eq('id', docId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadDocsFromDB();
 }
@@ -1465,13 +1465,13 @@ async function toggleDocFavoriteInDB(docId, isFavorite) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { error } = await supabaseClient
     .from('docs')
     .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
     .eq('id', docId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadDocsFromDB();
 }
@@ -1484,15 +1484,15 @@ async function loadExcelsFromDB() {
   if (!currentUser) {
     return [];
   }
-  
+
   const { data, error } = await supabaseClient
     .from('excels')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('updated_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   return data.map(e => ({
     id: e.id,
     title: e.title,
@@ -1508,7 +1508,7 @@ async function saveExcelToDB(excelData) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { data, error } = await supabaseClient
     .from('excels')
     .insert({
@@ -1520,7 +1520,7 @@ async function saveExcelToDB(excelData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return {
     id: data.id,
@@ -1537,19 +1537,19 @@ async function updateExcelInDB(excelId, updates) {
   if (!currentUser) {
     return null;
   }
-  
+
   const dbUpdates = { updated_at: new Date().toISOString() };
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.data !== undefined) dbUpdates.data = updates.data;
   if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
   if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
-  
+
   const { error } = await supabaseClient
     .from('excels')
     .update(dbUpdates)
     .eq('id', excelId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadExcelsFromDB();
 }
@@ -1558,13 +1558,13 @@ async function deleteExcelFromDB(excelId) {
   if (!currentUser) {
     return [];
   }
-  
+
   const { error } = await supabaseClient
     .from('excels')
     .delete()
     .eq('id', excelId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadExcelsFromDB();
 }
@@ -1573,13 +1573,13 @@ async function toggleExcelFavoriteInDB(excelId, isFavorite) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { error } = await supabaseClient
     .from('excels')
     .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
     .eq('id', excelId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadExcelsFromDB();
 }
@@ -1592,15 +1592,15 @@ async function loadSpacesFromDB() {
   if (!currentUser) {
     return [];
   }
-  
+
   const { data, error } = await supabaseClient
     .from('spaces')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   return data.map(s => ({
     id: s.id,
     name: s.name,
@@ -1620,7 +1620,7 @@ async function saveSpaceToDB(spaceData) {
   if (!currentUser) {
     return null;
   }
-  
+
   const { data, error } = await supabaseClient
     .from('spaces')
     .insert({
@@ -1636,7 +1636,7 @@ async function saveSpaceToDB(spaceData) {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return {
     id: data.id,
@@ -1657,7 +1657,7 @@ async function updateSpaceInDB(spaceId, updates) {
   if (!currentUser) {
     return null;
   }
-  
+
   const dbUpdates = { updated_at: new Date().toISOString() };
   if (updates.name !== undefined) dbUpdates.name = updates.name;
   if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
@@ -1667,13 +1667,13 @@ async function updateSpaceInDB(spaceId, updates) {
   if (updates.colorTag !== undefined) dbUpdates.color_tag = updates.colorTag;
   if (updates.members !== undefined) dbUpdates.members = updates.members;
   if (updates.checklist !== undefined) dbUpdates.checklist = updates.checklist;
-  
+
   const { error } = await supabaseClient
     .from('spaces')
     .update(dbUpdates)
     .eq('id', spaceId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadSpacesFromDB();
 }
@@ -1682,13 +1682,13 @@ async function deleteSpaceFromDB(spaceId) {
   if (!currentUser) {
     return [];
   }
-  
+
   const { error } = await supabaseClient
     .from('spaces')
     .delete()
     .eq('id', spaceId)
     .eq('user_id', currentUser.id);
-  
+
   if (error) throw error;
   return await loadSpacesFromDB();
 }
@@ -1702,50 +1702,50 @@ async function migrateLocalDataToSupabase() {
     console.warn('Cannot migrate: user not authenticated');
     return;
   }
-  
+
   try {
     // Migrate projects
     const localProjects = loadProjects();
     for (const project of localProjects) {
       await saveProjectToDB(project);
     }
-    
+
     // Migrate backlog tasks
     const localBacklog = loadBacklogTasks();
     for (const task of localBacklog) {
       await addBacklogTaskToDB(task.title);
     }
-    
+
     // Migrate issues
     const localIssues = loadIssues();
     for (const issue of localIssues) {
       await addIssueToDB(issue);
     }
-    
+
     // Migrate calendar events
     const localEvents = JSON.parse(localStorage.getItem('layerCalendarEvents') || '[]');
     for (const event of localEvents) {
       await saveCalendarEventToDB(event);
     }
-    
+
     // Migrate docs
     const localDocs = JSON.parse(localStorage.getItem('layerDocs') || '[]');
     for (const doc of localDocs) {
       await saveDocToDB(doc);
     }
-    
+
     // Migrate excels
     const localExcels = JSON.parse(localStorage.getItem('layerExcels') || '[]');
     for (const excel of localExcels) {
       await saveExcelToDB(excel);
     }
-    
+
     // Migrate spaces
     const localSpaces = JSON.parse(localStorage.getItem('layerSpaces') || '[]');
     for (const space of localSpaces) {
       await saveSpaceToDB(space);
     }
-    
+
     // Migrate preferences
     const theme = localStorage.getItem('layerTheme');
     const panelWidth = localStorage.getItem('layerLeftPanelWidth');
@@ -1755,7 +1755,7 @@ async function migrateLocalDataToSupabase() {
         left_panel_width: parseInt(panelWidth) || 280
       });
     }
-    
+
     console.log('Migration complete!');
     return true;
   } catch (error) {
@@ -1775,7 +1775,7 @@ window.LayerDB = {
   getCurrentUser,
   refreshUser,
   isAuthenticated,
-  
+
   // Profile
   getProfile,
   updateProfile,
@@ -1783,11 +1783,11 @@ window.LayerDB = {
   addTeamMemberToProject, // Legacy - use addProjectMemberByEmail instead
   removeTeamMemberFromProject, // Legacy - use removeProjectMember instead
   fixMissingProfiles,
-  
+
   // Preferences
   getUserPreferences,
   saveUserPreferences,
-  
+
   // Projects (updated with membership support)
   loadProjects: loadProjectsFromDB,
   saveProject: saveProjectToDB,
@@ -1795,61 +1795,61 @@ window.LayerDB = {
   deleteProject: deleteProjectFromDB,
   getProjectById,
   getProfileById,
-  
+
   // Project Members (NEW)
   getProjectMembers,
   addProjectMember: addProjectMemberByEmail,
   removeProjectMember,
   leaveProject,
   transferOwnership: transferProjectOwnership,
-  
+
   // Realtime Subscriptions (NEW)
   subscribeToUserProjects,
   unsubscribeFromProjects,
-  
+
   // Backlog
   loadBacklogTasks: loadBacklogTasksFromDB,
   addBacklogTask: addBacklogTaskToDB,
   toggleBacklogTask: toggleBacklogTaskInDB,
   updateBacklogTask: updateBacklogTaskInDB,
   deleteBacklogTask: deleteBacklogTaskFromDB,
-  
+
   // Issues
   loadIssues: loadIssuesFromDB,
   addIssue: addIssueToDB,
   updateIssue: updateIssueInDB,
   deleteIssue: deleteIssueFromDB,
-  
+
   // Calendar Events
   loadCalendarEvents: loadCalendarEventsFromDB,
   saveCalendarEvent: saveCalendarEventToDB,
   updateCalendarEvent: updateCalendarEventInDB,
   deleteCalendarEvent: deleteCalendarEventFromDB,
   deleteRecurringEvents: deleteRecurringEventsFromDB,
-  
+
   // Documents
   loadDocs: loadDocsFromDB,
   saveDoc: saveDocToDB,
   updateDoc: updateDocInDB,
   deleteDoc: deleteDocFromDB,
   toggleDocFavorite: toggleDocFavoriteInDB,
-  
+
   // Excels/Spreadsheets
   loadExcels: loadExcelsFromDB,
   saveExcel: saveExcelToDB,
   updateExcel: updateExcelInDB,
   deleteExcel: deleteExcelFromDB,
   toggleExcelFavorite: toggleExcelFavoriteInDB,
-  
+
   // Spaces
   loadSpaces: loadSpacesFromDB,
   saveSpace: saveSpaceToDB,
   updateSpace: updateSpaceInDB,
   deleteSpace: deleteSpaceFromDB,
-  
+
   // Migration
   migrateLocalDataToSupabase,
-  
+
   // Presence tracking
   updatePresence: async (isOnline, watchingProjectId = null) => {
     if (!currentUser) return;
@@ -1866,7 +1866,7 @@ window.LayerDB = {
       });
     if (error) throw error;
   },
-  
+
   getProjectMembersPresence: async (projectId) => {
     if (!currentUser) return [];
     const { data, error } = await supabaseClient
@@ -1922,7 +1922,7 @@ window.LayerDB = {
       if (invitations && invitations.length > 0) {
         // 3. Join project: update team_members and invitation status
         const updatedMembers = Array.isArray(teamMembers) ? [...teamMembers, currentUser.email] : [currentUser.email];
-        
+
         const { error: updateError } = await supabaseClient
           .from('projects')
           .update({ team_members: updatedMembers })
@@ -1939,32 +1939,32 @@ window.LayerDB = {
 
         return { success: true, message: 'Joined project successfully' };
       }
-      
+
       return { success: false, error: 'No valid invitation found for your email' };
     } catch (error) {
       console.error('Error joining project:', error);
       return { success: false, error: error.message };
     }
   },
-  
+
   // Send welcome email to user
   sendWelcomeEmail: async (userEmail, userName) => {
     if (!userEmail) return;
-    
+
     try {
       // Log for debugging
       console.log('Sending welcome email to:', userEmail);
-      
+
       // Get the current user session token for authentication
       const { data: { session }, error } = await supabaseClient.auth.getSession();
-      
+
       if (error || !session) {
         console.error('No active session found:', error?.message);
         return false;
       }
-      
+
       const token = session.access_token;
-      
+
       // Call the Supabase Edge Function to send welcome email
       const { data, error: invokeError } = await supabaseClient.functions.invoke('send-welcome-email', {
         body: {
@@ -1975,12 +1975,12 @@ window.LayerDB = {
           'Authorization': 'Bearer ' + token
         }
       });
-      
+
       if (invokeError) {
         console.error('Failed to send welcome email:', invokeError);
         return false;
       }
-      
+
       console.log('Welcome email sent successfully:', data);
       return true;
     } catch (error) {
@@ -1988,11 +1988,11 @@ window.LayerDB = {
       return false;
     }
   },
-  
+
   // Followers/Following functions
   followUser: async (followingUserId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('followers')
       .insert({
@@ -2002,44 +2002,44 @@ window.LayerDB = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   // Follow user by email (for the Add People feature)
   followUserByEmail: async (followingEmail) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     console.log('Following user by email:', followingEmail);
     console.log('Current user:', currentUser.email);
-    
+
     // First, get the user ID from email (case-insensitive)
     let { data: userData, error: userError } = await supabaseClient
       .from('profiles')
       .select('id')
       .ilike('email', followingEmail)  // ilike for case-insensitive matching
       .single();
-    
+
     // If user doesn't exist in profiles, we need to handle this
     if (userError || !userData) {
       console.log('User not found in profiles, checking if they exist in auth.users...');
-      
+
       // Check if user exists in auth.users (case-insensitive)
       const { data: authUsers, error: authError } = await supabaseClient
         .from('users')
         .select('id, email')
         .ilike('email', followingEmail);  // ilike for case-insensitive matching
-      
+
       if (authError || !authUsers || authUsers.length === 0) {
         console.error('User does not exist in the system:', followingEmail);
         // Provide more helpful error message
         throw new Error(`User with email ${followingEmail} does not have an account. Please ask them to sign up first or check if the email is spelled correctly.`);
       }
-      
+
       const authUser = authUsers[0];
       console.log('Found auth user:', authUser);
-      
+
       // Try to create profile for this user
       const { error: createProfileError } = await supabaseClient
         .from('profiles')
@@ -2049,7 +2049,7 @@ window.LayerDB = {
         })
         .select()
         .single();
-      
+
       if (createProfileError) {
         console.error('Failed to create profile:', createProfileError);
         // If we can't create profile, try to get existing profile one more time
@@ -2058,7 +2058,7 @@ window.LayerDB = {
           .select('id')
           .eq('id', authUser.id)
           .single();
-        
+
         if (retryError || !retryProfile) {
           throw new Error(`Could not create or find profile for user ${followingEmail}. Please contact support.`);
         }
@@ -2068,9 +2068,9 @@ window.LayerDB = {
         userData = { id: authUser.id };
       }
     }
-    
+
     console.log('Found user ID:', userData.id);
-    
+
     // Check if already following
     const { data: existingFollow } = await supabaseClient
       .from('followers')
@@ -2080,11 +2080,11 @@ window.LayerDB = {
         following_id: userData.id
       })
       .maybeSingle();
-    
+
     if (existingFollow) {
       throw new Error('You are already following this user');
     }
-    
+
     // Create follow request
     const { data, error } = await supabaseClient
       .from('followers')
@@ -2095,14 +2095,14 @@ window.LayerDB = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   unfollowUser: async (followingUserId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { error } = await supabaseClient
       .from('followers')
       .delete()
@@ -2110,14 +2110,14 @@ window.LayerDB = {
         follower_id: currentUser.id,
         following_id: followingUserId
       });
-    
+
     if (error) throw error;
     return true;
   },
-  
+
   acceptFollowRequest: async (followerUserId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('followers')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
@@ -2127,30 +2127,55 @@ window.LayerDB = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   rejectFollowRequest: async (followerUserId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { error } = await supabaseClient
       .from('followers')
       .delete()
       .match({
         follower_id: followerUserId,
-        following_id: currentUser.id
+        following_id: currentUser.id,
+        status: 'pending'
       });
-    
+
     if (error) throw error;
     return true;
   },
-  
+
+  // Unfollow a user (remove accepted follower relationship)
+  unfollowUser: async (userId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+
+    console.log('🔍 Unfollowing user:', userId, 'Current user:', currentUser.id);
+
+    // Delete the follower relationship where current user is either follower or following
+    const { error } = await supabaseClient
+      .from('followers')
+      .delete()
+      .or(`and(follower_id.eq.${currentUser.id},following_id.eq.${userId}),and(follower_id.eq.${userId},following_id.eq.${currentUser.id})`);
+
+    if (error) {
+      console.error('❌ Error unfollowing user:', error);
+      throw error;
+    }
+
+    console.log('✅ Successfully unfollowed user');
+    return true;
+  },
+
   getFollowers: async () => {
     if (!currentUser) return [];
-    
-    const { data, error } = await supabaseClient
+
+    console.log('🔍 Fetching followers for user:', currentUser.id, currentUser.email);
+
+    // Try with profile joins first
+    let { data, error } = await supabaseClient
       .from('followers')
       .select(`
         *,
@@ -2159,17 +2184,59 @@ window.LayerDB = {
       `)
       .or(`following_id.eq.${currentUser.id},follower_id.eq.${currentUser.id}`)
       .order('created_at', { ascending: false });
-    
-    if (error) throw error;
+
+    // If profile joins fail, try without them
+    if (error) {
+      console.warn('⚠️ Profile joins failed, trying without joins:', error.message);
+
+      const fallback = await supabaseClient
+        .from('followers')
+        .select('*')
+        .or(`following_id.eq.${currentUser.id},follower_id.eq.${currentUser.id}`)
+        .order('created_at', { ascending: false });
+
+      if (fallback.error) {
+        console.error('❌ Fallback query also failed:', fallback.error);
+        throw fallback.error;
+      }
+
+      data = fallback.data;
+
+      // Manually fetch profiles for each follower
+      if (data && data.length > 0) {
+        const userIds = new Set();
+        data.forEach(f => {
+          if (f.follower_id) userIds.add(f.follower_id);
+          if (f.following_id) userIds.add(f.following_id);
+        });
+
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, email, name, avatar_url')
+          .in('id', Array.from(userIds));
+
+        // Attach profiles to followers
+        if (profiles) {
+          data = data.map(f => ({
+            ...f,
+            follower_profile: profiles.find(p => p.id === f.follower_id),
+            following_profile: profiles.find(p => p.id === f.following_id)
+          }));
+        }
+      }
+    }
+
+    console.log('✅ Fetched followers:', data);
     return data || [];
   },
-  
+
   getPendingFollowRequests: async () => {
     if (!currentUser) return [];
-    
-    console.log('Fetching pending follow requests for user:', currentUser.id, currentUser.email);
-    
-    const { data, error } = await supabaseClient
+
+    console.log('🔍 Fetching pending follow requests for user:', currentUser.id, currentUser.email);
+
+    // Try with profile joins first
+    let { data, error } = await supabaseClient
       .from('followers')
       .select(`
         *,
@@ -2180,20 +2247,56 @@ window.LayerDB = {
         status: 'pending'
       })
       .order('created_at', { ascending: false });
-    
+
+    // If profile joins fail, try without them
     if (error) {
-      console.error('Error fetching pending follow requests:', error);
-      throw error;
+      console.warn('⚠️ Profile joins failed for pending requests, trying without joins:', error.message);
+
+      const fallback = await supabaseClient
+        .from('followers')
+        .select('*')
+        .match({
+          following_id: currentUser.id,
+          status: 'pending'
+        })
+        .order('created_at', { ascending: false });
+
+      if (fallback.error) {
+        console.error('❌ Fallback query for pending requests failed:', fallback.error);
+        throw fallback.error;
+      }
+
+      data = fallback.data;
+
+      // Manually fetch profiles for each follower
+      if (data && data.length > 0) {
+        const followerIds = data.map(f => f.follower_id).filter(Boolean);
+
+        if (followerIds.length > 0) {
+          const { data: profiles } = await supabaseClient
+            .from('profiles')
+            .select('id, email, name, avatar_url')
+            .in('id', followerIds);
+
+          // Attach profiles to followers
+          if (profiles) {
+            data = data.map(f => ({
+              ...f,
+              follower_profile: profiles.find(p => p.id === f.follower_id)
+            }));
+          }
+        }
+      }
     }
-    
-    console.log('Found pending follow requests:', data);
+
+    console.log('✅ Found pending follow requests:', data);
     return data || [];
   },
-  
+
   // Team invitation functions
   sendTeamInvitation: async (inviteeEmail, teamName, message = '') => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('team_invitations')
       .insert({
@@ -2205,14 +2308,14 @@ window.LayerDB = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   getTeamInvitations: async () => {
     if (!currentUser) return [];
-    
+
     const { data, error } = await supabaseClient
       .from('team_invitations')
       .select(`
@@ -2221,45 +2324,45 @@ window.LayerDB = {
       `)
       .or(`inviter_id.eq.${currentUser.id},invitee_email.eq.${currentUser.email}`)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
     return data || [];
   },
-  
+
   acceptTeamInvitation: async (invitationId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('team_invitations')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
       .match({ id: invitationId })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   rejectTeamInvitation: async (invitationId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { error } = await supabaseClient
       .from('team_invitations')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .match({ id: invitationId });
-    
+
     if (error) throw error;
     return true;
   },
-  
+
   // ============================================
   // Team Chat Functions
   // ============================================
-  
+
   // Send a team chat message
   sendTeamMessage: async (channelId, channelType, message, recipientId = null, messageType = 'text') => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('team_chat_messages')
       .insert({
@@ -2275,15 +2378,15 @@ window.LayerDB = {
         user_profile:profiles!team_chat_messages_user_id_fkey(email, name, avatar_url)
       `)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   // Get team chat messages for a channel
   getTeamMessages: async (channelId, channelType = 'channel') => {
     if (!currentUser) return [];
-    
+
     let query = supabaseClient
       .from('team_chat_messages')
       .select(`
@@ -2293,166 +2396,251 @@ window.LayerDB = {
       .eq('channel_id', channelId)
       .eq('channel_type', channelType)
       .order('created_at', { ascending: true });
-    
+
     // For DMs, also include messages where current user is the recipient
     if (channelType === 'dm') {
       query = query.or(`channel_id.eq.${channelId},recipient_id.eq.${currentUser.id}`);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data || [];
   },
-  
+
   // Subscribe to team chat messages for realtime updates
   subscribeToTeamMessages: (channelId, callback) => {
     if (!currentUser) return null;
-    
+
     const channel = supabaseClient
       .channel(`team_chat_${channelId}`)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'team_chat_messages',
           filter: `channel_id=eq.${channelId}`
-        }, 
-        (payload) => {
+        },
+        payload => {
           callback(payload);
         }
       )
       .subscribe();
-    
+
     return channel;
   },
-  
+
+  // Subscribe to ALL messages where current user is recipient (for new DMs)
+  subscribeToUserMessages: (callback) => {
+    if (!currentUser) return null;
+
+    const channel = supabaseClient
+      .channel(`user_dm_${currentUser.id}`)
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'team_chat_messages',
+          filter: `recipient_id=eq.${currentUser.id}`
+        },
+        payload => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+
+    return channel;
+  },
+
   // Unsubscribe from team chat messages
-  unsubscribeFromTeamMessages: (channel) => {
+  unsubscribeFromTeamMessages: channel => {
     if (channel) {
       supabaseClient.removeChannel(channel);
     }
   },
-  
+
   // Edit a team chat message
   editTeamMessage: async (messageId, newMessage) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { data, error } = await supabaseClient
       .from('team_chat_messages')
-      .update({ 
+      .update({
         message: newMessage,
         is_edited: true,
         edited_at: new Date().toISOString()
       })
-      .match({ 
+      .match({
         id: messageId,
-        user_id: currentUser.id 
+        user_id: currentUser.id
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
-  
+
   // Delete a team chat message
   deleteTeamMessage: async (messageId) => {
     if (!currentUser) throw new Error('Not authenticated');
-    
+
     const { error } = await supabaseClient
       .from('team_chat_messages')
       .delete()
-      .match({ 
+      .match({
         id: messageId,
-        user_id: currentUser.id 
+        user_id: currentUser.id
       });
-    
+
     if (error) throw error;
     return true;
   },
-  
+
+  // Clear all messages in a DM chat
+  clearDMChat: async (channelId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+
+    // We delete all messages in this channel
+    // NOTE: This deletes them for BOTH users if RLS allows it.
+    // Ideally we'd just hide them, but the request was "clear and delete all chat... completely"
+
+    try {
+      const { error } = await supabaseClient
+        .from('team_chat_messages')
+        .delete()
+        .eq('channel_id', channelId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error clearing DM chat:', error);
+      throw error;
+    }
+  },
+
   // ============================================
   // Realtime Subscriptions for other tables
   // ============================================
-  
+
   // Subscribe to projects for realtime updates
   subscribeToProjects: (callback) => {
     if (!currentUser) return null;
-    
+
     const channel = supabaseClient
       .channel('projects_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'projects'
-        }, 
+        },
         (payload) => {
           callback(payload);
         }
       )
       .subscribe();
-    
+
     return channel;
   },
-  
+
   // Subscribe to calendar events for realtime updates
   subscribeToCalendarEvents: (callback) => {
     if (!currentUser) return null;
-    
+
     const channel = supabaseClient
       .channel('calendar_events_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'calendar_events'
-        }, 
+        },
         (payload) => {
           callback(payload);
         }
       )
       .subscribe();
-    
+
     return channel;
   },
-  
+
   // Subscribe to docs for realtime updates
   subscribeToDocs: (callback) => {
     if (!currentUser) return null;
-    
+
     const channel = supabaseClient
       .channel('docs_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'docs'
-        }, 
+        },
         (payload) => {
           callback(payload);
         }
       )
       .subscribe();
-    
+
     return channel;
   },
-  
+
+  // Subscribe to followers for realtime updates
+  subscribeToFollowers: (callback) => {
+    if (!currentUser) return null;
+
+    const channel = supabaseClient
+      .channel('followers_changes')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'followers',
+          filter: `follower_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'followers',
+          filter: `following_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+
+    return channel;
+  },
+
+  // Unsubscribe from followers
+  unsubscribeFromFollowers: (channel) => {
+    if (channel) {
+      supabaseClient.removeChannel(channel);
+    }
+  },
+
+
   // Email notification function
   sendFollowerNotificationEmail: async (toEmail, followerName, action = 'follow') => {
     if (!toEmail) return;
-    
+
     try {
       const { data: { session }, error } = await supabaseClient.auth.getSession();
-      
+
       if (error || !session) {
         console.error('No active session found:', error?.message);
         return false;
       }
-      
+
       const token = session.access_token;
-      
+
       const { data, error: invokeError } = await supabaseClient.functions.invoke('send-follower-notification', {
         body: {
           email: toEmail,
@@ -2463,12 +2651,12 @@ window.LayerDB = {
           'Authorization': 'Bearer ' + token
         }
       });
-      
+
       if (invokeError) {
         console.error('Failed to send follower notification email:', invokeError);
         return false;
       }
-      
+
       console.log('Follower notification email sent successfully:', data);
       return true;
     } catch (error) {
@@ -2476,13 +2664,13 @@ window.LayerDB = {
       return false;
     }
   },
-  
+
   // ============================================
   // Profile Cache & Batch Fetch (for team collaboration)
   // ============================================
   _profileCache: {},
-  
-  fetchProfiles: async function(userIds) {
+
+  fetchProfiles: async function (userIds) {
     const cache = window.LayerDB._profileCache;
     const uniqueIds = [...new Set(userIds.filter(id => id && !cache[id]))];
     if (uniqueIds.length > 0) {
@@ -2500,11 +2688,231 @@ window.LayerDB = {
     }
     return userIds.map(id => cache[id] || null);
   },
-  
-  getCachedProfile: function(userId) {
+
+  getCachedProfile: function (userId) {
     return window.LayerDB._profileCache[userId] || null;
   },
-  
+
   // Direct Supabase access
-  supabase: supabaseClient
+  supabase: supabaseClient,
+
+  // ============================================
+  // Team Chat Functions
+  // ============================================
+
+  // Get recent DMs for current user
+  // Get direct messages (conversations)
+  getDirectMessages: async function () {
+    if (!currentUser) return [];
+
+    try {
+      // 1. Get raw messages where user is sender or recipient (NO JOIN to avoid schema errors)
+      const { data: messages, error } = await supabaseClient
+        .from('team_chat_messages')
+        .select('*')
+        .eq('channel_type', 'dm')
+        .or(`user_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const conversations = new Map();
+
+      // 2. Process messages to find unique partners
+      for (const msg of messages) {
+        // Determine partner ID (the other person)
+        const partnerId = msg.user_id === currentUser.id ? msg.recipient_id : msg.user_id;
+
+        // Skip if self-chat or missing partner
+        if (!partnerId) continue;
+
+        if (!conversations.has(partnerId)) {
+          conversations.set(partnerId, {
+            id: msg.channel_id,
+            type: 'dm', // Crucial for selectTeamChannel
+            partnerId: partnerId,
+            lastMessage: msg,
+            partnerId: partnerId,
+            lastMessage: msg,
+            unread: 0
+          });
+        }
+
+        // Count unread (if recipient is current user and not read)
+        // Checking explicitly for false in case is_read is null/missing
+        if (msg.recipient_id === currentUser.id && msg.is_read === false) {
+          const convo = conversations.get(partnerId);
+          convo.unread++;
+        }
+      }
+
+      const dmList = Array.from(conversations.values());
+      const partnerIds = dmList.map(d => d.partnerId);
+
+      // 3. Fetch profiles for all partners (Application-side Join)
+      if (partnerIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, name, avatar_url, email')
+          .in('id', partnerIds);
+
+        if (profiles) {
+          dmList.forEach(dm => {
+            const profile = profiles.find(p => p.id === dm.partnerId);
+            if (profile) {
+              dm.name = profile.name || profile.email;
+              dm.avatar = profile.avatar_url;
+              dm.email = profile.email;
+              dm.status = 'offline'; // Status will be updated by realtime separately
+            } else {
+              dm.name = 'Unknown User';
+              dm.avatar = null;
+              dm.email = '';
+            }
+          });
+        }
+      }
+
+      return dmList;
+
+    } catch (error) {
+      console.error('Error fetching DMs:', error);
+      return [];
+    }
+  },
+
+  // Get messages for a specific channel
+  getChatMessages: async function (channelId) {
+    if (!currentUser) return [];
+
+    try {
+      // 1. Fetch raw messages (NO JOIN)
+      let query = supabaseClient
+        .from('team_chat_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (channelId.startsWith('dm-')) {
+        query = query.eq('channel_id', channelId);
+      } else {
+        query = query.eq('channel_id', channelId);
+      }
+
+      const { data: messages, error } = await query;
+      if (error) throw error;
+
+      // 2. Fetch profiles for senders (Application-side Join)
+      // Extract unique user IDs from messages
+      const userIds = [...new Set(messages.map(m => m.user_id))];
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, name, avatar_url, email')
+          .in('id', userIds);
+
+        if (profiles) {
+          // Create a map for fast lookup
+          const profileMap = new Map(profiles.map(p => [p.id, p]));
+
+          // Attach profile data to messages manually
+          messages.forEach(msg => {
+            const profile = profileMap.get(msg.user_id);
+            if (profile) {
+              msg.user_profile = {
+                name: profile.name,
+                avatar_url: profile.avatar_url
+              };
+            }
+          });
+        }
+      }
+
+      return messages;
+
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      return [];
+    }
+  },
+
+  // Send a chat message
+  sendTeamMessage: async function (channelId, channelType, message, recipientId) {
+    if (!currentUser) throw new Error('Not authenticated');
+
+    console.log('📤 Supabase: Sending message...', {
+      channelId,
+      channelType,
+      messageLength: message?.length,
+      recipientId,
+      userId: currentUser.id
+    });
+
+    try {
+      const messageData = {
+        channel_id: channelId,
+        channel_type: channelType,
+        message: message,
+        recipient_id: recipientId
+        // is_read removed to prevent schema cache errors if column is missing
+      };
+
+      console.log('📤 Supabase: Inserting message data:', messageData);
+
+      const { data, error } = await supabaseClient
+        .from('team_chat_messages')
+        .insert({
+          ...messageData,
+          user_id: currentUser.id, // Current user is always the sender
+          created_at: new Date().toISOString()
+        })
+        .select() // Select ALL raw columns, but NO joins
+        .single();
+
+      if (error) {
+        console.error('❌ Supabase: Insert error:', error);
+        throw error;
+      }
+
+      console.log('✅ Supabase: Message inserted successfully:', data);
+
+      // Manually attach user profile for immediate UI update (optimistic-like)
+      // This avoids needing the DB join to return it
+      if (data) {
+        data.user_profile = {
+          name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email,
+          avatar_url: currentUser.user_metadata?.avatar_url
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ Supabase: Error sending message:', error);
+      console.error('❌ Supabase: Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
+  },
+
+  // Mark channel messages as read
+  markChatAsRead: async function (channelId) {
+    if (!currentUser) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('team_chat_messages')
+        .update({ is_read: true })
+        .eq('channel_id', channelId)
+        .eq('recipient_id', currentUser.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error marking chat read:', error);
+    }
+  }
 };

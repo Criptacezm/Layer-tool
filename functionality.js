@@ -36,14 +36,14 @@ function renderInboxView() {
 
   const todayTasks = calendarEvents.filter(e => e.date === todayStr);
   const recentActivity = getRecentActivity(projects);
-  
+
   // Calculate stats
   const completedTasks = calendarEvents.filter(e => e.completed).length;
   const totalTasks = calendarEvents.length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const openIssues = issues.filter(i => i.status !== 'done').length;
   const activeProjects = projects.length;
-  
+
   // Generate AI greeting message
   const aiMessage = generateAIGreeting(todayTasks, upcomingEvents, projects);
 
@@ -263,15 +263,15 @@ function renderInboxView() {
         <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">Upcoming This Week</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
           ${upcomingEvents.slice(0, 6).map(event => {
-            const eventDate = normalizeDate(event.date);
-            const isToday = eventDate.getTime() === today.getTime();
-            const isTomorrow = eventDate.getTime() === new Date(today.getTime() + 86400000).getTime();
-            const dayLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : eventDate.toLocaleDateString('en-US', { weekday: 'long' });
-            const dateLabel = formatDate(event.date);
-            const timeStr = event.time ? `<span style="color: var(--muted-foreground); margin-left: 8px;">• ${event.time}</span>` : '';
-            const color = getEventColor(event.color || 'blue');
+      const eventDate = normalizeDate(event.date);
+      const isToday = eventDate.getTime() === today.getTime();
+      const isTomorrow = eventDate.getTime() === new Date(today.getTime() + 86400000).getTime();
+      const dayLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateLabel = formatDate(event.date);
+      const timeStr = event.time ? `<span style="color: var(--muted-foreground); margin-left: 8px;">• ${event.time}</span>` : '';
+      const color = getEventColor(event.color || 'blue');
 
-            return `
+      return `
               <div class="card" style="padding: 20px; cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);"
                    onclick="currentView = 'schedule'; setExpandedTask(${event.id}); renderCurrentView();">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -288,7 +288,7 @@ function renderInboxView() {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -355,7 +355,7 @@ function renderInboxView() {
       </aside>
     </div>
   `;
-  
+
   // Start typing animation after render
   setTimeout(() => {
     if (!dashboardAIShown) {
@@ -373,7 +373,7 @@ function renderInboxView() {
       }
     }
   }, 100);
-  
+
   return content;
 }
 
@@ -382,25 +382,25 @@ function calculateStreak(events) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let streak = 0;
-  
+
   for (let i = 0; i < 365; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(today.getDate() - i);
     const dateStr = checkDate.toISOString().split('T')[0];
     const hasCompleted = events.some(e => e.date === dateStr && e.completed);
-    
+
     if (i === 0 && !hasCompleted) {
       // Today doesn't count against streak if not completed yet
       continue;
     }
-    
+
     if (hasCompleted) {
       streak++;
     } else if (i > 0) {
       break;
     }
   }
-  
+
   return streak;
 }
 
@@ -422,9 +422,9 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   if (hour < 12) greeting = 'Good morning';
   else if (hour < 18) greeting = 'Good afternoon';
   else greeting = 'Good evening';
-  
+
   let message = `${greeting}. I've prepared your daily intelligence summary.\n\n`;
-  
+
   // Today's Tasks
   message += `[Tasks] Focus for today:\n`;
   if (todayTasks.length === 0) {
@@ -439,7 +439,7 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
     }
     message += `\n`;
   }
-  
+
   // Upcoming This Week
   const futureTasks = upcomingEvents.filter(e => e.date !== new Date().toISOString().split('T')[0]);
   message += `[Calendar] Coming up this week:\n`;
@@ -453,7 +453,7 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
     });
     message += `\n`;
   }
-  
+
   // Projects Overview
   message += `[Projects] Current momentum:\n`;
   if (projects.length === 0) {
@@ -461,7 +461,7 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   } else {
     message += `You are currently managing ${projects.length} active project${projects.length > 1 ? 's' : ''}.\n\n`;
   }
-  
+
   // Priority Tips
   message += `[Tip] Insight:\n`;
   if (todayTasks.length > 3) {
@@ -471,27 +471,27 @@ function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   } else {
     message += `Maintain focus and tackle your goals one step at a time. Quality over quantity today.`;
   }
-  
+
   return message;
 }
 
 function startAITypingAnimation() {
   const msgEl = document.getElementById('aiGreetingMessage');
   if (!msgEl) return;
-  
+
   const fullText = msgEl.dataset.fullMessage;
   const typingEl = msgEl.querySelector('.ai-typing-text');
   const cursorEl = msgEl.querySelector('.ai-cursor');
-  
+
   if (!typingEl || !fullText) return;
-  
+
   let charIndex = 0;
   const typingSpeed = 10; // Slightly faster for premium feel
-  
+
   function typeChar() {
     if (charIndex < fullText.length) {
       let currentText = fullText.substring(0, charIndex + 1);
-      
+
       // Handle formatting markers during typing or after?
       // For now, let's type the raw text and replace markers at the end
       typingEl.textContent = currentText;
@@ -504,16 +504,16 @@ function startAITypingAnimation() {
         .replace(/\[Calendar\]/g, '<span class="ai-insight-tag">Upcoming</span>')
         .replace(/\[Projects\]/g, '<span class="ai-insight-tag">Active Projects</span>')
         .replace(/\[Tip\]/g, '<span class="ai-insight-tag">Focus Tip</span>');
-      
+
       typingEl.innerHTML = finalHTML;
-      
+
       // Hide cursor after a moment
       setTimeout(() => {
         if (cursorEl) cursorEl.style.display = 'none';
       }, 800);
     }
   }
-  
+
   typeChar();
 }
 
@@ -531,7 +531,7 @@ function getEventColor(color) {
 // Helper function to get linked info display for events (project, assignment, space)
 function getEventLinkedInfo(ev) {
   const links = [];
-  
+
   // Add location first if exists
   if (ev.location) {
     links.push(`<span class="event-link-badge location-link" title="Location: ${ev.location}">
@@ -542,7 +542,7 @@ function getEventLinkedInfo(ev) {
       ${ev.location.length > 12 ? ev.location.substring(0, 10) + '...' : ev.location}
     </span>`);
   }
-  
+
   if (ev.projectId) {
     const projects = loadProjects();
     // Use == for type coercion to handle string vs number IDs
@@ -556,7 +556,7 @@ function getEventLinkedInfo(ev) {
       </span>`);
     }
   }
-  
+
   if (ev.assignmentId) {
     const assignments = loadAssignments();
     // Use == for type coercion to handle string vs number IDs
@@ -571,7 +571,7 @@ function getEventLinkedInfo(ev) {
       </span>`);
     }
   }
-  
+
   if (ev.spaceId) {
     const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
     // Use == for type coercion to handle string vs number IDs
@@ -586,7 +586,7 @@ function getEventLinkedInfo(ev) {
       </span>`);
     }
   }
-  
+
   if (links.length === 0) return '';
   return `<div class="event-links-row">${links.join('')}</div>`;
 }
@@ -776,7 +776,7 @@ function openIssueDetailModal(index) {
   const issues = loadIssues();
   const issue = issues[index];
   if (!issue) return;
-  
+
   const content = `
     <div class="issue-detail-modal">
       <div class="issue-detail-header">
@@ -805,7 +805,7 @@ function openIssueDetailModal(index) {
       </div>
     </div>
   `;
-  
+
   openModal('Issue Details', content);
 }
 
@@ -857,7 +857,7 @@ function handleEditIssueSubmit(event, index) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
-  
+
   const issues = loadIssues();
   if (issues[index]) {
     issues[index] = {
@@ -967,12 +967,12 @@ async function handleCreateIssueSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
-  
+
   const title = formData.get('title');
   const description = formData.get('description');
   const priority = formData.get('priority');
   const status = formData.get('status');
-  
+
   if (title.trim()) {
     try {
       await addIssue({
@@ -1038,7 +1038,7 @@ function moveToProject(taskIndex) {
     `);
     return;
   }
-  
+
   const content = `
     <div style="padding: 16px;">
       <p style="color: var(--muted-foreground); margin-bottom: 20px;">Select a project to move this task to:</p>
@@ -1065,13 +1065,13 @@ function confirmMoveToProject(taskIndex, projectIndex) {
   const tasks = loadBacklogTasks();
   const task = tasks[taskIndex];
   if (!task) return;
-  
+
   // Add to project's To Do column
   addTaskToColumn(projectIndex, 0, task.title);
-  
+
   // Remove from backlog
   deleteBacklogTask(taskIndex);
-  
+
   closeModal();
   renderCurrentView();
 }
@@ -1155,7 +1155,7 @@ function renderBacklogView() {
             <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="6"/>
             <circle cx="40" cy="40" r="32" fill="none" stroke="var(--primary)" stroke-width="6"
               stroke-dasharray="${2 * Math.PI * 32}"
-              stroke-dashoffset="${2 * Math.PI * 32 * (1 - progress/100)}"
+              stroke-dashoffset="${2 * Math.PI * 32 * (1 - progress / 100)}"
               stroke-linecap="round"
               transform="rotate(-90 40 40)"/>
           </svg>
@@ -1180,15 +1180,15 @@ function renderBacklogView() {
 
       <div class="backlog-tasks-grid">
         ${filteredTasks.map((task, displayIndex) => {
-          const originalIndex = tasks.findIndex(t => t.id === task.id);
-          return `
+    const originalIndex = tasks.findIndex(t => t.id === task.id);
+    return `
           <div class="backlog-task-card ${task.done ? 'done' : ''}">
             <div class="task-card-main">
               <button class="task-checkbox" onclick="handleToggleBacklogTask(${originalIndex})">
-                ${task.done ? 
-                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" fill="var(--primary)" stroke="var(--primary)"/><path d="M8 12l3 3 5-6" stroke="white"/></svg>' : 
-                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'
-                }
+                ${task.done ?
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" fill="var(--primary)" stroke="var(--primary)"/><path d="M8 12l3 3 5-6" stroke="white"/></svg>' :
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'
+      }
               </button>
               <div class="task-content" ondblclick="handleUpdateBacklogTask(${originalIndex}, prompt('Edit task:', '${task.title.replace(/'/g, "\\'")}'))">
                 <span class="task-title">${task.title}</span>
@@ -1247,7 +1247,7 @@ function formatRelativeDate(dateStr) {
   const now = new Date();
   const diffMs = now - date;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -1332,7 +1332,7 @@ async function handleQuickAddKeypress(event) {
 async function handleQuickAddClick() {
   const input = document.getElementById('quickAddInput');
   if (!input) return;
-  
+
   const title = input.value.trim();
   if (title) {
     try {
@@ -1456,7 +1456,7 @@ async function saveCalendarEventAsync(eventData) {
     showToast('Please sign in to create events', 'error');
     return loadCalendarEvents();
   }
-  
+
   try {
     await window.LayerDB.saveCalendarEvent(eventData);
     // Reload from DB and update cache
@@ -1479,7 +1479,7 @@ async function updateCalendarEventAsync(eventId, updates) {
     events[index] = { ...events[index], ...updates };
     saveCalendarEvents(events);
   }
-  
+
   // Sync with database in background (non-blocking)
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     window.LayerDB.updateCalendarEvent(eventId, updates)
@@ -1492,7 +1492,7 @@ async function updateCalendarEventAsync(eventId, updates) {
         // Optimistic update already applied, so UI remains responsive
       });
   }
-  
+
   return events;
 }
 
@@ -1705,7 +1705,7 @@ function openEditTaskModal(eventId) {
   // Use == for type coercion (eventId may be string or number)
   const task = events.find(e => e.id == eventId);
   if (!task) return;
-  
+
   const startTime = task.time || '';
   const endTime = task.endTime || '';
   const duration = calculateDuration(startTime, endTime);
@@ -1836,7 +1836,7 @@ function openEditTaskModal(eventId) {
     </form>
   `;
   openModal('Edit Task', content);
-  
+
   // Attach event listener after modal is opened
   setTimeout(() => {
     const form = document.getElementById('editEventForm');
@@ -1849,7 +1849,7 @@ function openEditTaskModal(eventId) {
 async function handleEditEventSubmit(e, eventId) {
   e.preventDefault();
   e.stopPropagation();
-  
+
   const form = e.target;
   const data = new FormData(form);
 
@@ -1859,14 +1859,14 @@ async function handleEditEventSubmit(e, eventId) {
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
-  
+
   // Handle project/assignment/space IDs - convert empty strings to null
   const projectIdValue = data.get('projectId');
   const projectId = projectIdValue && projectIdValue !== '' ? projectIdValue : null;
-  
+
   const assignmentIdValue = data.get('assignmentId');
   const assignmentId = assignmentIdValue && assignmentIdValue !== '' ? assignmentIdValue : null;
-  
+
   const spaceIdValue = data.get('spaceId');
   const spaceId = spaceIdValue && spaceIdValue !== '' ? spaceIdValue : null;
 
@@ -1886,7 +1886,7 @@ async function handleEditEventSubmit(e, eventId) {
 
   // Use async update if authenticated
   await updateCalendarEventAsync(eventId, updates);
-  
+
   closeModal();
   // Preserve scroll when editing task
   renderCurrentView(true);
@@ -1931,18 +1931,18 @@ function applyRecurringTasks() {
   const recurring = loadRecurringTasks();
   let events = loadCalendarEvents();
   const today = new Date();
-  
+
   // Generate events for next 60 days
   for (let i = 0; i < 60; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dayOfWeek = date.getDay();
     const dateStr = date.toISOString().split('T')[0];
-    
+
     recurring.forEach(task => {
       if (task.days && task.days.includes(dayOfWeek)) {
         // Check if event already exists for this date and recurringId
-        const exists = events.some(e => 
+        const exists = events.some(e =>
           e.recurringId === task.id &&
           e.date === dateStr &&
           e.isRecurring === true
@@ -1955,7 +1955,7 @@ function applyRecurringTasks() {
             const endH = (h + 1) % 24;
             endTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
           }
-          
+
           events.push({
             id: Date.now() + i + Math.floor(Math.random() * 1000000),
             title: task.title,
@@ -1988,7 +1988,7 @@ function openAddRecurringModal() {
       <div class="form-group">
         <label class="form-label">Repeat on</label>
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => `
+          ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => `
             <label class="recurring-day-label" style="
               display: flex; align-items: center; gap: 6px; padding: 8px 12px;
               background: var(--surface); border: 1px solid var(--border);
@@ -2027,12 +2027,12 @@ function handleAddRecurringSubmit(e) {
   const time = data.get('time');
   const color = data.get('color');
   const days = data.getAll('days').map(d => parseInt(d));
-  
+
   if (!title || days.length === 0) {
     alert('Please enter a title and select at least one day');
     return;
   }
-  
+
   addRecurringTask({ title, time: time || null, color, days });
   closeModal();
 }
@@ -2086,9 +2086,9 @@ function handleCalendarKeydown(e) {
   // Don't handle if typing in input/textarea
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
   if (!calendarKeyboardShortcutsEnabled) return;
-  
+
   const key = e.key.toLowerCase();
-  
+
   // View shortcuts
   if (key === 'd' && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
@@ -2203,18 +2203,18 @@ async function handleQuickAddSubmit(e) {
   e.preventDefault();
   const input = document.getElementById('quickAddInput');
   if (!input) return;
-  
+
   const text = input.value.trim();
   if (!text) return;
-  
+
   // Parse natural language input (e.g., "Meeting tomorrow at 3pm")
   const parsedEvent = parseNaturalLanguageEvent(text);
-  
+
   const newEvent = createEnhancedEvent(parsedEvent);
-  
+
   // Use async save if authenticated
   await saveCalendarEventAsync(newEvent);
-  
+
   closeCalendarQuickAdd();
   showToast(`Event "${parsedEvent.title}" created`);
   renderCurrentView();
@@ -2227,7 +2227,7 @@ function parseNaturalLanguageEvent(text) {
   let date = today.toISOString().split('T')[0];
   let time = null;
   let endTime = null;
-  
+
   // Parse "tomorrow"
   if (/\btomorrow\b/i.test(text)) {
     const tomorrow = new Date(today);
@@ -2235,7 +2235,7 @@ function parseNaturalLanguageEvent(text) {
     date = tomorrow.toISOString().split('T')[0];
     title = title.replace(/\btomorrow\b/i, '').trim();
   }
-  
+
   // Parse "next week"
   if (/\bnext week\b/i.test(text)) {
     const nextWeek = new Date(today);
@@ -2243,7 +2243,7 @@ function parseNaturalLanguageEvent(text) {
     date = nextWeek.toISOString().split('T')[0];
     title = title.replace(/\bnext week\b/i, '').trim();
   }
-  
+
   // Parse day names
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayMatch = text.match(new RegExp(`\\b(${dayNames.join('|')})\\b`, 'i'));
@@ -2257,44 +2257,44 @@ function parseNaturalLanguageEvent(text) {
     date = targetDate.toISOString().split('T')[0];
     title = title.replace(new RegExp(`\\b${dayMatch[1]}\\b`, 'i'), '').trim();
   }
-  
+
   // Parse time (e.g., "at 3pm", "3:30 pm", "15:00")
   const timeMatch = text.match(/\bat\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i) ||
-                    text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+    text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
   if (timeMatch) {
     let hours = parseInt(timeMatch[1]);
     const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
     const period = timeMatch[3]?.toLowerCase();
-    
+
     if (period === 'pm' && hours < 12) hours += 12;
     if (period === 'am' && hours === 12) hours = 0;
-    
+
     time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     endTime = `${String((hours + 1) % 24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    
+
     title = title.replace(timeMatch[0], '').trim();
   }
-  
+
   // Parse duration (e.g., "for 2 hours")
   const durationMatch = text.match(/\bfor\s+(\d+(?:\.\d+)?)\s*(hour|hr|hours|hrs|minute|min|minutes|mins)/i);
   if (durationMatch && time) {
     const amount = parseFloat(durationMatch[1]);
     const unit = durationMatch[2].toLowerCase();
     let durationMinutes = unit.startsWith('hour') || unit.startsWith('hr') ? amount * 60 : amount;
-    
+
     const [startH, startM] = time.split(':').map(Number);
     const totalMinutes = startH * 60 + startM + durationMinutes;
     const endH = Math.floor(totalMinutes / 60) % 24;
     const endM = totalMinutes % 60;
     endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-    
+
     title = title.replace(durationMatch[0], '').trim();
   }
-  
+
   // Clean up title
   title = title.replace(/\s+at\s*$/i, '').replace(/\s+/g, ' ').trim();
   if (!title) title = 'New Event';
-  
+
   return { title, date, time, endTime };
 }
 
@@ -2312,39 +2312,39 @@ let dragCreateState = {
 function yPositionToTime(clientY, columnElement) {
   // Get the column element's bounding rect (viewport-relative, already accounts for scroll)
   const columnRect = columnElement.getBoundingClientRect();
-  
+
   // Calculate Y position relative to column - no need to add scrollTop
   // because getBoundingClientRect() already gives us the actual viewport position
   const relativeY = clientY - columnRect.top;
-  
+
   // Clamp relativeY to valid range (0 to 24 hours * 80px = 1920px)
   const clampedY = Math.max(0, Math.min(1920, relativeY));
-  
+
   // Snap to 15-minute intervals (20px = 15 minutes)
   const snappedY = Math.round(clampedY / 20) * 20;
-  
+
   // Calculate total minutes from 6 AM (6 AM is at Y=0)
   const totalMinutesFrom6AM = (snappedY / 80) * 60;
-  
+
   // Convert to actual time (6 AM = 0 minutes offset)
   let totalMinutes = (6 * 60) + totalMinutesFrom6AM;
-  
+
   // Handle wrap around to next day (after midnight)
   if (totalMinutes >= 24 * 60) {
     totalMinutes = totalMinutes % (24 * 60);
   }
-  
+
   // Clamp to valid day range (0:00 to 23:45)
   totalMinutes = Math.max(0, Math.min(23 * 60 + 45, totalMinutes));
-  
+
   const hours = Math.floor(totalMinutes / 60);
   const minutes = Math.round(totalMinutes % 60);
-  
+
   // Ensure minutes snap to 15-minute intervals
   const snappedMinutes = Math.round(minutes / 15) * 15;
   const finalMinutes = snappedMinutes >= 60 ? 0 : snappedMinutes;
   const finalHours = snappedMinutes >= 60 ? (hours + 1) % 24 : hours;
-  
+
   return `${String(finalHours).padStart(2, '0')}:${String(finalMinutes).padStart(2, '0')}`;
 }
 
@@ -2362,17 +2362,17 @@ function timeToYPosition(time) {
 function handleCalendarDragStart(e, dateStr) {
   // Don't start drag if clicking on an event
   if (e.target.closest('.week-event-card')) return;
-  
+
   // Require authentication to create events
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showToast('Please sign in to create events', 'error');
     if (typeof openAuthModal === 'function') openAuthModal();
     return;
   }
-  
+
   e.preventDefault();
   const column = e.currentTarget;
-  
+
   dragCreateState = {
     isDragging: true,
     startY: e.clientY,
@@ -2381,17 +2381,17 @@ function handleCalendarDragStart(e, dateStr) {
     columnElement: column,
     previewElement: null
   };
-  
+
   // Create preview element
   const preview = document.createElement('div');
   preview.className = 'drag-create-preview';
   preview.innerHTML = '<div class="drag-preview-content"><span class="drag-preview-time"></span><span class="drag-preview-label">New Event</span></div>';
   column.appendChild(preview);
   dragCreateState.previewElement = preview;
-  
+
   // Position preview
   updateDragPreview(e.clientY);
-  
+
   // Add document listeners
   document.addEventListener('mousemove', handleCalendarDragMove);
   document.addEventListener('mouseup', handleCalendarDragEnd);
@@ -2400,7 +2400,7 @@ function handleCalendarDragStart(e, dateStr) {
 // Handle drag move
 function handleCalendarDragMove(e) {
   if (!dragCreateState.isDragging) return;
-  
+
   e.preventDefault();
   dragCreateState.currentY = e.clientY;
   updateDragPreview(e.clientY);
@@ -2410,30 +2410,30 @@ function handleCalendarDragMove(e) {
 function updateDragPreview(currentY) {
   const { startY, columnElement, previewElement } = dragCreateState;
   if (!previewElement || !columnElement) return;
-  
+
   // getBoundingClientRect() already accounts for scroll position
   const rect = columnElement.getBoundingClientRect();
-  
+
   // Calculate positions relative to column - no scrollTop needed
   const startRelative = startY - rect.top;
   const currentRelative = currentY - rect.top;
-  
+
   // Determine top and height
   const top = Math.min(startRelative, currentRelative);
   const bottom = Math.max(startRelative, currentRelative);
   const height = Math.max(40, bottom - top); // Minimum 40px height
-  
+
   // Snap to 15-minute intervals (20px)
   const snappedTop = Math.round(top / 20) * 20;
   const snappedHeight = Math.max(40, Math.round(height / 20) * 20);
-  
+
   previewElement.style.top = `${Math.max(0, snappedTop)}px`;
   previewElement.style.height = `${snappedHeight}px`;
-  
+
   // Calculate time range for display
   const startTime = yPositionToTime(Math.min(startY, currentY), columnElement);
   const endTime = yPositionToTime(Math.max(startY, currentY), columnElement);
-  
+
   // Add 30 min minimum for end time if same as start
   let adjustedEndTime = endTime;
   if (startTime === endTime) {
@@ -2445,13 +2445,13 @@ function updateDragPreview(currentY) {
       adjustedEndTime = `${String(h).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
     }
   }
-  
+
   // Update preview text
   const timeLabel = previewElement.querySelector('.drag-preview-time');
   if (timeLabel) {
     timeLabel.textContent = `${formatTime12h(startTime)} - ${formatTime12h(adjustedEndTime)}`;
   }
-  
+
   // Store times for modal
   dragCreateState.startTime = startTime;
   dragCreateState.endTime = adjustedEndTime;
@@ -2460,25 +2460,25 @@ function updateDragPreview(currentY) {
 // Handle drag end
 function handleCalendarDragEnd(e) {
   if (!dragCreateState.isDragging) return;
-  
+
   document.removeEventListener('mousemove', handleCalendarDragMove);
   document.removeEventListener('mouseup', handleCalendarDragEnd);
-  
+
   const { columnDate, startTime, endTime, previewElement, startY, currentY } = dragCreateState;
-  
+
   // Remove preview
   if (previewElement) {
     previewElement.remove();
   }
-  
+
   // Check if this was a real drag (moved at least 20px) or just a click
   const dragDistance = Math.abs(currentY - startY);
-  
+
   if (dragDistance > 20 && columnDate && startTime) {
     // Open create modal with pre-filled times
     openCreateEventModalWithTime(columnDate, startTime, endTime || startTime);
   }
-  
+
   // Reset state
   dragCreateState = {
     isDragging: false,
@@ -2498,7 +2498,7 @@ function openCreateEventModalWithTime(date, startTime, endTime) {
     if (typeof openAuthModal === 'function') openAuthModal();
     return;
   }
-  
+
   const duration = calculateDuration(startTime, endTime);
 
   const content = `
@@ -2595,7 +2595,7 @@ function openCreateEventModalWithTime(date, startTime, endTime) {
           <div class="repeat-custom-days" id="repeatCustomDays" style="display:none;">
             <label class="form-label" style="font-size:12px; margin-bottom:8px;">Repeat on</label>
             <div class="repeat-days-grid">
-              ${['S','M','T','W','T','F','S'].map((day, i) => `
+              ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => `
                 <label class="repeat-day-chip ${i === new Date(date).getDay() ? 'selected' : ''}">
                   <input type="checkbox" name="repeatDays" value="${i}" ${i === new Date(date).getDay() ? 'checked' : ''} onchange="updateRepeatDayChip(this)">
                   <span>${day}</span>
@@ -2644,7 +2644,7 @@ function getWeekDates(date) {
   const day = start.getDay();
   const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
   start.setDate(diff);
-  
+
   const dates = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
@@ -2671,32 +2671,32 @@ function formatTime12h(time) {
 // Grid starts at 6 AM, wraps at midnight through 5:59 AM
 function getEventPosition(startTime, endTime) {
   if (!startTime) return { top: 0, height: 60 };
-  
+
   const [startH, startM] = startTime.split(':').map(Number);
-  
+
   // Calculate slot index from 6 AM baseline (0-23 range for 24 hour display)
   // Hours 6-23 are slots 0-17, hours 0-5 are slots 18-23
   let slotIndex = startH - 6;
   if (slotIndex < 0) slotIndex += 24; // Wrap around for hours before 6 AM
-  
+
   const startMinutes = slotIndex * 60 + startM;
   const top = Math.max(0, (startMinutes / 60) * 80); // 80px per hour
-  
+
   let height = 60; // Default height
   if (endTime) {
     const [endH, endM] = endTime.split(':').map(Number);
     let endSlotIndex = endH - 6;
     if (endSlotIndex < 0) endSlotIndex += 24;
-    
+
     const endMinutes = endSlotIndex * 60 + endM;
     let duration = endMinutes - startMinutes;
-    
+
     // Handle events that span midnight
     if (duration <= 0) duration += 24 * 60;
-    
+
     height = Math.max(40, (duration / 60) * 80);
   }
-  
+
   return { top, height };
 }
 
@@ -2716,7 +2716,7 @@ function eventsOverlap(ev1, ev2) {
   const end1 = timeToMinutes(ev1.endTime || ev1.time || '00:00') || start1 + 60;
   const start2 = timeToMinutes(ev2.time || '00:00');
   const end2 = timeToMinutes(ev2.endTime || ev2.time || '00:00') || start2 + 60;
-  
+
   // Events overlap if one starts before the other ends
   return start1 < end2 && start2 < end1;
 }
@@ -2724,7 +2724,7 @@ function eventsOverlap(ev1, ev2) {
 // Calculate positions for overlapping events (Google Calendar style)
 function calculateOverlapPositions(events) {
   if (!events.length) return [];
-  
+
   // Sort events by start time, then by duration (longer first)
   const sorted = [...events].sort((a, b) => {
     const startDiff = timeToMinutes(a.time || '00:00') - timeToMinutes(b.time || '00:00');
@@ -2734,18 +2734,18 @@ function calculateOverlapPositions(events) {
     const durB = timeToMinutes(b.endTime || b.time || '00:00') - timeToMinutes(b.time || '00:00');
     return durB - durA;
   });
-  
+
   const positioned = [];
   const columns = []; // Array of arrays, each inner array is a column
-  
+
   for (const event of sorted) {
     let placed = false;
-    
+
     // Try to place in existing column
     for (let colIndex = 0; colIndex < columns.length; colIndex++) {
       const column = columns[colIndex];
       const canPlace = column.every(placedEvent => !eventsOverlap(event, placedEvent));
-      
+
       if (canPlace) {
         column.push(event);
         positioned.push({ event, columnIndex: colIndex });
@@ -2753,24 +2753,24 @@ function calculateOverlapPositions(events) {
         break;
       }
     }
-    
+
     // Create new column if needed
     if (!placed) {
       columns.push([event]);
       positioned.push({ event, columnIndex: columns.length - 1 });
     }
   }
-  
+
   // Calculate the maximum columns needed for each event's overlap group
   // Find all events that overlap with each event and determine total columns
   return positioned.map(({ event, columnIndex }) => {
     // Find all events that overlap with this one
     const overlapping = positioned.filter(p => eventsOverlap(event, p.event));
     const maxColumns = Math.max(...overlapping.map(p => p.columnIndex)) + 1;
-    
+
     const width = 100 / maxColumns;
     const left = columnIndex * width;
-    
+
     return { event, left, width };
   });
 }
@@ -2796,15 +2796,15 @@ function getEventCategory(event) {
 function renderScheduleView() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const events = loadCalendarEvents();
   const recurringTasks = loadRecurringTasks();
-  
-  
+
+
   const totalEvents = events.length;
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
   // Generate content based on view mode
   let mainContent = '';
   if (scheduleViewMode === 'week') {
@@ -2818,7 +2818,7 @@ function renderScheduleView() {
   } else {
     mainContent = renderMonthViewAdvanced(events, today);
   }
-  
+
   return `
     <div class="advanced-schedule-container">
       <!-- Left Sidebar -->
@@ -2977,24 +2977,24 @@ function renderMiniCalendar(currentDate, selectedDate, today, events) {
   const lastDay = new Date(year, month + 1, 0);
   const startDay = firstDay.getDay();
   const daysInMonth = lastDay.getDate();
-  
+
   // Get week dates for highlighting
   const weekDates = getWeekDates(selectedDate);
   const weekDateStrings = weekDates.map(d => d.toISOString().split('T')[0]);
-  
+
   let html = '<div class="mini-cal-grid">';
-  
+
   // Weekday headers
   ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach(day => {
     html += `<div class="mini-cal-weekday">${day}</div>`;
   });
-  
+
   // Previous month padding (Monday start)
   const adjustedStart = startDay === 0 ? 6 : startDay - 1;
   for (let i = 0; i < adjustedStart; i++) {
     html += '<div class="mini-cal-day other-month"></div>';
   }
-  
+
   // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
@@ -3003,16 +3003,16 @@ function renderMiniCalendar(currentDate, selectedDate, today, events) {
     const isSelected = dateStr === selectedDate.toISOString().split('T')[0];
     const isInWeek = weekDateStrings.includes(dateStr);
     const hasEvents = events.some(e => e.date === dateStr);
-    
+
     let classes = 'mini-cal-day';
     if (isToday) classes += ' today';
     if (isSelected) classes += ' selected';
     if (isInWeek && scheduleViewMode === 'week') classes += ' in-week';
     if (hasEvents) classes += ' has-events';
-    
+
     html += `<div class="${classes}" onclick="selectScheduleDate('${dateStr}')">${d}</div>`;
   }
-  
+
   html += '</div>';
   return html;
 }
@@ -3021,25 +3021,25 @@ function renderMiniCalendar(currentDate, selectedDate, today, events) {
 function renderWeekView(events, today) {
   const weekDates = getWeekDates(scheduleSelectedDate);
   const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  
+
   // Get timezone offset
   const tzOffset = -(new Date().getTimezoneOffset() / 60);
   const tzLabel = `UTC ${tzOffset >= 0 ? '+' : ''}${tzOffset}`;
-  
+
   let html = `
     <div class="week-view-container">
       <!-- Week Header -->
       <div class="week-header">
         <div class="week-header-tz">${tzLabel}</div>
         ${weekDates.map((date, i) => {
-          const isToday = date.toDateString() === today.toDateString();
-          return `
+    const isToday = date.toDateString() === today.toDateString();
+    return `
             <div class="week-header-day ${isToday ? 'today' : ''}">
               <span class="week-day-number">${date.getDate()}</span>
               <span class="week-day-name">${weekdays[i]}</span>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
       
       <!-- Week Grid with Time Slots -->
@@ -3054,11 +3054,11 @@ function renderWeekView(events, today) {
           
           <!-- Day Columns -->
           ${weekDates.map((date, dayIndex) => {
-            const dateStr = date.toISOString().split('T')[0];
-            const dayEvents = events.filter(e => e.date === dateStr);
-            const isToday = date.toDateString() === today.toDateString();
-            
-            return `
+    const dateStr = date.toISOString().split('T')[0];
+    const dayEvents = events.filter(e => e.date === dateStr);
+    const isToday = date.toDateString() === today.toDateString();
+
+    return `
               <div class="week-day-column ${isToday ? 'today' : ''}" 
                    data-date="${dateStr}"
                    ondragover="handleColumnDragOver(event, '${dateStr}')" 
@@ -3072,16 +3072,16 @@ function renderWeekView(events, today) {
                 
                 <!-- Events -->
                 ${(() => {
-                  const positioned = calculateOverlapPositions(dayEvents);
-                  return positioned.map(({ event: ev, left, width }) => {
-                    const pos = getEventPosition(ev.time, ev.endTime);
-                    const color = getEventColor(ev.color || 'blue');
-                    const timeStr = ev.time ? formatTime12h(ev.time) : '';
-                    const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
-                    const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
-                    const linkedInfo = getEventLinkedInfo(ev);
-                    
-                    return `
+        const positioned = calculateOverlapPositions(dayEvents);
+        return positioned.map(({ event: ev, left, width }) => {
+          const pos = getEventPosition(ev.time, ev.endTime);
+          const color = getEventColor(ev.color || 'blue');
+          const timeStr = ev.time ? formatTime12h(ev.time) : '';
+          const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
+          const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
+          const linkedInfo = getEventLinkedInfo(ev);
+
+          return `
                       <div class="week-event-card" 
                            style="top: ${pos.top}px; height: ${pos.height}px; left: ${left}%; width: calc(${width}% - 2px); --event-color: ${color};"
                            draggable="true"
@@ -3106,16 +3106,16 @@ function renderWeekView(events, today) {
                         </div>
                       </div>
                     `;
-                  }).join('');
-                })()}
+        }).join('');
+      })()}
               </div>
             `;
-          }).join('')}
+  }).join('')}
         </div>
       </div>
     </div>
   `;
-  
+
   return html;
 }
 
@@ -3125,10 +3125,10 @@ function renderDayView(events, today) {
   const dayEvents = events.filter(e => e.date === dateStr);
   const isToday = scheduleSelectedDate.toDateString() === today.toDateString();
   const dayName = scheduleSelectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-  
+
   const tzOffset = -(new Date().getTimezoneOffset() / 60);
   const tzLabel = `UTC ${tzOffset >= 0 ? '+' : ''}${tzOffset}`;
-  
+
   return `
     <div class="day-view-container">
       <div class="day-view-header">
@@ -3155,16 +3155,16 @@ function renderDayView(events, today) {
             ${isToday ? '<div class="current-time-indicator" id="currentTimeIndicatorDay"></div>' : ''}
             ${TIME_SLOTS.map(() => '<div class="time-slot-line"></div>').join('')}
             ${(() => {
-              const positioned = calculateOverlapPositions(dayEvents);
-              return positioned.map(({ event: ev, left, width }) => {
-                const pos = getEventPosition(ev.time, ev.endTime);
-                const color = getEventColor(ev.color || 'blue');
-                const timeStr = ev.time ? formatTime12h(ev.time) : '';
-                const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
-                const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
-                const linkedInfo = getEventLinkedInfo(ev);
-                
-                return `
+      const positioned = calculateOverlapPositions(dayEvents);
+      return positioned.map(({ event: ev, left, width }) => {
+        const pos = getEventPosition(ev.time, ev.endTime);
+        const color = getEventColor(ev.color || 'blue');
+        const timeStr = ev.time ? formatTime12h(ev.time) : '';
+        const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
+        const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
+        const linkedInfo = getEventLinkedInfo(ev);
+
+        return `
                   <div class="week-event-card day-event-card"
                        style="top: ${pos.top}px; height: ${pos.height}px; left: ${left}%; width: calc(${width}% - 2px); --event-color: ${color};"
                        draggable="true"
@@ -3189,8 +3189,8 @@ function renderDayView(events, today) {
                     </div>
                   </div>
                 `;
-              }).join('');
-            })()}
+      }).join('');
+    })()}
           </div>
         </div>
       </div>
@@ -3207,16 +3207,16 @@ function renderMonthViewAdvanced(events, today) {
   const startDay = firstDay.getDay();
   const daysInMonth = lastDay.getDate();
   const adjustedStart = startDay === 0 ? 6 : startDay - 1;
-  
+
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  
+
   let daysHtml = '';
-  
+
   // Previous month padding
   for (let i = 0; i < adjustedStart; i++) {
     daysHtml += '<div class="month-day other-month"></div>';
   }
-  
+
   // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
@@ -3224,7 +3224,7 @@ function renderMonthViewAdvanced(events, today) {
     const isToday = date.toDateString() === today.toDateString();
     const dayEvents = events.filter(e => e.date === dateStr).slice(0, 3);
     const moreCount = events.filter(e => e.date === dateStr).length - 3;
-    
+
     daysHtml += `
       <div class="month-day ${isToday ? 'today' : ''}"
            ondragover="event.preventDefault()"
@@ -3233,21 +3233,21 @@ function renderMonthViewAdvanced(events, today) {
         <span class="month-day-number">${d}</span>
         <div class="month-day-events">
           ${dayEvents.map(ev => {
-            const color = getEventColor(ev.color || 'blue');
-            return `
+      const color = getEventColor(ev.color || 'blue');
+      return `
               <div class="month-event" style="--event-color: ${color};"
                    onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')">
                 <span class="month-event-dot" style="background: ${color};"></span>
                 <span class="month-event-title">${ev.title.length > 12 ? ev.title.substring(0, 10) + '...' : ev.title}</span>
               </div>
             `;
-          }).join('')}
+    }).join('')}
           ${moreCount > 0 ? `<div class="month-more-events">+${moreCount} more</div>` : ''}
         </div>
       </div>
     `;
   }
-  
+
   return `
     <div class="month-view-container">
       <div class="month-grid-header">
@@ -3311,7 +3311,7 @@ function showTaskContextMenu(event, eventId) {
   // Remove any existing context menu
   const existingMenu = document.getElementById('taskContextMenu');
   if (existingMenu) existingMenu.remove();
-  
+
   const menu = document.createElement('div');
   menu.id = 'taskContextMenu';
   menu.className = 'task-context-menu';
@@ -3337,12 +3337,12 @@ function showTaskContextMenu(event, eventId) {
       Delete
     </button>
   `;
-  
+
   menu.style.left = event.clientX + 'px';
   menu.style.top = event.clientY + 'px';
-  
+
   document.body.appendChild(menu);
-  
+
   // Close on click outside
   setTimeout(() => {
     document.addEventListener('click', hideTaskContextMenu, { once: true });
@@ -3368,22 +3368,22 @@ let dragMoveState = {
 function handleDragStart(event, eventId, currentDate) {
   const events = loadCalendarEvents();
   const task = events.find(e => e.id == eventId);
-  
+
   // Calculate click offset within the event card
   const eventCard = event.currentTarget;
   const cardRect = eventCard.getBoundingClientRect();
   const clickOffsetY = event.clientY - cardRect.top;
-  
+
   // Store event data and original event info
-  event.dataTransfer.setData('text/plain', JSON.stringify({ 
-    id: eventId, 
-    fromDate: currentDate, 
+  event.dataTransfer.setData('text/plain', JSON.stringify({
+    id: eventId,
+    fromDate: currentDate,
     type: 'move',
     duration: calculateEventDurationMinutes(task?.time, task?.endTime)
   }));
   event.dataTransfer.effectAllowed = 'move';
   event.currentTarget.classList.add('dragging');
-  
+
   // Initialize drag move state with click offset
   dragMoveState = {
     isDragging: true,
@@ -3415,9 +3415,9 @@ function handleSidebarDragStart(event, eventId) {
 function handleColumnDragOver(event, targetDate) {
   event.preventDefault();
   event.dataTransfer.dropEffect = 'move';
-  
+
   const column = event.currentTarget;
-  
+
   // Add drag-over class to column for highlighting
   if (!column.classList.contains('drag-over')) {
     // Remove from other columns first
@@ -3426,38 +3426,38 @@ function handleColumnDragOver(event, targetDate) {
     });
     column.classList.add('drag-over');
   }
-  
+
   if (!dragMoveState.isDragging || !dragMoveState.originalEvent) return;
-  
+
   const scrollContainer = column.closest('.week-grid-scroll, .day-view-grid-scroll');
   const containerRect = scrollContainer ? scrollContainer.getBoundingClientRect() : column.getBoundingClientRect();
   const scrollTop = scrollContainer?.scrollTop || 0;
-  
+
   // Calculate position relative to scroll container's content, accounting for click offset
   const clickOffsetY = dragMoveState.clickOffsetY || 0;
   const relativeY = event.clientY - containerRect.top + scrollTop - clickOffsetY;
-  
+
   // Snap to 15-minute intervals (20px per 15 min)
   const snappedY = Math.round(relativeY / 20) * 20;
-  
+
   // Calculate the new start time based on the adjusted position (top of event, not cursor)
   const adjustedClientY = event.clientY - clickOffsetY;
   const newTime = yPositionToTime(adjustedClientY, column);
-  
+
   // Calculate duration for height
   const duration = calculateEventDurationMinutes(
-    dragMoveState.originalEvent.time, 
+    dragMoveState.originalEvent.time,
     dragMoveState.originalEvent.endTime
   );
   const height = Math.max(40, (duration / 60) * 80);
-  
+
   // Create or update preview element
   if (dragMoveState.currentColumn !== column) {
     // Remove preview from old column
     if (dragMoveState.previewElement) {
       dragMoveState.previewElement.remove();
     }
-    
+
     // Create new preview in this column
     const preview = document.createElement('div');
     preview.className = 'drag-move-preview';
@@ -3474,13 +3474,13 @@ function handleColumnDragOver(event, targetDate) {
     dragMoveState.previewElement = preview;
     dragMoveState.currentColumn = column;
   }
-  
+
   // Update preview position with smooth transition
   if (dragMoveState.previewElement) {
     const clampedY = Math.max(0, Math.min(1920 - height, snappedY));
     dragMoveState.previewElement.style.top = `${clampedY}px`;
     dragMoveState.previewElement.style.height = `${height}px`;
-    
+
     // Update time display
     const timeEl = dragMoveState.previewElement.querySelector('.drag-move-preview-time');
     if (timeEl) {
@@ -3494,10 +3494,10 @@ function handleColumnDragOver(event, targetDate) {
 function handleColumnDragLeave(event) {
   const column = event.currentTarget;
   const relatedTarget = event.relatedTarget;
-  
+
   // Only remove highlight if actually leaving the column (not entering a child)
   if (relatedTarget && column.contains(relatedTarget)) return;
-  
+
   column.classList.remove('drag-over');
 }
 
@@ -3540,13 +3540,13 @@ document.addEventListener('dragend', cleanupDragMoveState);
 
 async function handleDrop(event, targetDate) {
   event.preventDefault();
-  
+
   // Get drop position for time calculation, accounting for click offset
   const column = event.currentTarget;
   const clickOffsetY = dragMoveState.clickOffsetY || 0;
   const adjustedClientY = event.clientY - clickOffsetY;
   const newTime = yPositionToTime(adjustedClientY, column);
-  
+
   const data = JSON.parse(event.dataTransfer.getData('text/plain'));
   const { id, fromDate, type, duration } = data;
 
@@ -3579,17 +3579,17 @@ async function handleDrop(event, targetDate) {
   } else {
     // Move task to new date AND time
     const updates = { date: targetDate };
-    
+
     // Update time if we have a valid new time
     if (newTime) {
       const eventDuration = duration || calculateEventDurationMinutes(task.time, task.endTime);
       updates.time = newTime;
       updates.endTime = calculateEndTimeFromDuration(newTime, eventDuration);
     }
-    
+
     // Use async update if authenticated
     await updateCalendarEventAsync(id, updates);
-    
+
     // Show feedback
     if (fromDate !== targetDate) {
       showToast(`Moved to ${formatDateForToast(targetDate)} at ${formatTime12h(newTime)}`);
@@ -3629,19 +3629,19 @@ let resizeState = {
 function handleEventResizeStart(e, eventId, eventDate) {
   e.preventDefault();
   e.stopPropagation();
-  
+
   const card = e.target.closest('.week-event-card');
   if (!card) return;
-  
+
   // Get the event data
   const events = loadCalendarEvents();
   const event = events.find(ev => ev.id == eventId);
   if (!event || !event.time) return;
-  
+
   // Disable dragging while resizing
   card.setAttribute('draggable', 'false');
   card.classList.add('resizing');
-  
+
   resizeState = {
     isResizing: true,
     eventId: eventId,
@@ -3653,13 +3653,13 @@ function handleEventResizeStart(e, eventId, eventDate) {
     tooltipElement: null,
     startTime: event.time
   };
-  
+
   // Create tooltip
   createResizeTooltip(e.clientX, e.clientY, event.time, event.endTime);
-  
+
   document.addEventListener('mousemove', handleEventResizeMove);
   document.addEventListener('mouseup', handleEventResizeEnd);
-  
+
   // Prevent text selection while resizing
   document.body.style.userSelect = 'none';
   document.body.style.cursor = 'ns-resize';
@@ -3667,23 +3667,23 @@ function handleEventResizeStart(e, eventId, eventDate) {
 
 function handleEventResizeMove(e) {
   if (!resizeState.isResizing || !resizeState.cardElement) return;
-  
+
   const deltaY = e.clientY - resizeState.startY;
-  
+
   // Snap to 15-minute intervals (20px = 15 minutes, 80px = 1 hour)
   const snappedDelta = Math.round(deltaY / 20) * 20;
   const newHeight = Math.max(40, resizeState.originalHeight + snappedDelta);
-  
+
   // Update card height visually
   resizeState.cardElement.style.height = `${newHeight}px`;
-  
+
   // Calculate new end time based on height
   const durationMinutes = Math.round((newHeight / 80) * 60);
   const newEndTime = calculateEndTimeFromStart(resizeState.startTime, durationMinutes);
-  
+
   // Update tooltip
   updateResizeTooltip(e.clientX, e.clientY, resizeState.startTime, newEndTime, durationMinutes);
-  
+
   // Update time display in the card
   const timeEl = resizeState.cardElement.querySelector('.week-event-time');
   if (timeEl) {
@@ -3700,42 +3700,42 @@ function handleEventResizeMove(e) {
 
 async function handleEventResizeEnd(e) {
   if (!resizeState.isResizing) return;
-  
+
   document.removeEventListener('mousemove', handleEventResizeMove);
   document.removeEventListener('mouseup', handleEventResizeEnd);
-  
+
   // Remove tooltip
   removeResizeTooltip();
-  
+
   // Restore cursor and selection
   document.body.style.userSelect = '';
   document.body.style.cursor = '';
-  
+
   if (resizeState.cardElement) {
     resizeState.cardElement.setAttribute('draggable', 'true');
     resizeState.cardElement.classList.remove('resizing');
-    
+
     // Calculate final end time
     const finalHeight = resizeState.cardElement.offsetHeight;
     const durationMinutes = Math.round((finalHeight / 80) * 60);
     const newEndTime = calculateEndTimeFromStart(resizeState.startTime, durationMinutes);
-    
+
     // Save the change if end time actually changed
     if (newEndTime !== resizeState.originalEndTime) {
       // Use async update if authenticated
       await updateCalendarEventAsync(resizeState.eventId, { endTime: newEndTime });
-      
+
       // Format duration for toast
       const hours = Math.floor(durationMinutes / 60);
       const mins = durationMinutes % 60;
       let durationStr = '';
       if (hours > 0) durationStr += `${hours}h`;
       if (mins > 0) durationStr += `${mins > 0 && hours > 0 ? ' ' : ''}${mins}m`;
-      
+
       showToast(`Duration updated to ${durationStr}`);
     }
   }
-  
+
   // Reset state
   resizeState = {
     isResizing: false,
@@ -3748,7 +3748,7 @@ async function handleEventResizeEnd(e) {
     tooltipElement: null,
     startTime: null
   };
-  
+
   // Re-render to ensure consistency, preserve scroll position
   renderCurrentView(true);
 }
@@ -3757,10 +3757,10 @@ function calculateEndTimeFromStart(startTime, durationMinutes) {
   if (!startTime) return '';
   const [h, m] = startTime.split(':').map(Number);
   let totalMinutes = h * 60 + m + durationMinutes;
-  
+
   // Clamp to end of day (23:59)
   if (totalMinutes >= 24 * 60) totalMinutes = 24 * 60 - 1;
-  
+
   const endH = Math.floor(totalMinutes / 60);
   const endM = totalMinutes % 60;
   return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
@@ -3768,17 +3768,17 @@ function calculateEndTimeFromStart(startTime, durationMinutes) {
 
 function createResizeTooltip(x, y, startTime, endTime) {
   removeResizeTooltip();
-  
+
   const tooltip = document.createElement('div');
   tooltip.className = 'resize-time-tooltip';
   tooltip.id = 'resizeTimeTooltip';
-  
+
   const durationMinutes = calculateDurationMinutes(startTime, endTime);
   tooltip.innerHTML = formatTooltipContent(startTime, endTime, durationMinutes);
-  
+
   tooltip.style.left = `${x + 15}px`;
   tooltip.style.top = `${y - 10}px`;
-  
+
   document.body.appendChild(tooltip);
   resizeState.tooltipElement = tooltip;
 }
@@ -3786,7 +3786,7 @@ function createResizeTooltip(x, y, startTime, endTime) {
 function updateResizeTooltip(x, y, startTime, endTime, durationMinutes) {
   const tooltip = document.getElementById('resizeTimeTooltip');
   if (!tooltip) return;
-  
+
   tooltip.innerHTML = formatTooltipContent(startTime, endTime, durationMinutes);
   tooltip.style.left = `${x + 15}px`;
   tooltip.style.top = `${y - 10}px`;
@@ -3801,14 +3801,14 @@ function removeResizeTooltip() {
 function formatTooltipContent(startTime, endTime, durationMinutes) {
   const startStr = formatTime12h(startTime);
   const endStr = formatTime12h(endTime);
-  
+
   const hours = Math.floor(durationMinutes / 60);
   const mins = durationMinutes % 60;
   let durationStr = '';
   if (hours > 0) durationStr += `${hours}h`;
   if (mins > 0) durationStr += `${hours > 0 ? ' ' : ''}${mins}m`;
   if (!durationStr) durationStr = '0m';
-  
+
   return `${startStr} - ${endStr}<span class="duration">${durationStr}</span>`;
 }
 
@@ -3827,23 +3827,23 @@ function updateCurrentTimeIndicator() {
   // Try to find both week and day view indicators
   const weekIndicator = document.getElementById('currentTimeIndicator');
   const dayIndicator = document.getElementById('currentTimeIndicatorDay');
-  
+
   const now = new Date();
   const hours = now.getHours();
   const minutes = now.getMinutes();
-  
+
   // Calculate position (80px per hour, starting at 6 AM with 24-hour wrap)
   let slotIndex = hours - 6;
   if (slotIndex < 0) slotIndex += 24; // Wrap for times 0-5 (after midnight)
-  
+
   const position = (slotIndex * 80) + (minutes / 60 * 80);
-  
+
   // Update week view indicator
   if (weekIndicator) {
     weekIndicator.style.top = `${position}px`;
     weekIndicator.style.display = 'block';
   }
-  
+
   // Update day view indicator
   if (dayIndicator) {
     dayIndicator.style.top = `${position}px`;
@@ -3871,30 +3871,30 @@ function initCurrentTimeIndicator() {
 // ============================================
 function renderAgendaView(events, today) {
   const todayStr = today.toISOString().split('T')[0];
-  
+
   // Get events for next 30 days
   const futureEvents = [];
   for (let i = 0; i < 30; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dateStr = date.toISOString().split('T')[0];
-    
+
     const dayEvents = events.filter(e => e.date === dateStr).sort((a, b) => {
       if (!a.time && !b.time) return 0;
       if (!a.time) return -1;
       if (!b.time) return 1;
       return a.time.localeCompare(b.time);
     });
-    
+
     if (dayEvents.length > 0) {
       futureEvents.push({ date: dateStr, dateObj: date, events: dayEvents });
     }
   }
-  
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  
+
   if (futureEvents.length === 0) {
     return `
       <div class="agenda-view-container">
@@ -3914,7 +3914,7 @@ function renderAgendaView(events, today) {
       </div>
     `;
   }
-  
+
   return `
     <div class="agenda-view-container">
       <div class="agenda-header">
@@ -3933,19 +3933,19 @@ function renderAgendaView(events, today) {
       
       <div class="agenda-list">
         ${futureEvents.map(day => {
-          const isToday = day.date === todayStr;
-          const isTomorrow = day.date === new Date(today.getTime() + 86400000).toISOString().split('T')[0];
-          
-          let dateLabel = '';
-          if (isToday) {
-            dateLabel = 'Today';
-          } else if (isTomorrow) {
-            dateLabel = 'Tomorrow';
-          } else {
-            dateLabel = `${dayNames[day.dateObj.getDay()]}, ${monthNames[day.dateObj.getMonth()]} ${day.dateObj.getDate()}`;
-          }
-          
-          return `
+    const isToday = day.date === todayStr;
+    const isTomorrow = day.date === new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+
+    let dateLabel = '';
+    if (isToday) {
+      dateLabel = 'Today';
+    } else if (isTomorrow) {
+      dateLabel = 'Tomorrow';
+    } else {
+      dateLabel = `${dayNames[day.dateObj.getDay()]}, ${monthNames[day.dateObj.getMonth()]} ${day.dateObj.getDate()}`;
+    }
+
+    return `
             <div class="agenda-day-group ${isToday ? 'is-today' : ''}">
               <div class="agenda-day-header">
                 <div class="agenda-date-label">
@@ -3956,12 +3956,12 @@ function renderAgendaView(events, today) {
               </div>
               <div class="agenda-events-list">
                 ${day.events.map(event => {
-                  const category = getEventCategory(event);
-                  const color = getCategoryColor(category);
-                  const timeStr = event.time ? formatTime12h(event.time) : 'All day';
-                  const endTimeStr = event.endTime ? ` - ${formatTime12h(event.endTime)}` : '';
-                  
-                  return `
+      const category = getEventCategory(event);
+      const color = getCategoryColor(category);
+      const timeStr = event.time ? formatTime12h(event.time) : 'All day';
+      const endTimeStr = event.endTime ? ` - ${formatTime12h(event.endTime)}` : '';
+
+      return `
                     <div class="agenda-event-card" 
                          onclick="openEditTaskModal('${event.id}')"
                          oncontextmenu="showTaskContextMenu(event, '${event.id}'); return false;">
@@ -3993,11 +3993,11 @@ function renderAgendaView(events, today) {
                       </div>
                     </div>
                   `;
-                }).join('')}
+    }).join('')}
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -4012,7 +4012,7 @@ function filterAgendaEvents(query) {
     const matches = title.includes(query.toLowerCase()) || location.includes(query.toLowerCase());
     card.style.display = matches || !query ? '' : 'none';
   });
-  
+
   const groups = document.querySelectorAll('.agenda-day-group');
   groups.forEach(group => {
     const visibleCards = group.querySelectorAll('.agenda-event-card:not([style*="display: none"])');
@@ -4025,10 +4025,10 @@ function filterAgendaEvents(query) {
 // ============================================
 function renderYearView(events, today) {
   const year = scheduleCurrentDate.getFullYear();
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const todayStr = today.toISOString().split('T')[0];
-  
+
   const eventsByMonth = {};
   events.forEach(event => {
     const eventDate = new Date(event.date);
@@ -4038,7 +4038,7 @@ function renderYearView(events, today) {
       eventsByMonth[month].push(event);
     }
   });
-  
+
   return `
     <div class="year-view-container">
       <div class="year-header">
@@ -4053,28 +4053,28 @@ function renderYearView(events, today) {
       
       <div class="year-grid">
         ${Array.from({ length: 12 }, (_, monthIndex) => {
-          const monthEvents = eventsByMonth[monthIndex] || [];
-          const firstDay = new Date(year, monthIndex, 1);
-          const lastDay = new Date(year, monthIndex + 1, 0);
-          const startDay = firstDay.getDay();
-          const daysInMonth = lastDay.getDate();
-          
-          const days = [];
-          for (let i = 0; i < startDay; i++) {
-            days.push({ day: null, events: [] });
-          }
-          for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayEvents = events.filter(e => e.date === dateStr);
-            days.push({ 
-              day: d, 
-              dateStr,
-              isToday: dateStr === todayStr,
-              events: dayEvents 
-            });
-          }
-          
-          return `
+    const monthEvents = eventsByMonth[monthIndex] || [];
+    const firstDay = new Date(year, monthIndex, 1);
+    const lastDay = new Date(year, monthIndex + 1, 0);
+    const startDay = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    const days = [];
+    for (let i = 0; i < startDay; i++) {
+      days.push({ day: null, events: [] });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayEvents = events.filter(e => e.date === dateStr);
+      days.push({
+        day: d,
+        dateStr,
+        isToday: dateStr === todayStr,
+        events: dayEvents
+      });
+    }
+
+    return `
             <div class="year-month-card" onclick="navigateToMonth(${monthIndex})">
               <div class="year-month-header">
                 <span class="year-month-name">${monthNames[monthIndex]}</span>
@@ -4086,12 +4086,12 @@ function renderYearView(events, today) {
                 </div>
                 <div class="year-days">
                   ${days.map(({ day, dateStr, isToday, events: dayEvents }) => {
-                    if (!day) return '<span class="year-day empty"></span>';
-                    
-                    const hasEvents = dayEvents.length > 0;
-                    const eventColors = [...new Set(dayEvents.map(e => getCategoryColor(getEventCategory(e))))].slice(0, 3);
-                    
-                    return `
+      if (!day) return '<span class="year-day empty"></span>';
+
+      const hasEvents = dayEvents.length > 0;
+      const eventColors = [...new Set(dayEvents.map(e => getCategoryColor(getEventCategory(e))))].slice(0, 3);
+
+      return `
                       <span class="year-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}" 
                             onclick="event.stopPropagation(); selectYearDate('${dateStr}')"
                             title="${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}">
@@ -4099,12 +4099,12 @@ function renderYearView(events, today) {
                         ${hasEvents ? `<span class="year-day-dots">${eventColors.map(c => `<span style="background:${c}"></span>`).join('')}</span>` : ''}
                       </span>
                     `;
-                  }).join('')}
+    }).join('')}
                 </div>
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -4138,12 +4138,12 @@ function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
     if (typeof openAuthModal === 'function') openAuthModal();
     return;
   }
-  
+
   const today = new Date();
   const date = prefillDate || today.toISOString().split('T')[0];
   const time = prefillTime || '';
   const endTime = prefillTime ? calculateEndTimeFromDuration(prefillTime, 60) : '';
-  
+
   const content = `
     <form id="advancedEventForm" class="advanced-event-form" onsubmit="handleAdvancedEventSubmit(event)">
       <div class="form-group form-group-large">
@@ -4204,9 +4204,9 @@ function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
           
           <div class="quick-duration-row" id="quickDurationRow">
             ${[30, 60, 90, 120, 180].map(mins => {
-              const label = mins < 60 ? `${mins}m` : mins === 60 ? '1h' : `${mins/60}h`;
-              return `<button type="button" class="quick-dur-chip" onclick="setAdvancedDuration(${mins})">${label}</button>`;
-            }).join('')}
+    const label = mins < 60 ? `${mins}m` : mins === 60 ? '1h' : `${mins / 60}h`;
+    return `<button type="button" class="quick-dur-chip" onclick="setAdvancedDuration(${mins})">${label}</button>`;
+  }).join('')}
           </div>
           
           <div class="form-group form-group-inline">
@@ -4294,7 +4294,7 @@ function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
       </div>
     </form>
   `;
-  
+
   openModal('Create Event', content, 'modal-large');
 }
 
@@ -4309,12 +4309,12 @@ function toggleAllDayEvent() {
   const isAllDay = document.getElementById('allDayToggle').checked;
   const timeSelects = document.querySelectorAll('.form-select-time');
   const quickDuration = document.getElementById('quickDurationRow');
-  
+
   timeSelects.forEach(select => {
     select.style.display = isAllDay ? 'none' : '';
     if (isAllDay) select.value = '';
   });
-  
+
   if (quickDuration) {
     quickDuration.style.display = isAllDay ? 'none' : '';
   }
@@ -4332,7 +4332,7 @@ function updateAdvancedEndTime() {
 function setAdvancedDuration(minutes) {
   const startTimeEl = document.getElementById('eventStartTimeAdv');
   const endTimeSelect = document.getElementById('eventEndTimeAdv');
-  
+
   if (!startTimeEl.value) {
     const now = new Date();
     const nextHour = new Date(now);
@@ -4340,11 +4340,11 @@ function setAdvancedDuration(minutes) {
     const startTimeStr = `${String(nextHour.getHours()).padStart(2, '0')}:00`;
     startTimeEl.value = startTimeStr;
   }
-  
+
   const currentStartTime = startTimeEl.value;
   const endTime = calculateEndTimeFromDuration(currentStartTime, minutes);
   endTimeSelect.value = endTime;
-  
+
   document.querySelectorAll('.quick-dur-chip').forEach(chip => chip.classList.remove('active'));
   if (event && event.target) event.target.classList.add('active');
 }
@@ -4368,7 +4368,7 @@ function updateCategoryColor(select) {
 
 async function handleAdvancedEventSubmit(e) {
   e.preventDefault();
-  
+
   // Require authentication
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showToast('Please sign in to create events', 'error');
@@ -4376,13 +4376,13 @@ async function handleAdvancedEventSubmit(e) {
     if (typeof openAuthModal === 'function') openAuthModal();
     return;
   }
-  
+
   const form = e.target;
   const data = new FormData(form);
-  
+
   const title = data.get('title')?.trim();
   if (!title) return;
-  
+
   const startDate = data.get('startDate');
   const endDate = data.get('endDate') || startDate;
   const startTime = data.get('startTime') || null;
@@ -4396,9 +4396,9 @@ async function handleAdvancedEventSubmit(e) {
   const reminder = parseInt(data.get('reminder')) || 30;
   const attendeesStr = data.get('attendees') || '';
   const conferenceLink = data.get('conferenceLink')?.trim() || '';
-  
+
   const attendees = attendeesStr.split(',').map(a => a.trim()).filter(a => a);
-  
+
   const newEvent = createEnhancedEvent({
     title,
     date: startDate,
@@ -4415,10 +4415,10 @@ async function handleAdvancedEventSubmit(e) {
     attendees,
     conferenceLink
   });
-  
+
   // Use async save if authenticated
   await saveCalendarEventAsync(newEvent);
-  
+
   closeModal();
   showToast(`Event "${title}" created successfully!`);
   renderCurrentView();
@@ -4477,7 +4477,7 @@ function duplicateCalendarTask(eventId) {
   if (!task) return;
 
   const today = new Date().toISOString().split('T')[0];
-  
+
   const content = `
     <form id="duplicateTaskForm" onsubmit="handleDuplicateTaskSubmit(event, ${eventId})">
       <div class="form-group">
@@ -4507,17 +4507,17 @@ async function handleDuplicateTaskSubmit(e, originalEventId) {
   e.preventDefault();
   const form = e.target;
   const data = new FormData(form);
-  
+
   const date = data.get('date');
   const time = data.get('time');
-  
+
   if (!date) return;
-  
+
   const events = loadCalendarEvents();
   // Use == for type coercion
   const originalTask = events.find(ev => ev.id == originalEventId);
   if (!originalTask) return;
-  
+
   const newTask = {
     id: Date.now() + Math.floor(Math.random() * 10000),
     title: originalTask.title,
@@ -4532,10 +4532,10 @@ async function handleDuplicateTaskSubmit(e, originalEventId) {
     isRecurring: false,
     recurringId: null
   };
-  
+
   // Use async save if authenticated
   await saveCalendarEventAsync(newTask);
-  
+
   closeModal();
   showToast('Task duplicated successfully!');
   // Preserve scroll when duplicating task
@@ -4555,12 +4555,12 @@ function generateTimeOptions(selectedTime = '') {
       const hour24 = String(h).padStart(2, '0');
       const min = String(m).padStart(2, '0');
       const value = `${hour24}:${min}`;
-      
+
       // Format for display (12-hour)
       const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
       const ampm = h < 12 ? 'AM' : 'PM';
       const label = `${hour12}:${min} ${ampm}`;
-      
+
       const selected = value === selectedTime ? 'selected' : '';
       times.push(`<option value="${value}" ${selected}>${label}</option>`);
     }
@@ -4571,22 +4571,22 @@ function generateTimeOptions(selectedTime = '') {
 // Calculate duration between two times
 function calculateDuration(startTime, endTime) {
   if (!startTime || !endTime) return '';
-  
+
   const [startH, startM] = startTime.split(':').map(Number);
   const [endH, endM] = endTime.split(':').map(Number);
-  
+
   let startMinutes = startH * 60 + startM;
   let endMinutes = endH * 60 + endM;
-  
+
   // Handle next day
   if (endMinutes <= startMinutes) {
     endMinutes += 24 * 60;
   }
-  
+
   const diffMinutes = endMinutes - startMinutes;
   const hours = Math.floor(diffMinutes / 60);
   const minutes = diffMinutes % 60;
-  
+
   if (hours === 0) {
     return `${minutes} min`;
   } else if (minutes === 0) {
@@ -4601,22 +4601,22 @@ function updateEndTimeFromDuration(duration) {
   const startSelect = document.getElementById('eventStartTime');
   const endSelect = document.getElementById('eventEndTime');
   if (!startSelect || !endSelect) return;
-  
+
   const startTime = startSelect.value;
   if (!startTime) return;
-  
+
   const [startH, startM] = startTime.split(':').map(Number);
   let endMinutes = startH * 60 + startM + duration;
-  
+
   // Wrap around if past midnight
   if (endMinutes >= 24 * 60) {
     endMinutes = endMinutes % (24 * 60);
   }
-  
+
   const endH = Math.floor(endMinutes / 60);
   const endM = endMinutes % 60;
   const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-  
+
   endSelect.value = endTime;
   updateDurationHint();
 }
@@ -4626,9 +4626,9 @@ function updateDurationHint() {
   const startSelect = document.getElementById('eventStartTime');
   const endSelect = document.getElementById('eventEndTime');
   const durationHint = document.getElementById('durationHint');
-  
+
   if (!startSelect || !endSelect || !durationHint) return;
-  
+
   const duration = calculateDuration(startSelect.value, endSelect.value);
   durationHint.textContent = duration ? `Duration: ${duration}` : '';
 }
@@ -4637,16 +4637,16 @@ function updateDurationHint() {
 function setDefaultEndTime() {
   const startSelect = document.getElementById('eventStartTime');
   const endSelect = document.getElementById('eventEndTime');
-  
+
   if (!startSelect || !endSelect) return;
-  
+
   const startTime = startSelect.value;
   if (!startTime) return;
-  
+
   const [startH, startM] = startTime.split(':').map(Number);
   let endH = startH + 1;
   if (endH >= 24) endH = endH - 24;
-  
+
   const endTime = `${String(endH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
   endSelect.value = endTime;
   updateDurationHint();
@@ -4656,7 +4656,7 @@ function setDefaultEndTime() {
 function openCreateEventModal(defaultDate = null) {
   const todayStr = new Date().toISOString().split('T')[0];
   const dateValue = defaultDate || todayStr;
-  
+
   // Default start time: next hour
   const now = new Date();
   const defaultStartHour = now.getHours() + 1;
@@ -4768,7 +4768,7 @@ function openCreateEventModal(defaultDate = null) {
           <div class="repeat-custom-days" id="repeatCustomDays" style="display:none;">
             <label class="form-label" style="font-size:12px; margin-bottom:8px;">Repeat on</label>
             <div class="repeat-days-grid">
-              ${['S','M','T','W','T','F','S'].map((day, i) => `
+              ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => `
                 <label class="repeat-day-chip ${i === new Date(dateValue).getDay() ? 'selected' : ''}">
                   <input type="checkbox" name="repeatDays" value="${i}" ${i === new Date(dateValue).getDay() ? 'checked' : ''} onchange="updateRepeatDayChip(this)">
                   <span>${day}</span>
@@ -4857,17 +4857,17 @@ async function handleCreateEventSubmit(e, date) {
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
-  
+
   // Handle project/assignment/space IDs - convert empty strings to null
   const projectIdValue = data.get('projectId');
   const projectId = projectIdValue && projectIdValue !== '' ? projectIdValue : null;
-  
+
   const assignmentIdValue = data.get('assignmentId');
   const assignmentId = assignmentIdValue && assignmentIdValue !== '' ? assignmentIdValue : null;
-  
+
   const spaceIdValue = data.get('spaceId');
   const spaceId = spaceIdValue && spaceIdValue !== '' ? spaceIdValue : null;
-  
+
   // Repeat options
   const repeatType = data.get('repeatType') || 'none';
   const repeatEndType = data.get('repeatEndType') || 'never';
@@ -4879,11 +4879,11 @@ async function handleCreateEventSubmit(e, date) {
 
   // If no repeat, create single event
   if (repeatType === 'none') {
-    const newEvent = { 
-      id: Date.now(), 
-      title, 
-      date, 
-      time: startTime || null, 
+    const newEvent = {
+      id: Date.now(),
+      title,
+      date,
+      time: startTime || null,
       endTime: endTime || null,
       color,
       location,
@@ -4902,7 +4902,7 @@ async function handleCreateEventSubmit(e, date) {
   // Create recurring task rule
   const recurringId = Date.now();
   const startDate = new Date(date);
-  
+
   // Determine which days to repeat on
   let daysToRepeat = [];
   switch (repeatType) {
@@ -5007,7 +5007,7 @@ function generateRecurringEvents(config) {
 
   while (current <= endRepeatDate && iterations < maxIterations) {
     iterations++;
-    
+
     if (repeatCount && count >= repeatCount) break;
 
     let shouldAdd = false;
@@ -5068,15 +5068,15 @@ function handleRepeatTypeChange(value, dateValue) {
   const customDays = document.getElementById('repeatCustomDays');
   const endOptions = document.getElementById('repeatEndOptions');
   const badge = document.getElementById('repeatSummaryBadge');
-  
+
   if (customDays) {
     customDays.style.display = value === 'custom' ? 'block' : 'none';
   }
-  
+
   if (endOptions) {
     endOptions.style.display = value !== 'none' ? 'block' : 'none';
   }
-  
+
   // Update badge
   if (badge) {
     if (value === 'none') {
@@ -5099,7 +5099,7 @@ function handleRepeatTypeChange(value, dateValue) {
 function handleRepeatEndTypeChange(value) {
   const afterDiv = document.getElementById('repeatEndAfter');
   const onDiv = document.getElementById('repeatEndOn');
-  
+
   if (afterDiv) afterDiv.style.display = value === 'after' ? 'block' : 'none';
   if (onDiv) onDiv.style.display = value === 'on' ? 'block' : 'none';
 }
@@ -5191,16 +5191,16 @@ function renderActivityView(searchQuery = '') {
       
       <div class="workspace-projects-grid">
         ${projects.map((project, index) => {
-          const { total, completed, percentage } = calculateProgress(project.columns);
-          const statusColor = getStatusColor(project.status);
-          const isStarted = project.status !== 'todo' || percentage > 0;
-          
-          // Get linked space docs/excels
-          const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
-          const spaceDocs = linkedSpace ? loadDocs().filter(d => d.spaceId === linkedSpace.id) : [];
-          const spaceExcels = linkedSpace ? loadExcels().filter(e => e.spaceId === linkedSpace.id) : [];
-          
-          return `
+    const { total, completed, percentage } = calculateProgress(project.columns);
+    const statusColor = getStatusColor(project.status);
+    const isStarted = project.status !== 'todo' || percentage > 0;
+
+    // Get linked space docs/excels
+    const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
+    const spaceDocs = linkedSpace ? loadDocs().filter(d => d.spaceId === linkedSpace.id) : [];
+    const spaceExcels = linkedSpace ? loadExcels().filter(e => e.spaceId === linkedSpace.id) : [];
+
+    return `
             <div class="workspace-project-card" onclick="openProjectDetail(${index})">
               <!-- Card Header -->
               <div class="workspace-card-header">
@@ -5305,7 +5305,7 @@ function renderActivityView(searchQuery = '') {
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -5314,11 +5314,11 @@ function renderActivityView(searchQuery = '') {
 function renderProjectDetailView(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (!project) return '';
 
   const { total, completed, percentage } = calculateProgress(project.columns);
-  
+
   // Dynamic status based on progress
   let dynamicStatus = 'backlog';
   if (percentage === 0) {
@@ -5328,21 +5328,21 @@ function renderProjectDetailView(projectIndex) {
   } else if (percentage === 100) {
     dynamicStatus = 'done';
   }
-  
+
   const statusColor = getStatusColor(dynamicStatus);
   const teamMembers = project.teamMembers || ['You'];
   const projectPriority = project.priority;
   const projectComments = project.comments || [];
   const milestones = project.milestones || [];
-  
+
   // Check if current user is project leader
   const isLeader = isProjectLeader(project);
   const currentUserEmail = window.LayerDB?.getCurrentUser()?.email || getCurrentUserEmail();
   const isTeamMember = teamMembers.includes(currentUserEmail) || teamMembers.includes('You');
-  
+
   // Generate activity log
   const activityLog = generateActivityLog(project, projectIndex);
-  
+
   // Format dates
   const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
   const targetDateFormatted = formatDateAdvanced(project.targetDate);
@@ -5626,9 +5626,9 @@ function renderProjectDetailView(projectIndex) {
                 <span class="pd-prop-label">Members</span>
                 <div class="pd-members-list" id="pdMembersList-${projectIndex}">
                   ${teamMembers.map((member, idx) => {
-                    const initials = getMemberAvatarInitialsWithFullNames(member);
-                    const backgroundColor = getNameColor(member);
-                    return `
+    const initials = getMemberAvatarInitialsWithFullNames(member);
+    const backgroundColor = getNameColor(member);
+    return `
                     <div class="pd-member-item" data-member="${member}" data-member-id="${idx}" data-project-index="${projectIndex}">
                       <div class="pd-member-avatar" id="memberAvatar-${projectIndex}-${idx}" style="background: ${backgroundColor}" oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${idx})" title="${member === 'You' ? getCurrentUserName() : member}">
                         ${initials}
@@ -5638,7 +5638,8 @@ function renderProjectDetailView(projectIndex) {
                         <span class="status-dot offline"></span>
                       </span>
                     </div>
-                  `;}).join('')}
+                  `;
+  }).join('')}
                   <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
@@ -5730,7 +5731,7 @@ function generateActivityLog(project, projectIndex) {
   const activities = [];
   const updates = project.updates || [];
   const comments = project.comments || [];
-  
+
   // Add status changes
   if (project.status) {
     activities.push({
@@ -5740,7 +5741,7 @@ function generateActivityLog(project, projectIndex) {
       time: 'Jan 12'
     });
   }
-  
+
   // Add target date changes
   if (project.targetDate) {
     activities.push({
@@ -5750,7 +5751,7 @@ function generateActivityLog(project, projectIndex) {
       time: 'Jan 12'
     });
   }
-  
+
   // Add priority changes
   if (project.priority) {
     activities.push({
@@ -5760,7 +5761,7 @@ function generateActivityLog(project, projectIndex) {
       time: 'Dec 30'
     });
   }
-  
+
   // Add milestone additions
   if (project.milestones && project.milestones.length > 0) {
     project.milestones.forEach(m => {
@@ -5772,7 +5773,7 @@ function generateActivityLog(project, projectIndex) {
       });
     });
   }
-  
+
   // Default activities if none
   if (activities.length === 0) {
     activities.push({
@@ -5782,7 +5783,7 @@ function generateActivityLog(project, projectIndex) {
       time: formatTimeAgo(project.createdAt || new Date().toISOString())
     });
   }
-  
+
   return activities;
 }
 
@@ -5801,9 +5802,9 @@ function getActivityIcon(type) {
 function togglePdSidebar() {
   const sidebar = document.getElementById('pdSidebar');
   if (!sidebar) return;
-  
+
   sidebar.classList.toggle('collapsed');
-  
+
   // Save state to localStorage
   const isCollapsed = sidebar.classList.contains('collapsed');
   localStorage.setItem('pdSidebarCollapsed', isCollapsed);
@@ -5813,7 +5814,7 @@ function togglePdSidebar() {
 function restorePdSidebarState() {
   const sidebar = document.getElementById('pdSidebar');
   if (!sidebar) return;
-  
+
   const isCollapsed = localStorage.getItem('pdSidebarCollapsed') === 'true';
   if (isCollapsed) {
     sidebar.classList.add('collapsed');
@@ -5835,16 +5836,16 @@ function switchProjectTab(tabName, projectIndex) {
       tab.classList.remove('active');
     }
   });
-  
+
   // Update the global current project tab variable
   if (typeof currentProjectTab !== 'undefined') {
     currentProjectTab = tabName;
   }
-  
+
   // Get the content container
   const contentScroll = document.querySelector('.pd-content-scroll');
   if (!contentScroll) return;
-  
+
   // Render the appropriate content based on tab
   switch (tabName) {
     case 'timeline':
@@ -5869,11 +5870,11 @@ function renderOverviewTab(projectIndex, container) {
   // Re-render only the project detail content without calling openProjectDetail to avoid recursion
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (!project) return;
-  
+
   const { total, completed, percentage } = calculateProgress(project.columns);
-  
+
   // Dynamic status based on progress
   let dynamicStatus = 'backlog';
   if (percentage === 0) {
@@ -5883,20 +5884,20 @@ function renderOverviewTab(projectIndex, container) {
   } else if (percentage === 100) {
     dynamicStatus = 'done';
   }
-  
+
   const statusColor = getStatusColor(dynamicStatus);
   const teamMembers = project.teamMembers || ['You'];
   const projectPriority = project.priority;
   const projectComments = project.comments || [];
   const milestones = project.milestones || [];
-  
+
   // Generate activity log
   const activityLog = generateActivityLog(project, projectIndex);
-  
+
   // Format dates
   const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
   const targetDateFormatted = formatDateAdvanced(project.targetDate);
-  
+
   // Render the overview content directly into the container
   container.innerHTML = `
     <!-- Project Title Section -->
@@ -6102,19 +6103,19 @@ function renderTimelineView(projectIndex, container) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Track current project for keyboard shortcuts
   timelineState.lastProjectIndex = projectIndex;
-  
+
   // Build column data with date ranges and tasks
   const columns = (project.columns || []).map((col, colIdx) => {
     const tasks = col.tasks || [];
     const tasksWithDates = tasks.filter(t => t.startDate || t.dueDate || t.endDate);
     const tasksWithoutDates = tasks.filter(t => !t.startDate && !t.dueDate && !t.endDate);
-    
+
     let minDate = null;
     let maxDate = null;
-    
+
     // First check if column has stored timeline dates
     if (col.timelineStart) {
       minDate = new Date(col.timelineStart);
@@ -6122,16 +6123,16 @@ function renderTimelineView(projectIndex, container) {
     if (col.timelineEnd) {
       maxDate = new Date(col.timelineEnd);
     }
-    
+
     // Then check task dates and expand range if needed
     tasksWithDates.forEach(task => {
       const start = task.startDate ? new Date(task.startDate) : null;
       const end = task.endDate ? new Date(task.endDate) : (task.dueDate ? new Date(task.dueDate) : start);
-      
+
       if (start && (!minDate || start < minDate)) minDate = new Date(start);
       if (end && (!maxDate || end > maxDate)) maxDate = new Date(end);
     });
-    
+
     return {
       id: `col-${colIdx}`,
       title: col.title,
@@ -6153,7 +6154,7 @@ function renderTimelineView(projectIndex, container) {
       isExpanded: timelineExpandedColumns[`col-${colIdx}`] || false
     };
   });
-  
+
   // Get all tasks for date range calculation
   const allTasks = [];
   (project.columns || []).forEach((col, colIdx) => {
@@ -6167,10 +6168,10 @@ function renderTimelineView(projectIndex, container) {
       });
     });
   });
-  
+
   // Calculate date range
   const { startDate, endDate, dates } = calculateTimelineDates(allTasks, timelineState.viewMode);
-  
+
   // Stats
   const stats = {
     total: allTasks.length,
@@ -6184,9 +6185,9 @@ function renderTimelineView(projectIndex, container) {
       return due < today && !t.done;
     }).length
   };
-  
+
   const progressPercent = Math.round((stats.completed / Math.max(stats.total, 1)) * 100);
-  
+
   // Calculate week ranges for ClickUp-style header
   const weekRanges = calculateWeekRanges(dates);
   const weekRangesHtml = weekRanges.map(range => `
@@ -6195,7 +6196,7 @@ function renderTimelineView(projectIndex, container) {
       <span class="tl-week-range-week">W${range.weekNum}</span>
     </div>
   `).join('');
-  
+
   container.innerHTML = `
     <div class="timeline-linear clickup-enhanced">
       <!-- ClickUp-Style Premium Header -->
@@ -6399,12 +6400,12 @@ function renderTimelineView(projectIndex, container) {
       
       <div class="tl-kanban-board">
         ${project.columns.map((column, colIndex) => {
-          const completedCount = column.tasks.filter(t => t.done).length;
-          const totalCount = column.tasks.length;
-          const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-          const columnColor = getColumnColor(column.title);
-          
-          return `
+    const completedCount = column.tasks.filter(t => t.done).length;
+    const totalCount = column.tasks.length;
+    const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const columnColor = getColumnColor(column.title);
+
+    return `
           <div class="tl-kanban-column" data-col-index="${colIndex}">
             <div class="tl-kanban-col-header" style="--col-accent: ${columnColor};">
               <div class="tl-kanban-col-indicator" style="background: ${columnColor};"></div>
@@ -6456,7 +6457,7 @@ function renderTimelineView(projectIndex, container) {
     </div>
   `;
 
-  
+
   // Setup scroll sync and event listeners
   setupTimelineInteractions(projectIndex);
 
@@ -6473,11 +6474,11 @@ function renderTimelineView(projectIndex, container) {
       const headerScroll = document.getElementById('tlDateHeaderScroll');
       if (headerScroll) headerScroll.scrollLeft = wrapper.scrollLeft;
     }
-    
+
     // Initialize mini-map viewport
     updateMinimapViewport();
   });
-  
+
   // Setup mini-map interactions
   setupMinimapInteractions(projectIndex, dates, startDate);
 }
@@ -6486,7 +6487,7 @@ function renderTimelineView(projectIndex, container) {
 function syncWeekRangesScroll() {
   const ganttWrapper = document.getElementById('tlGanttWrapper');
   const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
-  
+
   if (ganttWrapper && weekRangesHeader) {
     ganttWrapper.addEventListener('scroll', () => {
       weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
@@ -6509,12 +6510,12 @@ let minimapState = {
 // Render mini-map HTML
 function renderTimelineMinimap(columns, dates, startDate, projectIndex) {
   if (!dates || dates.length === 0) return '';
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const totalWidth = dates.length * cellWidth;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   // Get all tasks with dates for mini-map bars
   const allTasks = [];
   columns.forEach(col => {
@@ -6527,44 +6528,44 @@ function renderTimelineMinimap(columns, dates, startDate, projectIndex) {
       }
     });
   });
-  
+
   // Calculate today position as percentage
   const todayOffset = daysBetween(startDate, today);
   const todayPercent = (todayOffset / dates.length) * 100;
-  
+
   // Format date labels
   const startLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const endLabel = dates[dates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  
+
   // Generate mini-map bars
   const barsHtml = allTasks.map((task, idx) => {
     const taskStart = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
     const taskEnd = task.endDate || task.dueDate ? new Date(task.endDate || task.dueDate) : taskStart;
-    
+
     if (!taskStart) return '';
-    
+
     const startOffset = daysBetween(startDate, taskStart);
     const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
-    
+
     const leftPercent = (startOffset / dates.length) * 100;
     const widthPercent = (duration / dates.length) * 100;
-    
+
     // Determine bar color class
     let colorClass = '';
     if (task.done) colorClass = 'done';
     else if (taskEnd < today && !task.done) colorClass = 'overdue';
     else colorClass = 'in-progress';
-    
+
     // Stack bars vertically (max 3 rows visible)
     const rowHeight = 6;
     const row = idx % 3;
     const top = 2 + (row * rowHeight);
-    
+
     return `<div class="tl-minimap-bar ${colorClass}" 
                  style="left: ${Math.max(0, leftPercent)}%; width: ${Math.max(0.5, widthPercent)}%; top: ${top}px; background: ${task.columnColor || '#3b82f6'};"
                  title="${task.title || 'Task'}"></div>`;
   }).join('');
-  
+
   return `
     <div class="tl-minimap-container" id="tlMinimapContainer">
       <div class="tl-minimap-label">
@@ -6631,21 +6632,21 @@ function updateMinimapViewport() {
   const ganttGrid = document.getElementById('tlGanttGrid');
   const viewport = document.getElementById('tlMinimapViewport');
   const track = document.getElementById('tlMinimapTrack');
-  
+
   if (!ganttWrapper || !ganttGrid || !viewport || !track) return;
-  
+
   const totalWidth = ganttGrid.scrollWidth;
   const visibleWidth = ganttWrapper.clientWidth;
   const scrollLeft = ganttWrapper.scrollLeft;
-  
+
   if (totalWidth <= 0) return;
-  
+
   const trackWidth = track.clientWidth;
-  
+
   // Calculate viewport position and width as percentage
   const leftPercent = (scrollLeft / totalWidth) * 100;
   const widthPercent = Math.min(100, (visibleWidth / totalWidth) * 100);
-  
+
   viewport.style.left = `${leftPercent}%`;
   viewport.style.width = `${Math.max(20, widthPercent)}%`; // Min 20px width
 }
@@ -6653,7 +6654,7 @@ function updateMinimapViewport() {
 // Setup mini-map interactions
 function setupMinimapInteractions(projectIndex, dates, startDate) {
   const ganttWrapper = document.getElementById('tlGanttWrapper');
-  
+
   if (ganttWrapper) {
     // Update viewport on scroll
     ganttWrapper.addEventListener('scroll', () => {
@@ -6662,7 +6663,7 @@ function setupMinimapInteractions(projectIndex, dates, startDate) {
       }
     });
   }
-  
+
   // Handle mouse move and up for dragging
   document.addEventListener('mousemove', handleMinimapDragMove);
   document.addEventListener('mouseup', handleMinimapDragEnd);
@@ -6672,17 +6673,17 @@ function setupMinimapInteractions(projectIndex, dates, startDate) {
 function startMinimapDrag(event, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   const viewport = document.getElementById('tlMinimapViewport');
   const ganttWrapper = document.getElementById('tlGanttWrapper');
-  
+
   if (!viewport || !ganttWrapper) return;
-  
+
   minimapState.isDragging = true;
   minimapState.startX = event.clientX;
   minimapState.startScrollLeft = ganttWrapper.scrollLeft;
   minimapState.projectIndex = projectIndex;
-  
+
   viewport.classList.add('dragging');
   document.body.style.cursor = 'grabbing';
   document.body.style.userSelect = 'none';
@@ -6691,44 +6692,44 @@ function startMinimapDrag(event, projectIndex) {
 // Handle drag movement
 function handleMinimapDragMove(event) {
   if (!minimapState.isDragging) return;
-  
+
   const track = document.getElementById('tlMinimapTrack');
   const ganttWrapper = document.getElementById('tlGanttWrapper');
   const ganttGrid = document.getElementById('tlGanttGrid');
-  
+
   if (!track || !ganttWrapper || !ganttGrid) return;
-  
+
   const trackRect = track.getBoundingClientRect();
   const deltaX = event.clientX - minimapState.startX;
-  
+
   // Convert pixel movement to scroll position
   const totalWidth = ganttGrid.scrollWidth;
   const trackWidth = trackRect.width;
   const scrollDelta = (deltaX / trackWidth) * totalWidth;
-  
+
   const newScrollLeft = minimapState.startScrollLeft + scrollDelta;
   ganttWrapper.scrollLeft = Math.max(0, Math.min(newScrollLeft, totalWidth - ganttWrapper.clientWidth));
-  
+
   // Update header scroll
   const headerScroll = document.getElementById('tlDateHeaderScroll');
   if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
-  
+
   // Update week ranges scroll
   const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
   if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
-  
+
   updateMinimapViewport();
 }
 
 // End dragging
 function handleMinimapDragEnd() {
   if (!minimapState.isDragging) return;
-  
+
   minimapState.isDragging = false;
-  
+
   const viewport = document.getElementById('tlMinimapViewport');
   if (viewport) viewport.classList.remove('dragging');
-  
+
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
 }
@@ -6736,40 +6737,40 @@ function handleMinimapDragEnd() {
 // Handle click on mini-map track to jump to position
 function handleMinimapClick(event, projectIndex) {
   const viewport = document.getElementById('tlMinimapViewport');
-  
+
   // Ignore if clicking on viewport itself
   if (event.target === viewport || viewport.contains(event.target)) return;
-  
+
   const track = document.getElementById('tlMinimapTrack');
   const ganttWrapper = document.getElementById('tlGanttWrapper');
   const ganttGrid = document.getElementById('tlGanttGrid');
-  
+
   if (!track || !ganttWrapper || !ganttGrid) return;
-  
+
   const trackRect = track.getBoundingClientRect();
   const clickX = event.clientX - trackRect.left;
   const clickPercent = clickX / trackRect.width;
-  
+
   const totalWidth = ganttGrid.scrollWidth;
   const visibleWidth = ganttWrapper.clientWidth;
-  
+
   // Center the view on the clicked position
   const targetScrollLeft = (clickPercent * totalWidth) - (visibleWidth / 2);
-  
+
   // Smooth scroll to position
   ganttWrapper.scrollTo({
     left: Math.max(0, Math.min(targetScrollLeft, totalWidth - visibleWidth)),
     behavior: 'smooth'
   });
-  
+
   // Update header scroll
   setTimeout(() => {
     const headerScroll = document.getElementById('tlDateHeaderScroll');
     if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
-    
+
     const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
     if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
-    
+
     updateMinimapViewport();
   }, 300);
 }
@@ -6778,14 +6779,14 @@ function handleMinimapClick(event, projectIndex) {
 function minimapNavigate(target, projectIndex) {
   const ganttWrapper = document.getElementById('tlGanttWrapper');
   const ganttGrid = document.getElementById('tlGanttGrid');
-  
+
   if (!ganttWrapper || !ganttGrid) return;
-  
+
   const totalWidth = ganttGrid.scrollWidth;
   const visibleWidth = ganttWrapper.clientWidth;
-  
+
   let targetScrollLeft = 0;
-  
+
   switch (target) {
     case 'start':
       targetScrollLeft = 0;
@@ -6805,19 +6806,19 @@ function minimapNavigate(target, projectIndex) {
       }
       break;
   }
-  
+
   ganttWrapper.scrollTo({
     left: Math.max(0, Math.min(targetScrollLeft, totalWidth - visibleWidth)),
     behavior: 'smooth'
   });
-  
+
   setTimeout(() => {
     const headerScroll = document.getElementById('tlDateHeaderScroll');
     if (headerScroll) headerScroll.scrollLeft = ganttWrapper.scrollLeft;
-    
+
     const weekRangesHeader = document.querySelector('.tl-week-ranges-header');
     if (weekRangesHeader) weekRangesHeader.scrollLeft = ganttWrapper.scrollLeft;
-    
+
     updateMinimapViewport();
   }, 300);
 }
@@ -6834,12 +6835,12 @@ function expandAllTimelineColumns(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const allExpanded = (project.columns || []).every((_, idx) => timelineExpandedColumns[`col-${idx}`]);
   (project.columns || []).forEach((_, idx) => {
     timelineExpandedColumns[`col-${idx}`] = !allExpanded;
   });
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
 }
@@ -6847,13 +6848,13 @@ function expandAllTimelineColumns(projectIndex) {
 // Render column list V3 with expandable tasks
 function renderTimelineColumnListV3(columns, projectIndex) {
   let html = '';
-  
+
   columns.forEach(col => {
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    const dateRange = col.minDate && col.maxDate 
+    const dateRange = col.minDate && col.maxDate
       ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
       : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
-    
+
     // Column header row
     html += `
       <div class="tl-task-item" style="border-left: 3px solid ${col.color}; cursor: pointer;" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
@@ -6877,23 +6878,23 @@ function renderTimelineColumnListV3(columns, projectIndex) {
         </div>
       </div>
     `;
-    
+
     // Expanded task rows
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
-        const taskDateRange = task.startDate || task.dueDate 
+        const taskDateRange = task.startDate || task.dueDate
           ? `${task.startDate ? formatShortDate(task.startDate) : ''} ${task.startDate && task.dueDate ? '→' : ''} ${task.dueDate ? formatShortDate(task.dueDate) : ''}`
           : 'No date';
         const isDone = task.done || task.status === 'done';
-        
+
         html += `
           <div class="tl-task-item" style="padding-left: 32px; height: 48px; border-left: 3px solid ${col.color}20; background: rgba(0,0,0,0.02);" 
                onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
             <div class="tl-task-status">
-              ${isDone 
-                ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
-                : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
-              }
+              ${isDone
+            ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
+          }
             </div>
             <div class="tl-task-content">
               <div class="tl-task-title ${isDone ? 'completed' : ''}" style="font-size: 12px;">${task.title || 'Untitled'}</div>
@@ -6907,7 +6908,7 @@ function renderTimelineColumnListV3(columns, projectIndex) {
       });
     }
   });
-  
+
   return html;
 }
 
@@ -6916,13 +6917,13 @@ function renderTimelineDateHeadersV3(dates, zoom) {
   const cellWidth = 48 * zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   // Group by month for header row
   let monthHtml = '';
   let currentMonth = '';
   let monthStart = 0;
   let monthCount = 0;
-  
+
   dates.forEach((date, idx) => {
     const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     if (monthKey !== currentMonth) {
@@ -6940,14 +6941,14 @@ function renderTimelineDateHeadersV3(dates, zoom) {
   if (currentMonth) {
     monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
   }
-  
+
   // Day row
   const dayHtml = dates.map((date, idx) => {
     const isToday = date.toDateString() === today.toDateString();
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
     const dayNum = date.getDate();
-    
+
     return `
       <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
         <div class="tl-date-day">${dayName}</div>
@@ -6955,7 +6956,7 @@ function renderTimelineDateHeadersV3(dates, zoom) {
       </div>
     `;
   }).join('');
-  
+
   return `
     <div class="tl-month-row">${monthHtml}</div>
     <div class="tl-day-row">${dayHtml}</div>
@@ -6967,9 +6968,9 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let html = '';
-  
+
   columns.forEach((col, idx) => {
     // Column row
     const cells = dates.map((date, dateIdx) => {
@@ -6977,11 +6978,11 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
     }).join('');
-    
+
     let barHtml = '';
     let left, width, barStartDate, barEndDate;
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    
+
     if (col.minDate && col.maxDate) {
       const startOffset = daysBetween(startDate, col.minDate);
       const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
@@ -6998,14 +6999,14 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
       defaultEnd.setDate(defaultEnd.getDate() + 6);
       barEndDate = defaultEnd.toISOString().split('T')[0];
     }
-    
+
     // Status icon
-    const statusIcon = progress === 100 
+    const statusIcon = progress === 100
       ? `<svg class="tl-status-icon done" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
       : progress > 0
         ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
         : `<svg class="tl-status-icon todo" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
-    
+
     barHtml = `
       <div class="tl-bar-header" style="left: ${left}px;">
         <div class="tl-bar-header-left">
@@ -7045,9 +7046,9 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
         <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
       </div>
     `;
-    
+
     html += `<div class="tl-gantt-row" data-row-id="${col.id}">${cells}${barHtml}</div>`;
-    
+
     // Task rows if expanded
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
@@ -7056,22 +7057,22 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 48px;"></div>`;
         }).join('');
-        
+
         let taskBarHtml = '';
         const taskStart = task.startDate ? new Date(task.startDate) : null;
         const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
-        
+
         if (taskStart) {
           const taskStartOffset = daysBetween(startDate, taskStart);
           const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
           const taskLeft = Math.max(0, taskStartOffset * cellWidth);
           const taskWidth = Math.max(cellWidth - 4, taskDuration * cellWidth - 4);
           const isDone = task.done;
-          
+
           // Determine task bar color
           const taskColor = task.color || col.color;
           const colorClass = isDone ? 'status-done' : '';
-          
+
           taskBarHtml = `
             <div class="tl-task-bar ${colorClass}" 
                  data-task-id="${task.id}"
@@ -7087,12 +7088,12 @@ function renderTimelineGanttRowsV3(columns, dates, projectIndex, startDate) {
             </div>
           `;
         }
-        
+
         html += `<div class="tl-gantt-row" data-task-id="${task.id}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
       });
     }
   });
-  
+
   return html;
 }
 
@@ -7114,13 +7115,13 @@ if (typeof tlDependencyState === 'undefined') {
 // Calculate week ranges for ClickUp-style header
 function calculateWeekRanges(dates) {
   if (!dates || dates.length === 0) return [];
-  
+
   const ranges = [];
   let currentRange = null;
-  
+
   dates.forEach((date, idx) => {
     const weekNum = getWeekNumber(date);
-    
+
     if (!currentRange || currentRange.weekNum !== weekNum) {
       if (currentRange) {
         currentRange.endDate = dates[idx - 1];
@@ -7137,25 +7138,25 @@ function calculateWeekRanges(dates) {
       currentRange.days++;
     }
   });
-  
+
   // Close final range
   if (currentRange) {
     currentRange.endDate = dates[dates.length - 1];
     currentRange.endStr = currentRange.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     ranges.push(currentRange);
   }
-  
+
   return ranges;
 }
 
 // V5 Column List - Ultra Minimalistic Premium Design
 function renderTimelineColumnListV5(columns, projectIndex) {
   let html = '';
-  
+
   columns.forEach((col, colIdx) => {
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
     const isComplete = progress === 100;
-    
+
     // Simple, clean column row
     html += `
       <div class="tl-column-row ${col.isExpanded ? 'expanded' : ''}" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
@@ -7169,12 +7170,12 @@ function renderTimelineColumnListV5(columns, projectIndex) {
         </div>
       </div>
     `;
-    
+
     // Expanded task rows - also minimal
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach((task, taskIdx) => {
         const isDone = task.done || task.status === 'done';
-        
+
         html += `
           <div class="tl-task-row ${isDone ? 'completed' : ''}" onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
             <div class="tl-task-connector" style="border-color: ${col.color}20;"></div>
@@ -7187,7 +7188,7 @@ function renderTimelineColumnListV5(columns, projectIndex) {
       });
     }
   });
-  
+
   return html;
 }
 
@@ -7197,14 +7198,14 @@ function renderTimelineDateHeadersV5(dates, zoom) {
   const cellWidth = 48 * zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const dayHtml = dates.map(date => {
     const isToday = date.toDateString() === today.toDateString();
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
     const dayNum = date.getDate();
     const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-    
+
     return `
       <div class="tl-date-col tl-date-col-clickup ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="width: ${cellWidth}px;">
         <div class="tl-date-day">${dayName}</div>
@@ -7214,7 +7215,7 @@ function renderTimelineDateHeadersV5(dates, zoom) {
       </div>
     `;
   }).join('');
-  
+
   return `<div class="tl-day-row tl-day-row-clickup">${dayHtml}</div>`;
 }
 
@@ -7223,20 +7224,20 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let html = '';
   let rowIndex = 0;
-  
+
   columns.forEach(col => {
     const cells = dates.map(date => {
       const isToday = date.toDateString() === today.toDateString();
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
     }).join('');
-    
+
     let left, width, barStartDate, barEndDate;
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    
+
     if (col.minDate && col.maxDate) {
       const startOffset = daysBetween(startDate, col.minDate);
       const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
@@ -7253,7 +7254,7 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
       defaultEnd.setDate(defaultEnd.getDate() + 6);
       barEndDate = defaultEnd.toISOString().split('T')[0];
     }
-    
+
     // Get assignees for bar avatars
     const assignees = [];
     col.tasks.forEach(t => {
@@ -7261,17 +7262,17 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
         assignees.push({ name: t.assignee, avatar: t.assigneeAvatar || null });
       }
     });
-    
+
     // Determine if bar extends beyond today (for fade effect)
     const barEnd = col.maxDate || new Date();
     const showFade = barEnd > today && progress < 100;
-    
+
     // Get emoji for bar
     const barEmoji = getBarEmoji(col.title);
-    
+
     // Get custom milestones for this column
     const customMilestones = col.customMilestones || [];
-    
+
     const barHtml = `
       <div class="tl-task-bar tl-task-bar-clickup column-bar has-emoji" 
            data-column-id="${col.id}" data-column-index="${col.columnIndex}" data-row-index="${rowIndex}"
@@ -7300,10 +7301,10 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
         <div class="tl-bar-resize tl-bar-resize-right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
       </div>
     `;
-    
+
     html += `<div class="tl-gantt-row tl-gantt-row-clickup" data-row-id="${col.id}" data-row-index="${rowIndex}">${cells}${barHtml}</div>`;
     rowIndex++;
-    
+
     // Expanded task rows
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
@@ -7312,11 +7313,11 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 60px;"></div>`;
         }).join('');
-        
+
         let taskBarHtml = '';
         const taskStart = task.startDate ? new Date(task.startDate) : null;
         const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
-        
+
         if (taskStart) {
           const taskStartOffset = daysBetween(startDate, taskStart);
           const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
@@ -7324,18 +7325,18 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
           const taskWidth = Math.max(cellWidth - 4, taskDuration * cellWidth - 4);
           const isDone = task.done;
           const taskColor = task.color || col.color;
-          
+
           // Check if task extends beyond today for fade effect
           const showTaskFade = taskEnd > today && !isDone;
-          
+
           // Get emoji for task bar
           const taskEmoji = getBarEmoji(task.title || '');
-          
+
           // Get custom milestones for this task
           const taskMilestones = task.customMilestones || [];
           const taskStartDateStr = task.startDate || '';
           const taskEndDateStr = task.dueDate || task.endDate || '';
-          
+
           taskBarHtml = `
             <div class="tl-task-bar tl-task-bar-clickup tl-task-bar-child has-emoji ${isDone ? 'completed' : ''}" 
                  data-task-id="${task.id}" data-column-index="${task.columnIndex}" data-task-index="${task.taskIndex}"
@@ -7358,13 +7359,13 @@ function renderTimelineGanttRowsV5(columns, dates, projectIndex, startDate) {
             </div>
           `;
         }
-        
+
         html += `<div class="tl-gantt-row tl-gantt-row-clickup tl-gantt-row-child" data-task-id="${task.id}" data-row-index="${rowIndex}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
         rowIndex++;
       });
     }
   });
-  
+
   return html;
 }
 
@@ -7373,16 +7374,16 @@ function renderTimelineTodayLineClickup(dates, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const offset = daysBetween(startDate, today);
   if (offset < 0 || offset >= dates.length) return '';
-  
+
   const left = (offset * cellWidth) + (cellWidth / 2);
-  
+
   // Format today's date nicely
   const monthName = today.toLocaleDateString('en-US', { month: 'short' });
   const dayNum = today.getDate();
-  
+
   return `
     <div class="tl-today-line tl-today-line-clickup" style="left: ${left}px;">
       <div class="tl-today-date-label">
@@ -7397,14 +7398,14 @@ function renderTimelineTodayLineClickup(dates, startDate) {
 function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const rowHeight = 50; // Updated for tighter spacing
-  
+
   const allItems = [];
   let rowIndex = 0;
-  
+
   columns.forEach(col => {
     allItems.push({ id: col.id, row: rowIndex, left: 0, width: 0, minDate: col.minDate, maxDate: col.maxDate, dependencies: col.dependencies || [] });
     rowIndex++;
-    
+
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
         allItems.push({ id: task.id, row: rowIndex, startDate: task.startDate, dueDate: task.dueDate, dependencies: task.dependencies || [] });
@@ -7412,7 +7413,7 @@ function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
       });
     }
   });
-  
+
   // Calculate positions
   allItems.forEach(item => {
     if (item.minDate && item.maxDate) {
@@ -7429,27 +7430,27 @@ function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
       item.width = Math.max(cellWidth - 4, duration * cellWidth - 4);
     }
   });
-  
+
   let svg = '';
-  
+
   allItems.forEach(target => {
     if (!target.dependencies || target.dependencies.length === 0) return;
-    
+
     target.dependencies.forEach(sourceId => {
       const source = allItems.find(i => i.id === sourceId);
       if (!source || source.width === 0 || !target.width) return;
-      
+
       const sourceX = source.left + source.width;
       const sourceY = (source.row * rowHeight) + (rowHeight / 2);
       const targetX = target.left;
       const targetY = (target.row * rowHeight) + (rowHeight / 2);
-      
+
       // Curved bezier path
       const midX = sourceX + (targetX - sourceX) / 2;
       const curve = Math.abs(targetY - sourceY) / 3;
-      
+
       const path = `M ${sourceX} ${sourceY} C ${sourceX + 30} ${sourceY}, ${targetX - 30} ${targetY}, ${targetX} ${targetY}`;
-      
+
       svg += `
         <path class="tl-dep-path" d="${path}" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="6,3">
           <animate attributeName="stroke-dashoffset" from="9" to="0" dur="0.5s" repeatCount="indefinite"/>
@@ -7459,7 +7460,7 @@ function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
       `;
     });
   });
-  
+
   return svg;
 }
 
@@ -7467,21 +7468,21 @@ function renderTimelineDependenciesV2(columns, dates, projectIndex, startDate) {
 function adjustColor(color, amount) {
   // Simple hex color adjustment
   if (!color || !color.startsWith('#')) return color;
-  
+
   let hex = color.replace('#', '');
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
   }
-  
+
   const num = parseInt(hex, 16);
   let r = (num >> 16) + amount;
   let g = ((num >> 8) & 0x00FF) + amount;
   let b = (num & 0x0000FF) + amount;
-  
+
   r = Math.max(0, Math.min(255, r));
   g = Math.max(0, Math.min(255, g));
   b = Math.max(0, Math.min(255, b));
-  
+
   return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
@@ -7490,7 +7491,7 @@ function autofitTimeline(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Find date range
   let minDate = null, maxDate = null;
   project.columns.forEach(col => {
@@ -7505,7 +7506,7 @@ function autofitTimeline(projectIndex) {
       }
     });
   });
-  
+
   if (minDate && maxDate) {
     timelineState.currentDate = new Date(minDate);
     timelineState.zoom = 1;
@@ -7545,7 +7546,7 @@ async function toggleTimelineTaskDone(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   project.columns.forEach(col => {
     col.tasks.forEach(task => {
       if (task.id === taskId) {
@@ -7553,9 +7554,9 @@ async function toggleTimelineTaskDone(taskId, projectIndex) {
       }
     });
   });
-  
+
   saveProjects(projects);
-  
+
   // Sync to DB if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
     try {
@@ -7564,7 +7565,7 @@ async function toggleTimelineTaskDone(taskId, projectIndex) {
       console.error('Failed to sync task toggle to database:', error);
     }
   }
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
 }
@@ -7580,13 +7581,13 @@ function toggleTimelineFilters(projectIndex) {
 // V4 Column List with avatars
 function renderTimelineColumnListV4(columns, projectIndex) {
   let html = '';
-  
+
   columns.forEach(col => {
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    const dateRange = col.minDate && col.maxDate 
+    const dateRange = col.minDate && col.maxDate
       ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
       : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
-    
+
     // Collect unique assignees
     const assignees = [];
     col.tasks.forEach(t => {
@@ -7594,7 +7595,7 @@ function renderTimelineColumnListV4(columns, projectIndex) {
         assignees.push(t.assignee);
       }
     });
-    
+
     // Column header row
     html += `
       <div class="tl-task-item" style="border-left: 3px solid ${col.color}; cursor: pointer;" onclick="toggleTimelineColumnExpand('${col.id}', ${projectIndex})">
@@ -7628,24 +7629,24 @@ function renderTimelineColumnListV4(columns, projectIndex) {
         ` : ''}
       </div>
     `;
-    
+
     // Expanded task rows
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
-        const taskDateRange = task.startDate || task.dueDate 
+        const taskDateRange = task.startDate || task.dueDate
           ? `${task.startDate ? formatShortDate(task.startDate) : ''} ${task.startDate && task.dueDate ? '→' : ''} ${task.dueDate ? formatShortDate(task.dueDate) : ''}`
           : 'No date';
         const isDone = task.done || task.status === 'done';
         const hasDependencies = task.dependencies && task.dependencies.length > 0;
-        
+
         html += `
           <div class="tl-task-item" style="padding-left: 32px; height: 48px; border-left: 3px solid ${col.color}20; background: rgba(0,0,0,0.02);" 
                onclick="selectTimelineTask('${task.id}', ${projectIndex}, event)">
             <div class="tl-task-status">
-              ${isDone 
-                ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
-                : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
-              }
+              ${isDone
+            ? `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="${col.color}" stroke-width="1.5" fill="none"/></svg>`
+          }
             </div>
             <div class="tl-task-content">
               <div class="tl-task-title ${isDone ? 'completed' : ''}" style="font-size: 12px;">${task.title || 'Untitled'}</div>
@@ -7672,7 +7673,7 @@ function renderTimelineColumnListV4(columns, projectIndex) {
       });
     }
   });
-  
+
   return html;
 }
 
@@ -7694,12 +7695,12 @@ function renderTimelineDateHeadersV4(dates, zoom) {
   const cellWidth = 48 * zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   // Group by month for header row
   let monthHtml = '';
   let currentMonth = '';
   let monthCount = 0;
-  
+
   dates.forEach((date, idx) => {
     const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     if (monthKey !== currentMonth) {
@@ -7715,12 +7716,12 @@ function renderTimelineDateHeadersV4(dates, zoom) {
   if (currentMonth) {
     monthHtml += `<div class="tl-month-cell" style="width: ${monthCount * cellWidth}px;">${currentMonth}</div>`;
   }
-  
+
   // Week indicators row
   let weekHtml = '';
   let currentWeek = -1;
   let weekCount = 0;
-  
+
   dates.forEach((date) => {
     const weekNum = getWeekNumber(date);
     if (weekNum !== currentWeek) {
@@ -7736,14 +7737,14 @@ function renderTimelineDateHeadersV4(dates, zoom) {
   if (currentWeek !== -1 && weekCount > 0) {
     weekHtml += `<div class="tl-week-cell" style="width: ${weekCount * cellWidth}px; flex-shrink: 0; padding: 0 8px; font-size: 10px; font-weight: 600; color: #818cf8; display: flex; align-items: center; border-right: 1px solid rgba(99, 102, 241, 0.1);">W${currentWeek}</div>`;
   }
-  
+
   // Day row
   const dayHtml = dates.map((date) => {
     const isToday = date.toDateString() === today.toDateString();
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
     const dayNum = date.getDate();
-    
+
     return `
       <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
         <div class="tl-date-day">${dayName}</div>
@@ -7751,7 +7752,7 @@ function renderTimelineDateHeadersV4(dates, zoom) {
       </div>
     `;
   }).join('');
-  
+
   return `
     <div class="tl-month-row">${monthHtml}</div>
     <div class="tl-week-row" style="display: flex; height: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); background: rgba(99, 102, 241, 0.03);">${weekHtml}</div>
@@ -7773,20 +7774,20 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let html = '';
   let rowIndex = 0;
-  
+
   columns.forEach((col) => {
     const cells = dates.map((date) => {
       const isToday = date.toDateString() === today.toDateString();
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
     }).join('');
-    
+
     let left, width, barStartDate, barEndDate;
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    
+
     if (col.minDate && col.maxDate) {
       const startOffset = daysBetween(startDate, col.minDate);
       const duration = Math.max(1, daysBetween(col.minDate, col.maxDate) + 1);
@@ -7803,19 +7804,19 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
       defaultEnd.setDate(defaultEnd.getDate() + 6);
       barEndDate = defaultEnd.toISOString().split('T')[0];
     }
-    
+
     // Collect assignees
     const assignees = [];
     col.tasks.forEach(t => {
       if (t.assignee && !assignees.includes(t.assignee)) assignees.push(t.assignee);
     });
-    
-    const statusIcon = progress === 100 
+
+    const statusIcon = progress === 100
       ? `<svg class="tl-status-icon done" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
       : progress > 0
         ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
         : `<svg class="tl-status-icon todo" viewBox="0 0 16 16" style="width:14px;height:14px;"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
-    
+
     const tooltipHtml = `
       <div class="tl-bar-tooltip">
         <div class="tl-tooltip-header">
@@ -7832,14 +7833,14 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
         </div>
       </div>
     `;
-    
+
     const avatarsHtml = assignees.length > 0 ? `
       <div class="tl-bar-avatars">
         ${assignees.slice(0, 3).map((a) => `<div class="tl-bar-avatar" style="background: linear-gradient(135deg, ${getAvatarColor(a)} 0%, ${getAvatarColorDark(a)} 100%);" title="${a}">${a.charAt(0).toUpperCase()}</div>`).join('')}
         ${assignees.length > 3 ? `<div class="tl-bar-avatar tl-bar-avatar-more">+${assignees.length - 3}</div>` : ''}
       </div>
     ` : '';
-    
+
     const barHtml = `
       <div class="tl-bar-header" style="left: ${left}px;">
         <div class="tl-bar-header-left">${statusIcon}<span class="tl-bar-header-title">${col.title}</span><span class="tl-bar-header-count">(${col.taskCount})</span></div>
@@ -7862,10 +7863,10 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
         <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
       </div>
     `;
-    
+
     html += `<div class="tl-gantt-row" data-row-id="${col.id}" data-row-index="${rowIndex}">${cells}${barHtml}</div>`;
     rowIndex++;
-    
+
     if (col.isExpanded && col.tasks.length > 0) {
       col.tasks.forEach(task => {
         const taskCells = dates.map((date) => {
@@ -7873,11 +7874,11 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 48px;"></div>`;
         }).join('');
-        
+
         let taskBarHtml = '';
         const taskStart = task.startDate ? new Date(task.startDate) : null;
         const taskEnd = task.dueDate ? new Date(task.dueDate) : (task.endDate ? new Date(task.endDate) : taskStart);
-        
+
         if (taskStart) {
           const taskStartOffset = daysBetween(startDate, taskStart);
           const taskDuration = taskEnd ? Math.max(1, daysBetween(taskStart, taskEnd) + 1) : 1;
@@ -7886,7 +7887,7 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
           const isDone = task.done;
           const taskColor = task.color || col.color;
           const colorClass = isDone ? 'status-done' : '';
-          
+
           const taskTooltipHtml = `
             <div class="tl-bar-tooltip">
               <div class="tl-tooltip-header">
@@ -7902,7 +7903,7 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
               </div>
             </div>
           `;
-          
+
           taskBarHtml = `
             <div class="tl-task-bar ${colorClass}" 
                  data-task-id="${task.id}" data-column-index="${task.columnIndex}" data-task-index="${task.taskIndex}" data-row-index="${rowIndex}"
@@ -7917,13 +7918,13 @@ function renderTimelineGanttRowsV4(columns, dates, projectIndex, startDate) {
             </div>
           `;
         }
-        
+
         html += `<div class="tl-gantt-row" data-task-id="${task.id}" data-row-index="${rowIndex}" style="height: 36px;">${taskCells}${taskBarHtml}</div>`;
         rowIndex++;
       });
     }
   });
-  
+
   return html;
 }
 
@@ -7945,7 +7946,7 @@ if (typeof tlMilestoneState === 'undefined') {
 function loadBarMilestones(projectIndex, barId) {
   const projects = loadProjects();
   if (!projects[projectIndex]) return [];
-  
+
   // Milestones are stored in project.milestones object keyed by barId
   const milestones = projects[projectIndex].milestones || {};
   return milestones[barId] || [];
@@ -7955,20 +7956,20 @@ function loadBarMilestones(projectIndex, barId) {
 async function saveBarMilestones(projectIndex, barId, milestones) {
   const projects = loadProjects();
   if (!projects[projectIndex]) return;
-  
+
   // Initialize milestones object if it doesn't exist
   if (!projects[projectIndex].milestones) {
     projects[projectIndex].milestones = {};
   }
-  
+
   projects[projectIndex].milestones[barId] = milestones;
   saveProjects(projects);
-  
+
   // Sync to DB if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
     try {
-      await window.LayerDB.updateProject(projects[projectIndex].id, { 
-        milestones: projects[projectIndex].milestones 
+      await window.LayerDB.updateProject(projects[projectIndex].id, {
+        milestones: projects[projectIndex].milestones
       });
     } catch (error) {
       console.error('Failed to save milestones to database:', error);
@@ -7984,9 +7985,9 @@ function generateMilestoneId() {
 
 // Render milestones on a bar
 function renderBarMilestones(projectIndex, barId, barWidth) {
-  const milestones = loadBarMilestones(projectIndex, barId);  
+  const milestones = loadBarMilestones(projectIndex, barId);
   if (milestones.length === 0) return '';
-  
+
   return milestones.map(m => {
     const leftPx = (m.position / 100) * barWidth;
     return `
@@ -8006,29 +8007,29 @@ function renderBarMilestones(projectIndex, barId, barWidth) {
 
 // Add right-click listener to timeline bars
 function setupBarContextMenu(projectIndex) {
-  document.addEventListener('contextmenu', function(e) {
+  document.addEventListener('contextmenu', function (e) {
     const bar = e.target.closest('.tl-task-bar');
     if (!bar) return;
-    
+
     // Don't show if clicking on milestone
     if (e.target.closest('.tl-bar-milestone')) return;
-    
+
     e.preventDefault();
     closeAllContextMenus();
-    
+
     const barId = bar.dataset.columnId || bar.dataset.taskId;
     if (!barId) return;
-    
+
     const barRect = bar.getBoundingClientRect();
     const clickX = e.clientX - barRect.left;
     const position = Math.max(5, Math.min(95, (clickX / barRect.width) * 100));
-    
+
     showBarContextMenu(e.clientX, e.clientY, barId, projectIndex, position, barRect.width);
   });
-  
+
   // Close context menu on click outside
   document.addEventListener('click', closeAllContextMenus);
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeAllContextMenus();
   });
 }
@@ -8036,13 +8037,13 @@ function setupBarContextMenu(projectIndex) {
 // Show bar context menu
 function showBarContextMenu(x, y, barId, projectIndex, position, barWidth) {
   closeAllContextMenus();
-  
+
   const menu = document.createElement('div');
   menu.className = 'tl-bar-context-menu';
   menu.id = 'tlBarContextMenu';
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
-  
+
   menu.innerHTML = `
     <div class="tl-bar-context-menu-item" onclick="addMilestoneAtPosition('${barId}', ${projectIndex}, ${position}, ${barWidth})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -8059,10 +8060,10 @@ function showBarContextMenu(x, y, barId, projectIndex, position, barWidth) {
       Edit bar
     </div>
   `;
-  
+
   document.body.appendChild(menu);
   tlMilestoneState.activeContextMenu = menu;
-  
+
   // Adjust position if off-screen
   const menuRect = menu.getBoundingClientRect();
   if (menuRect.right > window.innerWidth) {
@@ -8078,17 +8079,17 @@ function showMilestoneContextMenu(e, milestoneId, barId, projectIndex) {
   e.preventDefault();
   e.stopPropagation();
   closeAllContextMenus();
-  
+
   const milestones = loadBarMilestones(projectIndex, barId);
   const milestone = milestones.find(m => m.id === milestoneId);
   if (!milestone) return;
-  
+
   const menu = document.createElement('div');
   menu.className = 'tl-bar-context-menu';
   menu.id = 'tlBarContextMenu';
   menu.style.left = `${e.clientX}px`;
   menu.style.top = `${e.clientY}px`;
-  
+
   menu.innerHTML = `
     <div class="tl-bar-context-menu-item" onclick="editMilestoneName('${milestoneId}', '${barId}', ${projectIndex}, ${e.clientX}, ${e.clientY})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -8106,7 +8107,7 @@ function showMilestoneContextMenu(e, milestoneId, barId, projectIndex) {
       Delete marker
     </div>
   `;
-  
+
   document.body.appendChild(menu);
   tlMilestoneState.activeContextMenu = menu;
 }
@@ -8124,20 +8125,20 @@ function closeAllContextMenus() {
 // Add milestone at position
 function addMilestoneAtPosition(barId, projectIndex, position, barWidth) {
   closeAllContextMenus();
-  
+
   // Show input popup for name
   const bar = document.querySelector(`[data-column-id="${barId}"], [data-task-id="${barId}"]`);
   if (!bar) return;
-  
+
   const barRect = bar.getBoundingClientRect();
   const leftPx = (position / 100) * barRect.width;
-  
+
   const popup = document.createElement('div');
   popup.className = 'tl-milestone-input-popup';
   popup.id = 'tlMilestoneInputPopup';
   popup.style.left = `${barRect.left + leftPx}px`;
   popup.style.top = `${barRect.bottom + 20}px`;
-  
+
   popup.innerHTML = `
     <div class="tl-milestone-input-title">New Marker</div>
     <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
@@ -8147,13 +8148,13 @@ function addMilestoneAtPosition(barId, projectIndex, position, barWidth) {
       <button class="tl-milestone-input-btn save" onclick="saveMilestoneFromInput('${barId}', ${projectIndex}, ${position})">Add</button>
     </div>
   `;
-  
+
   document.body.appendChild(popup);
   tlMilestoneState.activeInputPopup = popup;
-  
+
   const input = document.getElementById('milestoneNameInput');
   input.focus();
-  input.addEventListener('keydown', function(e) {
+  input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveMilestoneFromInput(barId, projectIndex, position);
@@ -8167,12 +8168,12 @@ function addMilestoneAtPosition(barId, projectIndex, position, barWidth) {
 function saveMilestoneFromInput(barId, projectIndex, position) {
   const input = document.getElementById('milestoneNameInput');
   const name = input ? input.value.trim() : '';
-  
+
   if (!name) {
     closeAllContextMenus();
     return;
   }
-  
+
   const milestones = loadBarMilestones(projectIndex, barId);
   milestones.push({
     id: generateMilestoneId(),
@@ -8181,10 +8182,10 @@ function saveMilestoneFromInput(barId, projectIndex, position) {
     completed: false,
     createdAt: new Date().toISOString()
   });
-  
+
   saveBarMilestones(projectIndex, barId, milestones);
   closeAllContextMenus();
-  
+
   // Refresh timeline
   refreshTimelineView(projectIndex);
   showToast && showToast(`Milestone "${name}" added`);
@@ -8193,17 +8194,17 @@ function saveMilestoneFromInput(barId, projectIndex, position) {
 // Edit milestone name
 function editMilestoneName(milestoneId, barId, projectIndex, x, y) {
   closeAllContextMenus();
-  
+
   const milestones = loadBarMilestones(projectIndex, barId);
   const milestone = milestones.find(m => m.id === milestoneId);
   if (!milestone) return;
-  
+
   const popup = document.createElement('div');
   popup.className = 'tl-milestone-input-popup';
   popup.id = 'tlMilestoneInputPopup';
   popup.style.left = `${x}px`;
   popup.style.top = `${y}px`;
-  
+
   popup.innerHTML = `
     <div class="tl-milestone-input-title">Edit Marker Label</div>
     <input type="text" class="tl-milestone-input-field" id="milestoneNameInput" 
@@ -8213,14 +8214,14 @@ function editMilestoneName(milestoneId, barId, projectIndex, x, y) {
       <button class="tl-milestone-input-btn save" onclick="updateMilestoneName('${milestoneId}', '${barId}', ${projectIndex})">Save</button>
     </div>
   `;
-  
+
   document.body.appendChild(popup);
   tlMilestoneState.activeInputPopup = popup;
-  
+
   const input = document.getElementById('milestoneNameInput');
   input.focus();
   input.select();
-  input.addEventListener('keydown', function(e) {
+  input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
       updateMilestoneName(milestoneId, barId, projectIndex);
@@ -8234,12 +8235,12 @@ function editMilestoneName(milestoneId, barId, projectIndex, x, y) {
 function updateMilestoneName(milestoneId, barId, projectIndex) {
   const input = document.getElementById('milestoneNameInput');
   const name = input ? input.value.trim() : '';
-  
+
   if (!name) {
     closeAllContextMenus();
     return;
   }
-  
+
   const milestones = loadBarMilestones(projectIndex, barId);
   const milestone = milestones.find(m => m.id === milestoneId);
   if (milestone) {
@@ -8254,7 +8255,7 @@ function updateMilestoneName(milestoneId, barId, projectIndex) {
 // Toggle milestone complete
 function toggleMilestoneComplete(milestoneId, barId, projectIndex) {
   closeAllContextMenus();
-  
+
   const milestones = loadBarMilestones(projectIndex, barId);
   const milestone = milestones.find(m => m.id === milestoneId);
   if (milestone) {
@@ -8268,7 +8269,7 @@ function toggleMilestoneComplete(milestoneId, barId, projectIndex) {
 // Delete milestone
 function deleteMilestone(milestoneId, barId, projectIndex) {
   closeAllContextMenus();
-  
+
   let milestones = loadBarMilestones(projectIndex, barId);
   milestones = milestones.filter(m => m.id !== milestoneId);
   saveBarMilestones(projectIndex, barId, milestones);
@@ -8281,13 +8282,13 @@ function startMilestoneDrag(e, milestoneId, barId, projectIndex) {
   if (e.button !== 0) return; // Only left click
   e.preventDefault();
   e.stopPropagation();
-  
+
   const milestoneEl = e.target.closest('.tl-bar-milestone');
   const bar = document.querySelector(`[data-column-id="${barId}"], [data-task-id="${barId}"]`);
   if (!milestoneEl || !bar) return;
-  
+
   milestoneEl.classList.add('dragging');
-  
+
   tlMilestoneState.draggingMilestone = {
     milestoneId,
     barId,
@@ -8298,7 +8299,7 @@ function startMilestoneDrag(e, milestoneId, barId, projectIndex) {
     startX: e.clientX,
     startLeft: parseFloat(milestoneEl.style.left) || 0
   };
-  
+
   document.addEventListener('mousemove', handleMilestoneDrag);
   document.addEventListener('mouseup', endMilestoneDrag);
 }
@@ -8307,10 +8308,10 @@ function startMilestoneDrag(e, milestoneId, barId, projectIndex) {
 function handleMilestoneDrag(e) {
   const state = tlMilestoneState.draggingMilestone;
   if (!state) return;
-  
+
   const deltaX = e.clientX - state.startX;
   let newLeft = state.startLeft + deltaX;
-  
+
   // Clamp to bar bounds
   newLeft = Math.max(10, Math.min(state.barWidth - 10, newLeft));
   state.element.style.left = `${newLeft}px`;
@@ -8320,15 +8321,15 @@ function handleMilestoneDrag(e) {
 function endMilestoneDrag(e) {
   document.removeEventListener('mousemove', handleMilestoneDrag);
   document.removeEventListener('mouseup', endMilestoneDrag);
-  
+
   const state = tlMilestoneState.draggingMilestone;
   if (!state) return;
-  
+
   state.element.classList.remove('dragging');
-  
+
   const newLeft = parseFloat(state.element.style.left) || 0;
   const newPosition = (newLeft / state.barWidth) * 100;
-  
+
   // Update milestone position
   const milestones = loadBarMilestones(state.projectIndex, state.barId);
   const milestone = milestones.find(m => m.id === state.milestoneId);
@@ -8336,7 +8337,7 @@ function endMilestoneDrag(e) {
     milestone.position = newPosition;
     saveBarMilestones(state.projectIndex, state.barId, milestones);
   }
-  
+
   tlMilestoneState.draggingMilestone = null;
 }
 
@@ -8375,14 +8376,14 @@ function getColumnColor(title) {
 // Render column list for timeline left panel
 function renderTimelineColumnList(columns) {
   let html = '';
-  
+
   // Column rows
   columns.forEach(col => {
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    const dateRange = col.minDate && col.maxDate 
+    const dateRange = col.minDate && col.maxDate
       ? `${formatShortDate(col.minDate)} → ${formatShortDate(col.maxDate)}`
       : (col.tasksWithDates > 0 ? 'Partial dates' : 'No dates');
-    
+
     html += `
       <div class="tl-task-item" style="border-left: 3px solid ${col.color};">
         <div class="tl-task-status">
@@ -8408,7 +8409,7 @@ function renderTimelineColumnList(columns) {
       </div>
     `;
   });
-  
+
   return html;
 }
 
@@ -8417,9 +8418,9 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let html = '';
-  
+
   // Column rows
   columns.forEach((col, idx) => {
     const cells = dates.map((date, dateIdx) => {
@@ -8427,11 +8428,11 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
     }).join('');
-    
+
     let barHtml = '';
     let left, width, barStartDate, barEndDate;
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    
+
     if (col.minDate && col.maxDate) {
       // Column has tasks with dates
       const startOffset = daysBetween(startDate, col.minDate);
@@ -8450,24 +8451,24 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
       defaultEnd.setDate(defaultEnd.getDate() + 6);
       barEndDate = defaultEnd.toISOString().split('T')[0];
     }
-    
+
     // Get status icon based on progress
-    const statusIcon = progress === 100 
+    const statusIcon = progress === 100
       ? `<svg class="tl-status-icon done" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#22c55e"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
       : progress > 0
         ? `<svg class="tl-status-icon progress" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#f59e0b" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 1.5" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`
         : `<svg class="tl-status-icon todo" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#71717a" stroke-width="1.5" fill="none"/></svg>`;
-    
+
     // Priority icon (simplified)
     const priorityIcon = `<svg class="tl-priority-icon" viewBox="0 0 16 16"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z" fill="#6366f1" opacity="0.7"/></svg>`;
-    
+
     // Check if overdue (end date passed and not 100% complete)
     const isOverdue = progress < 100 && isBarOverdue(barEndDate);
     const overdueClass = isOverdue ? 'linear-overdue' : '';
-    
+
     // Get milestones for this bar
     const milestonesHtml = renderBarMilestones(projectIndex, col.id, width);
-    
+
     // Build bar style - Linear-style gradient
     let barStyle = `left: ${left}px; width: ${width}px; `;
     if (isOverdue) {
@@ -8479,7 +8480,7 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
     if (!col.minDate) {
       barStyle += ' border-style: dashed; opacity: 0.7;';
     }
-    
+
     barHtml = `
       <!-- Linear-Style Floating Header Above Bar -->
       <div class="tl-bar-header" style="left: ${left}px;">
@@ -8528,7 +8529,7 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
         <div class="tl-bar-resize right" onmousedown="startColumnBarResize(event, '${col.id}', ${col.columnIndex}, 'right', ${projectIndex})"></div>
       </div>
     `;
-    
+
     html += `
       <div class="tl-gantt-row" data-row-id="${col.id}">
         ${cells}
@@ -8536,7 +8537,7 @@ function renderTimelineColumnGanttRows(columns, dates, projectIndex, startDate) 
       </div>
     `;
   });
-  
+
   return html;
 }
 
@@ -8550,10 +8551,10 @@ function renderTimelineMilestones(columns, dates, projectIndex, startDate) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return '';
-  
+
   // Get milestones from project (or create from column end dates)
   let milestones = project.milestones || [];
-  
+
   // Auto-generate milestones from column end dates if none exist
   if (milestones.length === 0) {
     columns.forEach((col, idx) => {
@@ -8570,20 +8571,20 @@ function renderTimelineMilestones(columns, dates, projectIndex, startDate) {
       }
     });
   }
-  
+
   let html = '';
-  
+
   milestones.forEach((ms, idx) => {
     if (!ms.date) return;
-    
+
     const msDate = new Date(ms.date);
     const offset = daysBetween(startDate, msDate);
     const left = offset * cellWidth + cellWidth / 2;
-    
+
     // Determine status class
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let statusClass = '';
     if (ms.status === 'completed' || ms.progress === 100) {
       statusClass = 'completed';
@@ -8592,12 +8593,12 @@ function renderTimelineMilestones(columns, dates, projectIndex, startDate) {
     } else if (daysBetween(today, msDate) <= 7) {
       statusClass = 'upcoming';
     }
-    
+
     // Calculate progress ring values
     const progress = ms.progress || 0;
     const circumference = 2 * Math.PI * 10;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
-    
+
     html += `
       <div class="tl-milestone" 
            data-milestone-id="${ms.id}"
@@ -8621,22 +8622,22 @@ function renderTimelineMilestones(columns, dates, projectIndex, startDate) {
       </div>
     `;
   });
-  
+
   return html;
 }
 
 // Legacy milestone rendering removed - using new Linear-style system
 function renderTimelineMilestonesEnhanced() { return ''; }
-function openMilestoneDetails() {}
+function openMilestoneDetails() { }
 
 // Calculate timeline date range
 function calculateTimelineDates(tasks, viewMode) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let startDate = new Date(today);
   let endDate = new Date(today);
-  
+
   // Adjust based on view mode
   switch (viewMode) {
     case 'day':
@@ -8656,7 +8657,7 @@ function calculateTimelineDates(tasks, viewMode) {
       endDate.setMonth(endDate.getMonth() + 3);
       break;
   }
-  
+
   // Expand range to include all tasks
   tasks.forEach(task => {
     if (task.startDate) {
@@ -8668,11 +8669,11 @@ function calculateTimelineDates(tasks, viewMode) {
       if (taskEnd > endDate) endDate = new Date(taskEnd);
     }
   });
-  
+
   // Add padding
   startDate.setDate(startDate.getDate() - 3);
   endDate.setDate(endDate.getDate() + 7);
-  
+
   // Generate date array
   const dates = [];
   const current = new Date(startDate);
@@ -8680,7 +8681,7 @@ function calculateTimelineDates(tasks, viewMode) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);
   }
-  
+
   return { startDate, endDate, dates };
 }
 
@@ -8702,24 +8703,24 @@ function renderTimelineTaskList(tasks, projectIndex) {
       </div>
     `;
   }
-  
+
   // Sort by date
   const sortedTasks = [...tasks].sort((a, b) => {
     const dateA = new Date(a.startDate || a.dueDate || '9999-12-31');
     const dateB = new Date(b.startDate || b.dueDate || '9999-12-31');
     return dateA - dateB;
   });
-  
+
   return sortedTasks.map((task, idx) => {
     const isSelected = timelineState.selectedTaskIds.includes(task.id);
     const isMilestone = task.type === 'milestone';
     const priority = task.priority || 'none';
     const statusIcon = getTimelineStatusIcon(task.status);
-    
+
     const startStr = task.startDate ? formatShortDate(task.startDate) : '';
     const endStr = task.dueDate || task.endDate ? formatShortDate(task.dueDate || task.endDate) : '';
     const dateStr = startStr && endStr ? `${startStr} → ${endStr}` : (startStr || endStr || 'No date');
-    
+
     return `
       <div class="tl-task-item ${isSelected ? 'selected' : ''} ${isMilestone ? 'milestone' : ''}" 
            data-task-id="${task.id}"
@@ -8763,13 +8764,13 @@ function renderTimelineDateHeaders(dates, zoom) {
   const cellWidth = 48 * zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return dates.map((date, idx) => {
     const isToday = date.toDateString() === today.toDateString();
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
     const dayNum = date.getDate();
-    
+
     return `
       <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; width: ${cellWidth}px;">
         <div class="tl-date-day">${dayName}</div>
@@ -8784,14 +8785,14 @@ function renderTimelineGanttRows(tasks, dates, projectIndex, startDate) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   // Sort tasks by date
   const sortedTasks = [...tasks].sort((a, b) => {
     const dateA = new Date(a.startDate || a.dueDate || '9999-12-31');
     const dateB = new Date(b.startDate || b.dueDate || '9999-12-31');
     return dateA - dateB;
   });
-  
+
   return sortedTasks.map((task, idx) => {
     // Render cells
     const cells = dates.map((date, dateIdx) => {
@@ -8799,27 +8800,27 @@ function renderTimelineGanttRows(tasks, dates, projectIndex, startDate) {
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px;"></div>`;
     }).join('');
-    
+
     // Calculate bar position
     const taskStart = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
     const taskEnd = task.endDate || task.dueDate ? new Date(task.endDate || task.dueDate) : taskStart;
-    
+
     let barHtml = '';
     if (taskStart) {
       const startOffset = daysBetween(startDate, taskStart);
       const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
       const left = startOffset * cellWidth;
       const width = duration * cellWidth - 4;
-      
+
       const isMilestone = task.type === 'milestone';
       const isSelected = timelineState.selectedTaskIds.includes(task.id);
       const colorClass = task.color ? `color-${getColorName(task.color)}` : 'color-blue';
       const statusClass = task.status === 'done' || task.done ? 'status-done' : '';
-      
+
       if (isMilestone) {
         barHtml = `
           <div class="tl-task-bar milestone ${isSelected ? 'selected' : ''}" 
-               style="left: ${left + cellWidth/2 - 14}px;"
+               style="left: ${left + cellWidth / 2 - 14}px;"
                data-task-id="${task.id}"
                ondblclick="openTimelineTaskEdit('${task.id}', ${projectIndex})"
                title="${task.name || task.title}">
@@ -8845,7 +8846,7 @@ function renderTimelineGanttRows(tasks, dates, projectIndex, startDate) {
         `;
       }
     }
-    
+
     return `
       <div class="tl-gantt-row" data-task-id="${task.id}">
         ${cells}
@@ -8861,9 +8862,9 @@ function renderTimelineTodayLine(dates, startDate) {
   today.setHours(0, 0, 0, 0);
   const cellWidth = 48 * timelineState.zoom;
   const offset = daysBetween(startDate, today);
-  
+
   if (offset < 0 || offset >= dates.length) return '';
-  
+
   const left = offset * cellWidth + cellWidth / 2;
   return `<div class="tl-today-line" style="left: ${left}px;"></div>`;
 }
@@ -8921,20 +8922,20 @@ function setupTimelineInteractions(projectIndex) {
   // Sync scroll between header and grid
   const wrapper = document.getElementById('tlGanttWrapper');
   const headerScroll = document.getElementById('tlDateHeaderScroll');
-  
+
   if (wrapper && headerScroll) {
     wrapper.addEventListener('scroll', () => {
       headerScroll.scrollLeft = wrapper.scrollLeft;
     });
   }
-  
+
   // Add global mouse event listeners for drag
   document.addEventListener('mousemove', handleTimelineMouseMove);
   document.addEventListener('mouseup', handleTimelineMouseUp);
-  
+
   // Keyboard shortcuts
   document.addEventListener('keydown', handleTimelineKeydown);
-  
+
   // Setup right-click context menu for milestones
   setupBarContextMenu(projectIndex);
 }
@@ -8943,12 +8944,12 @@ function setupTimelineInteractions(projectIndex) {
 function startTimelineDrag(event, taskId, projectIndex) {
   // Ignore if clicking on resize handles
   if (event.target.classList.contains('tl-bar-resize')) return;
-  
+
   event.preventDefault();
   event.stopPropagation();
-  
+
   const taskBar = event.currentTarget;
-  
+
   tlDragState = {
     isDragging: true,
     isResizing: false,
@@ -8964,7 +8965,7 @@ function startTimelineDrag(event, taskId, projectIndex) {
     columnIndex: parseInt(taskBar.dataset.columnIndex),
     taskIndex: parseInt(taskBar.dataset.taskIndex)
   };
-  
+
   taskBar.classList.add('dragging');
   document.body.style.cursor = 'grabbing';
   document.body.style.userSelect = 'none';
@@ -8974,10 +8975,10 @@ function startTimelineDrag(event, taskId, projectIndex) {
 function startTimelineResize(event, taskId, direction, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   const taskBar = event.target.closest('.tl-task-bar');
   if (!taskBar) return;
-  
+
   tlDragState = {
     isDragging: false,
     isResizing: true,
@@ -8993,7 +8994,7 @@ function startTimelineResize(event, taskId, direction, projectIndex) {
     columnIndex: parseInt(taskBar.dataset.columnIndex),
     taskIndex: parseInt(taskBar.dataset.taskIndex)
   };
-  
+
   taskBar.classList.add('resizing');
   document.body.style.cursor = 'ew-resize';
   document.body.style.userSelect = 'none';
@@ -9003,10 +9004,10 @@ function startTimelineResize(event, taskId, direction, projectIndex) {
 function startTaskBarResize(event, taskId, columnIndex, taskIndex, direction, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   const taskBar = event.target.closest('.tl-task-bar');
   if (!taskBar) return;
-  
+
   tlDragState = {
     isDragging: false,
     isResizing: true,
@@ -9022,7 +9023,7 @@ function startTaskBarResize(event, taskId, columnIndex, taskIndex, direction, pr
     columnIndex: columnIndex,
     taskIndex: taskIndex
   };
-  
+
   taskBar.classList.add('resizing');
   document.body.style.cursor = 'ew-resize';
   document.body.style.userSelect = 'none';
@@ -9031,16 +9032,16 @@ function startTaskBarResize(event, taskId, columnIndex, taskIndex, direction, pr
 // Handle mouse move during drag/resize
 function handleTimelineMouseMove(event) {
   if (!tlDragState.isDragging && !tlDragState.isResizing) return;
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const deltaX = event.clientX - tlDragState.startX;
   const daysDelta = Math.round(deltaX / cellWidth);
-  
+
   if (tlDragState.isDragging) {
     // Move the task bar
     const newLeft = tlDragState.originalLeft + (daysDelta * cellWidth);
     tlDragState.taskBar.style.left = `${newLeft}px`;
-    
+
     // Show preview tooltip
     showDragPreview(tlDragState.taskBar, daysDelta);
   } else if (tlDragState.isResizing) {
@@ -9055,7 +9056,7 @@ function handleTimelineMouseMove(event) {
       tlDragState.taskBar.style.left = `${newLeft}px`;
       tlDragState.taskBar.style.width = `${newWidth}px`;
     }
-    
+
     // Show resize preview
     showResizePreview(tlDragState.taskBar, daysDelta, tlDragState.resizeDirection);
   }
@@ -9064,21 +9065,21 @@ function handleTimelineMouseMove(event) {
 // Handle mouse up - finalize drag/resize
 function handleTimelineMouseUp(event) {
   if (!tlDragState.isDragging && !tlDragState.isResizing) return;
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const deltaX = event.clientX - tlDragState.startX;
   const daysDelta = Math.round(deltaX / cellWidth);
-  
+
   // Remove visual classes
   if (tlDragState.taskBar) {
     tlDragState.taskBar.classList.remove('dragging', 'resizing');
   }
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
-  
+
   // Remove preview tooltip
   removeDragPreview();
-  
+
   // Only update if there was actual movement
   if (daysDelta !== 0) {
     if (tlDragState.isDragging) {
@@ -9089,7 +9090,7 @@ function handleTimelineMouseUp(event) {
       updateTaskDatesAfterResize(daysDelta, tlDragState.resizeDirection);
     }
   }
-  
+
   // Reset state
   tlDragState = {
     isDragging: false,
@@ -9113,18 +9114,18 @@ async function updateTaskDatesAfterDrag(daysDelta) {
   const projects = loadProjects();
   const project = projects[tlDragState.projectIndex];
   if (!project) return;
-  
+
   // Find the task
   const task = project.columns[tlDragState.columnIndex]?.tasks[tlDragState.taskIndex];
   if (!task) return;
-  
+
   // Update start date
   if (task.startDate) {
     const newStart = new Date(task.startDate);
     newStart.setDate(newStart.getDate() + daysDelta);
     task.startDate = newStart.toISOString().split('T')[0];
   }
-  
+
   // Update end/due date
   if (task.dueDate) {
     const newEnd = new Date(task.dueDate);
@@ -9136,13 +9137,13 @@ async function updateTaskDatesAfterDrag(daysDelta) {
     newEnd.setDate(newEnd.getDate() + daysDelta);
     task.endDate = newEnd.toISOString().split('T')[0];
   }
-  
+
   // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(tlDragState.projectIndex, container);
-  
+
   showToast(`Task moved ${Math.abs(daysDelta)} day${Math.abs(daysDelta) !== 1 ? 's' : ''} ${daysDelta > 0 ? 'forward' : 'back'}`);
 }
 
@@ -9151,11 +9152,11 @@ async function updateTaskDatesAfterResize(daysDelta, direction) {
   const projects = loadProjects();
   const project = projects[tlDragState.projectIndex];
   if (!project) return;
-  
+
   // Find the task
   const task = project.columns[tlDragState.columnIndex]?.tasks[tlDragState.taskIndex];
   if (!task) return;
-  
+
   if (direction === 'right') {
     // Extend/shrink end date
     const endDateField = task.dueDate ? 'dueDate' : 'endDate';
@@ -9177,54 +9178,54 @@ async function updateTaskDatesAfterResize(daysDelta, direction) {
       task.startDate = newStart.toISOString().split('T')[0];
     }
   }
-  
+
   // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(tlDragState.projectIndex, container);
-  
+
   showToast('Task duration updated');
 }
 
 // Show drag preview tooltip
 function showDragPreview(taskBar, daysDelta) {
   removeDragPreview();
-  
+
   if (daysDelta === 0) return;
-  
+
   const preview = document.createElement('div');
   preview.className = 'tl-drag-preview';
   preview.innerHTML = `
     <span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>
   `;
-  
+
   const rect = taskBar.getBoundingClientRect();
   preview.style.top = `${rect.top - 30}px`;
   preview.style.left = `${rect.left + rect.width / 2}px`;
-  
+
   document.body.appendChild(preview);
 }
 
 // Show resize preview tooltip
 function showResizePreview(taskBar, daysDelta, direction) {
   removeDragPreview();
-  
+
   if (daysDelta === 0) return;
-  
+
   const preview = document.createElement('div');
   preview.className = 'tl-drag-preview';
-  
+
   if (direction === 'right') {
     preview.innerHTML = `<span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>`;
   } else {
     preview.innerHTML = `<span>${daysDelta > 0 ? '+' : ''}${daysDelta} day${Math.abs(daysDelta) !== 1 ? 's' : ''}</span>`;
   }
-  
+
   const rect = taskBar.getBoundingClientRect();
   preview.style.top = `${rect.top - 30}px`;
   preview.style.left = `${direction === 'right' ? rect.right - 40 : rect.left}px`;
-  
+
   document.body.appendChild(preview);
 }
 
@@ -9256,12 +9257,12 @@ let tlColumnDragState = {
 // Start dragging a column bar
 function startColumnBarDrag(event, columnId, columnIndex, projectIndex) {
   if (event.target.classList.contains('tl-bar-resize')) return;
-  
+
   event.preventDefault();
   event.stopPropagation();
-  
+
   const columnBar = event.currentTarget;
-  
+
   tlColumnDragState = {
     isDragging: true,
     isResizing: false,
@@ -9276,12 +9277,12 @@ function startColumnBarDrag(event, columnId, columnIndex, projectIndex) {
     startDate: columnBar.dataset.startDate,
     endDate: columnBar.dataset.endDate
   };
-  
+
   columnBar.classList.add('dragging');
   columnBar.style.cursor = 'grabbing';
   document.body.style.cursor = 'grabbing';
   document.body.style.userSelect = 'none';
-  
+
   // Add event listeners
   document.addEventListener('mousemove', handleColumnBarMouseMove);
   document.addEventListener('mouseup', handleColumnBarMouseUp);
@@ -9291,10 +9292,10 @@ function startColumnBarDrag(event, columnId, columnIndex, projectIndex) {
 function startColumnBarResize(event, columnId, columnIndex, direction, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   const columnBar = event.target.closest('.tl-task-bar');
   if (!columnBar) return;
-  
+
   tlColumnDragState = {
     isDragging: false,
     isResizing: true,
@@ -9309,11 +9310,11 @@ function startColumnBarResize(event, columnId, columnIndex, direction, projectIn
     startDate: columnBar.dataset.startDate,
     endDate: columnBar.dataset.endDate
   };
-  
+
   columnBar.classList.add('resizing');
   document.body.style.cursor = 'ew-resize';
   document.body.style.userSelect = 'none';
-  
+
   // Add event listeners
   document.addEventListener('mousemove', handleColumnBarMouseMove);
   document.addEventListener('mouseup', handleColumnBarMouseUp);
@@ -9322,11 +9323,11 @@ function startColumnBarResize(event, columnId, columnIndex, direction, projectIn
 // Handle mouse move during column bar drag/resize
 function handleColumnBarMouseMove(event) {
   if (!tlColumnDragState.isDragging && !tlColumnDragState.isResizing) return;
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const deltaX = event.clientX - tlColumnDragState.startX;
   const daysDelta = Math.round(deltaX / cellWidth);
-  
+
   if (tlColumnDragState.isDragging) {
     const newLeft = tlColumnDragState.originalLeft + (daysDelta * cellWidth);
     tlColumnDragState.columnBar.style.left = `${newLeft}px`;
@@ -9349,22 +9350,22 @@ function handleColumnBarMouseMove(event) {
 function handleColumnBarMouseUp(event) {
   document.removeEventListener('mousemove', handleColumnBarMouseMove);
   document.removeEventListener('mouseup', handleColumnBarMouseUp);
-  
+
   if (!tlColumnDragState.isDragging && !tlColumnDragState.isResizing) return;
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const deltaX = event.clientX - tlColumnDragState.startX;
   const daysDelta = Math.round(deltaX / cellWidth);
-  
+
   if (tlColumnDragState.columnBar) {
     tlColumnDragState.columnBar.classList.remove('dragging', 'resizing');
     tlColumnDragState.columnBar.style.cursor = 'grab';
   }
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
-  
+
   removeDragPreview();
-  
+
   if (daysDelta !== 0) {
     if (tlColumnDragState.isDragging) {
       updateColumnDatesAfterDrag(daysDelta);
@@ -9372,7 +9373,7 @@ function handleColumnBarMouseUp(event) {
       updateColumnDatesAfterResize(daysDelta, tlColumnDragState.resizeDirection);
     }
   }
-  
+
   tlColumnDragState = {
     isDragging: false,
     isResizing: false,
@@ -9394,24 +9395,24 @@ async function updateColumnDatesAfterDrag(daysDelta) {
   const projects = loadProjects();
   const project = projects[tlColumnDragState.projectIndex];
   if (!project) return;
-  
+
   const column = project.columns[tlColumnDragState.columnIndex];
   if (!column) return;
-  
+
   // Get the bar's current dates from the dataset
   const barStartDate = tlColumnDragState.startDate;
   const barEndDate = tlColumnDragState.endDate;
-  
+
   // Calculate new bar dates
   const newBarStart = new Date(barStartDate);
   newBarStart.setDate(newBarStart.getDate() + daysDelta);
   const newBarEnd = new Date(barEndDate);
   newBarEnd.setDate(newBarEnd.getDate() + daysDelta);
-  
+
   // If column has tasks with dates, update them
   if (column.tasks && column.tasks.length > 0) {
     const tasksWithDates = column.tasks.filter(t => t.startDate || t.dueDate || t.endDate);
-    
+
     if (tasksWithDates.length > 0) {
       // Update all tasks in the column that have dates
       column.tasks.forEach(task => {
@@ -9439,7 +9440,7 @@ async function updateColumnDatesAfterDrag(daysDelta) {
       });
     }
   }
-  
+
   // Store column-level date info (for columns without task dates)
   if (!column.timelineStart || !column.timelineEnd) {
     column.timelineStart = newBarStart.toISOString().split('T')[0];
@@ -9448,18 +9449,18 @@ async function updateColumnDatesAfterDrag(daysDelta) {
     const colStart = new Date(column.timelineStart);
     colStart.setDate(colStart.getDate() + daysDelta);
     column.timelineStart = colStart.toISOString().split('T')[0];
-    
+
     const colEnd = new Date(column.timelineEnd);
     colEnd.setDate(colEnd.getDate() + daysDelta);
     column.timelineEnd = colEnd.toISOString().split('T')[0];
   }
-  
+
   // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(tlColumnDragState.projectIndex, container);
-  
+
   showToast(`Column "${column.title}" moved ${Math.abs(daysDelta)} day${Math.abs(daysDelta) !== 1 ? 's' : ''} ${daysDelta > 0 ? 'forward' : 'back'}`);
 }
 
@@ -9468,16 +9469,16 @@ async function updateColumnDatesAfterResize(daysDelta, direction) {
   const projects = loadProjects();
   const project = projects[tlColumnDragState.projectIndex];
   if (!project) return;
-  
+
   const column = project.columns[tlColumnDragState.columnIndex];
   if (!column) return;
-  
+
   const barStartDate = tlColumnDragState.startDate;
   const barEndDate = tlColumnDragState.endDate;
-  
+
   // Get tasks with dates
   const tasksWithDates = (column.tasks || []).filter(t => t.startDate || t.dueDate || t.endDate);
-  
+
   if (tasksWithDates.length > 0) {
     if (direction === 'right') {
       // Extend end dates
@@ -9503,7 +9504,7 @@ async function updateColumnDatesAfterResize(daysDelta, direction) {
       });
     }
   }
-  
+
   // Update column-level stored dates
   if (direction === 'right') {
     const newEnd = new Date(barEndDate);
@@ -9520,13 +9521,13 @@ async function updateColumnDatesAfterResize(daysDelta, direction) {
       column.timelineEnd = barEndDate;
     }
   }
-  
+
   // Save to localStorage and auto-sync to DB (debounced)
   saveProjects(projects);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(tlColumnDragState.projectIndex, container);
-  
+
   showToast(`Column "${column.title}" dates updated`);
 }
 
@@ -9545,10 +9546,10 @@ function openEditColumnModal(columnIndex, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const column = project.columns[columnIndex];
   if (!column) return;
-  
+
   const colorOptions = [
     { name: 'blue', hex: '#3b82f6' },
     { name: 'purple', hex: '#8b5cf6' },
@@ -9561,10 +9562,10 @@ function openEditColumnModal(columnIndex, projectIndex) {
     { name: 'cyan', hex: '#06b6d4' },
     { name: 'gray', hex: '#6b7280' }
   ];
-  
+
   // Get current column color
   const currentColor = getColumnColor(column.title) || '#3b82f6';
-  
+
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'editColumnModal';
@@ -9614,11 +9615,11 @@ function openEditColumnModal(columnIndex, projectIndex) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
+
   setTimeout(() => document.getElementById('editColumnName')?.focus(), 100);
-  
+
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeEditColumnModal();
   });
@@ -9640,22 +9641,22 @@ function closeEditColumnModal() {
 function saveEditColumn(columnIndex, projectIndex) {
   const name = document.getElementById('editColumnName')?.value?.trim();
   const color = document.getElementById('editColumnColor')?.value;
-  
+
   if (!name) {
     showToast('Please enter a column name');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project?.columns?.[columnIndex]) return;
-  
+
   project.columns[columnIndex].title = name;
   project.columns[columnIndex].color = color;
-  
+
   saveProjects(projects);
   closeEditColumnModal();
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
   showToast('Column updated');
@@ -9666,13 +9667,13 @@ function editColumnDates(columnIndex, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const column = project.columns[columnIndex];
   if (!column) return;
-  
+
   const startDate = column.timelineStart || '';
   const endDate = column.timelineEnd || '';
-  
+
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'editColumnDatesModal';
@@ -9700,9 +9701,9 @@ function editColumnDates(columnIndex, projectIndex) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
+
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeEditColumnDatesModal();
   });
@@ -9716,23 +9717,23 @@ function closeEditColumnDatesModal() {
 function saveColumnDates(columnIndex, projectIndex) {
   const startDate = document.getElementById('columnStartDate').value;
   const endDate = document.getElementById('columnEndDate').value;
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const column = project.columns[columnIndex];
   if (!column) return;
-  
+
   column.timelineStart = startDate;
   column.timelineEnd = endDate;
-  
+
   saveProjects(projects);
   closeEditColumnDatesModal();
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
-  
+
   showToast('Column dates updated');
 }
 
@@ -9753,9 +9754,9 @@ function deleteTimelineTask(taskId, colIdx, taskIdx, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project?.columns?.[colIdx]?.tasks?.[taskIdx]) return;
-  
+
   project.columns[colIdx].tasks.splice(taskIdx, 1);
-  
+
   // Also remove this task from other tasks' dependencies
   project.columns.forEach(col => {
     col.tasks.forEach(task => {
@@ -9765,12 +9766,12 @@ function deleteTimelineTask(taskId, colIdx, taskIdx, projectIndex) {
       }
     });
   });
-  
+
   saveProjects(projects);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
-  
+
   showToast('Task deleted');
 }
 
@@ -9790,7 +9791,7 @@ function goToTimelineToday(projectIndex) {
   timelineState.currentDate = new Date();
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
-  
+
   // Scroll to today after render
   setTimeout(() => {
     const todayLine = document.querySelector('.tl-today-line');
@@ -9842,7 +9843,7 @@ function selectTimelineTask(taskId, projectIndex, event) {
   } else {
     timelineState.selectedTaskIds = [taskId];
   }
-  
+
   // Update UI
   document.querySelectorAll('.tl-task-item, .tl-task-bar').forEach(el => {
     el.classList.toggle('selected', timelineState.selectedTaskIds.includes(el.dataset.taskId));
@@ -9855,13 +9856,13 @@ function handleTimelineQuickAdd(event, projectIndex) {
     const title = event.target.value.trim();
     const projects = loadProjects();
     const project = projects[projectIndex];
-    
+
     // Add to first column (To Do)
     if (project && project.columns && project.columns[0]) {
       const today = new Date().toISOString().split('T')[0];
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
-      
+
       project.columns[0].tasks.push({
         id: generateId('TASK'),
         title: title,
@@ -9870,10 +9871,10 @@ function handleTimelineQuickAdd(event, projectIndex) {
         dueDate: nextWeek.toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       });
-      
+
       saveProjects(projects);
       event.target.value = '';
-      
+
       // Re-render
       const container = document.querySelector('.pd-content-scroll');
       if (container) renderTimelineView(projectIndex, container);
@@ -9906,14 +9907,14 @@ function openTimelineAddTask(projectIndex) {
       </div>
     </div>
   `);
-  
+
   // Set default dates
   const today = new Date().toISOString().split('T')[0];
   const nextWeek = new Date();
   nextWeek.setDate(nextWeek.getDate() + 7);
   document.getElementById('tlNewTaskStart').value = today;
   document.getElementById('tlNewTaskEnd').value = nextWeek.toISOString().split('T')[0];
-  
+
   // Focus title input
   setTimeout(() => document.getElementById('tlNewTaskTitle').focus(), 100);
 }
@@ -9922,15 +9923,15 @@ function saveTimelineTask(projectIndex) {
   const title = document.getElementById('tlNewTaskTitle').value.trim();
   const startDate = document.getElementById('tlNewTaskStart').value;
   const endDate = document.getElementById('tlNewTaskEnd').value;
-  
+
   if (!title) {
     showToast('Please enter a task title');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (project && project.columns && project.columns[0]) {
     project.columns[0].tasks.push({
       id: generateId('TASK'),
@@ -9940,10 +9941,10 @@ function saveTimelineTask(projectIndex) {
       dueDate: endDate,
       createdAt: new Date().toISOString()
     });
-    
+
     saveProjects(projects);
     closeModal();
-    
+
     const container = document.querySelector('.pd-content-scroll');
     if (container) renderTimelineView(projectIndex, container);
     showToast('Task added successfully');
@@ -9955,7 +9956,7 @@ async function toggleTimelineTaskComplete(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Find the task
   for (const col of project.columns || []) {
     for (const task of col.tasks || []) {
@@ -9968,10 +9969,10 @@ async function toggleTimelineTaskComplete(taskId, projectIndex) {
           task.status = 'done';
           task.done = true;
         }
-        
+
         // Save to localStorage and auto-sync to DB (debounced)
         saveProjects(projects);
-        
+
         const container = document.querySelector('.pd-content-scroll');
         if (container) renderTimelineView(projectIndex, container);
         showToast(task.status === 'done' ? 'Task completed!' : 'Task marked incomplete');
@@ -9986,12 +9987,12 @@ function openQuickEditTaskModal(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Find the task
   let foundTask = null;
   let foundColIdx = -1;
   let foundTaskIdx = -1;
-  
+
   for (let colIdx = 0; colIdx < (project.columns || []).length; colIdx++) {
     const col = project.columns[colIdx];
     for (let taskIdx = 0; taskIdx < (col.tasks || []).length; taskIdx++) {
@@ -10004,12 +10005,12 @@ function openQuickEditTaskModal(taskId, projectIndex) {
     }
     if (foundTask) break;
   }
-  
+
   if (!foundTask) {
     showToast('Task not found');
     return;
   }
-  
+
   const colorOptions = [
     { name: 'blue', hex: '#3b82f6' },
     { name: 'purple', hex: '#8b5cf6' },
@@ -10022,9 +10023,9 @@ function openQuickEditTaskModal(taskId, projectIndex) {
     { name: 'cyan', hex: '#06b6d4' },
     { name: 'gray', hex: '#6b7280' }
   ];
-  
+
   const currentColor = foundTask.color || '#3b82f6';
-  
+
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'quickEditTaskModal';
@@ -10090,17 +10091,17 @@ function openQuickEditTaskModal(taskId, projectIndex) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
+
   // Focus title input
   setTimeout(() => document.getElementById('quickEditTaskName')?.focus(), 100);
-  
+
   // Close on background click
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeQuickEditTaskModal();
   });
-  
+
   // Close on Escape
   const handleEscape = (e) => {
     if (e.key === 'Escape') {
@@ -10129,19 +10130,19 @@ function saveQuickEditTask(taskId, projectIndex, colIdx, taskIdx) {
   const startDate = document.getElementById('quickEditStartDate')?.value;
   const endDate = document.getElementById('quickEditEndDate')?.value;
   const color = document.getElementById('quickEditTaskColor')?.value;
-  
+
   if (!name) {
     showToast('Please enter a task name');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project?.columns?.[colIdx]?.tasks?.[taskIdx]) {
     showToast('Task not found');
     return;
   }
-  
+
   const task = project.columns[colIdx].tasks[taskIdx];
   task.title = name;
   task.name = name;
@@ -10149,10 +10150,10 @@ function saveQuickEditTask(taskId, projectIndex, colIdx, taskIdx) {
   task.endDate = endDate;
   task.dueDate = endDate || task.dueDate;
   task.color = color;
-  
+
   saveProjects(projects);
   closeQuickEditTaskModal();
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
   showToast('Task updated');
@@ -10163,12 +10164,12 @@ function handleTimelineKeydown(e) {
   // Only handle if timeline is visible
   const timeline = document.querySelector('.timeline-linear');
   if (!timeline) return;
-  
+
   // Don't handle if typing in input
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-  
+
   const projectIndex = timelineState.lastProjectIndex;
-  
+
   switch (e.key.toLowerCase()) {
     case 'd':
       if (!e.ctrlKey && !e.metaKey) {
@@ -10211,7 +10212,7 @@ function calculateTimelineStats(tasks, milestones) {
 function renderResourceSection(project, dates, projectIndex) {
   const tasks = project.tasks || [];
   const members = [...new Set(tasks.map(t => t.assignee || 'Unassigned'))];
-  
+
   if (members.length === 0) {
     return `
       <div class="tl-resource-panel">
@@ -10219,7 +10220,7 @@ function renderResourceSection(project, dates, projectIndex) {
       </div>
     `;
   }
-  
+
   return `
     <div class="tl-resource-panel">
       <div class="tl-resource-header">
@@ -10236,9 +10237,9 @@ function renderResourceSection(project, dates, projectIndex) {
       </div>
       <div class="tl-resource-body">
         ${members.slice(0, 5).map(member => {
-          const memberTasks = tasks.filter(t => t.assignee === member);
-          const workload = Math.min(100, memberTasks.length * 25);
-          return `
+    const memberTasks = tasks.filter(t => t.assignee === member);
+    const workload = Math.min(100, memberTasks.length * 25);
+    return `
             <div class="tl-resource-row">
               <div class="tl-member-info">
                 <div class="tl-member-avatar" style="background: ${getAvatarColor(member)}">${member.charAt(0).toUpperCase()}</div>
@@ -10250,7 +10251,7 @@ function renderResourceSection(project, dates, projectIndex) {
               <span class="tl-workload-label">${memberTasks.length} tasks</span>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -10266,7 +10267,7 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
     if (timelineState.showDone) return true;
     return item.status !== 'completed' && item.status !== 'done';
   });
-  
+
   if (allItems.length === 0) {
     return `
       <div class="tl-empty-list">
@@ -10283,9 +10284,9 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
       </div>
     `;
   }
-  
+
   allItems.sort((a, b) => normalizeToLocalMidnight(a.startDate || a.dueDate || 0) - normalizeToLocalMidnight(b.startDate || b.dueDate || 0));
-  
+
   // Priority colors and icons (no emojis - using colored dots via CSS)
   const priorityConfig = {
     urgent: { color: '#ef4444', icon: '', label: 'Urgent' },
@@ -10294,7 +10295,7 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
     low: { color: '#6b7280', icon: '', label: 'Low' },
     none: { color: '#3f3f46', icon: '', label: '' }
   };
-  
+
   // Status configuration with Linear-style icons
   const statusConfig = {
     'backlog': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="2 2"/></svg>`, color: '#6b7280', label: 'Backlog' },
@@ -10307,7 +10308,7 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
     'cancelled': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#6b7280" stroke-width="1.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>`, color: '#6b7280', label: 'Cancelled' },
     'blocked': { icon: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" fill="#ef4444"/><rect x="5" y="7" width="6" height="2" fill="white" rx="0.5"/></svg>`, color: '#ef4444', label: 'Blocked' }
   };
-  
+
   return allItems.map((item, idx) => {
     const statusKey = (item.status || 'todo').toLowerCase().replace(/\s+/g, '-');
     const statusClass = statusKey;
@@ -10318,28 +10319,28 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
     const priority = item.priority || 'none';
     const priorityData = priorityConfig[priority] || priorityConfig.none;
     const statusData = statusConfig[statusKey] || statusConfig.todo;
-    
+
     // Format dates for display
     const startDate = item.startDate ? new Date(item.startDate) : null;
     const endDate = item.endDate || item.dueDate ? new Date(item.endDate || item.dueDate) : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const isOverdue = endDate && endDate < today && statusClass !== 'done' && statusClass !== 'completed';
-    
+
     const formatShortDate = (date) => {
       if (!date) return '';
       const d = new Date(date);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
-    
-    const dateDisplay = startDate && endDate 
+
+    const dateDisplay = startDate && endDate
       ? `${formatShortDate(startDate)} → ${formatShortDate(endDate)}`
-      : endDate 
+      : endDate
         ? formatShortDate(endDate)
-        : startDate 
+        : startDate
           ? formatShortDate(startDate)
           : '';
-    
+
     // Assignee avatar
     const assigneeAvatar = item.assignee ? `
       <div class="tl-task-assignee" title="${item.assignee}">
@@ -10348,7 +10349,7 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
         </div>
       </div>
     ` : '';
-    
+
     // Labels/Tags
     const labels = item.labels || item.tags || [];
     const labelColors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#ef4444'];
@@ -10362,12 +10363,12 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
         ${labels.length > 2 ? `<span class="tl-task-label-more">+${labels.length - 2}</span>` : ''}
       </div>
     ` : '';
-    
+
     // Priority indicator bar
     const priorityBar = priority !== 'none' ? `
       <div class="tl-priority-bar" style="background: ${priorityData.color};" title="${priorityData.label} priority"></div>
     ` : '';
-    
+
     // Milestone row
     if (isMilestone) {
       return `
@@ -10397,7 +10398,7 @@ function renderTaskList(tasks, milestones, projectIndex, criticalPath = []) {
         </div>
       `;
     }
-    
+
     // Task row - Advanced Linear.app clone
     return `
       <div class="tl-list-row task ${statusClass} ${isCritical ? 'critical' : ''} ${isSelected ? 'selected' : ''} ${isOverdue ? 'overdue' : ''}" 
@@ -10458,24 +10459,24 @@ function renderGanttBars(tasks, milestones, dates, projectIndex) {
     if (timelineState.showDone) return true;
     return item.status !== 'completed' && item.status !== 'done';
   });
-  
+
   if (allItems.length === 0) return '';
-  
+
   allItems.sort((a, b) => new Date(a.startDate || a.dueDate || 0) - new Date(b.startDate || b.dueDate || 0));
-  
+
   const startDate = dates[0];
   const totalDays = dates.length;
   const colWidth = 100 / totalDays;
   const rowHeight = 44;
-  
+
   return allItems.map((item, idx) => {
     const itemStart = new Date(item.startDate || item.dueDate || new Date());
     const itemEnd = new Date(item.endDate || item.dueDate || itemStart);
-    
+
     if (!item.endDate && !item.dueDate) {
       itemEnd.setDate(itemEnd.getDate() + 3);
     }
-    
+
     const startPos = Math.max(0, daysBetween(startDate, itemStart));
     const duration = Math.max(1, daysBetween(itemStart, itemEnd) + 1);
     const left = startPos * colWidth;
@@ -10483,7 +10484,7 @@ function renderGanttBars(tasks, milestones, dates, projectIndex) {
     const top = idx * rowHeight + 4;
     const progress = item.progress || 0;
     const statusClass = (item.status || 'todo').toLowerCase().replace(/\s+/g, '-');
-    
+
     if (item.type === 'milestone') {
       return `
         <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px">
@@ -10496,7 +10497,7 @@ function renderGanttBars(tasks, milestones, dates, projectIndex) {
         </div>
       `;
     }
-    
+
     return `
       <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px">
         <div class="tl-bar ${statusClass}" 
@@ -10521,13 +10522,13 @@ function renderGanttBars(tasks, milestones, dates, projectIndex) {
 function renderTodayLine(dates, colWidth) {
   const todayIdx = dates.findIndex(d => isToday(d));
   if (todayIdx === -1) return '';
-  
+
   // Support both percentage (when colWidth not provided) and pixel positioning
-  const leftPos = colWidth 
-    ? (todayIdx * colWidth) + (colWidth / 2) 
+  const leftPos = colWidth
+    ? (todayIdx * colWidth) + (colWidth / 2)
     : (todayIdx * (100 / dates.length)) + ((100 / dates.length) / 2);
   const unit = colWidth ? 'px' : '%';
-  
+
   return `
     <div class="tl-today-indicator" style="left: ${leftPos}${unit}">
       <div class="tl-today-badge">Today</div>
@@ -10545,17 +10546,17 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
     if (timelineState.showDone) return true;
     return item.status !== 'completed' && item.status !== 'done';
   });
-  
+
   if (allItems.length === 0) return '';
-  
+
   allItems.sort((a, b) => new Date(a.startDate || a.dueDate || 0) - new Date(b.startDate || b.dueDate || 0));
-  
+
   const startDate = normalizeToLocalMidnight(dates[0]);
   const rowHeight = 72; // Taller rows for Linear-style swimlanes
   const criticalSet = new Set(criticalPath);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   // Status colors for bars
   const statusColors = {
     'backlog': { bg: '#27272a', border: '#3f3f46', text: '#a1a1aa' },
@@ -10568,7 +10569,7 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
     'blocked': { bg: '#b91c1c', border: '#dc2626', text: '#ffffff' },
     'cancelled': { bg: '#3f3f46', border: '#52525b', text: '#71717a' }
   };
-  
+
   // Priority colors
   const priorityColors = {
     urgent: '#ef4444',
@@ -10576,16 +10577,16 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
     medium: '#eab308',
     low: '#6b7280'
   };
-  
+
   return allItems.map((item, idx) => {
     const itemStart = normalizeToLocalMidnight(item.startDate || item.dueDate || new Date());
     let itemEnd = normalizeToLocalMidnight(item.endDate || item.dueDate || itemStart);
-    
+
     if (!item.endDate && !item.dueDate) {
       itemEnd = new Date(itemStart);
       itemEnd.setDate(itemEnd.getDate() + 7); // Default 7 days duration
     }
-    
+
     const startPos = Math.max(0, daysBetween(startDate, itemStart));
     const duration = Math.max(1, daysBetween(itemStart, itemEnd) + 1);
     const left = startPos * colWidth;
@@ -10599,44 +10600,44 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
     const isSelected = timelineState.selectedTaskIds.includes(item.id);
     const priority = item.priority || 'none';
     const statusColor = statusColors[statusKey] || statusColors.todo;
-    
+
     // Check if overdue
     const isOverdue = itemEnd < today && statusClass !== 'done' && statusClass !== 'completed';
-    
+
     // Custom color support
     const hasCustomColor = item.color && item.color !== null;
     const barBgColor = hasCustomColor ? item.color : statusColor.bg;
     const barBorderColor = hasCustomColor ? item.color : statusColor.border;
-    
+
     // Truncate label for display
     const taskTitle = item.title || item.name || '';
     const maxLabelChars = Math.floor(width / 8); // Approximate chars that fit
     const displayLabel = taskTitle.length > maxLabelChars ? taskTitle.slice(0, maxLabelChars - 2) + '…' : taskTitle;
-    
+
     // Calculate days remaining or overdue
     const daysFromNow = daysBetween(today, itemEnd);
-    const daysText = isOverdue 
+    const daysText = isOverdue
       ? `${Math.abs(daysFromNow)}d overdue`
-      : daysFromNow === 0 
+      : daysFromNow === 0
         ? 'Due today'
-        : daysFromNow === 1 
+        : daysFromNow === 1
           ? 'Due tomorrow'
           : `${daysFromNow}d left`;
-    
+
     // Format date range for tooltip
     const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const dateRange = `${formatDate(itemStart)} - ${formatDate(itemEnd)}`;
-    
+
     // Assignee initial
     const assigneeInitial = item.assignee ? item.assignee.charAt(0).toUpperCase() : '';
     const assigneeColor = item.assignee ? getAvatarColor(item.assignee) : '#52525b';
-    
+
     if (item.type === 'milestone') {
       // Enhanced milestone marker with more details
       return `
         <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px; height: ${rowHeight}px;">
           <div class="tl-milestone-marker enhanced ${isCritical ? 'critical' : ''} ${isSelected ? 'selected' : ''}" 
-               style="left: ${left + colWidth/2}px;"
+               style="left: ${left + colWidth / 2}px;"
                data-task-id="${item.id}"
                title="${taskTitle} - ${formatDate(itemEnd)}"
                draggable="true"
@@ -10653,19 +10654,19 @@ function renderEnhancedGanttBars(tasks, milestones, dates, projectIndex, colWidt
         </div>
       `;
     }
-    
+
     // Generate milestones for this task (if any are defined within the task's date range)
     const taskMilestones = (item.milestones || []).map((ms, msIdx) => {
       const msDate = normalizeToLocalMidnight(ms.date || itemEnd);
       const msDays = daysBetween(startDate, msDate);
-      const msLeft = msDays * colWidth + colWidth/2;
+      const msLeft = msDays * colWidth + colWidth / 2;
       return `
         <div class="tl-inline-milestone" style="left: ${msLeft}px;">
           <div class="tl-mini-diamond"></div>
         </div>
       `;
     }).join('');
-    
+
     // Advanced task bar with label, assignee, and indicators
     return `
       <div class="tl-bar-row" data-id="${item.id}" style="top: ${top}px; height: ${rowHeight}px;">
@@ -10749,13 +10750,13 @@ function generateMonthHeaders(dates) {
   const months = [];
   let currentMonth = null;
   let startIdx = 0;
-  
+
   dates.forEach((date, idx) => {
     const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
     if (monthKey !== currentMonth) {
       if (currentMonth !== null) {
-        months.push({ 
-          name: dates[startIdx].toLocaleDateString('en-US', { month: 'short' }), 
+        months.push({
+          name: dates[startIdx].toLocaleDateString('en-US', { month: 'short' }),
           span: idx - startIdx,
           year: dates[startIdx].getFullYear()
         });
@@ -10764,14 +10765,14 @@ function generateMonthHeaders(dates) {
       startIdx = idx;
     }
     if (idx === dates.length - 1) {
-      months.push({ 
-        name: date.toLocaleDateString('en-US', { month: 'short' }), 
+      months.push({
+        name: date.toLocaleDateString('en-US', { month: 'short' }),
         span: idx - startIdx + 1,
         year: date.getFullYear()
       });
     }
   });
-  
+
   return months.map(m => `
     <div class="tl-month-cell" style="flex: ${m.span}">
       ${m.name} ${m.year}
@@ -10792,7 +10793,7 @@ function getAvatarColor(name) {
 function getTimelineDateRange() {
   const current = new Date(timelineState.currentDate);
   let start, end;
-  
+
   switch (timelineState.viewMode) {
     case 'day':
       start = new Date(current);
@@ -10821,7 +10822,7 @@ function getTimelineDateRange() {
       end = new Date(current);
       end.setDate(end.getDate() + 14);
   }
-  
+
   return { start, end };
 }
 
@@ -10864,7 +10865,7 @@ function daysBetween(date1, date2) {
 // Helper to normalize dates properly avoiding timezone issues
 function normalizeToLocalMidnight(dateInput) {
   if (!dateInput) return new Date();
-  
+
   let date;
   if (typeof dateInput === 'string') {
     // Parse date string as local date (not UTC)
@@ -10877,7 +10878,7 @@ function normalizeToLocalMidnight(dateInput) {
   } else {
     date = new Date(dateInput);
   }
-  
+
   date.setHours(0, 0, 0, 0);
   return date;
 }
@@ -10909,22 +10910,22 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
   const chartBody = document.getElementById('tlChartBody');
   const rightPanel = document.getElementById('tlRightPanel');
   const ganttWrap = document.getElementById('tlGanttWrap');
-  
+
   if (!chartBody) return;
-  
+
   // Store current context in global state
   _tlDragState.projectIndex = projectIndex;
   _tlDragState.dates = dates;
   _tlDragState.colWidth = colWidth;
-  
+
   // Cleanup old listeners first
   cleanupTimelineListeners();
-  
+
   // Bar dragging with snap-to-grid
-  chartBody.onmousedown = function(e) {
+  chartBody.onmousedown = function (e) {
     const bar = e.target.closest('.tl-bar');
     if (!bar) return;
-    
+
     const resize = e.target.closest('.tl-bar-resize');
     if (resize) {
       _tlDragState.resizeDir = resize.dataset.dir;
@@ -10932,7 +10933,7 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
     } else {
       timelineState.isDragging = true;
     }
-    
+
     _tlDragState.draggedBar = bar;
     _tlDragState.dragStartX = e.clientX;
     _tlDragState.originalLeft = parseFloat(bar.style.left) || 0;
@@ -10941,17 +10942,17 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
     e.preventDefault();
     e.stopPropagation();
   };
-  
+
   // Global mousemove handler
-  window._tlMouseMoveHandler = function(e) {
+  window._tlMouseMoveHandler = function (e) {
     if (!_tlDragState.draggedBar) return;
-    
+
     const deltaX = e.clientX - _tlDragState.dragStartX;
     const cw = _tlDragState.colWidth;
-    
+
     // Snap to grid (column width)
     const snappedDelta = Math.round(deltaX / cw) * cw;
-    
+
     if (timelineState.isResizing) {
       if (_tlDragState.resizeDir === 'right') {
         const newWidth = Math.max(cw, _tlDragState.originalWidth + snappedDelta);
@@ -10965,51 +10966,51 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
       const maxLeft = _tlDragState.dates.length * cw - _tlDragState.originalWidth;
       _tlDragState.draggedBar.style.left = `${Math.max(0, Math.min(maxLeft, _tlDragState.originalLeft + snappedDelta))}px`;
     }
-    
+
     // Show snap indicator
     updateSnapIndicator(_tlDragState.draggedBar, _tlDragState.dates, cw);
   };
-  
+
   // Global mouseup handler
-  window._tlMouseUpHandler = function() {
+  window._tlMouseUpHandler = function () {
     if (_tlDragState.draggedBar) {
       _tlDragState.draggedBar.classList.remove('dragging');
       removeSnapIndicator();
-      
+
       if (timelineState.isDragging || timelineState.isResizing) {
         const taskId = _tlDragState.draggedBar.dataset.taskId;
         const newLeft = parseFloat(_tlDragState.draggedBar.style.left) || 0;
         const newWidth = parseFloat(_tlDragState.draggedBar.style.width) || _tlDragState.colWidth;
-        
+
         // Save dates before clearing state
         const savedDates = _tlDragState.dates;
         const savedColWidth = _tlDragState.colWidth;
         const savedProjectIndex = _tlDragState.projectIndex;
-        
+
         // Clear state first to prevent re-renders from triggering
         _tlDragState.draggedBar = null;
         timelineState.isDragging = false;
         timelineState.isResizing = false;
         _tlDragState.resizeDir = null;
-        
+
         // Then update the task
         updateTaskDatesPixel(savedProjectIndex, taskId, savedDates, newLeft, newWidth, savedColWidth);
         return;
       }
-      
+
       _tlDragState.draggedBar = null;
       timelineState.isDragging = false;
       timelineState.isResizing = false;
       _tlDragState.resizeDir = null;
     }
   };
-  
+
   document.addEventListener('mousemove', window._tlMouseMoveHandler);
   document.addEventListener('mouseup', window._tlMouseUpHandler);
-  
+
   // Mouse wheel zoom
   if (rightPanel) {
-    rightPanel.onwheel = function(e) {
+    rightPanel.onwheel = function (e) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
@@ -11017,11 +11018,11 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
       }
     };
   }
-  
+
   // Touch pinch zoom
   let lastTouchDistance = 0;
   if (rightPanel) {
-    rightPanel.ontouchstart = function(e) {
+    rightPanel.ontouchstart = function (e) {
       if (e.touches.length === 2) {
         lastTouchDistance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -11029,8 +11030,8 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
         );
       }
     };
-    
-    rightPanel.ontouchmove = function(e) {
+
+    rightPanel.ontouchmove = function (e) {
       if (e.touches.length === 2) {
         const distance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -11043,8 +11044,8 @@ function initEnhancedTimelineInteractions(projectIndex, dates, colWidth) {
         lastTouchDistance = distance;
       }
     };
-    
-    rightPanel.ontouchend = function() {
+
+    rightPanel.ontouchend = function () {
       lastTouchDistance = 0;
     };
   }
@@ -11059,14 +11060,14 @@ function updateSnapIndicator(bar, dates, colWidth) {
     indicator.className = 'tl-snap-indicator';
     document.getElementById('tlChartBody')?.appendChild(indicator);
   }
-  
+
   const left = parseFloat(bar.style.left);
   const dayIdx = Math.round(left / colWidth);
-  
+
   if (dates[dayIdx]) {
-    indicator.textContent = dates[dayIdx].toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    indicator.textContent = dates[dayIdx].toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     });
     indicator.style.left = `${left}px`;
     indicator.style.top = `${parseFloat(bar.closest('.tl-bar-row').style.top) - 24}px`;
@@ -11083,10 +11084,10 @@ function removeSnapIndicator() {
 function initTimelineKeyboardShortcuts(projectIndex) {
   // Remove existing listener to avoid duplicates
   document.removeEventListener('keydown', handleTimelineKeydown);
-  
+
   // Store project index for the handler
   window._timelineProjectIndex = projectIndex;
-  
+
   document.addEventListener('keydown', handleTimelineKeydown);
 }
 
@@ -11095,14 +11096,14 @@ function handleTimelineKeydown(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
     return;
   }
-  
+
   // Check if we're in timeline view
   const timelineEl = document.querySelector('.timeline-linear');
   if (!timelineEl) return;
-  
+
   const projectIndex = window._timelineProjectIndex ?? timelineState.lastProjectIndex;
   if (projectIndex === null || projectIndex === undefined) return;
-  
+
   switch (e.key) {
     case 'ArrowLeft':
       e.preventDefault();
@@ -11214,7 +11215,7 @@ function getZoomLabel(zoom) {
 function zoomTimelineSmart(direction, projectIndex) {
   const currentIdx = TIMELINE_ZOOM_PRESETS.findIndex(z => z >= timelineState.zoom);
   let newIdx;
-  
+
   if (direction > 0) {
     // Zoom in
     newIdx = Math.min(TIMELINE_ZOOM_PRESETS.length - 1, currentIdx + 1);
@@ -11222,7 +11223,7 @@ function zoomTimelineSmart(direction, projectIndex) {
     // Zoom out
     newIdx = Math.max(0, currentIdx - 1);
   }
-  
+
   const newZoom = TIMELINE_ZOOM_PRESETS[newIdx];
   if (newZoom !== timelineState.zoom) {
     timelineState.zoom = newZoom;
@@ -11245,7 +11246,7 @@ function toggleZoomDropdown(event) {
   const dropdown = document.getElementById('tlZoomDropdown');
   if (dropdown) {
     dropdown.classList.toggle('show');
-    
+
     // Close on outside click
     if (dropdown.classList.contains('show')) {
       setTimeout(() => {
@@ -11288,7 +11289,7 @@ function toggleCriticalPath(projectIndex) {
 // Task selection
 function selectTimelineTask(event, taskId, projectIndex) {
   event.stopPropagation();
-  
+
   if (event.ctrlKey || event.metaKey) {
     // Multi-select
     const idx = timelineState.selectedTaskIds.indexOf(taskId);
@@ -11304,7 +11305,7 @@ function selectTimelineTask(event, taskId, projectIndex) {
     // Single select
     timelineState.selectedTaskIds = [taskId];
   }
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
 }
@@ -11312,22 +11313,22 @@ function selectTimelineTask(event, taskId, projectIndex) {
 // Delete selected tasks
 function deleteSelectedTimelineTasks(projectIndex) {
   if (timelineState.selectedTaskIds.length === 0) return;
-  
+
   if (!confirm(`Delete ${timelineState.selectedTaskIds.length} selected task(s)?`)) return;
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (project.tasks) {
     project.tasks = project.tasks.filter(t => !timelineState.selectedTaskIds.includes(t.id));
   }
   if (project.milestones) {
     project.milestones = project.milestones.filter(m => !timelineState.selectedTaskIds.includes(m.id));
   }
-  
+
   saveProjects(projects);
   timelineState.selectedTaskIds = [];
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
   showToast('Tasks deleted');
@@ -11339,31 +11340,31 @@ function startMilestoneDrag(event, milestoneId, projectIndex) {
   const marker = event.currentTarget;
   const chartBody = document.getElementById('tlChartBody');
   if (!chartBody) return;
-  
+
   const startX = event.clientX;
   const originalLeft = parseFloat(marker.style.left);
-  
+
   marker.classList.add('dragging');
-  
+
   function onMove(e) {
     const deltaX = e.clientX - startX;
     const colWidth = parseInt(getComputedStyle(document.getElementById('tlGanttWrap')).getPropertyValue('--col-width'));
     const snappedDelta = Math.round(deltaX / colWidth) * colWidth;
     marker.style.left = `${Math.max(0, originalLeft + snappedDelta)}px`;
   }
-  
+
   function onUp(e) {
     marker.classList.remove('dragging');
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
-    
+
     const colWidth = parseInt(getComputedStyle(document.getElementById('tlGanttWrap')).getPropertyValue('--col-width'));
     const newLeft = parseFloat(marker.style.left);
-    
+
     // Update milestone date
     updateMilestoneDate(projectIndex, milestoneId, newLeft, colWidth);
   }
-  
+
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }
@@ -11372,20 +11373,20 @@ function updateMilestoneDate(projectIndex, milestoneId, leftPx, colWidth) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.milestones) return;
-  
+
   const milestone = project.milestones.find(m => m.id === milestoneId);
   if (!milestone) return;
-  
+
   const dateRange = getTimelineDateRange();
   const dates = generateDateColumns(dateRange.start, dateRange.end);
   // Clamp dayIdx to valid range
   const dayIdx = Math.max(0, Math.min(dates.length - 1, Math.round(leftPx / colWidth)));
-  
+
   if (dates[dayIdx]) {
     milestone.dueDate = formatLocalDate(dates[dayIdx]);
     saveProjects(projects);
     showToast('Milestone moved');
-    
+
     const container = document.querySelector('.pd-content-scroll');
     if (container) renderTimelineView(projectIndex, container);
   }
@@ -11396,19 +11397,19 @@ function updateTaskDatesPixel(projectIndex, taskId, dates, leftPx, widthPx, colW
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const task = project.tasks?.find(t => t.id === taskId);
   if (!task) return;
-  
+
   // Clamp startIdx to valid range
   const startIdx = Math.max(0, Math.min(dates.length - 1, Math.round(leftPx / colWidth)));
   const duration = Math.max(1, Math.round(widthPx / colWidth));
-  
+
   if (dates[startIdx]) {
     // Use local date formatting to avoid timezone issues
     const startDate = dates[startIdx];
     task.startDate = formatLocalDate(startDate);
-    
+
     // Calculate end date correctly
     const endIdx = Math.min(dates.length - 1, startIdx + duration - 1);
     if (dates[endIdx]) {
@@ -11419,10 +11420,10 @@ function updateTaskDatesPixel(projectIndex, taskId, dates, leftPx, widthPx, colW
       endDate.setDate(endDate.getDate() + Math.max(0, duration - 1));
       task.endDate = formatLocalDate(endDate);
     }
-    
+
     saveProjects(projects);
     showToast('Task updated');
-    
+
     // Re-render to sync
     const container = document.querySelector('.pd-content-scroll');
     if (container) renderTimelineView(projectIndex, container);
@@ -11481,55 +11482,55 @@ function showTimelineKeyboardShortcuts() {
       </div>
     </div>
   `;
-  
+
   openModal('Keyboard Shortcuts', content, 'modal-medium');
 }
 
 // Sync scroll between task list panel and Gantt chart panel
-  const listBody = document.getElementById('tlListBody');
-  const chartBody = document.getElementById('tlChartBody');
-  const rightPanel = document.getElementById('tlRightPanel');
-  
-  if (listBody && chartBody) {
-    // Sync vertical scroll between list and chart
-    listBody.addEventListener('scroll', () => {
-      chartBody.scrollTop = listBody.scrollTop;
-      timelineState.scrollTop = listBody.scrollTop;
-    });
-    chartBody.addEventListener('scroll', () => {
-      listBody.scrollTop = chartBody.scrollTop;
-      timelineState.scrollTop = chartBody.scrollTop;
-      timelineState.scrollLeft = chartBody.scrollLeft;
-    });
-    
-    // Restore saved scroll position
-    if (timelineState.scrollTop > 0 || timelineState.scrollLeft > 0) {
-      setTimeout(() => {
-        listBody.scrollTop = timelineState.scrollTop;
-        chartBody.scrollTop = timelineState.scrollTop;
-        chartBody.scrollLeft = timelineState.scrollLeft;
-      }, 50);
-    }
+const listBody = document.getElementById('tlListBody');
+const chartBody = document.getElementById('tlChartBody');
+const rightPanel = document.getElementById('tlRightPanel');
+
+if (listBody && chartBody) {
+  // Sync vertical scroll between list and chart
+  listBody.addEventListener('scroll', () => {
+    chartBody.scrollTop = listBody.scrollTop;
+    timelineState.scrollTop = listBody.scrollTop;
+  });
+  chartBody.addEventListener('scroll', () => {
+    listBody.scrollTop = chartBody.scrollTop;
+    timelineState.scrollTop = chartBody.scrollTop;
+    timelineState.scrollLeft = chartBody.scrollLeft;
+  });
+
+  // Restore saved scroll position
+  if (timelineState.scrollTop > 0 || timelineState.scrollLeft > 0) {
+    setTimeout(() => {
+      listBody.scrollTop = timelineState.scrollTop;
+      chartBody.scrollTop = timelineState.scrollTop;
+      chartBody.scrollLeft = timelineState.scrollLeft;
+    }, 50);
   }
+}
 
 
 // Helper to adjust color brightness for gradients
 function adjustColorBrightness(hex, percent) {
   if (!hex) return '#8b5cf6';
-  
+
   // Remove # if present
   hex = hex.replace('#', '');
-  
+
   // Parse hex
   let r = parseInt(hex.substring(0, 2), 16);
   let g = parseInt(hex.substring(2, 4), 16);
   let b = parseInt(hex.substring(4, 6), 16);
-  
+
   // Adjust brightness
   r = Math.min(255, Math.max(0, r + (r * percent / 100)));
   g = Math.min(255, Math.max(0, g + (g * percent / 100)));
   b = Math.min(255, Math.max(0, b + (b * percent / 100)));
-  
+
   // Convert back to hex
   return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
 }
@@ -11538,13 +11539,13 @@ function updateTaskDates(projectIndex, taskId, dates, leftPct, widthPct, colWidt
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const task = project.tasks?.find(t => t.id === taskId);
   if (!task) return;
-  
+
   const startIdx = Math.round(leftPct / colWidth);
   const duration = Math.round(widthPct / colWidth);
-  
+
   if (dates[startIdx]) {
     task.startDate = dates[startIdx].toISOString().split('T')[0];
     const endDate = new Date(dates[startIdx]);
@@ -11625,7 +11626,7 @@ function openTimelineSettings(projectIndex) {
       </div>
     </div>
   `;
-  
+
   openModal('Timeline Settings', content);
 }
 
@@ -11634,7 +11635,7 @@ function saveTimelineSettings(projectIndex) {
   timelineState.showResources = document.getElementById('settingsShowResources').checked;
   timelineState.showDependencies = document.getElementById('settingsShowDependencies').checked;
   timelineState.showDone = document.getElementById('settingsShowDone').checked;
-  
+
   closeModal();
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineView(projectIndex, container);
@@ -11644,8 +11645,8 @@ function saveTimelineSettings(projectIndex) {
 function openAddTimelineTaskModal(projectIndex) {
   const today = new Date().toISOString().split('T')[0];
   const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
-  const colorOptions = TIMELINE_TASK_COLORS.map(c => 
+
+  const colorOptions = TIMELINE_TASK_COLORS.map(c =>
     `<button type="button" class="tl-color-swatch ${c.value === null ? 'default' : ''}" 
              data-color="${c.value || ''}" 
              style="${c.value ? `background: ${c.value};` : 'background: linear-gradient(135deg, #374151, #4b5563);'}"
@@ -11654,7 +11655,7 @@ function openAddTimelineTaskModal(projectIndex) {
        ${c.value === null ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/></svg>' : ''}
      </button>`
   ).join('');
-  
+
   const content = `
     <form onsubmit="handleAddTimelineTask(event, ${projectIndex})">
       <div class="form-group">
@@ -11706,7 +11707,7 @@ function openAddTimelineTaskModal(projectIndex) {
       </div>
     </form>
   `;
-  
+
   openModal('Add Timeline Task', content);
 }
 
@@ -11728,11 +11729,11 @@ async function handleAddTimelineTask(event, projectIndex) {
   const form = event.target;
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (!project.tasks) project.tasks = [];
-  
+
   const colorValue = form.color.value;
-  
+
   const newTask = {
     id: 'task_' + Date.now(),
     title: form.title.value,
@@ -11743,11 +11744,11 @@ async function handleAddTimelineTask(event, projectIndex) {
     color: colorValue || null,
     createdAt: new Date().toISOString()
   };
-  
+
   project.tasks.push(newTask);
   saveProjects(projects);
   closeModal();
-  
+
   // Sync to DB if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
     try {
@@ -11756,7 +11757,7 @@ async function handleAddTimelineTask(event, projectIndex) {
       console.error('Failed to sync timeline task to database:', error);
     }
   }
-  
+
   const contentScroll = document.querySelector('.pd-content-scroll');
   if (contentScroll) {
     renderTimelineView(projectIndex, contentScroll);
@@ -11769,11 +11770,11 @@ async function handleAddTimelineTask(event, projectIndex) {
 async function deleteTimelineTask(projectIndex, taskId) {
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (project.tasks) {
     project.tasks = project.tasks.filter(t => t.id !== taskId);
     saveProjects(projects);
-    
+
     // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
       try {
@@ -11782,7 +11783,7 @@ async function deleteTimelineTask(projectIndex, taskId) {
         console.error('Failed to sync timeline task deletion to database:', error);
       }
     }
-    
+
     const contentScroll = document.querySelector('.pd-content-scroll');
     if (contentScroll) {
       renderTimelineView(projectIndex, contentScroll);
@@ -11795,13 +11796,13 @@ function editTimelineTask(projectIndex, taskId) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const task = project?.tasks?.find(t => t.id === taskId);
-  
+
   if (!task) {
     showToast('Task not found');
     return;
   }
-  
-  const colorOptions = TIMELINE_TASK_COLORS.map(c => 
+
+  const colorOptions = TIMELINE_TASK_COLORS.map(c =>
     `<button type="button" class="tl-color-swatch ${(c.value === task.color) || (c.value === null && !task.color) ? 'active' : ''}" 
              data-color="${c.value || ''}" 
              style="${c.value ? `background: ${c.value};` : 'background: linear-gradient(135deg, #374151, #4b5563);'}"
@@ -11810,7 +11811,7 @@ function editTimelineTask(projectIndex, taskId) {
        ${c.value === null ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/></svg>' : ''}
      </button>`
   ).join('');
-  
+
   const content = `
     <form onsubmit="handleEditTimelineTask(event, ${projectIndex}, '${taskId}')">
       <div class="form-group">
@@ -11862,7 +11863,7 @@ function editTimelineTask(projectIndex, taskId) {
       </div>
     </form>
   `;
-  
+
   openModal('Edit Task', content);
 }
 
@@ -11872,23 +11873,23 @@ function handleEditTimelineTask(event, projectIndex, taskId) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const task = project?.tasks?.find(t => t.id === taskId);
-  
+
   if (!task) {
     showToast('Task not found');
     closeModal();
     return;
   }
-  
+
   task.title = form.title.value;
   task.startDate = form.startDate.value;
   task.endDate = form.endDate.value;
   task.category = form.category.value;
   task.status = form.status.value;
   task.color = form.color.value || null;
-  
+
   saveProjects(projects);
   closeModal();
-  
+
   const contentScroll = document.querySelector('.pd-content-scroll');
   if (contentScroll) {
     renderTimelineView(projectIndex, contentScroll);
@@ -11901,12 +11902,12 @@ function changeTaskColor(projectIndex, taskId, color) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const task = project?.tasks?.find(t => t.id === taskId);
-  
+
   if (task) {
     task.color = color || null;
     saveProjects(projects);
-    
-    
+
+
     const contentScroll = document.querySelector('.pd-content-scroll');
     if (contentScroll) {
       renderTimelineView(projectIndex, contentScroll);
@@ -11918,18 +11919,18 @@ function changeTaskColor(projectIndex, taskId, color) {
 function duplicateTimelineTask(projectIndex, taskId) {
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (project.tasks) {
     const task = project.tasks.find(t => t.id === taskId);
     if (task) {
-      const duplicate = { 
-        ...task, 
+      const duplicate = {
+        ...task,
         id: 'task_' + Date.now(),
         title: task.title + ' (copy)'
       };
       project.tasks.push(duplicate);
       saveProjects(projects);
-      
+
       const contentScroll = document.querySelector('.pd-content-scroll');
       if (contentScroll) {
         renderTimelineView(projectIndex, contentScroll);
@@ -12010,12 +12011,12 @@ function handleAddMilestone(event, projectIndex) {
   const form = event.target;
   const name = form.name.value.trim();
   const description = form.description.value.trim();
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex].milestones) {
     projects[projectIndex].milestones = [];
   }
-  
+
   projects[projectIndex].milestones.push({
     id: Date.now(),
     name,
@@ -12023,7 +12024,7 @@ function handleAddMilestone(event, projectIndex) {
     progress: 0,
     total: 0
   });
-  
+
   saveProjects(projects);
   closeModal();
   renderCurrentView();
@@ -12059,7 +12060,7 @@ function openAddResourceModal(button, projectIndex) {
     }
     return;
   }
-  
+
   // Create inline container
   const container = document.createElement('div');
   container.id = `resource-form-container-${projectIndex}`;
@@ -12080,12 +12081,12 @@ function openAddResourceModal(button, projectIndex) {
       </div>
     </form>
   `;
-  
+
   // Insert container after the button
   const resourcesContainer = button.closest('.pd-resources');
   resourcesContainer.style.position = 'relative';
   resourcesContainer.appendChild(container);
-  
+
   // Focus the name input
   setTimeout(() => {
     const nameInput = container.querySelector('input[name="name"]');
@@ -12105,18 +12106,18 @@ function handleAddResource(event, projectIndex) {
   const form = event.target;
   const name = form.name.value.trim();
   const link = form.link.value.trim();
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex].resources) {
     projects[projectIndex].resources = [];
   }
-  
+
   projects[projectIndex].resources.push({ name, link, addedAt: new Date().toISOString() });
   saveProjects(projects);
-  
+
   // Close the resource form
   closeResourceForm(projectIndex);
-  
+
   renderCurrentView();
 }
 
@@ -12163,7 +12164,7 @@ function openEditStartDateModal(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const currentDate = project.startDate || new Date().toISOString().split('T')[0];
-  
+
   const content = `
     <form onsubmit="handleUpdateStartDate(event, ${projectIndex})">
       <div class="form-group">
@@ -12183,7 +12184,7 @@ function handleUpdateStartDate(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const newDate = form.startDate.value;
-  
+
   const projects = loadProjects();
   if (projects[projectIndex]) {
     projects[projectIndex].startDate = newDate;
@@ -12198,36 +12199,36 @@ function renderProgressChart(progressHistory, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const { total, completed, percentage } = calculateProgress(project?.columns || []);
-  
+
   const chartWidth = 280;
   const chartHeight = 120;
   const padding = { top: 8, right: 8, bottom: 24, left: 8 };
   const graphWidth = chartWidth - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
-  
+
   // Generate Linear-style data points based on actual project progress
   const dataPoints = generateLinearStyleData(project);
   const maxScope = Math.max(...dataPoints.map(d => d.scope), 1);
-  
+
   // Stats for display - matching Linear's exact layout
   const currentData = dataPoints[dataPoints.length - 1];
   const firstData = dataPoints[0];
   const scopeTotal = currentData?.scope || total || 0;
-  const scopeChange = firstData.scope > 0 ? 
+  const scopeChange = firstData.scope > 0 ?
     Math.round(((currentData.scope - firstData.scope) / firstData.scope) * 100) : 0;
   const startedCount = currentData?.started || 0;
   const startedPercent = scopeTotal > 0 ? Math.round((startedCount / scopeTotal) * 100) : 0;
   const completedCount = currentData?.completed || completed || 0;
   const completedPercent = scopeTotal > 0 ? Math.round((completedCount / scopeTotal) * 100) : percentage;
-  
+
   // Generate stepped/area paths for cleaner look
   const scopePath = generateSteppedLinePath(dataPoints, 'scope', graphWidth, graphHeight, maxScope, padding);
   const startedAreaPath = generateSteppedAreaPath(dataPoints, 'started', graphWidth, graphHeight, maxScope, padding);
   const completedAreaPath = generateSteppedAreaPath(dataPoints, 'completed', graphWidth, graphHeight, maxScope, padding);
-  
+
   // Date labels
   const firstDate = dataPoints[0]?.date || '';
-  const midDate = dataPoints[Math.floor(dataPoints.length/2)]?.date || '';
+  const midDate = dataPoints[Math.floor(dataPoints.length / 2)]?.date || '';
   const lastDate = dataPoints[dataPoints.length - 1]?.date || '';
 
   return `
@@ -12306,12 +12307,12 @@ function renderProgressChart(progressHistory, projectIndex) {
 // Generate stepped line path (no curves, just steps)
 function generateSteppedLinePath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
   if (dataPoints.length < 2) return '';
-  
+
   let path = '';
   dataPoints.forEach((d, i) => {
     const x = padding.left + (i / (dataPoints.length - 1)) * graphWidth;
     const y = padding.top + graphHeight - ((d[key] || 0) / maxValue) * graphHeight;
-    
+
     if (i === 0) {
       path = `M ${x} ${y}`;
     } else {
@@ -12319,32 +12320,32 @@ function generateSteppedLinePath(dataPoints, key, graphWidth, graphHeight, maxVa
       path += ` H ${x} V ${y}`;
     }
   });
-  
+
   return path;
 }
 
 // Generate stepped area path for gradient fill
 function generateSteppedAreaPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
   if (dataPoints.length < 2) return '';
-  
+
   const bottomY = padding.top + graphHeight;
   let path = `M ${padding.left} ${bottomY}`;
-  
+
   dataPoints.forEach((d, i) => {
     const x = padding.left + (i / (dataPoints.length - 1)) * graphWidth;
     const y = padding.top + graphHeight - ((d[key] || 0) / maxValue) * graphHeight;
-    
+
     if (i === 0) {
       path += ` L ${x} ${y}`;
     } else {
       path += ` H ${x} V ${y}`;
     }
   });
-  
+
   // Close the path back to baseline
   const endX = padding.left + graphWidth;
   path += ` H ${endX} V ${bottomY} Z`;
-  
+
   return path;
 }
 
@@ -12353,16 +12354,16 @@ function generateLinearStyleData(project) {
   const points = [];
   const today = new Date();
   const columns = project?.columns || [];
-  
+
   // Calculate current totals from columns
   let totalTasks = 0;
   let inProgressTasks = 0;
   let doneTasks = 0;
-  
+
   columns.forEach((col, idx) => {
     const colTasks = col.tasks?.length || 0;
     totalTasks += colTasks;
-    
+
     const title = (col.title || '').toLowerCase();
     if (title.includes('progress') || title.includes('doing') || title.includes('review')) {
       inProgressTasks += colTasks;
@@ -12371,31 +12372,31 @@ function generateLinearStyleData(project) {
       doneTasks += colTasks;
     }
   });
-  
+
   // If no "done" column detected, use last column
   if (doneTasks === 0 && columns.length > 0) {
     const lastCol = columns[columns.length - 1];
     doneTasks = lastCol.tasks?.length || 0;
   }
-  
+
   // Ensure minimum values for visualization
   const baseScope = Math.max(totalTasks, 8);
   const baseStarted = inProgressTasks + doneTasks;
   const baseCompleted = doneTasks;
-  
+
   // Generate 14 days of realistic progress data
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() - 13 + i);
     const progress = i / 13;
-    
+
     // Scope grows slightly over time
     const scope = Math.floor(baseScope * (0.8 + progress * 0.2));
-    
+
     // Started and completed grow more progressively
     const started = Math.floor(baseStarted * Math.pow(progress, 0.7));
     const completed = Math.floor(baseCompleted * Math.pow(progress, 0.8));
-    
+
     points.push({
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       scope: scope,
@@ -12403,7 +12404,7 @@ function generateLinearStyleData(project) {
       completed: Math.min(completed, started, scope)
     });
   }
-  
+
   return points.length > 0 ? points : [{ date: 'Today', scope: 1, started: 0, completed: 0 }];
 }
 
@@ -12411,48 +12412,48 @@ function generateLinearStyleData(project) {
 function generateSmoothDataPoints(progressHistory) {
   const points = [];
   const today = new Date();
-  
+
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() - 13 + i);
     const progress = i / 13;
     const scopeBase = 200 + Math.floor(progress * 84);
     const completedBase = Math.floor(progress * 193 * 0.85);
-    
+
     points.push({
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       scope: scopeBase,
       completed: Math.min(completedBase, scopeBase)
     });
   }
-  
+
   return points;
 }
 
 // Generate smooth bezier curve path
 function generateSmoothPath(dataPoints, key, graphWidth, graphHeight, maxValue, padding) {
   if (dataPoints.length < 2) return '';
-  
+
   const points = dataPoints.map((d, i) => ({
     x: padding.left + (i / (dataPoints.length - 1)) * graphWidth,
     y: padding.top + graphHeight - (d[key] / maxValue) * graphHeight
   }));
-  
+
   let path = `M ${points[0].x} ${points[0].y}`;
-  
+
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
     const curr = points[i];
     const tension = 0.3;
-    
+
     const cp1x = prev.x + (curr.x - prev.x) * tension;
     const cp1y = prev.y;
     const cp2x = curr.x - (curr.x - prev.x) * tension;
     const cp2y = curr.y;
-    
+
     path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
   }
-  
+
   return path;
 }
 
@@ -12462,7 +12463,7 @@ function generateAreaPath(dataPoints, key, graphWidth, graphHeight, maxValue, pa
   const startX = padding.left;
   const endX = padding.left + graphWidth;
   const bottomY = padding.top + graphHeight;
-  
+
   return `${linePath} L ${endX} ${bottomY} L ${startX} ${bottomY} Z`;
 }
 
@@ -12470,12 +12471,12 @@ function generateAreaPath(dataPoints, key, graphWidth, graphHeight, maxValue, pa
 function generateGridLines(graphHeight, padding, chartWidth) {
   const lines = [];
   const numLines = 4;
-  
+
   for (let i = 0; i <= numLines; i++) {
     const y = padding.top + (graphHeight / numLines) * i;
     lines.push(`<line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`);
   }
-  
+
   return lines.join('');
 }
 
@@ -12484,13 +12485,13 @@ function generateDateLabels(numPoints) {
   const labels = [];
   const today = new Date();
   const positions = [0, Math.floor(numPoints / 2), numPoints - 1];
-  
+
   positions.forEach(i => {
     const date = new Date(today);
     date.setDate(today.getDate() - (numPoints - 1 - i));
     labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
   });
-  
+
   return labels;
 }
 
@@ -12507,26 +12508,26 @@ function generateMockProgressHistory() {
 function showChartTooltip(event, scope, completed, dateLabel) {
   const tooltip = event.target.closest('.chart-svg-container')?.querySelector('.chart-tooltip');
   if (!tooltip) return;
-  
+
   const rect = event.target.closest('.chart-svg-container').getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
-  
+
   tooltip.querySelector('.tooltip-date').textContent = dateLabel;
   tooltip.querySelector('.scope-value').textContent = scope;
   tooltip.querySelector('.completed-value').textContent = completed;
-  
+
   // Position tooltip
   const tooltipWidth = 140;
   let tooltipX = x + 10;
   if (tooltipX + tooltipWidth > rect.width) {
     tooltipX = x - tooltipWidth - 10;
   }
-  
+
   tooltip.style.left = `${tooltipX}px`;
   tooltip.style.top = `${Math.max(10, y - 40)}px`;
   tooltip.classList.add('visible');
-  
+
   // Show indicator line
   const chartId = tooltip.id.replace('chartTooltip-', 'chartIndicator-');
   const indicator = document.getElementById(chartId);
@@ -12554,14 +12555,14 @@ function togglePriorityDropdown(projectIndex, event) {
   event.stopPropagation();
   const dropdown = document.getElementById('priorityDropdown-' + projectIndex);
   if (!dropdown) return;
-  
+
   // Close other dropdowns
   document.querySelectorAll('.priority-dropdown.show').forEach(d => {
     if (d !== dropdown) d.classList.remove('show');
   });
-  
+
   dropdown.classList.toggle('show');
-  
+
   // Close on outside click
   if (dropdown.classList.contains('show')) {
     setTimeout(() => {
@@ -12589,7 +12590,7 @@ function openEditTargetDateModal(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   const currentDate = project.targetDate || new Date().toISOString().split('T')[0];
-  
+
   const content = `
     <form onsubmit="handleUpdateTargetDate(event, ${projectIndex})">
       <div class="form-group">
@@ -12609,7 +12610,7 @@ function handleUpdateTargetDate(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const newDate = form.targetDate.value;
-  
+
   const projects = loadProjects();
   if (projects[projectIndex]) {
     projects[projectIndex].targetDate = newDate;
@@ -12623,24 +12624,24 @@ function handleUpdateTargetDate(event, projectIndex) {
 function handleProjectDocUpload(event, projectIndex) {
   const file = event.target.files[0];
   if (!file) return;
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex]) return;
-  
+
   if (!projects[projectIndex].sharedDocuments) {
     projects[projectIndex].sharedDocuments = [];
   }
-  
+
   projects[projectIndex].sharedDocuments.push({
     name: file.name,
     type: file.type,
     size: file.size,
     uploadedAt: new Date().toISOString()
   });
-  
+
   saveProjects(projects);
   renderCurrentView();
-  
+
   // Show toast
   const toast = document.createElement('div');
   toast.textContent = `"${file.name}" uploaded successfully!`;
@@ -12664,14 +12665,14 @@ window.isImportantComment = false;
 function addProjectComment(projectIndex) {
   const input = document.getElementById(`projectComment-${projectIndex}`);
   if (!input || !input.value.trim()) return;
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex]) return;
-  
+
   if (!projects[projectIndex].comments) {
     projects[projectIndex].comments = [];
   }
-  
+
   projects[projectIndex].comments.unshift({
     author: 'You',
     message: input.value.trim(),
@@ -12680,7 +12681,7 @@ function addProjectComment(projectIndex) {
     reactions: 0,
     replies: []
   });
-  
+
   saveProjects(projects);
   window.isImportantComment = false;
   renderCurrentView();
@@ -12689,20 +12690,20 @@ function addProjectComment(projectIndex) {
 function replyToComment(projectIndex, commentIndex) {
   const reply = prompt('Your reply:');
   if (!reply || !reply.trim()) return;
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex] || !projects[projectIndex].comments[commentIndex]) return;
-  
+
   if (!projects[projectIndex].comments[commentIndex].replies) {
     projects[projectIndex].comments[commentIndex].replies = [];
   }
-  
+
   projects[projectIndex].comments[commentIndex].replies.push({
     author: 'You',
     message: reply.trim(),
     time: new Date().toISOString()
   });
-  
+
   saveProjects(projects);
   renderCurrentView();
 }
@@ -12710,10 +12711,10 @@ function replyToComment(projectIndex, commentIndex) {
 function reactToComment(projectIndex, commentIndex) {
   const projects = loadProjects();
   if (!projects[projectIndex] || !projects[projectIndex].comments[commentIndex]) return;
-  
-  projects[projectIndex].comments[commentIndex].reactions = 
+
+  projects[projectIndex].comments[commentIndex].reactions =
     (projects[projectIndex].comments[commentIndex].reactions || 0) + 1;
-  
+
   saveProjects(projects);
   renderCurrentView();
 }
@@ -12721,7 +12722,7 @@ function reactToComment(projectIndex, commentIndex) {
 function deleteProjectComment(projectIndex, commentIndex) {
   const projects = loadProjects();
   if (!projects[projectIndex] || !projects[projectIndex].comments) return;
-  
+
   projects[projectIndex].comments.splice(commentIndex, 1);
   saveProjects(projects);
   renderCurrentView();
@@ -12730,10 +12731,10 @@ function deleteProjectComment(projectIndex, commentIndex) {
 function toggleCommentImportant(projectIndex, commentIndex) {
   const projects = loadProjects();
   if (!projects[projectIndex] || !projects[projectIndex].comments[commentIndex]) return;
-  
-  projects[projectIndex].comments[commentIndex].isImportant = 
+
+  projects[projectIndex].comments[commentIndex].isImportant =
     !projects[projectIndex].comments[commentIndex].isImportant;
-  
+
   saveProjects(projects);
   renderCurrentView();
 }
@@ -12742,10 +12743,10 @@ function toggleCommentImportant(projectIndex, commentIndex) {
 function startProject(projectIndex) {
   const projects = loadProjects();
   if (!projects[projectIndex]) return;
-  
+
   projects[projectIndex].status = 'in-progress';
   projects[projectIndex].startedAt = new Date().toISOString();
-  
+
   // Add an update to track the start
   if (!projects[projectIndex].updates) {
     projects[projectIndex].updates = [];
@@ -12755,7 +12756,7 @@ function startProject(projectIndex) {
     action: 'Started the project',
     time: 'just now'
   });
-  
+
   saveProjects(projects);
   renderCurrentView();
 }
@@ -12784,45 +12785,45 @@ async function handleInviteMember(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const email = form.email.value.trim();
-  
+
   if (!email) return;
-  
+
   // Require authentication
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showToast('Please sign in to invite members', 'error');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.id) {
     showToast('Project not found', 'error');
     return;
   }
-  
+
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalText = submitBtn?.textContent;
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Adding member...';
   }
-  
+
   try {
     // Refresh user data to ensure we have the latest session
     console.log('Refreshing user session...');
     await window.LayerDB.refreshUser();
-    
+
     const currentUser = window.LayerDB.getCurrentUser();
     console.log('Current user:', currentUser);
-    
+
     if (!currentUser || !currentUser.id) {
       throw new Error('User not authenticated properly. Please sign in again.');
     }
-    
+
     // Use the enhanced team member addition function
     console.log('Adding team member directly to project...');
     await window.LayerDB.addTeamMemberToProject(project.id, email);
-    
+
     // Immediately update local state for instant UI feedback
     const projects = loadProjects();
     const localProject = projects[projectIndex];
@@ -12834,7 +12835,7 @@ async function handleInviteMember(event, projectIndex) {
         console.log('Updated local team members:', localProject.teamMembers);
       }
     }
-    
+
     // Also create invitation record for tracking (optional)
     try {
       const { data: invitationData, error: inviteError } = await window.LayerDB.supabase
@@ -12847,7 +12848,7 @@ async function handleInviteMember(event, projectIndex) {
         })
         .select()
         .single();
-      
+
       if (inviteError) {
         console.warn('Failed to create invitation record:', inviteError);
         // Continue anyway since the team member was added successfully
@@ -12857,18 +12858,18 @@ async function handleInviteMember(event, projectIndex) {
     } catch (inviteRecordError) {
       console.warn('Error creating invitation record:', inviteRecordError);
     }
-    
+
     // Show success message
     showToast(`Successfully added ${email} to the team!`, 'success');
     closeModal();
-    
+
     // Refresh the team members display immediately for better UX
     if (currentView === 'project-detail') {
       refreshTeamMembersDisplay(projectIndex);
     } else {
       renderCurrentView();
     }
-    
+
     // Re-initialize presence polling for the updated member list
     setTimeout(() => {
       const projects = loadProjects();
@@ -12877,11 +12878,11 @@ async function handleInviteMember(event, projectIndex) {
         startPresencePolling(project.id, projectIndex);
       }
     }, 1000);
-    
+
   } catch (error) {
     console.error('Error adding team member:', error);
     let errorMessage = 'Failed to add team member';
-    
+
     if (error.message?.includes('already a team member')) {
       errorMessage = 'This user is already a team member';
     } else if (error.message?.includes('Not authenticated')) {
@@ -12889,7 +12890,7 @@ async function handleInviteMember(event, projectIndex) {
     } else if (error.message) {
       errorMessage = error.message;
     }
-    
+
     showToast(errorMessage, 'error');
   } finally {
     // Restore button state
@@ -12919,11 +12920,11 @@ function generateTeamChartData(project, teamMembers) {
   // Generate simulated performance data based on project tasks
   const data = [];
   const numWeeks = 5;
-  
+
   teamMembers.forEach((member, memberIndex) => {
     const memberData = [];
     let baseValue = 20 + Math.random() * 30;
-    
+
     for (let week = 0; week < numWeeks; week++) {
       // Add some variation and upward trend
       const variation = (Math.random() - 0.3) * 25;
@@ -12934,7 +12935,7 @@ function generateTeamChartData(project, teamMembers) {
     }
     data.push(memberData);
   });
-  
+
   return data;
 }
 
@@ -12945,11 +12946,11 @@ function handleAddColumn(projectIndex) {
     // Save the current active tab before re-render
     const activeTab = document.querySelector('.pd-tab.active');
     const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-    
+
     addColumnToProject(projectIndex, columnName.trim());
-    
+
     renderCurrentView();
-    
+
     // Restore the active tab if we're in project detail view and timeline was active
     if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
       requestAnimationFrame(() => {
@@ -12962,23 +12963,23 @@ function handleAddColumn(projectIndex) {
 function handleDeleteColumn(projectIndex, columnIndex) {
   const projects = loadProjects();
   const column = projects[projectIndex]?.columns[columnIndex];
-  
+
   if (!column) return;
-  
+
   if (column.tasks.length > 0) {
     if (!confirm(`Delete "${column.title}" column? It contains ${column.tasks.length} task(s) that will also be deleted.`)) {
       return;
     }
   }
-  
+
   // Save the current active tab before re-render
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-  
+
   deleteColumnFromProject(projectIndex, columnIndex);
-  
+
   renderCurrentView();
-  
+
   // Restore the active tab if we're in project detail view and timeline was active
   if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
     requestAnimationFrame(() => {
@@ -12995,7 +12996,7 @@ function handleRenameColumn(projectIndex, columnIndex, newTitle) {
 
 function renderCreateProjectModalContent() {
   const today = new Date().toISOString().split('T')[0];
-  
+
   return `
     <form id="createProjectForm" onsubmit="handleCreateProjectSubmit(event)">
       <div class="form-group">
@@ -13029,11 +13030,11 @@ async function handleCreateProjectSubmit(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
-  
+
   const name = formData.get('name');
   const targetDate = formData.get('targetDate');
   const description = formData.get('description');
-  
+
   if (name.trim() && targetDate) {
     closeModal();
     await addProject({
@@ -13049,7 +13050,7 @@ async function handleCreateProjectSubmit(event) {
 
 async function openProjectDetail(index) {
   selectedProjectIndex = index;
-  
+
   // Update presence to show user is watching this project
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     const projects = loadProjects();
@@ -13064,9 +13065,9 @@ async function openProjectDetail(index) {
       }
     }
   }
-  
+
   renderCurrentView();
-  
+
   // Restore sidebar collapsed state after render
   setTimeout(() => {
     restorePdSidebarState();
@@ -13080,10 +13081,10 @@ function startPresencePolling(projectId, projectIndex) {
   if (presencePollInterval) {
     clearInterval(presencePollInterval);
   }
-  
+
   // Update presence immediately
   updateMemberPresence(projectId, projectIndex);
-  
+
   // Poll every 5 seconds
   presencePollInterval = setInterval(() => {
     updateMemberPresence(projectId, projectIndex);
@@ -13098,7 +13099,7 @@ function getNameColor(name) {
     '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
     '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
   ];
-  
+
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -13111,7 +13112,7 @@ function getMemberAvatarInitialsWithFullNames(member) {
   if (member === 'You' || member === getCurrentUserName()) {
     return getCurrentUserInitials();
   }
-  
+
   // Split name by spaces and take first letter of first and last name
   const parts = member.trim().split(' ');
   if (parts.length >= 2) {
@@ -13162,32 +13163,32 @@ function getCurrentUserName() {
 // Enhanced member presence update with avatar loading
 async function updateMemberPresence(projectId, projectIndex) {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
-  
+
   try {
     const members = await window.LayerDB.getProjectMembersPresence(projectId);
     const projects = loadProjects();
     const project = projects[projectIndex];
     if (!project) return;
-    
+
     const teamMembers = project.teamMembers || ['You'];
-    
+
     // Update status indicators and avatars
     teamMembers.forEach(async (member, idx) => {
       const statusEl = document.getElementById(`memberStatus-${projectIndex}-${idx}`);
       const avatarEl = document.getElementById(`memberAvatar-${projectIndex}-${idx}`);
-      
+
       if (avatarEl) {
         // Load Google avatar if available
         await loadMemberAvatar(member, avatarEl, projectIndex, idx);
       }
-      
+
       if (statusEl) {
         // Check if member is online and watching
         const memberPresence = members.find(m => {
           // Match by email or name
           const memberEmail = m.profiles?.email;
           const memberName = m.profiles?.name;
-          
+
           if (member === 'You' || member === getCurrentUserName()) {
             const currentUser = window.LayerDB.getCurrentUser();
             return currentUser && (
@@ -13195,12 +13196,12 @@ async function updateMemberPresence(projectId, projectIndex) {
               memberName === currentUser.user_metadata?.name
             );
           }
-          
+
           // For other members, match by name or email prefix
-          return memberName === member || 
-                 (memberEmail && memberEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) === member);
+          return memberName === member ||
+            (memberEmail && memberEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) === member);
         });
-        
+
         if (memberPresence) {
           statusEl.innerHTML = `<span class="status-dot online" title="Online - Watching"></span>`;
         } else {
@@ -13226,13 +13227,13 @@ async function loadMemberAvatar(memberName, avatarElement, projectIndex, memberI
         }
       }
     }
-    
+
     // For other members, try to find their profile from project members
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       // Try to get project members and find matching profile
       const projects = loadProjects();
       const project = projects[projectIndex];
-      
+
       if (project && project.teamMembers) {
         // Look for member in project followers
         try {
@@ -13241,10 +13242,10 @@ async function loadMemberAvatar(memberName, avatarElement, projectIndex, memberI
             const followerName = f.follower_name || f.name || '';
             const followerEmail = f.follower_email || f.email || '';
             const emailPrefix = followerEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            
+
             return followerName === memberName || emailPrefix === memberName;
           });
-          
+
           if (memberFollower && memberFollower.follower_avatar) {
             avatarElement.innerHTML = `<img src="${memberFollower.follower_avatar}" alt="${memberName}" onerror="this.style.display='none';this.parentElement.innerHTML='${getMemberAvatarInitials(memberName)}';">`;
             return;
@@ -13254,7 +13255,7 @@ async function loadMemberAvatar(memberName, avatarElement, projectIndex, memberI
         }
       }
     }
-    
+
     // For other members, try to find their profile from all users
     // This would require a more comprehensive user lookup
     // For now, fall back to initials
@@ -13269,13 +13270,13 @@ function closeProjectDetail() {
   selectedProjectIndex = null;
   currentView = 'activity';
   setActiveNav('activity');
-  
+
   // Stop presence polling
   if (presencePollInterval) {
     clearInterval(presencePollInterval);
     presencePollInterval = null;
   }
-  
+
   // Update presence to show user is no longer watching
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     window.LayerDB.updatePresence(true, null).catch(console.error);
@@ -13296,7 +13297,7 @@ async function handleDeleteProjectFromDetail(index) {
     showNotification('Only the project owner can delete this project', 'error');
     return;
   }
-  
+
   if (confirm('Delete this project permanently? This cannot be undone.')) {
     try {
       await deleteProject(index);
@@ -13356,19 +13357,19 @@ async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, eve
   if (event) {
     event.stopPropagation();
   }
-  
+
   const scrollPos = saveKanbanScrollPosition();
-  
+
   // Save the current active tab before re-render
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-  
+
   const projects = loadProjects();
   const task = projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex];
   if (task) {
     task.done = !task.done;
     saveProjects(projects);
-    
+
     // Sync to DB if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
       try {
@@ -13378,10 +13379,10 @@ async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, eve
       }
     }
   }
-  
+
   // Re-render the current view
   renderCurrentView();
-  
+
   // Restore the active tab if we're in project detail view and timeline was active
   if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
     // Use requestAnimationFrame to ensure DOM is ready
@@ -13399,11 +13400,11 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   if (event) {
     event.stopPropagation();
   }
-  
+
   // Save the current active tab before re-render
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-  
+
   if (confirm('Delete this task?')) {
     const scrollPos = saveKanbanScrollPosition();
     const projects = loadProjects();
@@ -13413,7 +13414,7 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
     }
     renderCurrentView();
     restoreKanbanScrollPosition(scrollPos);
-    
+
     // Restore the active tab if we're in project detail view and timeline was active
     if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
       requestAnimationFrame(() => {
@@ -13428,11 +13429,11 @@ function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
   if (event) {
     event.stopPropagation();
   }
-  
+
   // Save the current active tab before re-render
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-  
+
   if (event.key === 'Enter') {
     const input = event.target;
     const title = input.value.trim();
@@ -13442,7 +13443,7 @@ function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
       input.value = '';
       renderCurrentView();
       restoreKanbanScrollPosition(scrollPos);
-      
+
       // Restore the active tab if we're in project detail view and timeline was active
       if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
         requestAnimationFrame(() => {
@@ -13458,11 +13459,11 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   if (event) {
     event.stopPropagation();
   }
-  
+
   // Save the current active tab before re-render
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-  
+
   // Prompt user for task title
   const title = prompt('Enter task title:');
   if (title && title.trim()) {
@@ -13472,7 +13473,7 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
     if (scrollPos && restoreKanbanScrollPosition) {
       restoreKanbanScrollPosition(scrollPos);
     }
-    
+
     // Restore the active tab if we're in project detail view and timeline was active
     if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
       requestAnimationFrame(() => {
@@ -13531,14 +13532,8 @@ let teamChannels = [
   { id: 'welcome', name: 'Welcome', type: 'channel', unread: 2, icon: 'hash' },
   { id: 'announcements', name: 'Announcements', type: 'channel', unread: 0, icon: 'megaphone' }
 ];
-let teamDirectMessages = [
-  { id: 'dm-1', name: 'Team Member', avatar: 'TM', status: 'online', unread: 0 },
-  { id: 'dm-2', name: 'Project Lead', avatar: 'PL', status: 'away', unread: 1 }
-];
-let teamGroups = [
-  { id: 'grp-1', name: 'Design Team', members: 5, linkedProject: 'Website Redesign' },
-  { id: 'grp-2', name: 'Development', members: 8, linkedProject: null }
-];
+let teamDirectMessages = [];
+let teamGroups = [];
 let teamMessages = {
   'general': [
     { id: 1, user: 'System', avatar: 'S', content: 'Welcome to #General! This is the main channel for team discussions.', time: '10:00 AM', isSystem: true }
@@ -13553,25 +13548,14 @@ let teamFollowers = [
 ];
 let pendingFollowRequests = [];
 
-async function renderTeamView() {
-  // Load pending follow requests if user is authenticated
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      pendingFollowRequests = await window.LayerDB.getPendingFollowRequests();
-      console.log('Loaded pending follow requests:', pendingFollowRequests);
-    } catch (error) {
-      console.error('Failed to load pending follow requests:', error);
-      pendingFollowRequests = [];
-    }
-  } else {
-    console.log('User not authenticated, clearing pending requests');
-    pendingFollowRequests = [];
+function renderTeamView() {
+  // Clean up any existing subscriptions first (in case view is re-rendered)
+  if (window.cleanupTeamMembersSubscription) {
+    window.cleanupTeamMembersSubscription();
   }
-  
-  // Load team members panel HTML (await the async function)
-  const teamMembersPanelHTML = await renderTeamMembersPanel();
-  
-  return `
+
+  // Render immediately with default/cached data for instant loading
+  const initialHTML = `
     <div class="team-chat-layout">
       <!-- Chat Sidebar -->
       <aside class="team-chat-sidebar">
@@ -13624,8 +13608,8 @@ async function renderTeamView() {
           ${teamChannels.map(channel => `
             <button class="team-chat-item ${teamCurrentChannel === channel.id ? 'active' : ''}" onclick="selectTeamChannel('${channel.id}')">
               <div class="team-chat-item-icon ${channel.icon === 'megaphone' ? 'megaphone' : ''}">
-                ${channel.icon === 'hash' ? '#' : 
-                  channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
+                ${channel.icon === 'hash' ? '#' :
+      channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
               </div>
               <span class="team-chat-item-name">${channel.name}</span>
               ${channel.unread > 0 ? `<span class="team-chat-unread">${channel.unread}</span>` : ''}
@@ -13643,9 +13627,14 @@ async function renderTeamView() {
           </div>
           
           ${teamDirectMessages.map(dm => `
-            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" onclick="selectTeamChannel('${dm.id}')">
+            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" 
+              onclick="selectTeamChannel('${dm.id}')"
+              oncontextmenu="showDMContextMenu(event, '${dm.id}', '${dm.partnerId}', '${dm.name.replace(/'/g, "\\'")}')">
               <div class="team-dm-avatar ${dm.status}">
-                <span>${dm.avatar}</span>
+                ${dm.avatar && dm.avatar.includes('/') ?
+          `<img src="${dm.avatar}" alt="${dm.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+          `<span>${dm.avatar || dm.name.charAt(0)}</span>`
+        }
                 <span class="team-dm-status-dot"></span>
               </div>
               <span class="team-chat-item-name">${dm.name}</span>
@@ -13692,18 +13681,178 @@ async function renderTeamView() {
       
       <!-- Members/Followers Panel -->
       <aside class="team-members-panel" id="teamMembersPanel">
-        ${teamMembersPanelHTML}
+        <div class="team-panel-header">
+          <span>Team Members</span>
+          <button class="team-panel-close" onclick="toggleTeamMembersPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="team-loading-container">
+          <div class="team-logo-loader">
+            <svg class="logo-loader-animated" width="64" height="64" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="teamLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7c3aed" />
+                  <stop offset="100%" stop-color="#5b21b6" />
+                </linearGradient>
+              </defs>
+              <rect class="logo-layer logo-layer-1" x="38" y="38" width="52" height="52" rx="16" fill="url(#teamLogoGradient)" opacity="0.28" />
+              <rect class="logo-layer logo-layer-2" x="38" y="54" width="52" height="36" rx="14" fill="url(#teamLogoGradient)" opacity="0.55" />
+              <rect class="logo-layer logo-layer-3" x="38" y="70" width="52" height="20" rx="10" fill="url(#teamLogoGradient)" />
+              <rect class="logo-layer logo-layer-4" x="38" y="38" width="20" height="52" rx="10" fill="url(#teamLogoGradient)" />
+            </svg>
+          </div>
+          <p class="team-loading-text">Loading team members...</p>
+        </div>
       </aside>
     </div>
   `;
+
+  // Load async data in the background and update UI when ready
+  setTimeout(async () => {
+    try {
+      // Load pending follow requests if user is authenticated
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        try {
+          pendingFollowRequests = await window.LayerDB.getPendingFollowRequests();
+          console.log('Loaded pending follow requests:', pendingFollowRequests);
+        } catch (error) {
+          console.error('Failed to load pending follow requests:', error);
+          pendingFollowRequests = [];
+        }
+      } else {
+        console.log('User not authenticated, clearing pending requests');
+        pendingFollowRequests = [];
+      }
+
+      // Load team members panel HTML (await the async function)
+      const teamMembersPanelHTML = await renderTeamMembersPanel();
+
+      // Load Direct Messages from Supabase
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        try {
+          const dms = await window.LayerDB.getDirectMessages();
+          // Only update if we got results, otherwise might be offline or error
+          if (dms) {
+            teamDirectMessages = dms;
+          }
+        } catch (error) {
+          console.error('Failed to load DMs:', error);
+        }
+      }
+
+      // Update the team members panel with loaded data
+      const teamMembersPanel = document.getElementById('teamMembersPanel');
+      if (teamMembersPanel && currentView === 'team') {
+        teamMembersPanel.innerHTML = teamMembersPanelHTML;
+      }
+
+      // Re-render sidebar to show loaded DMs
+      if (currentView === 'team') {
+        updateTeamSidebar();
+      }
+
+      // Update active states for chat items after rendering
+      updateTeamChatArea();
+
+      // Initialize real-time subscription for team members
+      if (window.initializeTeamMembersSubscription) {
+        window.initializeTeamMembersSubscription();
+      }
+
+      // Initialize global DM listener
+      if (typeof setupGlobalDMListener === 'function') {
+        setupGlobalDMListener();
+      }
+    } catch (error) {
+      console.error('Error loading team data in background:', error);
+    }
+  }, 0);
+
+  return initialHTML;
+}
+
+// Helper to update just the sidebar list without full re-render
+function updateTeamSidebar() {
+  const sidebarList = document.querySelector('.team-chat-list');
+  if (sidebarList) {
+    sidebarList.innerHTML = `
+          ${teamChannels.map(channel => `
+            <button class="team-chat-item ${teamCurrentChannel === channel.id ? 'active' : ''}" onclick="selectTeamChannel('${channel.id}')">
+              <div class="team-chat-item-icon ${channel.icon === 'megaphone' ? 'megaphone' : ''}">
+                ${channel.icon === 'hash' ? '#' :
+        channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
+              </div>
+              <span class="team-chat-item-name">${channel.name}</span>
+              ${channel.unread > 0 ? `<span class="team-chat-unread">${channel.unread}</span>` : ''}
+            </button>
+          `).join('')}
+          
+          <!-- Direct Messages Section -->
+          <div class="team-chat-section-divider">
+            <span>Direct Messages</span>
+            <button class="team-icon-btn-sm" onclick="openCreateMessageModal()" title="New Message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+          
+          ${teamDirectMessages.map(dm => `
+            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" 
+              onclick="selectTeamChannel('${dm.id}')"
+              oncontextmenu="showDMContextMenu(event, '${dm.id}', '${dm.partnerId}', '${dm.name.replace(/'/g, "\\'")}')">
+              <div class="team-dm-avatar ${dm.status}">
+                ${(dm.avatar && dm.avatar.includes('/')) || dm.avatarUrl ?
+            `<img src="${dm.avatarUrl || dm.avatar}" alt="${dm.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+            `<span>${dm.avatar || dm.name.charAt(0)}</span>`
+          }
+                <span class="team-dm-status-dot"></span>
+              </div>
+              <span class="team-chat-item-name">${dm.name}</span>
+              ${dm.unread > 0 ? `<span class="team-chat-unread">${dm.unread}</span>` : ''}
+            </button>
+          `).join('')}
+          
+          <!-- Groups Section -->
+          <div class="team-chat-section-divider">
+            <span>Groups</span>
+            <button class="team-icon-btn-sm" onclick="openCreateGroupModal()" title="Create Group">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+          
+          ${teamGroups.map(group => `
+            <button class="team-chat-item group" onclick="selectTeamGroup('${group.id}')">
+              <div class="team-group-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div class="team-group-info">
+                <span class="team-chat-item-name">${group.name}</span>
+                ${group.linkedProject ? `<span class="team-group-project">🔗 ${group.linkedProject}</span>` : ''}
+              </div>
+              <span class="team-group-members">${group.members}</span>
+            </button>
+          `).join('')}
+    `;
+  }
 }
 
 function renderTeamChatHeader() {
-  const channel = teamChannels.find(c => c.id === teamCurrentChannel) || 
-                  teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
   const channelName = channel ? channel.name : 'General';
   const isChannel = channel?.type === 'channel';
-  
+
   return `
     <header class="team-chat-header">
       <div class="team-chat-header-left">
@@ -13763,11 +13912,6 @@ function renderTeamChatHeader() {
       </nav>
       
       <div class="team-chat-header-right">
-        <button class="team-header-btn" onclick="openTeamCallModal()" title="Start call">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-        </button>
         <button class="team-header-btn" onclick="toggleAutomation()" title="Automate">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
@@ -13803,10 +13947,27 @@ function renderTeamChatHeader() {
 
 function renderTeamChatContent() {
   const messages = teamMessages[teamCurrentChannel] || [];
-  const channel = teamChannels.find(c => c.id === teamCurrentChannel);
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
   const channelName = channel ? channel.name : 'General';
-  
+  const isDM = channel?.type === 'dm' || teamCurrentChannel?.startsWith('dm-');
+
   if (messages.length === 0) {
+    // For DM conversations, show a simple welcome message
+    if (isDM) {
+      return `
+        <div class="team-chat-content">
+          <div class="team-chat-welcome">
+            <div class="team-welcome-main" style="text-align: center;">
+              <h2>Direct Message with ${channelName}</h2>
+              <p>Start your conversation by sending a message below.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // For channels, show the full welcome screen with all features
     return `
       <div class="team-chat-content">
         <div class="team-chat-welcome">
@@ -13867,31 +14028,23 @@ function renderTeamChatContent() {
                 </div>
               </button>
               
-              <button class="team-feature-card" onclick="startSyncUp()">
-                <div class="feature-icon teal">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                  </svg>
-                </div>
-                <div class="feature-text">
-                  <span class="feature-title">Start SyncUp</span>
-                  <span class="feature-desc">Jump on a voice call or video call</span>
-                </div>
-              </button>
             </div>
           </div>
         </div>
       </div>
     `;
   }
-  
+
   return `
     <div class="team-chat-content">
       <div class="team-messages-list">
         ${messages.map(msg => `
           <div class="team-message ${msg.isSystem ? 'system' : ''}">
             <div class="team-message-avatar">
-              <span>${msg.avatar}</span>
+              ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
+      `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+      `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
+    }
             </div>
             <div class="team-message-body">
               <div class="team-message-header">
@@ -13910,7 +14063,7 @@ function renderTeamChatContent() {
 function renderTeamMessageInput() {
   const channel = teamChannels.find(c => c.id === teamCurrentChannel);
   const channelName = channel ? channel.name : 'General';
-  
+
   return `
     <div class="team-message-input-container">
       <div class="team-message-prompt">
@@ -13965,21 +14118,6 @@ function renderTeamMessageInput() {
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
           </button>
-          <button class="toolbar-btn" title="Record video">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Voice message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Screen record">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
           <button class="toolbar-btn" title="File">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -14018,7 +14156,7 @@ async function renderTeamMembersPanel() {
   let realFollowers = [];
   let realPendingRequests = [];
   let currentUserInfo = null;
-  
+
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     try {
       const currentUser = window.LayerDB.getCurrentUser();
@@ -14028,15 +14166,22 @@ async function renderTeamMembersPanel() {
         name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'User',
         avatar_url: currentUser?.user_metadata?.avatar_url
       };
-      
+
+      console.log('🔍 Current user info:', currentUserInfo);
+
       const followers = await window.LayerDB.getFollowers();
+      console.log('🔍 Raw followers data from DB:', followers);
+
       realFollowers = followers.filter(f => f.status === 'accepted');
+      console.log('🔍 Filtered accepted followers:', realFollowers);
+
       realPendingRequests = await window.LayerDB.getPendingFollowRequests();
+      console.log('🔍 Pending follow requests:', realPendingRequests);
     } catch (error) {
       console.error('Error loading team members:', error);
     }
   }
-  
+
   // Create the current user as the owner
   let ownerItem = [];
   if (currentUserInfo) {
@@ -14050,20 +14195,61 @@ async function renderTeamMembersPanel() {
   } else {
     // Fallback for unauthenticated users
     ownerItem = [{
-      id: 'f-1', 
-      name: 'You', 
-      avatar: 'YU', 
+      id: 'f-1',
+      name: 'You',
+      avatar: 'YU',
       isOwner: true
     }];
   }
-  
-  // Combine owner with real followers (excluding self-follows)
-  const displayFollowers = [...ownerItem, ...realFollowers.filter(f => 
-    f.following_id !== currentUserInfo?.id && f.follower_id !== currentUserInfo?.id
-  )];
-  
+
+  // Combine owner with real followers (properly extract the OTHER person's info)
+  const teamMembers = [];
+
+  // Add the current user as owner
+  teamMembers.push(...ownerItem);
+
+  // Process each follower relationship to extract the OTHER person
+  const seenUserIds = new Set([currentUserInfo?.id]); // Track to avoid duplicates
+
+  realFollowers.forEach(f => {
+    // Determine who the "other" person is in this relationship
+    let otherPerson = null;
+
+    if (f.follower_id === currentUserInfo?.id) {
+      // Current user is the follower, so show the person they're following
+      otherPerson = {
+        id: f.following_id,
+        name: f.following_profile?.name || f.following_profile?.email?.split('@')[0] || 'Unknown',
+        email: f.following_profile?.email || '',
+        avatar_url: f.following_profile?.avatar_url || '',
+        status: f.status
+      };
+    } else if (f.following_id === currentUserInfo?.id) {
+      // Current user is being followed, so show the follower
+      otherPerson = {
+        id: f.follower_id,
+        name: f.follower_profile?.name || f.follower_profile?.email?.split('@')[0] || 'Unknown',
+        email: f.follower_profile?.email || '',
+        avatar_url: f.follower_profile?.avatar_url || '',
+        status: f.status
+      };
+    }
+
+    // Add to team members if we haven't seen this user yet
+    if (otherPerson && otherPerson.id && !seenUserIds.has(otherPerson.id)) {
+      seenUserIds.add(otherPerson.id);
+      teamMembers.push(otherPerson);
+      console.log('✅ Added team member:', otherPerson);
+    } else if (otherPerson) {
+      console.log('⚠️ Skipped duplicate or invalid user:', otherPerson);
+    }
+  });
+
+  const displayFollowers = teamMembers;
+  console.log('🔍 Final displayFollowers array:', displayFollowers);
+
   const displayPending = realPendingRequests.length > 0 ? realPendingRequests : pendingFollowRequests;
-  
+
   return `
     <div class="team-panel-header">
       <span>Team Members</span>
@@ -14075,20 +14261,58 @@ async function renderTeamMembersPanel() {
     </div>
     
     <div class="team-panel-tabs">
-      <button class="team-panel-tab active">
+      <button class="team-panel-tab" onclick="toggleInvitesPanel(this)" style="position:relative;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          <path d="M2 12h4l1.5-3 2 6 1.5-3 1.5 3 2-6 1.5 3h4"/>
         </svg>
-        Invites <span class="tab-count" id="invitesCount">0</span>
+        Invites <span class="tab-count" id="invitesCount">${realPendingRequests.length}</span>
       </button>
-      <button class="team-panel-tab" onclick="switchTeamPanelTab('access')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        Access <span class="tab-count">1</span>
-      </button>
+    </div>
+    
+    <!-- Invites dropdown (hidden by default) -->
+    <div class="team-invites-dropdown" id="invitesDropdownPanel" style="display:none;">
+      <div class="invites-dropdown-header">
+        <span>Pending Invitations</span>
+      </div>
+      <div class="invites-dropdown-list" id="invitesDropdownList">
+        ${realPendingRequests.length === 0 ? `
+          <div class="invites-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--muted-foreground);margin-bottom:8px;">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <p style="color:var(--muted-foreground);font-size:13px;">No pending invitations</p>
+          </div>
+        ` : realPendingRequests.map(request => {
+    const profile = request.follower_profile || {};
+    const name = profile.name || profile.email?.split('@')[0] || 'Unknown';
+    const email = profile.email || '';
+    const initial = name.charAt(0).toUpperCase();
+
+    return `
+          <div class="invite-dropdown-item" data-request-id="${request.id}">
+            <div class="invite-dropdown-avatar">
+              ${profile.avatar_url ? `<img src="${profile.avatar_url}" alt="${name}">` : `<span>${initial}</span>`}
+            </div>
+            <div class="invite-dropdown-info">
+              <span class="invite-dropdown-name">${name}</span>
+              <span class="invite-dropdown-email">${email}</span>
+              <span class="invite-dropdown-time">${formatTimeAgo(request.created_at)}</span>
+            </div>
+            <div class="invite-dropdown-actions">
+              <button class="invite-accept-btn" onclick="event.stopPropagation(); acceptInvite('${request.follower_id}')" title="Accept">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;"><path d="M5 13l4 4L19 7"/></svg>
+                Accept
+              </button>
+              <button class="invite-reject-btn" onclick="event.stopPropagation(); rejectInvite('${request.follower_id}')" title="Decline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          `;
+  }).join('')}
+      </div>
     </div>
     
     <div class="team-panel-search">
@@ -14121,7 +14345,7 @@ async function renderTeamMembersPanel() {
               <div class="form-group">
                 <label>Email Address</label>
                 <input type="email" id="dropdownInviteEmail" placeholder="colleague@example.com" class="form-input" autocomplete="email">
-                <small class="form-help">Enter the Google email address of the person you want to invite</small>
+                <small class="form-help">Enter the email address of a registered user to add them</small>
               </div>
               <div class="form-group">
                 <label>Custom Message (Optional)</label>
@@ -14143,15 +14367,29 @@ async function renderTeamMembersPanel() {
     
     <div class="team-followers-list" id="teamMembersList">
       ${displayFollowers.map(f => {
-        const email = f.following_email || f.follower_email || f.email || '';
-        const name = f.following_name || f.follower_name || f.name || email.split('@')[0] || 'Unknown';
-        const avatar = f.following_avatar || f.follower_avatar || f.avatar_url || '';
-        const initial = name.charAt(0).toUpperCase();
-        
-        return `
-          <div class="team-follower-item" data-email="${email}">
-            <div class="team-follower-avatar">
-              ${avatar ? `<img src="${avatar}" alt="${name}">` : `<span>${initial}</span>`}
+    const email = f.following_email || f.follower_email || f.email || '';
+    const name = f.following_name || f.follower_name || f.name || email.split('@')[0] || 'Unknown';
+    const avatar = f.following_avatar || f.follower_avatar || f.avatar_url || '';
+    const initial = name.charAt(0).toUpperCase();
+    const userId = f.id || '';
+
+    // Determine status (mock logic for now: owner is online, others offline unless data says otherwise)
+    // If we had real presence data, we'd use f.presence_status here
+    const isOnline = f.isOwner || f.status === 'online';
+    const statusClass = isOnline ? 'online' : 'offline';
+
+    return `
+          <div class="team-follower-item" 
+               data-email="${email}" 
+               data-user-id="${userId}"
+               data-user-name="${name}"
+               ${!f.isOwner ? `oncontextmenu="showTeamMemberContextMenu(event, '${userId}', '${email}', '${name.replace(/'/g, "\\'")}'); return false;"` : ''}
+               style="cursor: ${f.isOwner ? 'default' : 'pointer'}">
+            <div class="team-follower-avatar-wrapper">
+              <div class="team-follower-avatar">
+                ${avatar ? `<img src="${avatar}" alt="${name}">` : `<span>${initial}</span>`}
+              </div>
+              <div class="team-follower-status ${statusClass}" title="${isOnline ? 'Online' : 'Offline'}"></div>
             </div>
             <div class="team-follower-info">
               <span class="team-follower-name">${name}</span>
@@ -14160,7 +14398,7 @@ async function renderTeamMembersPanel() {
             ${f.isOwner ? '<span class="team-owner-badge">Owner</span>' : ''}
           </div>
         `;
-      }).join('')}
+  }).join('')}
       ${displayFollowers.length === 0 ? `
         <div class="team-empty-state">
           <p>No team members yet</p>
@@ -14176,12 +14414,12 @@ async function renderTeamMembersPanel() {
       </div>
       <div class="team-pending-requests">
         ${displayPending.map(request => {
-          const profile = request.follower_profile || request.inviter_profile || {};
-          const name = profile.name || profile.email?.split('@')[0] || 'Unknown';
-          const email = profile.email || request.invitee_email || request.following_email || '';
-          const initial = name.charAt(0).toUpperCase();
-          
-          return `
+    const profile = request.follower_profile || request.inviter_profile || {};
+    const name = profile.name || profile.email?.split('@')[0] || 'Unknown';
+    const email = profile.email || request.invitee_email || request.following_email || '';
+    const initial = name.charAt(0).toUpperCase();
+
+    return `
           <div class="team-request-item" data-request-id="${request.id}">
             <div class="team-request-avatar">
               ${profile.avatar_url ? `<img src="${profile.avatar_url}" alt="${name}">` : `<span>${initial}</span>`}
@@ -14192,12 +14430,12 @@ async function renderTeamMembersPanel() {
               <span class="team-request-time">${formatTimeAgo(request.created_at)}</span>
             </div>
             <div class="team-request-actions">
-              <button class="btn btn-sm btn-success" onclick="acceptFollowRequest('${request.id}', '${request.follower_id || request.id}')" title="Accept">
+              <button class="btn btn-sm btn-success" onclick="acceptInvite('${request.follower_id}')" title="Accept">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                   <path d="M5 13l4 4L19 7"/>
                 </svg>
               </button>
-              <button class="btn btn-sm btn-danger" onclick="rejectFollowRequest('${request.id}', '${request.follower_id || request.id}')" title="Reject">
+              <button class="btn btn-sm btn-danger" onclick="rejectInvite('${request.follower_id}')" title="Reject">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -14205,7 +14443,7 @@ async function renderTeamMembersPanel() {
             </div>
           </div>
         `;
-        }).join('')}
+  }).join('')}
       </div>
     ` : ''}
   `;
@@ -14222,7 +14460,7 @@ async function checkInviteNotifications() {
   // Switch to the invites tab
   document.querySelectorAll('.team-panel-tab').forEach(t => t.classList.remove('active'));
   event.target.closest('.team-panel-tab').classList.add('active');
-  
+
   // Load pending invitations/requests
   let pendingRequests = [];
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
@@ -14234,13 +14472,13 @@ async function checkInviteNotifications() {
       pendingRequests = [];
     }
   }
-  
+
   // Update the invites count
   const invitesCountElement = document.getElementById('invitesCount');
   if (invitesCountElement) {
     invitesCountElement.textContent = pendingRequests.length;
   }
-  
+
   // Toggle the invites dropdown/content container
   toggleInvitesDropdown(pendingRequests);
 }
@@ -14252,18 +14490,18 @@ function toggleInvitesDropdown(requests) {
   if (existingDropdown) {
     existingDropdown.remove();
   }
-  
+
   // If no requests, show message directly
   if (requests.length === 0) {
     showNotification('You have no pending team invitations at this time.', 'info');
     return;
   }
-  
+
   // Create dropdown container
   const dropdownContainer = document.createElement('div');
   dropdownContainer.id = 'invitesDropdownContainer';
   dropdownContainer.className = 'team-invites-dropdown';
-  
+
   // Generate content
   const content = `
     <div class="dropdown-content">
@@ -14292,15 +14530,15 @@ function toggleInvitesDropdown(requests) {
       </div>
     </div>
   `;
-  
+
   dropdownContainer.innerHTML = content;
-  
+
   // Insert after the invites tab button
   const invitesTab = event.target.closest('.team-panel-tab');
   if (invitesTab) {
     invitesTab.parentNode.insertBefore(dropdownContainer, invitesTab.nextSibling);
   }
-  
+
   // Close dropdown when clicking outside
   setTimeout(() => {
     document.addEventListener('click', function closeDropdown(e) {
@@ -14336,72 +14574,413 @@ function showInviteNotificationsModal(requests) {
       </div>
     </div>
   `;
-  
+
   openModal('Team Invitations', modalContent);
 }
 
-async function acceptInvite(requestId, followerId) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.acceptFollowRequest(requestId, followerId);
-      console.log('Invite accepted successfully');
-      
-      // Close the invites dropdown
-      const dropdown = document.getElementById('invitesDropdownContainer');
-      if (dropdown) {
-        dropdown.remove();
-      }
-      
-      // Refresh the team members panel
-      const panel = document.getElementById('teamMembersPanel');
-      if (panel) {
-        const newContent = await renderTeamMembersPanel();
-        panel.innerHTML = newContent;
-      }
-      
-      // Show success message
-      showNotification('Invite accepted successfully!', 'success');
-    } catch (error) {
-      console.error('Failed to accept invite:', error);
-      showNotification('Failed to accept invite. Please try again.', 'error');
+// Toggle the invites dropdown panel
+function toggleInvitesPanel(btn) {
+  const panel = document.getElementById('invitesDropdownPanel');
+  if (!panel) return;
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !isVisible);
+}
+
+// ============================================
+// Real-time Subscription Management for Team Members Panel
+// ============================================
+
+let followersSubscriptionChannel = null;
+
+// Initialize real-time subscription for followers
+async function initializeTeamMembersSubscription() {
+  // Clean up any existing subscription first
+  cleanupTeamMembersSubscription();
+
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return;
+  }
+
+  console.log('🔄 Initializing real-time subscription for team members...');
+
+  // Subscribe to followers table changes
+  followersSubscriptionChannel = window.LayerDB.subscribeToFollowers(async (payload) => {
+    console.log('📨 Followers table changed:', payload);
+
+    // Refresh the team members panel
+    const panel = document.getElementById('teamMembersPanel');
+    if (panel) {
+      panel.innerHTML = await renderTeamMembersPanel();
+      console.log('✅ Team members panel refreshed automatically');
     }
+  });
+}
+
+// Clean up subscription when panel is closed or user signs out
+function cleanupTeamMembersSubscription() {
+  if (followersSubscriptionChannel && window.LayerDB) {
+    console.log('🧹 Cleaning up team members subscription...');
+    window.LayerDB.unsubscribeFromFollowers(followersSubscriptionChannel);
+    followersSubscriptionChannel = null;
   }
 }
 
-async function rejectInvite(requestId, followerId) {
-  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-    try {
-      await window.LayerDB.rejectFollowRequest(requestId, followerId);
-      console.log('Invite rejected successfully');
-      
-      // Close the invites dropdown
-      const dropdown = document.getElementById('invitesDropdownContainer');
-      if (dropdown) {
-        dropdown.remove();
-      }
-      
-      // Refresh the team members panel
-      const panel = document.getElementById('teamMembersPanel');
-      if (panel) {
-        const newContent = await renderTeamMembersPanel();
-        panel.innerHTML = newContent;
-      }
-      
-      // Show success message
-      showNotification('Invite declined.', 'info');
-    } catch (error) {
-      console.error('Failed to reject invite:', error);
-      showNotification('Failed to decline invite. Please try again.', 'error');
+// Make functions globally available
+window.initializeTeamMembersSubscription = initializeTeamMembersSubscription;
+window.cleanupTeamMembersSubscription = cleanupTeamMembersSubscription;
+
+async function acceptInvite(followerUserId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+  try {
+    console.log('🔄 Accepting follow request from:', followerUserId);
+
+    await window.LayerDB.acceptFollowRequest(followerUserId);
+
+    console.log('✅ Follow request accepted, refreshing panel...');
+
+    // Wait a moment for the database to update
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Refresh the entire team members panel to show the newly accepted member
+    const panel = document.getElementById('teamMembersPanel');
+    if (panel) {
+      panel.innerHTML = await renderTeamMembersPanel();
     }
+
+    showNotification('Invite accepted! Member added to your team.', 'success');
+  } catch (error) {
+    console.error('Failed to accept invite:', error);
+    showNotification('Failed to accept invite. Please try again.', 'error');
   }
 }
+
+async function rejectInvite(followerUserId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+  try {
+    console.log('🔄 Rejecting follow request from:', followerUserId);
+
+    await window.LayerDB.rejectFollowRequest(followerUserId);
+
+    console.log('✅ Follow request rejected, refreshing panel...');
+
+    // Wait a moment for the database to update
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Refresh the panel
+    const panel = document.getElementById('teamMembersPanel');
+    if (panel) {
+      panel.innerHTML = await renderTeamMembersPanel();
+    }
+
+    showNotification('Invite declined.', 'info');
+  } catch (error) {
+    console.error('Failed to reject invite:', error);
+    showNotification('Failed to decline invite.', 'error');
+  }
+}
+
+// ============================================
+// Team Member Context Menu
+// ============================================
+
+async function startTeamConversation(userId, name, email) {
+  // Generate consistent channel ID for DM (dm-MIN_ID-MAX_ID)
+  // But our supabase-client logic for getDirectMessages returns partnerId. 
+  // We need a consistent way to generate ID.
+  // Actually, we can just use 'dm-' + userId as a local temporary ID if we don't have the official channel ID from DB yet.
+  // But wait, the DB `team_chat_messages` stores `channel_id`. We need a convention.
+  // Let's use `dm-${[currentUserId, userId].sort().join('-')}`
+
+  const currentUser = window.LayerDB.getCurrentUser();
+  if (!currentUser) {
+    showToast('You must be logged in to start a conversation', 'error');
+    return;
+  }
+
+  // Ensure consistent ID generation by using lowercase
+  const participants = [currentUser.id.toLowerCase(), userId.toLowerCase()].sort();
+  const channelId = `dm-${participants.join('-')}`;
+
+  // Check if this DM is already in our specific list
+  let existingDM = teamDirectMessages.find(dm => dm.partnerId === userId || dm.id === channelId);
+
+  if (!existingDM) {
+    // Optimistically add to list
+    existingDM = {
+      id: channelId,
+      partnerId: userId,
+      name: name,
+      email: email,
+      type: 'dm',
+      unread: 0,
+      status: 'offline', // will update
+      avatar: null // will update if we fetch profile
+    };
+    teamDirectMessages.unshift(existingDM);
+
+    // Close any open modals
+    closeModal();
+  }
+
+  // Select the channel
+  // This will trigger updateTeamChatArea() which re-renders the list
+  await selectTeamChannel(channelId);
+
+  // Close context menu
+  const menu = document.querySelector('.team-member-context-menu');
+  if (menu) menu.remove();
+}
+
+function showTeamMemberContextMenu(event, userId, email, name) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  // Remove any existing context menus
+  const existingMenus = document.querySelectorAll('.team-member-context-menu');
+  existingMenus.forEach(menu => menu.remove());
+
+  // Create context menu
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'team-member-context-menu';
+  contextMenu.innerHTML = `
+    <div class="context-menu-header">
+      <div class="context-menu-user-name">${name}</div>
+      <div class="context-menu-user-email">${email}</div>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" onclick="startTeamConversation('${userId}', '${name.replace(/'/g, "\\'")}', '${email}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>Start Conversation</span>
+    </div>
+    <div class="context-menu-item" onclick="muteTeamMember('${userId}', '${name.replace(/'/g, "\\'")}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <line x1="23" y1="9" x2="17" y2="15"/>
+        <line x1="17" y1="9" x2="23" y2="15"/>
+      </svg>
+      <span>Mute</span>
+    </div>
+    <div class="context-menu-item danger" onclick="unfollowTeamMember('${userId}', '${email}', '${name.replace(/'/g, "\\'")}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <line x1="18" y1="8" x2="23" y2="13"/>
+        <line x1="23" y1="8" x2="18" y2="13"/>
+      </svg>
+      <span>Unfollow</span>
+    </div>
+  `;
+
+  document.body.appendChild(contextMenu);
+
+  // Position the context menu
+  const menuRect = contextMenu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = event.clientX;
+  let top = event.clientY;
+
+  // Adjust if menu goes off screen
+  if (left + menuRect.width > viewportWidth) {
+    left = viewportWidth - menuRect.width - 10;
+  }
+  if (top + menuRect.height > viewportHeight) {
+    top = viewportHeight - menuRect.height - 10;
+  }
+
+  contextMenu.style.left = `${left}px`;
+  contextMenu.style.top = `${top}px`;
+
+  // Close menu when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeContextMenu(e) {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.remove();
+        document.removeEventListener('click', closeContextMenu);
+      }
+    });
+  }, 10);
+}
+
+async function muteTeamMember(userId, name) {
+  // Close context menu
+  const contextMenu = document.querySelector('.team-member-context-menu');
+  if (contextMenu) contextMenu.remove();
+
+  // TODO: Implement mute functionality
+  // For now, just show a notification
+  showNotification(`Mute feature coming soon for ${name}!`, 'info');
+
+  console.log('🔇 Muting user:', userId, name);
+}
+
+async function unfollowTeamMember(userId, email, name) {
+  // Close context menu
+  const contextMenu = document.querySelector('.team-member-context-menu');
+  if (contextMenu) contextMenu.remove();
+
+  // Confirm before unfollowing
+  if (!confirm(`Are you sure you want to unfollow ${name}? They will be removed from your team members.`)) {
+    return;
+  }
+
+  try {
+    console.log('🔄 Unfollowing user:', userId, email);
+
+    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+      showNotification('Please sign in to unfollow users', 'error');
+      return;
+    }
+
+    // Unfollow the user
+    await window.LayerDB.unfollowUser(userId);
+
+    console.log('✅ Unfollowed user, refreshing panel...');
+
+    // Wait a moment for the database to update
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Refresh the team members panel
+    const panel = document.getElementById('teamMembersPanel');
+    if (panel) {
+      panel.innerHTML = await renderTeamMembersPanel();
+    }
+
+    // Also remove from DM list if present?
+    // Maybe better to refresh the whole view
+    // renderTeamView(); // logic for full refresh might be needed
+
+    showNotification(`You unfollowed ${name}`, 'success');
+  } catch (error) {
+    console.error('Failed to unfollow user:', error);
+    showNotification('Failed to unfollow user. Please try again.', 'error');
+  }
+}
+
+// DM Context Menu
+function showDMContextMenu(event, dmId, partnerId, partnerName) {
+  event.preventDefault(); // Prevent default browser menu
+
+  // Remove existing context menu
+  const existingMenu = document.querySelector('.team-dm-context-menu');
+  if (existingMenu) existingMenu.remove();
+
+  // Create context menu element
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'team-member-context-menu team-dm-context-menu'; // Reuse styles
+
+  contextMenu.innerHTML = `
+    <div class="context-menu-header">
+      <span>${partnerName}</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" onclick="muteTeamMember('${partnerId}', '${partnerName.replace(/'/g, "\\'")}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <line x1="23" y1="9" x2="17" y2="15"/>
+        <line x1="17" y1="9" x2="23" y2="15"/>
+      </svg>
+      <span>Mute</span>
+    </div>
+    <div class="context-menu-item danger" onclick="clearLocalDMChat('${dmId}', '${partnerName.replace(/'/g, "\\'")}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      <span>Clear Chat</span>
+    </div>
+    <div class="context-menu-item danger" onclick="unfollowTeamMember('${partnerId}', '', '${partnerName.replace(/'/g, "\\'")}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <line x1="18" y1="8" x2="23" y2="13"/>
+        <line x1="23" y1="8" x2="18" y2="13"/>
+      </svg>
+      <span>Unfollow</span>
+    </div>
+  `;
+
+  document.body.appendChild(contextMenu);
+
+  // Position the context menu
+  const menuRect = contextMenu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = event.clientX;
+  let top = event.clientY;
+
+  // Adjust if menu goes off screen
+  if (left + menuRect.width > viewportWidth) {
+    left = viewportWidth - menuRect.width - 10;
+  }
+  if (top + menuRect.height > viewportHeight) {
+    top = viewportHeight - menuRect.height - 10;
+  }
+
+  contextMenu.style.left = `${left}px`;
+  contextMenu.style.top = `${top}px`;
+
+  // Close menu when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeContextMenu(e) {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.remove();
+        document.removeEventListener('click', closeContextMenu);
+      }
+    });
+  }, 10);
+}
+
+// Clear DM Chat Handler
+async function clearLocalDMChat(dmId, partnerName) {
+  // Close context menu
+  const contextMenu = document.querySelector('.team-dm-context-menu');
+  if (contextMenu) contextMenu.remove();
+
+  if (!confirm(`Are you sure you want to delete all messages with ${partnerName}? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    if (window.LayerDB && window.LayerDB.clearDMChat) {
+      await window.LayerDB.clearDMChat(dmId);
+
+      // Clear local messages
+      teamMessages[dmId] = [];
+
+      // Update UI if current channel
+      if (teamCurrentChannel === dmId) {
+        updateTeamChatArea();
+      }
+
+      showNotification('Chat history cleared', 'success');
+    } else {
+      showNotification('Database connection not available', 'error');
+    }
+  } catch (error) {
+    console.error('Failed to clear chat:', error);
+    showNotification('Failed to clear chat. Please try again.', 'error');
+  }
+}
+
+// Make functions globally available
+window.showTeamMemberContextMenu = showTeamMemberContextMenu;
+window.showDMContextMenu = showDMContextMenu;
+window.muteTeamMember = muteTeamMember;
+window.unfollowTeamMember = unfollowTeamMember;
+window.clearLocalDMChat = clearLocalDMChat;
 
 function showNotification(message, type = 'info') {
   // Create notification element
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
   notification.textContent = message;
-  
+
   // Add basic styling
   Object.assign(notification.style, {
     position: 'fixed',
@@ -14416,7 +14995,7 @@ function showNotification(message, type = 'info') {
     maxWidth: '300px',
     wordWrap: 'break-word'
   });
-  
+
   // Set background color based on type
   const colors = {
     success: '#10b981',
@@ -14425,10 +15004,10 @@ function showNotification(message, type = 'info') {
     warning: '#f59e0b'
   };
   notification.style.backgroundColor = colors[type] || colors.info;
-  
+
   // Add to document
   document.body.appendChild(notification);
-  
+
   // Remove after 3 seconds
   setTimeout(() => {
     if (notification.parentNode) {
@@ -14440,7 +15019,7 @@ function showNotification(message, type = 'info') {
 function searchTeamMembers(query) {
   const items = document.querySelectorAll('.team-follower-item');
   const searchTerm = query.toLowerCase();
-  
+
   items.forEach(item => {
     const email = item.dataset.email || '';
     const name = item.querySelector('.team-follower-name')?.textContent || '';
@@ -14450,21 +15029,67 @@ function searchTeamMembers(query) {
 }
 
 // Team View Helper Functions
+// Helper to update just the chat area without full re-render
+function updateTeamChatArea() {
+  const chatMain = document.querySelector('.team-chat-main');
+  if (chatMain) {
+    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + renderTeamMessageInput();
+  }
+
+  // Update sidebar active states
+  document.querySelectorAll('.team-chat-item').forEach(item => {
+    item.classList.remove('active');
+  });
+
+  // Find and activate the current channel/DM
+  document.querySelectorAll('.team-chat-item').forEach(item => {
+    const onclick = item.getAttribute('onclick') || '';
+
+    // Check if this item's onclick matches the current channel
+    // Handle both regular format and DM format
+    if (onclick.includes("'" + teamCurrentChannel + "'") ||
+      onclick.includes('"' + teamCurrentChannel + '"')) {
+      item.classList.add('active');
+      console.log('✅ Activated chat item:', teamCurrentChannel);
+    }
+  });
+
+  // Auto-scroll chat to bottom
+  const messagesList = document.querySelector('.team-messages-list');
+  if (messagesList) {
+    messagesList.scrollTop = messagesList.scrollHeight;
+  }
+}
+
 async function selectTeamChannel(channelId) {
   teamCurrentChannel = channelId;
-  
+
   // Determine channel type
-  const channel = teamChannels.find(c => c.id === channelId) || 
-                 teamDirectMessages.find(d => d.id === channelId);
+  const channel = teamChannels.find(c => c.id === channelId) ||
+    teamDirectMessages.find(d => d.id === channelId);
   const channelType = channel?.type || 'channel';
-  
-  // Load messages from database
+
+  // IDEMPOTENT: Clear unread count locally
+  if (channel) {
+    channel.unread = 0;
+  }
+
+  // Mark as read in DB (fire and forget)
+  if (window.LayerDB && window.LayerDB.markChatAsRead) {
+    window.LayerDB.markChatAsRead(channelId).catch(err => console.error('Failed to mark read:', err));
+  }
+
+  // Update chat area immediately with cached messages
+  updateTeamChatArea();
+
+  // Load messages from database in background
   await loadTeamMessages(channelId, channelType);
-  
+
   // Setup realtime subscription
   await setupTeamChatRealtime(channelId);
-  
-  renderCurrentView();
+
+  // Update chat area again with loaded messages
+  updateTeamChatArea();
 }
 
 function selectTeamGroup(groupId) {
@@ -14473,7 +15098,16 @@ function selectTeamGroup(groupId) {
 
 function setTeamTab(tab) {
   teamCurrentTab = tab;
-  renderCurrentView();
+  // Update tab active states directly
+  document.querySelectorAll('.team-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.team-tab').forEach(t => {
+    const onclick = t.getAttribute('onclick') || '';
+    if (onclick.includes("'" + tab + "'")) {
+      t.classList.add('active');
+    }
+  });
+  // Refresh chat content area
+  updateTeamChatArea();
 }
 
 async function toggleTeamMembersPanel() {
@@ -14481,7 +15115,7 @@ async function toggleTeamMembersPanel() {
   if (panel) {
     const isCollapsed = panel.classList.contains('collapsed');
     panel.classList.toggle('collapsed');
-    
+
     // Refresh panel content when opening
     if (isCollapsed) {
       const newContent = await renderTeamMembersPanel();
@@ -14507,70 +15141,150 @@ function closeTeamCreateDropdown() {
 async function sendTeamMessage() {
   const input = document.getElementById('teamMessageInput');
   if (!input || !input.value.trim()) return;
-  
+
+  const messageText = input.value.trim();
+  input.value = '';
+
+  console.log('🔵 Attempting to send message:', messageText);
+  console.log('🔵 Current channel:', teamCurrentChannel);
+
   try {
+    // Check if user is authenticated
+    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+      console.error('❌ User not authenticated');
+      showNotification('Please sign in to send messages', 'error');
+      input.value = messageText; // Restore message
+      return;
+    }
+
     // Determine channel type based on current channel
-    const channel = teamChannels.find(c => c.id === teamCurrentChannel) || 
-                   teamDirectMessages.find(d => d.id === teamCurrentChannel);
-    const channelType = channel?.type || 'channel';
+    const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+      teamDirectMessages.find(d => d.id === teamCurrentChannel);
+
+    console.log('🔵 Found channel:', channel);
+
+    const channelType = channel?.type || (teamCurrentChannel?.startsWith('dm-') ? 'dm' : 'channel');
+    console.log('🔵 Channel type:', channelType);
+
     let recipientId = null;
-    
+
     // For DMs, get the recipient ID
     if (channelType === 'dm') {
-      // This would need to be resolved from the user's email to ID
-      // For now, we'll use the channel ID as recipient identifier
-      recipientId = teamCurrentChannel;
+      // Parse recipient ID from 'dm-UUID1-UUID2' format
+      // UUIDs contain dashes, so we can't just split by '-'
+      // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with dashes)
+
+      const dmPrefix = 'dm-';
+      const channelWithoutPrefix = teamCurrentChannel.substring(dmPrefix.length);
+      const currentUserId = window.LayerDB.getCurrentUser()?.id;
+
+      console.log('🔵 DM channel (without prefix):', channelWithoutPrefix);
+      console.log('🔵 Current user ID:', currentUserId);
+
+      // Use regex to extract all UUIDs from the channel ID
+      const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+      const uuidMatches = channelWithoutPrefix.match(uuidRegex);
+
+      console.log('🔵 UUID matches found:', uuidMatches);
+
+      if (uuidMatches && uuidMatches.length >= 2 && currentUserId) {
+        // Find the UUID that is NOT the current user
+        recipientId = uuidMatches.find(id => id.toLowerCase() !== currentUserId.toLowerCase());
+
+        // Fallback: if not found, use the other UUID
+        if (!recipientId && uuidMatches.length >= 2) {
+          recipientId = uuidMatches[0].toLowerCase() === currentUserId.toLowerCase() ? uuidMatches[1] : uuidMatches[0];
+        }
+      } else if (uuidMatches && uuidMatches.length === 1) {
+        // Self-chat scenario
+        recipientId = uuidMatches[0];
+      }
+
+      if (!recipientId) {
+        console.error('❌ Could not determine recipient ID from channel:', teamCurrentChannel);
+        console.error('❌ Channel without prefix:', channelWithoutPrefix);
+        console.error('❌ UUID matches:', uuidMatches);
+        showNotification('Error sending message: Invalid conversation', 'error');
+        input.value = messageText; // Restore message
+        return;
+      }
+
+      console.log('🔵 Recipient ID:', recipientId);
     }
-    
+
+    console.log('🔵 Calling LayerDB.sendTeamMessage...');
+
     // Send message to database
-    const messageData = await api.sendTeamMessage(
+    const messageData = await window.LayerDB.sendTeamMessage(
       teamCurrentChannel,
       channelType,
-      input.value.trim(),
+      messageText,
       recipientId
     );
-    
-    // Clear input and refresh UI
-    input.value = '';
-    
-    // The message will be updated via realtime subscription
-    // For immediate feedback, we can add it to local state
+
+    console.log('✅ Message sent successfully:', messageData);
+
+    // Add message locally (with DB id to prevent duplicate from realtime)
     if (!teamMessages[teamCurrentChannel]) {
       teamMessages[teamCurrentChannel] = [];
     }
-    
+
     // Convert database message to local format
     const localMessage = {
       id: messageData.id,
-      user: messageData.user_profile?.name || 'Unknown',
-      avatar: messageData.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      user: messageData.user_profile?.name || messageData.message ? (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'You') : 'Unknown',
+      avatar: (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'U').charAt(0).toUpperCase(),
       content: messageData.message,
       time: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: false,
       userId: messageData.user_id,
+      avatarUrl: messageData.user_profile?.avatar_url || null,
       isEdited: messageData.is_edited,
       editedAt: messageData.edited_at
     };
-    
+
     teamMessages[teamCurrentChannel].push(localMessage);
-    renderCurrentView();
-    
+    updateTeamChatArea();
+
+    console.log('✅ Message added to UI');
+
   } catch (error) {
-    console.error('Failed to send team message:', error);
-    showNotification('Failed to send message. Please try again.', 'error');
+    console.error('❌ Failed to send team message:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      error: error
+    });
+
+    // Show user-friendly error message
+    let errorMessage = 'Failed to send message. Please try again.';
+    if (error.message.includes('Not authenticated')) {
+      errorMessage = 'Please sign in to send messages.';
+    } else if (error.message.includes('Invalid conversation')) {
+      errorMessage = 'Invalid conversation. Please refresh the page.';
+    } else if (error.message) {
+      errorMessage = `Error: ${error.message}`;
+    }
+
+    showNotification(errorMessage, 'error');
+
+    // Restore the message text on error
+    const inp = document.getElementById('teamMessageInput');
+    if (inp) inp.value = messageText;
   }
 }
 
 // Load team messages from database
 async function loadTeamMessages(channelId, channelType = 'channel') {
   try {
-    const messages = await api.getTeamMessages(channelId, channelType);
-    
+    const messages = await window.LayerDB.getChatMessages(channelId);
+
     // Convert database messages to local format
     const localMessages = messages.map(msg => ({
       id: msg.id,
-      user: msg.user_profile?.name || 'Unknown',
-      avatar: msg.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      user: msg.user_profile?.name || msg.sender?.email || 'Unknown', // Fallback to sender email if name missing
+      avatar: msg.user_profile?.avatar_url, // Use distinct avatar URL
+      initial: (msg.user_profile?.name || msg.sender?.email || 'U').charAt(0).toUpperCase(),
       content: msg.message,
       time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: msg.message_type === 'system',
@@ -14582,10 +15296,10 @@ async function loadTeamMessages(channelId, channelType = 'channel') {
       fileName: msg.file_name,
       replyTo: msg.reply_to
     }));
-    
+
     // Update local state
     teamMessages[channelId] = localMessages;
-    
+
     return localMessages;
   } catch (error) {
     console.error('Failed to load team messages:', error);
@@ -14595,53 +15309,217 @@ async function loadTeamMessages(channelId, channelType = 'channel') {
 
 // Setup realtime subscription for team messages
 let currentTeamChatSubscription = null;
+let globalDMSubscription = null;
+
+async function setupGlobalDMListener() {
+  // If already subscribed, don't subscribe again
+  if (globalDMSubscription) return;
+
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+
+  console.log('🎧 Setting up global DM listener...');
+
+  globalDMSubscription = window.LayerDB.subscribeToUserMessages(async (payload) => {
+    const { new: newRecord } = payload;
+
+    // We only care about inserts for DMs
+    if (!newRecord || newRecord.channel_type !== 'dm') return;
+
+    console.log('📩 Global DM Listener received message:', newRecord);
+
+    // Check if we already have this conversation in our list
+    // The sender is the user_id (since we filtered by recipient_id = current user)
+    const senderId = newRecord.user_id;
+
+    const existingDM = teamDirectMessages.find(dm => dm.partnerId === senderId);
+
+    if (!existingDM) {
+      console.log('✨ New DM conversation detected from:', senderId);
+
+      // Fetch sender profile to add to list
+      try {
+        // We can use the cache or fetch fresh
+        let profile = window.LayerDB.getCachedProfile ? window.LayerDB.getCachedProfile(senderId) : null;
+
+        if (!profile) {
+          const profiles = await window.LayerDB.fetchProfiles([senderId]);
+          profile = profiles[0];
+        } else {
+          console.log('👤 Found profile in cache');
+        }
+
+        if (profile) {
+          // Add to local state
+          const newDM = {
+            id: newRecord.channel_id,
+            type: 'dm',
+            partnerId: senderId,
+            name: profile.name || profile.email,
+            avatar: profile.avatar_url,
+            email: profile.email,
+            status: 'online', // We don't know status yet, assume online or fetch
+            email: profile.email,
+            status: 'online', // We don't know status yet, assume online or fetch
+            unread: 1,
+            lastMessage: {
+              ...newRecord,
+              user_profile: profile // Attach profile for easier rendering
+            }
+          };
+
+          // Add to beginning of list
+          teamDirectMessages.unshift(newDM);
+
+          // Re-render the sidebar list
+          // We need to find the specific element or re-render the whole list section
+          // For now, let's call updateTeamChatArea() which re-renders everything
+          // Or preferably just update the DOM if possible to avoid flickering
+
+          updateTeamChatArea(); // This re-renders sidebar + main area. 
+          updateTeamSidebar(); // Update sidebar specificially for better UX
+
+          showNotification(`New message from ${profile.name}`, 'info');
+
+          // Play notification sound if we had one
+        }
+      } catch (err) {
+        console.error('Error handling new DM:', err);
+      }
+    } else {
+      console.log('📨 Message for existing DM:', existingDM.name);
+      // Update existing DM
+      existingDM.lastMessage = newRecord;
+
+      // Increment unread if we are not currently in this channel
+      // Check if we are currently viewing this channel (case-insensitive check)
+      const isCurrentChannel = teamCurrentChannel &&
+        (teamCurrentChannel.toLowerCase() === existingDM.id.toLowerCase() ||
+          teamCurrentChannel.toLowerCase() === newRecord.channel_id.toLowerCase());
+
+      if (!isCurrentChannel) {
+        // We are NOT in this channel, so increment unread
+        existingDM.unread = (existingDM.unread || 0) + 1;
+        updateTeamChatArea(); // Update badges
+        updateTeamSidebar(); // Update sidebar badges
+      } else {
+        // We ARE in this channel.
+        // Ensure the message is in our local state for the ACTIVE channel
+        // We use teamCurrentChannel as the key to ensure the view updates
+        const activeChannelId = teamCurrentChannel;
+
+        if (!teamMessages[activeChannelId]) {
+          teamMessages[activeChannelId] = [];
+        }
+
+        // Check if message already exists (avoid duplicates)
+        const exists = teamMessages[activeChannelId].some(m => m.id === newRecord.id);
+
+        if (!exists) {
+          console.log('🔄 Global listener adding message to active view (redundancy)');
+
+          // Convert to local format
+          const localMessage = {
+            id: newRecord.id,
+            user: profile.name || profile.email || 'User',
+            avatar: profile.avatar_url, // Use distinct avatar URL
+            avatarUrl: profile.avatar_url,
+            content: newRecord.message,
+            time: new Date(newRecord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isSystem: newRecord.message_type === 'system',
+            userId: newRecord.user_id,
+            isEdited: newRecord.is_edited,
+            editedAt: newRecord.edited_at
+          };
+
+          // Push to the array backing the CURRENT VIEW
+          teamMessages[activeChannelId].push(localMessage);
+
+          // Force UI update
+          updateTeamChatArea();
+        } else {
+          updateTeamChatArea();
+        }
+      }
+    }
+  });
+}
 
 async function setupTeamChatRealtime(channelId) {
   // Remove existing subscription
   if (currentTeamChatSubscription) {
-    api.unsubscribeFromTeamMessages(currentTeamChatSubscription);
+    window.LayerDB.unsubscribeFromTeamMessages(currentTeamChatSubscription);
     currentTeamChatSubscription = null;
   }
-  
+
   // Setup new subscription
-  currentTeamChatSubscription = api.subscribeToTeamMessages(channelId, (payload) => {
+  currentTeamChatSubscription = window.LayerDB.subscribeToTeamMessages(channelId, (payload) => {
     handleTeamChatRealtimeUpdate(payload);
   });
 }
 
 // Handle realtime updates for team chat
-function handleTeamChatRealtimeUpdate(payload) {
+async function handleTeamChatRealtimeUpdate(payload) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
-  
+
   if (eventType === 'INSERT') {
-    // Add new message to local state
+    const channelId = newRecord.channel_id;
+
+    // Skip if message already exists locally (sent by us)
+    if (teamMessages[channelId]) {
+      const exists = teamMessages[channelId].some(m => m.id === newRecord.id);
+      if (exists) return;
+    }
+
+    // Resolve user profile for the message sender
+    let userName = 'User';
+    let userAvatar = 'U';
+    let avatarUrl = null;
+    const currentUser = window.LayerDB?.getCurrentUser();
+
+    if (newRecord.user_id === currentUser?.id) {
+      userName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You';
+      userAvatar = userName.charAt(0).toUpperCase();
+      avatarUrl = currentUser?.user_metadata?.avatar_url || null;
+    } else {
+      // Fetch profile from cache or DB
+      try {
+        if (window.LayerDB?.fetchProfiles) {
+          await window.LayerDB.fetchProfiles([newRecord.user_id]);
+        }
+        const profile = window.LayerDB?.getCachedProfile?.(newRecord.user_id);
+        if (profile) {
+          userName = profile.name || profile.email?.split('@')[0] || 'User';
+          userAvatar = userName.charAt(0).toUpperCase();
+          avatarUrl = profile.avatar_url || null;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch profile for realtime message:', e);
+      }
+    }
+
     const localMessage = {
       id: newRecord.id,
-      user: newRecord.user_profile?.name || 'Unknown',
-      avatar: newRecord.user_profile?.name?.charAt(0).toUpperCase() || 'U',
+      user: userName,
+      avatar: userAvatar,
+      avatarUrl: avatarUrl,
       content: newRecord.message,
       time: new Date(newRecord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: newRecord.message_type === 'system',
       userId: newRecord.user_id,
       isEdited: newRecord.is_edited,
-      editedAt: newRecord.edited_at,
-      messageType: newRecord.message_type,
-      fileUrl: newRecord.file_url,
-      fileName: newRecord.file_name,
-      replyTo: newRecord.reply_to
+      editedAt: newRecord.edited_at
     };
-    
-    if (!teamMessages[newRecord.channel_id]) {
-      teamMessages[newRecord.channel_id] = [];
+
+    if (!teamMessages[channelId]) {
+      teamMessages[channelId] = [];
     }
-    teamMessages[newRecord.channel_id].push(localMessage);
-    
-    // Update UI if we're viewing this channel
-    if (teamCurrentChannel === newRecord.channel_id) {
-      renderCurrentView();
+    teamMessages[channelId].push(localMessage);
+
+    // Update UI if we're viewing this channel (partial update, no full re-render)
+    if (teamCurrentChannel === channelId) {
+      updateTeamChatArea();
     }
   } else if (eventType === 'UPDATE') {
-    // Update existing message in local state
     const channelId = newRecord.channel_id;
     if (teamMessages[channelId]) {
       const messageIndex = teamMessages[channelId].findIndex(msg => msg.id === newRecord.id);
@@ -14652,22 +15530,19 @@ function handleTeamChatRealtimeUpdate(payload) {
           isEdited: newRecord.is_edited,
           editedAt: newRecord.edited_at
         };
-        
-        // Update UI if we're viewing this channel
+
         if (teamCurrentChannel === channelId) {
-          renderCurrentView();
+          updateTeamChatArea();
         }
       }
     }
   } else if (eventType === 'DELETE') {
-    // Remove message from local state
     const channelId = oldRecord.channel_id;
     if (teamMessages[channelId]) {
       teamMessages[channelId] = teamMessages[channelId].filter(msg => msg.id !== oldRecord.id);
-      
-      // Update UI if we're viewing this channel
+
       if (teamCurrentChannel === channelId) {
-        renderCurrentView();
+        updateTeamChatArea();
       }
     }
   }
@@ -14686,23 +15561,23 @@ let realtimeSubscriptions = {
 // Initialize all realtime subscriptions
 async function initializeRealtimeSubscriptions() {
   if (!currentUser) return;
-  
+
   try {
     // Subscribe to projects changes
     realtimeSubscriptions.projects = api.subscribeToProjects((payload) => {
       handleProjectRealtimeUpdate(payload);
     });
-    
+
     // Subscribe to calendar events changes
     realtimeSubscriptions.calendarEvents = api.subscribeToCalendarEvents((payload) => {
       handleCalendarEventRealtimeUpdate(payload);
     });
-    
+
     // Subscribe to docs changes
     realtimeSubscriptions.docs = api.subscribeToDocs((payload) => {
       handleDocRealtimeUpdate(payload);
     });
-    
+
     console.log('Realtime subscriptions initialized');
   } catch (error) {
     console.error('Failed to initialize realtime subscriptions:', error);
@@ -14712,16 +15587,16 @@ async function initializeRealtimeSubscriptions() {
 // Refresh team members display in project detail view
 function refreshTeamMembersDisplay(projectIndex) {
   console.log('Refreshing team members display for project:', projectIndex);
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
     console.error('Project not found:', projectIndex);
     return;
   }
-  
+
   console.log('Project team members:', project.teamMembers);
-  
+
   // Update team members section if it exists
   const teamMembersSection = document.querySelector('.pd-team-members .team-members-list');
   if (teamMembersSection) {
@@ -14731,7 +15606,7 @@ function refreshTeamMembersDisplay(projectIndex) {
   } else {
     console.warn('Team members section not found');
   }
-  
+
   // Update project header members if it exists
   const projectHeaderMembers = document.querySelector('.pd-project-members');
   if (projectHeaderMembers) {
@@ -14752,7 +15627,7 @@ function getNameColor(name) {
     '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
     '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
   ];
-  
+
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -14764,7 +15639,7 @@ function getNameColor(name) {
 function generateTeamMembersHtml(project, projectIndex) {
   const teamMembers = project.teamMembers || [];
   const isOwner = isProjectOwner(projectIndex);
-  
+
   let html = `
     <div class="pd-team-members">
       <div class="pd-section-header">
@@ -14776,12 +15651,12 @@ function generateTeamMembersHtml(project, projectIndex) {
       </div>
       <div class="team-members-list">
   `;
-  
+
   teamMembers.forEach((member, index) => {
     const isCurrentUser = member === (window.getCurrentUserEmail ? window.getCurrentUserEmail() : '') || member === 'You';
     const memberName = member === 'You' ? (window.getCurrentUserName ? window.getCurrentUserName() : 'You') : member;
     const isLeader = project.leader === memberName;
-    
+
     html += `
       <div class="team-member-item ${isCurrentUser ? 'current-user' : ''} ${isLeader ? 'team-leader' : ''}" 
            ${isOwner && !isCurrentUser ? `oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${index})"` : ''}>
@@ -14803,9 +15678,9 @@ function generateTeamMembersHtml(project, projectIndex) {
       </div>
     `;
   });
-  
+
   html += '</div>';
-  
+
   // Add member button - only for project owners
   if (isOwner) {
     html += `
@@ -14818,7 +15693,7 @@ function generateTeamMembersHtml(project, projectIndex) {
       </button>
     `;
   }
-  
+
   html += '</div>';
   return html;
 }
@@ -14829,20 +15704,20 @@ function generateProjectMembersHtml(project) {
   const maxDisplay = 3;
   const displayMembers = teamMembers.slice(0, maxDisplay);
   const remainingCount = teamMembers.length - maxDisplay;
-  
+
   let html = '<div class="pd-project-members">';
-  
+
   displayMembers.forEach(member => {
     const memberName = member === 'You' ? getCurrentUserName() : member;
     const initial = memberName.charAt(0).toUpperCase();
-    
+
     html += `
       <div class="pd-member-avatar" title="${memberName}">
         ${initial}
       </div>
     `;
   });
-  
+
   if (remainingCount > 0) {
     html += `
       <div class="pd-member-avatar pd-more-members" title="${remainingCount} more members">
@@ -14850,7 +15725,7 @@ function generateProjectMembersHtml(project) {
       </div>
     `;
   }
-  
+
   html += '</div>';
   return html;
 }
@@ -14858,9 +15733,9 @@ function generateProjectMembersHtml(project) {
 // Handle project updates
 function handleProjectRealtimeUpdate(payload) {
   console.log('Real-time project update received:', payload);
-  
+
   const { eventType, new: newRecord, old: oldRecord } = payload;
-  
+
   if (eventType === 'INSERT') {
     // Add new project to local state
     projects.push(newRecord);
@@ -14870,45 +15745,45 @@ function handleProjectRealtimeUpdate(payload) {
     if (index !== -1) {
       const oldProject = projects[index];
       projects[index] = newRecord;
-      
+
       // Check if team members changed
       const oldMembers = oldProject.team_members || [];
       const newMembers = newRecord.team_members || [];
       const membersChanged = JSON.stringify(oldMembers.sort()) !== JSON.stringify(newMembers.sort());
-      
+
       console.log('Team members change detected:', {
         oldMembers,
         newMembers,
         membersChanged,
         currentView
       });
-      
+
       if (membersChanged) {
         console.log('Team members changed, refreshing team display');
-        
+
         // Refresh only the team members display for better UX
         if (currentView === 'project-detail') {
           refreshTeamMembersDisplay(index);
         }
-        
+
         // Show notification for member changes
         const addedMembers = newMembers.filter(m => !oldMembers.includes(m));
         const removedMembers = oldMembers.filter(m => !newMembers.includes(m));
-        
+
         if (addedMembers.length > 0) {
           showNotification(`${addedMembers.join(', ')} joined the project`, 'success');
         }
         if (removedMembers.length > 0) {
           showNotification(`${removedMembers.join(', ')} left the project`, 'info');
         }
-        
+
         // Also update local storage to keep in sync
         const localProjects = loadProjects();
         if (localProjects[index]) {
           localProjects[index].teamMembers = newMembers;
           saveProjects(localProjects);
         }
-        
+
         return; // Don't do full refresh if only members changed
       }
     }
@@ -14916,7 +15791,7 @@ function handleProjectRealtimeUpdate(payload) {
     // Remove project from local state
     projects = projects.filter(p => p.id !== oldRecord.id);
   }
-  
+
   // Refresh current view if needed (for non-member changes)
   if (currentView === 'projects' || currentView === 'project-detail') {
     renderCurrentView();
@@ -14926,7 +15801,7 @@ function handleProjectRealtimeUpdate(payload) {
 // Handle calendar event updates
 function handleCalendarEventRealtimeUpdate(payload) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
-  
+
   if (eventType === 'INSERT') {
     // Add new event to calendar
     calendarEvents.push(newRecord);
@@ -14940,7 +15815,7 @@ function handleCalendarEventRealtimeUpdate(payload) {
     // Remove event from calendar
     calendarEvents = calendarEvents.filter(e => e.id !== oldRecord.id);
   }
-  
+
   // Refresh calendar view if needed
   if (currentView === 'calendar') {
     renderCurrentView();
@@ -14950,7 +15825,7 @@ function handleCalendarEventRealtimeUpdate(payload) {
 // Handle doc updates
 function handleDocRealtimeUpdate(payload) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
-  
+
   if (eventType === 'INSERT') {
     // Add new doc
     docs.push(newRecord);
@@ -14964,7 +15839,7 @@ function handleDocRealtimeUpdate(payload) {
     // Remove doc
     docs = docs.filter(d => d.id !== oldRecord.id);
   }
-  
+
   // Refresh docs view if needed
   if (currentView === 'docs') {
     renderCurrentView();
@@ -14978,13 +15853,13 @@ function cleanupRealtimeSubscriptions() {
       api.supabase.removeChannel(subscription);
     }
   });
-  
+
   // Cleanup team chat subscription
   if (currentTeamChatSubscription) {
     api.unsubscribeFromTeamMessages(currentTeamChatSubscription);
     currentTeamChatSubscription = null;
   }
-  
+
   realtimeSubscriptions = {
     projects: null,
     calendarEvents: null,
@@ -15043,7 +15918,7 @@ function openCreateMessageModal() {
 
 function openCreateGroupModal() {
   const projects = JSON.parse(localStorage.getItem('layerProjectsData') || '[]');
-  
+
   openModal('Create Group', `
     <div class="modal-form">
       <div class="form-group">
@@ -15075,14 +15950,14 @@ function toggleAddPeopleDropdown() {
   if (dropdown) {
     const isVisible = dropdown.style.display !== 'none';
     dropdown.style.display = isVisible ? 'none' : 'block';
-    
+
     // Adjust position to stay within viewport
     if (!isVisible) {
       // Wait for the dropdown to be displayed to get accurate measurements
       setTimeout(() => {
         const rect = dropdown.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
-        
+
         // If dropdown extends beyond right edge, adjust position
         if (rect.right > viewportWidth) {
           const overflow = rect.right - viewportWidth;
@@ -15091,7 +15966,7 @@ function toggleAddPeopleDropdown() {
           // Reset to default position
           dropdown.style.left = '0';
         }
-        
+
         // Close dropdown when clicking outside
         document.addEventListener('click', function closeDropdown(e) {
           if (!dropdown.contains(e.target) && !e.target.closest('.team-add-people-btn')) {
@@ -15114,54 +15989,54 @@ async function addPeopleFromDropdown() {
   const messageInput = document.getElementById('dropdownInviteMessage');
   const email = emailInput?.value?.trim();
   const message = messageInput?.value?.trim();
-  
+
   if (!email) {
     showNotification('Please enter an email address', 'error');
     return;
   }
-  
+
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     showNotification('Please enter a valid email address', 'error');
     return;
   }
-  
+
   // Check if trying to add self
   const currentUser = window.LayerDB.getCurrentUser();
   if (currentUser?.email === email) {
     showNotification('You cannot add yourself', 'error');
     return;
   }
-  
+
   try {
     // Follow user by email (creates follow request)
     await window.LayerDB.followUserByEmail(email);
-    
+
     // Send email notification
     const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
     await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'follow');
-    
+
     // Close dropdown
     const dropdown = document.getElementById('addPeopleDropdown');
     if (dropdown) {
       dropdown.style.display = 'none';
     }
-    
+
     // Clear form
     emailInput.value = '';
     messageInput.value = '';
-    
+
     showNotification(`Follow request sent to ${email}! They will receive an email notification and can accept in their followers sidebar.`, 'success');
-    
+
     // Refresh team view to show pending invitations
     setTimeout(() => {
       renderCurrentView();
     }, 1000);
-    
+
   } catch (error) {
     console.error('Error sending follow request:', error);
-    
+
     // Provide more specific error messages
     let errorMessage = error.message;
     if (errorMessage?.includes('already following')) {
@@ -15173,7 +16048,7 @@ async function addPeopleFromDropdown() {
     } else if (!errorMessage) {
       errorMessage = 'Failed to send follow request. Please try again.';
     }
-    
+
     showNotification(errorMessage, 'error');
   }
 }
@@ -15185,13 +16060,13 @@ async function openAddPeopleModal() {
     openAuthModal();
     return;
   }
-  
+
   const currentUser = window.LayerDB.getCurrentUser();
-  
+
   // Load existing team members and followers
   let existingMembers = [];
   let pendingInvitations = [];
-  
+
   try {
     // Get accepted followers
     const followers = await window.LayerDB.getFollowers();
@@ -15202,55 +16077,42 @@ async function openAddPeopleModal() {
       avatar: f.following_avatar || f.follower_avatar,
       status: 'accepted'
     }));
-    
+
     // Get pending invitations
     pendingInvitations = await window.LayerDB.getPendingFollowRequests();
   } catch (error) {
     console.error('Error loading team members:', error);
   }
-  
+
   openModal('Add People to Team', `
     <div class="team-add-people-modal">
       <div class="team-auth-section">
         <div class="current-user-info">
           <div class="user-avatar-large">
-            ${currentUser?.user_metadata?.avatar_url ? 
-              `<img src="${currentUser.user_metadata.avatar_url}" alt="Avatar">` :
-              `<span>${(currentUser?.email?.[0] || 'U').toUpperCase()}</span>`
-            }
+            ${currentUser?.user_metadata?.avatar_url ?
+      `<img src="${currentUser.user_metadata.avatar_url}" alt="Avatar">` :
+      `<span>${(currentUser?.email?.[0] || 'U').toUpperCase()}</span>`
+    }
           </div>
           <div class="user-details">
             <div class="user-name">${currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'User'}</div>
             <div class="user-email">
               <span>${currentUser?.email || 'Not signed in'}</span>
-              ${currentUser?.email ? '<span class="email-status verified">✓ Verified with Google</span>' : ''}
+              ${currentUser?.email ? '<span class="email-status verified">✓ Signed In</span>' : ''}
             </div>
           </div>
         </div>
-        ${!currentUser?.email ? `
-          <div class="auth-prompt">
-            <button class="btn btn-primary google-signin-btn" onclick="window.LayerDB.signInWithGoogle(); closeModal();">
-              <svg viewBox="0 0 24 24" style="width:18px;height:18px;margin-right:8px;">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Sign in with Google
-            </button>
-          </div>
-        ` : ''}
       </div>
       
       <div class="team-invite-section">
         <div class="section-header">
-          <h3>Invite by Email</h3>
-          <p class="section-description">Send an invitation to collaborate. They'll receive an email and can join with their Google account.</p>
+          <h3>Add by Email</h3>
+          <p class="section-description">Add a registered user to your team by entering their account email address.</p>
         </div>
         <div class="form-group">
           <label>Email Address</label>
           <input type="email" id="inviteEmail" placeholder="colleague@example.com" class="form-input" autocomplete="email">
-          <small class="form-help">Enter the Google email address of the person you want to invite</small>
+          <small class="form-help">Enter the email address of a user who has an account on this app</small>
         </div>
         <div class="form-group">
           <label>Custom Message (Optional)</label>
@@ -15260,9 +16122,12 @@ async function openAddPeopleModal() {
           <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
           <button class="btn btn-primary" onclick="inviteTeamMember()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="8.5" cy="7" r="4"/>
+              <line x1="20" y1="8" x2="20" y2="14"/>
+              <line x1="23" y1="11" x2="17" y2="11"/>
             </svg>
-            Send Invitation
+            Add Member
           </button>
         </div>
       </div>
@@ -15276,10 +16141,10 @@ async function openAddPeopleModal() {
             ${existingMembers.map(member => `
               <div class="team-member-item">
                 <div class="member-avatar">
-                  ${member.avatar ? 
-                    `<img src="${member.avatar}" alt="${member.name}">` :
-                    `<span>${member.name[0].toUpperCase()}</span>`
-                  }
+                  ${member.avatar ?
+        `<img src="${member.avatar}" alt="${member.name}">` :
+        `<span>${member.name[0].toUpperCase()}</span>`
+      }
                 </div>
                 <div class="member-info">
                   <div class="member-name">${member.name}</div>
@@ -15323,19 +16188,19 @@ async function inviteTeamMember(event) {
   const messageInput = document.getElementById('inviteMessage');
   const email = emailInput?.value?.trim();
   const message = messageInput?.value?.trim() || '';
-  
+
   if (!email) {
     showNotification('Please enter an email address', 'error');
     return;
   }
-  
+
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     showNotification('Please enter a valid email address', 'error');
     return;
   }
-  
+
   // Check if trying to add self
   const currentUser = window.LayerDB.getCurrentUser();
   if (!currentUser) {
@@ -15343,46 +16208,64 @@ async function inviteTeamMember(event) {
     openAuthModal();
     return;
   }
-  
+
   if (currentUser?.email === email) {
-    showNotification('You cannot invite yourself', 'error');
+    showNotification('You cannot add yourself', 'error');
     return;
   }
-  
+
   // Show loading state
   const submitBtn = event?.target || document.querySelector('.btn-primary');
   const originalText = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
+    submitBtn.innerHTML = '<span class="spinner"></span> Adding...';
   }
-  
+
   try {
-    // Send team invitation
-    const teamName = 'Layer Workspace';
-    await window.LayerDB.sendTeamInvitation(email, teamName, message);
-    
-    // Also create a follow request for compatibility
+    // First check if the user exists in the DB
+    const { data: userProfile, error: profileError } = await window.LayerDB.supabase
+      .from('profiles')
+      .select('id, email, name')
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (profileError || !userProfile) {
+      showNotification(`No user found with email ${email}. They must have an account first.`, 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+      return;
+    }
+
+    // Create a follow request for the found user
     try {
       await window.LayerDB.followUserByEmail(email);
     } catch (followError) {
-      console.log('Follow request creation skipped or failed:', followError);
+      if (followError.message?.includes('already following')) {
+        showNotification('This user is already in your team or has a pending request.', 'info');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+        return;
+      }
+      throw followError;
     }
-    
-    // Send email notification
-    const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
-    await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'invite');
-    
+
     closeModal();
-    showNotification(`Invitation sent to ${email}! They will receive an email and can join with their Google account.`, 'success');
-    
-    // Refresh team view to show updated members
-    if (typeof renderCurrentView === 'function') {
-      await renderCurrentView();
+    showNotification(`Team request sent to ${userProfile.name || email}! They can accept it in their Team panel.`, 'success');
+
+    // Refresh team members panel
+    const panel = document.getElementById('teamMembersPanel');
+    if (panel) {
+      const newContent = await renderTeamMembersPanel();
+      panel.innerHTML = newContent;
     }
   } catch (error) {
-    console.error('Error inviting team member:', error);
-    showNotification(error.message || 'Failed to send invitation. Please try again.', 'error');
+    console.error('Error adding team member:', error);
+    showNotification(error.message || 'Failed to add member. Please try again.', 'error');
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
@@ -15396,7 +16279,7 @@ function createNewChannel() {
     showNotification('Please enter a channel name', 'error');
     return;
   }
-  
+
   const newChannel = {
     id: 'ch-' + Date.now(),
     name: name,
@@ -15404,11 +16287,11 @@ function createNewChannel() {
     unread: 0,
     icon: 'hash'
   };
-  
+
   teamChannels.push(newChannel);
   teamMessages[newChannel.id] = [];
   teamCurrentChannel = newChannel.id;
-  
+
   closeModal();
   showNotification(`Channel #${name} created!`, 'success');
   renderCurrentView();
@@ -15417,21 +16300,21 @@ function createNewChannel() {
 function createNewGroup() {
   const name = document.getElementById('newGroupName')?.value?.trim();
   const linkedProject = document.getElementById('groupLinkedProject')?.value;
-  
+
   if (!name) {
     showNotification('Please enter a group name', 'error');
     return;
   }
-  
+
   const newGroup = {
     id: 'grp-' + Date.now(),
     name: name,
     members: 1,
     linkedProject: linkedProject || null
   };
-  
+
   teamGroups.push(newGroup);
-  
+
   closeModal();
   showNotification(`Group "${name}" created!`, 'success');
   renderCurrentView();
@@ -15446,27 +16329,7 @@ function openTeamSearchModal() {
 }
 
 function openTeamCallModal() {
-  openModal('Start Call', `
-    <div class="modal-form" style="text-align:center;">
-      <p style="margin-bottom:16px;">Start a voice or video call with the channel</p>
-      <div class="form-actions" style="justify-content:center;">
-        <button class="btn btn-secondary" onclick="closeModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          </svg>
-          Voice Call
-        </button>
-        <button class="btn btn-primary" onclick="closeModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;">
-            <polygon points="23 7 16 12 23 17 23 7"/>
-            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-          </svg>
-          Video Call
-        </button>
-      </div>
-    </div>
-  `);
+  // Voice/video calls not available
 }
 
 function openTeamShareModal() {
@@ -15512,7 +16375,7 @@ function openAddDocModal() {
 }
 
 function startSyncUp() {
-  openTeamCallModal();
+  // Not available
 }
 
 function startDirectMessage() {
@@ -15523,45 +16386,45 @@ function startDirectMessage() {
 async function addPeopleToChannel() {
   const emailInput = document.getElementById('inviteEmail');
   const email = emailInput?.value?.trim();
-  
+
   if (!email) {
     showNotification('Please enter an email address', 'error');
     return;
   }
-  
+
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     showNotification('Please enter a valid email address', 'error');
     return;
   }
-  
+
   // Check if trying to add self
   const currentUser = window.LayerDB.getCurrentUser();
   if (currentUser?.email === email) {
     showNotification('You cannot add yourself', 'error');
     return;
   }
-  
+
   try {
     // Follow user by email (creates follow request)
     await window.LayerDB.followUserByEmail(email);
-    
+
     // Send email notification
     const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
     await window.LayerDB.sendFollowerNotificationEmail(email, currentUserName, 'follow');
-    
+
     closeModal();
     showNotification(`Follow request sent to ${email}! They will receive an email notification and can accept in their followers sidebar.`, 'success');
-    
+
     // Refresh team view to show pending invitations
     setTimeout(() => {
       renderCurrentView();
     }, 1000);
-    
+
   } catch (error) {
     console.error('Error sending follow request:', error);
-    
+
     // Provide more specific error messages
     let errorMessage = error.message;
     if (errorMessage.includes('does not have an account')) {
@@ -15569,7 +16432,7 @@ async function addPeopleToChannel() {
     } else if (errorMessage.includes('already following')) {
       errorMessage = 'You are already following this user.';
     }
-    
+
     showNotification('Failed to send follow request: ' + errorMessage, 'error');
   }
 }
@@ -15586,24 +16449,24 @@ async function acceptFollowRequest(requestId, followerId) {
   try {
     // Accept the follow request
     await window.LayerDB.acceptFollowRequest(followerId);
-    
+
     // Send acceptance email
     const currentUser = window.LayerDB.getCurrentUser();
     const currentUserName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Someone';
-    
+
     // Get follower's email (this would need to be fetched from the request data)
     const request = pendingFollowRequests.find(r => r.id === requestId);
     if (request?.follower_profile?.email) {
       await window.LayerDB.sendFollowerNotificationEmail(
-        request.follower_profile.email, 
-        currentUserName, 
+        request.follower_profile.email,
+        currentUserName,
         'accept'
       );
     }
-    
+
     // Remove from pending requests
     pendingFollowRequests = pendingFollowRequests.filter(r => r.id !== requestId);
-    
+
     // Add to followers list
     const follower = request?.follower_profile;
     if (follower) {
@@ -15614,10 +16477,10 @@ async function acceptFollowRequest(requestId, followerId) {
         email: follower.email
       });
     }
-    
+
     showNotification('Follow request accepted!', 'success');
     renderCurrentView();
-    
+
   } catch (error) {
     console.error('Error accepting follow request:', error);
     showNotification('Failed to accept follow request: ' + error.message, 'error');
@@ -15628,13 +16491,13 @@ async function rejectFollowRequest(requestId, followerId) {
   try {
     // Reject the follow request
     await window.LayerDB.rejectFollowRequest(followerId);
-    
+
     // Remove from pending requests
     pendingFollowRequests = pendingFollowRequests.filter(r => r.id !== requestId);
-    
+
     showNotification('Follow request rejected', 'info');
     renderCurrentView();
-    
+
   } catch (error) {
     console.error('Error rejecting follow request:', error);
     showNotification('Failed to reject follow request: ' + error.message, 'error');
@@ -15651,7 +16514,7 @@ function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'dark';
   const appVersion = '0.1.0';
   const lastSync = new Date().toLocaleString();
-  
+
   // Load notification settings
   const notifyDeadlines = localStorage.getItem('layerNotifyDeadlines') !== 'false';
   const notifyReminders = localStorage.getItem('layerNotifyReminders') !== 'false';
@@ -15855,31 +16718,31 @@ function exportData() {
     expanded: localStorage.getItem('layerCalendarExpandedTask'),
     theme: localStorage.getItem('layerTheme'),
     themeMode: localStorage.getItem('layerThemeMode'),
-    
+
     // Documents and Spreadsheets
     docs: localStorage.getItem('layerDocs'),
     excels: localStorage.getItem('layerExcels'),
-    
+
     // Spaces
     spaces: localStorage.getItem('layerSpaces'),
-    
+
     // Assignments
     assignments: localStorage.getItem('layerAssignments'),
-    
+
     // Favorites
     favoriteDocs: localStorage.getItem('layerFavoriteDocs'),
     favoriteExcels: localStorage.getItem('layerFavoriteExcels'),
-    
+
     // User data
     users: localStorage.getItem('layerUsers'),
     currentUser: localStorage.getItem('layerCurrentUser'),
-    
+
     // UI state
     sidebarCollapsed: localStorage.getItem('layerSidebarCollapsed'),
     hideBetaNotification: localStorage.getItem('hideBetaNotification'),
     focusTimerPosition: localStorage.getItem('layerFocusTimerPosition'),
     focusModeState: localStorage.getItem('layerFocusModeState'),
-    
+
     // Export timestamp
     exportedAt: new Date().toISOString()
   };
@@ -15906,7 +16769,7 @@ function handleImportFile(event) {
   }
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const imported = JSON.parse(e.target.result);
 
@@ -15951,25 +16814,25 @@ function performImport() {
     applyTheme(data.theme);
   }
   if (data.themeMode) localStorage.setItem('layerThemeMode', data.themeMode);
-  
+
   // Documents and Spreadsheets
   if (data.docs) localStorage.setItem('layerDocs', data.docs);
   if (data.excels) localStorage.setItem('layerExcels', data.excels);
-  
+
   // Spaces
   if (data.spaces) localStorage.setItem('layerSpaces', data.spaces);
-  
+
   // Assignments
   if (data.assignments) localStorage.setItem('layerAssignments', data.assignments);
-  
+
   // Favorites
   if (data.favoriteDocs) localStorage.setItem('layerFavoriteDocs', data.favoriteDocs);
   if (data.favoriteExcels) localStorage.setItem('layerFavoriteExcels', data.favoriteExcels);
-  
+
   // User data
   if (data.users) localStorage.setItem('layerUsers', data.users);
   if (data.currentUser) localStorage.setItem('layerCurrentUser', data.currentUser);
-  
+
   // UI state
   if (data.sidebarCollapsed) localStorage.setItem('layerSidebarCollapsed', data.sidebarCollapsed);
   if (data.hideBetaNotification) localStorage.setItem('hideBetaNotification', data.hideBetaNotification);
@@ -16041,7 +16904,7 @@ function toggleThemeModeFromSettings(isLight) {
 function initThemeSelector() {
   const themeSelect = document.getElementById('themeSelect');
   const modeContainer = document.getElementById('themeModeToggleContainer');
-  
+
   if (!themeSelect) return;
 
   const current = localStorage.getItem('layerTheme') || 'dark';
@@ -16050,7 +16913,7 @@ function initThemeSelector() {
   themeSelect.addEventListener('change', (e) => {
     const newTheme = e.target.value;
     applyTheme(newTheme);
-    
+
     // Show/hide mode toggle based on theme
     if (modeContainer) {
       if (newTheme === 'dark' || newTheme === 'light' || newTheme === 'darklime') {
@@ -16072,7 +16935,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('layerTheme') || 'dark';
   applyTheme(saved);
   initThemeSelector();
-  
+
   // Check if focus mode was active
   const focusState = loadFocusModeState();
   if (focusState && focusState.active) {
@@ -16111,7 +16974,7 @@ function clearFocusModeState() {
 
 function openFocusModeModal() {
   const projects = loadProjects();
-  
+
   if (projects.length === 0) {
     openModal('Focus Mode', `
       <div style="padding: 32px; text-align: center;">
@@ -16132,7 +16995,7 @@ function openFocusModeModal() {
     `);
     return;
   }
-  
+
   const content = `
     <div style="padding: 24px 24px 16px 24px;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -16175,9 +17038,9 @@ function openFocusModeModal() {
       </div>
     </div>
   `;
-  
+
   openModal('Focus Mode', content);
-  
+
   // Add styles for duration buttons
   setTimeout(() => {
     const style = document.createElement('style');
@@ -16222,12 +17085,12 @@ function startFocusMode() {
   const projectIndex = parseInt(select.value);
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (!project) return;
-  
+
   const durationBtn = document.querySelector('.focus-duration-btn.selected');
   const duration = durationBtn ? parseInt(durationBtn.dataset.duration) : 0;
-  
+
   // Get tasks from the project's To Do and In Progress columns
   focusTasks = [];
   project.columns.forEach((col, colIndex) => {
@@ -16245,12 +17108,12 @@ function startFocusMode() {
       });
     }
   });
-  
+
   focusProjectIndex = projectIndex;
   focusStartTime = Date.now();
   focusPausedTime = 0;
   focusPaused = false;
-  
+
   // Save state
   saveFocusModeState({
     active: true,
@@ -16262,7 +17125,7 @@ function startFocusMode() {
     duration: duration,
     tasks: focusTasks
   });
-  
+
   closeModal();
   showFocusTimer(project.name);
 }
@@ -16273,9 +17136,9 @@ function restoreFocusMode(state) {
   focusPausedTime = state.pausedTime || 0;
   focusPaused = state.paused || false;
   focusTasks = state.tasks || [];
-  
+
   showFocusTimer(state.projectName);
-  
+
   if (focusPaused) {
     updatePauseButton(true);
   }
@@ -16284,18 +17147,18 @@ function restoreFocusMode(state) {
 function showFocusTimer(projectName) {
   const floatEl = document.getElementById('focusTimerFloat');
   const projectNameEl = document.getElementById('timerProjectName');
-  
+
   if (floatEl) {
     floatEl.style.display = 'flex';
     projectNameEl.textContent = projectName;
     renderFocusTasks();
-    
+
     // Initialize drag functionality
     initFocusTimerDrag();
-    
+
     // Restore saved position or use default
     restoreTimerPosition();
-    
+
     if (!focusPaused) {
       startTimerInterval();
     } else {
@@ -16321,14 +17184,14 @@ const SNAP_MARGIN = 24; // Distance from edges
 function initFocusTimerDrag() {
   const floatEl = document.getElementById('focusTimerFloat');
   const widget = document.getElementById('focusTimerWidget');
-  
+
   if (!floatEl || !widget) return;
-  
+
   // Mouse events
   widget.addEventListener('mousedown', handleTimerDragStart);
   document.addEventListener('mousemove', handleTimerDrag);
   document.addEventListener('mouseup', handleTimerDragEnd);
-  
+
   // Touch events for mobile
   widget.addEventListener('touchstart', handleTimerDragStart, { passive: false });
   document.addEventListener('touchmove', handleTimerDrag, { passive: false });
@@ -16338,26 +17201,26 @@ function initFocusTimerDrag() {
 function handleTimerDragStart(e) {
   const floatEl = document.getElementById('focusTimerFloat');
   if (!floatEl) return;
-  
+
   // Prevent default to stop text selection
   e.preventDefault();
-  
+
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-  
+
   // Get current position
   const rect = floatEl.getBoundingClientRect();
-  
+
   timerDragState.isDragging = true;
   timerDragState.startX = clientX;
   timerDragState.startY = clientY;
   timerDragState.initialLeft = rect.left;
   timerDragState.initialTop = rect.top;
-  
+
   // Remove snapping class and add dragging class
   floatEl.classList.remove('snapping');
   floatEl.classList.add('dragging');
-  
+
   // Clear positional styles and use left/top for dragging
   floatEl.style.right = 'auto';
   floatEl.style.bottom = 'auto';
@@ -16367,63 +17230,63 @@ function handleTimerDragStart(e) {
 
 function handleTimerDrag(e) {
   if (!timerDragState.isDragging) return;
-  
+
   e.preventDefault();
-  
+
   const floatEl = document.getElementById('focusTimerFloat');
   if (!floatEl) return;
-  
+
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-  
+
   const deltaX = clientX - timerDragState.startX;
   const deltaY = clientY - timerDragState.startY;
-  
+
   let newLeft = timerDragState.initialLeft + deltaX;
   let newTop = timerDragState.initialTop + deltaY;
-  
+
   // Keep widget within bounds
   const rect = floatEl.getBoundingClientRect();
   const maxX = window.innerWidth - rect.width;
   const maxY = window.innerHeight - rect.height;
-  
+
   newLeft = Math.max(0, Math.min(newLeft, maxX));
   newTop = Math.max(0, Math.min(newTop, maxY));
-  
+
   floatEl.style.left = newLeft + 'px';
   floatEl.style.top = newTop + 'px';
 }
 
 function handleTimerDragEnd(e) {
   if (!timerDragState.isDragging) return;
-  
+
   timerDragState.isDragging = false;
-  
+
   const floatEl = document.getElementById('focusTimerFloat');
   if (!floatEl) return;
-  
+
   floatEl.classList.remove('dragging');
-  
+
   // Calculate which corner to snap to
   const rect = floatEl.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   const windowCenterX = window.innerWidth / 2;
   const windowCenterY = window.innerHeight / 2;
-  
+
   // Determine the closest corner
   const isLeft = centerX < windowCenterX;
   const isTop = centerY < windowCenterY;
-  
+
   // Add snapping class for smooth animation
   floatEl.classList.add('snapping');
-  
+
   // Clear current positioning
   floatEl.style.left = 'auto';
   floatEl.style.right = 'auto';
   floatEl.style.top = 'auto';
   floatEl.style.bottom = 'auto';
-  
+
   // Set the corner position
   let corner = '';
   if (isTop && isLeft) {
@@ -16443,10 +17306,10 @@ function handleTimerDragEnd(e) {
     floatEl.style.bottom = SNAP_MARGIN + 'px';
     corner = 'bottom-right';
   }
-  
+
   // Save the position
   saveTimerPosition(corner);
-  
+
   // Remove snapping class after animation completes
   setTimeout(() => {
     floatEl.classList.remove('snapping');
@@ -16460,15 +17323,15 @@ function saveTimerPosition(corner) {
 function restoreTimerPosition() {
   const floatEl = document.getElementById('focusTimerFloat');
   if (!floatEl) return;
-  
+
   const savedCorner = localStorage.getItem(TIMER_POSITION_KEY) || 'bottom-left';
-  
+
   // Clear all positioning first
   floatEl.style.left = 'auto';
   floatEl.style.right = 'auto';
   floatEl.style.top = 'auto';
   floatEl.style.bottom = 'auto';
-  
+
   // Apply saved corner position
   switch (savedCorner) {
     case 'top-left':
@@ -16495,31 +17358,31 @@ function startTimerInterval() {
   if (focusTimerInterval) {
     clearInterval(focusTimerInterval);
   }
-  
+
   focusTimerInterval = setInterval(() => {
     if (!focusPaused) {
       updateTimerDisplay();
     }
   }, 1000);
-  
+
   updateTimerDisplay();
 }
 
 function updateTimerDisplay() {
   const displayEl = document.getElementById('timerDisplay');
   if (!displayEl) return;
-  
+
   let elapsed;
   if (focusPaused) {
     elapsed = focusPausedTime;
   } else {
     elapsed = Math.floor((Date.now() - focusStartTime) / 1000) + focusPausedTime;
   }
-  
+
   const hours = Math.floor(elapsed / 3600);
   const minutes = Math.floor((elapsed % 3600) / 60);
   const seconds = elapsed % 60;
-  
+
   if (hours > 0) {
     displayEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   } else {
@@ -16530,10 +17393,10 @@ function updateTimerDisplay() {
 function toggleTimerExpand() {
   // Prevent expand toggle during drag
   if (timerDragState.isDragging) return;
-  
+
   const widget = document.getElementById('focusTimerWidget');
   const isExpanded = widget.classList.contains('expanded');
-  
+
   if (isExpanded) {
     widget.classList.remove('expanded', 'tasks-visible');
   } else {
@@ -16547,7 +17410,7 @@ function toggleTimerExpand() {
 
 function toggleTimerPause() {
   focusPaused = !focusPaused;
-  
+
   if (focusPaused) {
     // Save elapsed time when pausing
     focusPausedTime = Math.floor((Date.now() - focusStartTime) / 1000) + focusPausedTime;
@@ -16558,9 +17421,9 @@ function toggleTimerPause() {
     focusStartTime = Date.now();
     startTimerInterval();
   }
-  
+
   updatePauseButton(focusPaused);
-  
+
   // Update saved state
   const state = loadFocusModeState();
   if (state) {
@@ -16578,7 +17441,7 @@ function updatePauseButton(isPaused) {
   const text = document.getElementById('pauseBtnText');
   const icon1 = document.getElementById('pauseIcon1');
   const icon2 = document.getElementById('pauseIcon2');
-  
+
   if (isPaused) {
     text.textContent = 'Resume';
     // Change to play icon
@@ -16601,21 +17464,21 @@ function stopFocusMode() {
     clearInterval(focusTimerInterval);
     focusTimerInterval = null;
   }
-  
+
   const floatEl = document.getElementById('focusTimerFloat');
   if (floatEl) {
     floatEl.style.display = 'none';
   }
-  
+
   // Reset state
   focusStartTime = null;
   focusPausedTime = 0;
   focusPaused = false;
   focusProjectIndex = null;
   focusTasks = [];
-  
+
   clearFocusModeState();
-  
+
   // Reset widget state
   const widget = document.getElementById('focusTimerWidget');
   if (widget) {
@@ -16626,12 +17489,12 @@ function stopFocusMode() {
 function renderFocusTasks() {
   const listEl = document.getElementById('timerTasksList');
   const progressEl = document.getElementById('tasksProgress');
-  
+
   if (!listEl) return;
-  
+
   const completedCount = focusTasks.filter(t => t.done).length;
   progressEl.textContent = `${completedCount}/${focusTasks.length}`;
-  
+
   if (focusTasks.length === 0) {
     listEl.innerHTML = `
       <div style="text-align: center; padding: 16px; color: var(--muted-foreground); font-size: 13px;">
@@ -16640,7 +17503,7 @@ function renderFocusTasks() {
     `;
     return;
   }
-  
+
   listEl.innerHTML = focusTasks.map((task, i) => `
     <div class="timer-task-item ${task.done ? 'done' : ''}" onclick="toggleFocusTask(${i})">
       <div class="timer-task-checkbox"></div>
@@ -16651,22 +17514,22 @@ function renderFocusTasks() {
 
 function toggleFocusTask(index) {
   if (!focusTasks[index]) return;
-  
+
   focusTasks[index].done = !focusTasks[index].done;
-  
+
   // Update the actual project task
   const task = focusTasks[index];
   if (focusProjectIndex !== null) {
     toggleTaskDone(focusProjectIndex, task.colIndex, task.taskIndex);
   }
-  
+
   // Update saved state
   const state = loadFocusModeState();
   if (state) {
     state.tasks = focusTasks;
     saveFocusModeState(state);
   }
-  
+
   renderFocusTasks();
 }
 
@@ -16680,13 +17543,13 @@ function exportAllProjects() {
     alert('No projects to export!');
     return;
   }
-  
+
   const exportData = {
     version: '1.0',
     exportDate: new Date().toISOString(),
     projects: projects
   };
-  
+
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -16696,7 +17559,7 @@ function exportAllProjects() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   // Show success toast
   showToast('Projects exported successfully!');
 }
@@ -16711,22 +17574,22 @@ function importProjects() {
 function handleProjectImport(event) {
   const file = event.target.files[0];
   if (!file) return;
-  
+
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const importData = JSON.parse(e.target.result);
-      
+
       // Validate import data
       if (!importData.projects || !Array.isArray(importData.projects)) {
         alert('Invalid file format. Please select a valid Layer projects export file.');
         return;
       }
-      
+
       // Ask user how to handle import
       const existingProjects = loadProjects();
       const importCount = importData.projects.length;
-      
+
       if (existingProjects.length > 0) {
         const choice = confirm(
           `Found ${importCount} project(s) to import.\n\n` +
@@ -16734,7 +17597,7 @@ function handleProjectImport(event) {
           `Click OK to MERGE (add to existing)\n` +
           `Click Cancel to REPLACE all existing projects`
         );
-        
+
         if (choice) {
           // Merge - add imported projects with new IDs to avoid conflicts
           const mergedProjects = [...existingProjects];
@@ -16752,15 +17615,15 @@ function handleProjectImport(event) {
         // No existing projects, just import
         saveProjects(importData.projects);
       }
-      
+
       // Reset the input
       event.target.value = '';
-      
+
       // Refresh view
       renderCurrentView();
-      
+
       showToast(`${importCount} project(s) imported successfully!`);
-      
+
     } catch (error) {
       console.error('Import error:', error);
       alert('Failed to import projects. Please check the file format.');
@@ -16842,7 +17705,7 @@ document.addEventListener('click', (e) => {
   if (container && !container.contains(e.target)) {
     container.classList.remove('open');
   }
-  
+
   // Sidebar create dropdown
   const sidebarDropdown = document.getElementById('sidebarCreateDropdown');
   const sidebarBtn = document.getElementById('sidebarCreateBtn');
@@ -16861,7 +17724,7 @@ function loadDocs() {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return [];
   }
-  
+
   try {
     return JSON.parse(localStorage.getItem(DOCS_KEY)) || [];
   } catch {
@@ -16896,7 +17759,7 @@ async function addDoc(doc) {
     showToast('Please sign in to create documents', 'error');
     return null;
   }
-  
+
   try {
     const savedDoc = await window.LayerDB.saveDoc(doc);
     // Refresh local cache
@@ -16916,7 +17779,7 @@ async function updateDoc(id, updates) {
     showToast('Please sign in to update documents', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.updateDoc(id, updates);
     const docs = await window.LayerDB.loadDocs();
@@ -16933,7 +17796,7 @@ async function deleteDoc(id) {
     showToast('Please sign in to delete documents', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.deleteDoc(id);
     const docs = await window.LayerDB.loadDocs();
@@ -16949,32 +17812,32 @@ async function deleteDoc(id) {
 // ============================================
 function openDocEditor(docId = null) {
   toggleCreateDropdown();
-  
+
   // Require authentication for creating new docs
   if (!docId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
     showToast('Please sign in to create documents', 'error');
     return;
   }
-  
+
   let doc = null;
   if (docId) {
     const docs = loadDocs();
     doc = docs.find(d => d.id === docId);
   }
-  
+
   currentDocId = doc ? doc.id : Date.now();
   const isFavorited = doc ? isDocFavorited(doc.id) : false;
-  
+
   // Get current user for author display
   const currentUser = JSON.parse(localStorage.getItem('layerCurrentUser') || '{}');
   const authorName = currentUser.username || 'You';
   const authorInitial = authorName.charAt(0).toUpperCase();
   const lastUpdated = doc ? formatTimeAgo(doc.updatedAt) : 'Just now';
-  
+
   const overlay = document.createElement('div');
   overlay.className = 'doc-editor-overlay';
   overlay.id = 'docEditorOverlay';
-  
+
   overlay.innerHTML = `
     <div class="doc-editor-container notion-style">
       <!-- Minimalistic Header Bar -->
@@ -17166,13 +18029,13 @@ function openDocEditor(docId = null) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
-  
+
   // Set up placeholder and autosave
   setupNotionEditor();
-  
+
   // Set up AI command (** trigger)
   setupDocAiCommand();
   // Auto-create the document immediately if new (auth already checked at function start)
@@ -17185,7 +18048,7 @@ function openDocEditor(docId = null) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     // Save to Supabase (auth is guaranteed by check at function start)
     (async () => {
       try {
@@ -17199,7 +18062,7 @@ function openDocEditor(docId = null) {
         showToast('Failed to save document', 'error');
       }
     })();
-    
+
     setTimeout(() => {
       document.getElementById('docTitleInput')?.focus();
     }, 100);
@@ -17210,20 +18073,20 @@ function setupNotionEditor() {
   const contentDiv = document.getElementById('docEditorContent');
   const titleInput = document.getElementById('docTitleInput');
   if (!contentDiv) return;
-  
+
   // Placeholder behavior
-  contentDiv.addEventListener('focus', function() {
+  contentDiv.addEventListener('focus', function () {
     if (this.textContent.trim() === '' && !this.querySelector('*')) {
       this.innerHTML = '';
     }
   });
-  
-  contentDiv.addEventListener('blur', function() {
+
+  contentDiv.addEventListener('blur', function () {
     if (this.textContent.trim() === '') {
       this.innerHTML = '';
     }
   });
-  
+
   // Debounced auto-save function
   let saveTimeout;
   function triggerAutoSave() {
@@ -17233,23 +18096,23 @@ function setupNotionEditor() {
       showAutoSaveIndicator();
     }, 500); // Reduced to 500ms for faster saves
   }
-  
+
   // Auto-save on multiple events for comprehensive coverage
   contentDiv.addEventListener('input', triggerAutoSave);
   contentDiv.addEventListener('keyup', triggerAutoSave);
-  contentDiv.addEventListener('paste', function() {
+  contentDiv.addEventListener('paste', function () {
     setTimeout(triggerAutoSave, 100); // Delay slightly after paste
   });
-  contentDiv.addEventListener('cut', function() {
+  contentDiv.addEventListener('cut', function () {
     setTimeout(triggerAutoSave, 100);
   });
-  contentDiv.addEventListener('blur', function() {
+  contentDiv.addEventListener('blur', function () {
     // Save immediately on blur
     autoSaveDoc();
   });
-  
+
   // Use MutationObserver for reliable change detection (catches formatting changes too)
-  const observer = new MutationObserver(function(mutations) {
+  const observer = new MutationObserver(function (mutations) {
     triggerAutoSave();
   });
   observer.observe(contentDiv, {
@@ -17258,17 +18121,17 @@ function setupNotionEditor() {
     characterData: true,
     attributes: true
   });
-  
+
   // Auto-save on title change
   if (titleInput) {
     titleInput.addEventListener('input', triggerAutoSave);
-    titleInput.addEventListener('blur', function() {
+    titleInput.addEventListener('blur', function () {
       autoSaveDoc();
     });
   }
-  
+
   // Handle keyboard shortcuts
-  contentDiv.addEventListener('keydown', function(e) {
+  contentDiv.addEventListener('keydown', function (e) {
     if (e.key === '/' && contentDiv.textContent.trim() === '') {
       // Show slash command menu (coming soon)
     }
@@ -17314,10 +18177,10 @@ function showAutoSaveIndicator() {
     `;
     document.body.appendChild(indicator);
   }
-  
+
   indicator.style.opacity = '1';
   indicator.style.transform = 'translateX(-50%) translateY(0)';
-  
+
   setTimeout(() => {
     indicator.style.opacity = '0';
     indicator.style.transform = 'translateX(-50%) translateY(20px)';
@@ -17327,12 +18190,12 @@ function showAutoSaveIndicator() {
 async function autoSaveDoc() {
   const titleInput = document.getElementById('docTitleInput');
   const contentDiv = document.getElementById('docEditorContent');
-  
+
   if (!titleInput || !contentDiv) return;
-  
+
   const title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
-  
+
   // Use Supabase if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     try {
@@ -17344,11 +18207,11 @@ async function autoSaveDoc() {
       console.error('Failed to auto-save doc to database:', error);
     }
   }
-  
+
   // Fallback to localStorage
   const docs = loadDocs();
   const existingIndex = docs.findIndex(d => d.id === currentDocId);
-  
+
   if (existingIndex !== -1) {
     docs[existingIndex] = {
       ...docs[existingIndex],
@@ -17393,19 +18256,19 @@ function setFontSize(size) {
 function setupWordCount() {
   const contentDiv = document.getElementById('docEditorContent');
   if (!contentDiv) return;
-  
+
   const updateCount = () => {
     const text = contentDiv.innerText || '';
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const chars = text.length;
-    
+
     const wordCountEl = document.getElementById('wordCount');
     const charCountEl = document.getElementById('charCount');
-    
+
     if (wordCountEl) wordCountEl.textContent = `Words: ${words}`;
     if (charCountEl) charCountEl.textContent = `Characters: ${chars}`;
   };
-  
+
   contentDiv.addEventListener('input', updateCount);
   updateCount();
 }
@@ -17429,7 +18292,7 @@ function insertImage() {
 function insertTable() {
   const rows = prompt('Number of rows:', '3') || '3';
   const cols = prompt('Number of columns:', '3') || '3';
-  
+
   let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 16px 0;">';
   for (let r = 0; r < parseInt(rows); r++) {
     tableHtml += '<tr>';
@@ -17439,7 +18302,7 @@ function insertTable() {
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
-  
+
   document.execCommand('insertHTML', false, tableHtml);
   document.getElementById('docEditorContent')?.focus();
 }
@@ -17456,9 +18319,9 @@ function exportDocAsPDF() {
 function printDoc() {
   const content = document.getElementById('docEditorContent');
   const title = document.getElementById('docTitleInput')?.value || 'Document';
-  
+
   if (!content) return;
-  
+
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -17495,16 +18358,16 @@ function saveCurrentDoc() {
 
 function showInDocSavePanel() {
   const spaces = loadSpaces();
-  
+
   // Remove existing panel if any
   const existingPanel = document.getElementById('inDocSavePanel');
   if (existingPanel) existingPanel.remove();
-  
+
   if (spaces.length === 0) {
     showToast('Create a space first to organize your documents');
     return;
   }
-  
+
   const panel = document.createElement('div');
   panel.id = 'inDocSavePanel';
   panel.className = 'in-doc-save-panel';
@@ -17526,7 +18389,7 @@ function showInDocSavePanel() {
       `).join('')}
     </div>
   `;
-  
+
   const container = document.querySelector('.doc-editor-container');
   if (container) {
     container.appendChild(panel);
@@ -17545,18 +18408,18 @@ function closeInDocSavePanel() {
 function confirmSaveDocToSpace(spaceId) {
   const titleInput = document.getElementById('docTitleInput');
   const contentDiv = document.getElementById('docEditorContent');
-  
+
   if (!titleInput || !contentDiv) {
     closeModal();
     return;
   }
-  
+
   const title = titleInput.value.trim() || 'Untitled Document';
   const content = contentDiv.innerHTML;
-  
+
   const docs = loadDocs();
   const existingIndex = docs.findIndex(d => d.id === currentDocId);
-  
+
   if (existingIndex !== -1) {
     docs[existingIndex] = {
       ...docs[existingIndex],
@@ -17575,13 +18438,13 @@ function confirmSaveDocToSpace(spaceId) {
       updatedAt: new Date().toISOString()
     });
   }
-  
+
   saveDocs(docs);
   closeModal();
-  
+
   // Refresh favorites sidebar
   renderFavoritesInSidebar();
-  
+
   const spaces = loadSpaces();
   const space = spaces.find(s => String(s.id) === String(spaceId));
   showToast('Document saved to "' + (space ? space.name : 'Space') + '"!');
@@ -17596,7 +18459,7 @@ function loadExcels() {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return [];
   }
-  
+
   try {
     return JSON.parse(localStorage.getItem(EXCELS_KEY)) || [];
   } catch {
@@ -17631,7 +18494,7 @@ async function addExcel(excel) {
     showToast('Please sign in to create spreadsheets', 'error');
     return null;
   }
-  
+
   try {
     const savedExcel = await window.LayerDB.saveExcel(excel);
     const excels = await window.LayerDB.loadExcels();
@@ -17650,7 +18513,7 @@ async function updateExcel(id, updates) {
     showToast('Please sign in to update spreadsheets', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.updateExcel(id, updates);
     const excels = await window.LayerDB.loadExcels();
@@ -17667,7 +18530,7 @@ async function deleteExcel(id) {
     showToast('Please sign in to delete spreadsheets', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.deleteExcel(id);
     const excels = await window.LayerDB.loadExcels();
@@ -17687,33 +18550,33 @@ const COLUMN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function openExcelEditor(excelId = null) {
   toggleCreateDropdown();
-  
+
   // Require authentication for creating new spreadsheets
   if (!excelId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
     showToast('Please sign in to create spreadsheets', 'error');
     return;
   }
-  
+
   let excel = null;
   if (excelId) {
     const excels = loadExcels();
     excel = excels.find(e => e.id === excelId);
   }
-  
+
   currentExcelId = excel ? excel.id : Date.now();
   const data = excel ? excel.data : createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS);
   const isFavorited = excel ? isExcelFavorited(excel.id) : false;
-  
+
   // Get current user for author display
   const currentUser = JSON.parse(localStorage.getItem('layerCurrentUser') || '{}');
   const authorName = currentUser.username || 'You';
   const authorInitial = authorName.charAt(0).toUpperCase();
   const lastUpdated = excel ? formatTimeAgo(excel.updatedAt) : 'Just now';
-  
+
   const overlay = document.createElement('div');
   overlay.className = 'excel-editor-overlay';
   overlay.id = 'excelEditorOverlay';
-  
+
   overlay.innerHTML = `
     <div class="excel-editor-container notion-style">
       <!-- Minimalistic Header Bar -->
@@ -17835,10 +18698,10 @@ function openExcelEditor(excelId = null) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
-  
+
   // Auto-create the spreadsheet immediately if new (auth already checked at function start)
   if (!excel) {
     const newExcel = {
@@ -17849,7 +18712,7 @@ function openExcelEditor(excelId = null) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     // Save to Supabase (auth is guaranteed by check at function start)
     (async () => {
       try {
@@ -17863,7 +18726,7 @@ function openExcelEditor(excelId = null) {
         showToast('Failed to save spreadsheet', 'error');
       }
     })();
-    
+
     setTimeout(() => {
       document.getElementById('excelTitleInput')?.focus();
     }, 100);
@@ -17885,7 +18748,7 @@ function createEmptyGrid(rows, cols) {
 function renderExcelGrid(data) {
   const cols = data[0]?.length || DEFAULT_COLS;
   let html = '';
-  
+
   // Header row
   html += '<div class="excel-header-row">';
   html += '<div class="excel-header-cell"></div>';
@@ -17893,7 +18756,7 @@ function renderExcelGrid(data) {
     html += `<div class="excel-header-cell">${COLUMN_LETTERS[c] || c + 1}</div>`;
   }
   html += '</div>';
-  
+
   // Data rows
   data.forEach((row, rowIndex) => {
     html += `<div class="excel-row-header">${rowIndex + 1}</div>`;
@@ -17904,7 +18767,7 @@ function renderExcelGrid(data) {
       </div>`;
     });
   });
-  
+
   return html;
 }
 
@@ -17921,15 +18784,15 @@ function updateExcelCell(row, col, value) {
 async function autoSaveExcel() {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) return;
-  
+
   // Require authentication - no localStorage fallback
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return; // Silently fail - user was warned on open
   }
-  
+
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
-  
+
   try {
     await window.LayerDB.updateExcel(currentExcelId, { title, data });
     const excels = await window.LayerDB.loadExcels();
@@ -17944,27 +18807,27 @@ function getExcelData() {
   const data = [];
   let maxRow = 0;
   let maxCol = 0;
-  
+
   inputs.forEach(input => {
     const row = parseInt(input.dataset.row);
     const col = parseInt(input.dataset.col);
     if (row > maxRow) maxRow = row;
     if (col > maxCol) maxCol = col;
   });
-  
+
   for (let r = 0; r <= maxRow; r++) {
     data.push([]);
     for (let c = 0; c <= maxCol; c++) {
       data[r].push('');
     }
   }
-  
+
   inputs.forEach(input => {
     const row = parseInt(input.dataset.row);
     const col = parseInt(input.dataset.col);
     data[row][col] = input.value;
   });
-  
+
   return data;
 }
 
@@ -18005,16 +18868,16 @@ function saveCurrentExcel() {
 
 function showInExcelSavePanel() {
   const spaces = loadSpaces();
-  
+
   // Remove existing panel if any
   const existingPanel = document.getElementById('inExcelSavePanel');
   if (existingPanel) existingPanel.remove();
-  
+
   if (spaces.length === 0) {
     showToast('Create a space first to organize your spreadsheets');
     return;
   }
-  
+
   const panel = document.createElement('div');
   panel.id = 'inExcelSavePanel';
   panel.className = 'in-doc-save-panel';
@@ -18036,7 +18899,7 @@ function showInExcelSavePanel() {
       `).join('')}
     </div>
   `;
-  
+
   const container = document.querySelector('.excel-editor-container');
   if (container) {
     container.appendChild(panel);
@@ -18058,13 +18921,13 @@ function confirmSaveExcelToSpace(spaceId) {
     closeModal();
     return;
   }
-  
+
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
-  
+
   const excels = loadExcels();
   const existingIndex = excels.findIndex(e => e.id === currentExcelId);
-  
+
   if (existingIndex !== -1) {
     excels[existingIndex] = {
       ...excels[existingIndex],
@@ -18083,13 +18946,13 @@ function confirmSaveExcelToSpace(spaceId) {
       updatedAt: new Date().toISOString()
     });
   }
-  
+
   saveExcels(excels);
   closeModal();
-  
+
   // Refresh favorites sidebar
   renderFavoritesInSidebar();
-  
+
   const spaces = loadSpaces();
   const space = spaces.find(s => String(s.id) === String(spaceId));
   showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
@@ -18099,18 +18962,18 @@ function exportExcelAsCSV() {
   const data = getExcelData();
   const titleInput = document.getElementById('excelTitleInput');
   const title = titleInput?.value?.trim() || 'spreadsheet';
-  
+
   // Convert to CSV
-  const csvContent = data.map(row => 
+  const csvContent = data.map(row =>
     row.map(cell => {
       // Escape quotes and wrap in quotes if needed
       const escaped = String(cell).replace(/"/g, '""');
-      return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n') 
-        ? `"${escaped}"` 
+      return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
+        ? `"${escaped}"`
         : escaped;
     }).join(',')
   ).join('\n');
-  
+
   // Create and download
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -18118,7 +18981,7 @@ function exportExcelAsCSV() {
   link.download = `${title}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
-  
+
   showToast('Spreadsheet exported as CSV!');
 }
 
@@ -18146,7 +19009,7 @@ function loadSpaces() {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return [];
   }
-  
+
   try {
     return JSON.parse(localStorage.getItem(SPACES_KEY)) || [];
   } catch {
@@ -18185,7 +19048,7 @@ async function addSpace(space) {
     showToast('Please sign in to create spaces', 'error');
     return null;
   }
-  
+
   try {
     const savedSpace = await window.LayerDB.saveSpace(space);
     const spaces = await window.LayerDB.loadSpaces();
@@ -18204,7 +19067,7 @@ async function updateSpace(id, updates) {
     showToast('Please sign in to update spaces', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.updateSpace(id, updates);
     const spaces = await window.LayerDB.loadSpaces();
@@ -18221,7 +19084,7 @@ async function deleteSpace(id) {
     showToast('Please sign in to delete spaces', 'error');
     return;
   }
-  
+
   try {
     await window.LayerDB.deleteSpace(id);
     const spaces = await window.LayerDB.loadSpaces();
@@ -18258,12 +19121,12 @@ function openNewSpaceModal() {
     showToast('Please sign in to create spaces', 'error');
     return;
   }
-  
+
   // Close any open dropdowns
   closeSidebarCreateDropdown();
-  
+
   const projects = loadProjects();
-  
+
   const content = `
     <form id="newSpaceForm" onsubmit="handleCreateSpace(event)" class="new-space-form">
       <div class="form-group">
@@ -18341,7 +19204,7 @@ function openNewSpaceModal() {
       </div>
     </form>
   `;
-  
+
   openModal('Create New Space', content);
 }
 
@@ -18351,15 +19214,15 @@ let pendingInvitedMembers = [];
 function addTeamMemberToSpace() {
   const emailInput = document.getElementById('teamMemberEmail');
   const email = emailInput.value.trim();
-  
+
   if (!email || !email.includes('@')) {
     emailInput.style.borderColor = 'hsl(0, 84%, 60%)';
     setTimeout(() => emailInput.style.borderColor = '', 2000);
     return;
   }
-  
+
   if (pendingInvitedMembers.includes(email)) return;
-  
+
   pendingInvitedMembers.push(email);
   emailInput.value = '';
   renderInvitedMembers();
@@ -18373,7 +19236,7 @@ function removeInvitedMember(email) {
 function renderInvitedMembers() {
   const container = document.getElementById('invitedMembersList');
   if (!container) return;
-  
+
   container.innerHTML = pendingInvitedMembers.map(email => `
     <div class="invited-member-chip">
       <span>${email}</span>
@@ -18387,7 +19250,7 @@ function renderInvitedMembers() {
 function toggleOptionalFields() {
   const container = document.getElementById('optionalFields');
   const toggle = document.querySelector('.optional-fields-toggle');
-  
+
   if (container.style.display === 'none') {
     container.style.display = 'block';
     toggle.classList.add('expanded');
@@ -18411,14 +19274,14 @@ function selectSpaceIcon(button) {
 
 async function handleCreateSpace(event) {
   event.preventDefault();
-  
+
   // Require authentication (already checked in openNewSpaceModal, but double-check)
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showToast('Please sign in to create spaces', 'error');
     closeModal();
     return;
   }
-  
+
   const form = event.target;
   const name = form.name.value.trim();
   const icon = document.getElementById('selectedSpaceIcon').value;
@@ -18426,9 +19289,9 @@ async function handleCreateSpace(event) {
   const dueDate = form.dueDate?.value || null;
   const linkedProject = form.linkedProject?.value || null;
   const colorTag = document.getElementById('selectedColorTag')?.value || 'none';
-  
+
   if (!name) return;
-  
+
   const newSpace = {
     id: Date.now(),
     name,
@@ -18440,10 +19303,10 @@ async function handleCreateSpace(event) {
     members: [...pendingInvitedMembers],
     createdAt: new Date().toISOString()
   };
-  
+
   // Reset pending members
   pendingInvitedMembers = [];
-  
+
   try {
     await window.LayerDB.saveSpace(newSpace);
     const spaces = await window.LayerDB.loadSpaces();
@@ -18461,15 +19324,15 @@ async function handleCreateSpace(event) {
 function renderSpacesInSidebar() {
   const spaces = loadSpaces();
   const sidebar = document.querySelector('.sidebar-nav');
-  
+
   // Remove existing spaces section
   const existingSection = document.getElementById('spacesSection');
   if (existingSection) {
     existingSection.remove();
   }
-  
+
   if (spaces.length === 0) return;
-  
+
   // Helper function to get SVG icon by id
   function getSpaceIconSVG(iconId) {
     const iconData = SPACE_ICON_SVGS.find(i => i.id === iconId);
@@ -18477,7 +19340,7 @@ function renderSpacesInSidebar() {
     // Fallback for old emoji-based icons
     return `<span style="font-size:16px;">${iconId}</span>`;
   }
-  
+
   // Create spaces section
   const spacesSection = document.createElement('div');
   spacesSection.id = 'spacesSection';
@@ -18499,9 +19362,9 @@ function renderSpacesInSidebar() {
       </div>
     `).join('')}
   `;
-  
+
   sidebar.appendChild(spacesSection);
-  
+
   // Also render favorites section
   renderFavoritesInSidebar();
 }
@@ -18542,31 +19405,31 @@ async function toggleDocFavorite(docId) {
     showToast('Please sign in to save favorites', 'error');
     return;
   }
-  
+
   const docs = loadDocs();
   const doc = docs.find(d => String(d.id) === String(docId));
   if (!doc) return;
-  
+
   const newFavoriteState = !doc.isFavorite;
-  
+
   // Optimistic UI update - update immediately for instant feedback
   const starBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
   if (starBtn) {
     starBtn.classList.toggle('is-favorite', newFavoriteState);
   }
-  
+
   // Update local state immediately
   doc.isFavorite = newFavoriteState;
   saveDocs(docs);
   renderFavoritesInSidebar();
-  
+
   try {
     // Sync to database in background
     const updatedDocs = await window.LayerDB.toggleDocFavorite(docId, newFavoriteState);
     saveDocs(updatedDocs);
     // Re-render favorites in case order changed
     renderFavoritesInSidebar();
-    
+
     // Update star icon again in case it was re-rendered
     const updatedStarBtn = document.querySelector(`[data-favorite-doc="${docId}"]`);
     if (updatedStarBtn) {
@@ -18591,31 +19454,31 @@ async function toggleExcelFavorite(excelId) {
     showToast('Please sign in to save favorites', 'error');
     return;
   }
-  
+
   const excels = loadExcels();
   const excel = excels.find(e => String(e.id) === String(excelId));
   if (!excel) return;
-  
+
   const newFavoriteState = !excel.isFavorite;
-  
+
   // Optimistic UI update - update immediately for instant feedback
   const starBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
   if (starBtn) {
     starBtn.classList.toggle('is-favorite', newFavoriteState);
   }
-  
+
   // Update local state immediately
   excel.isFavorite = newFavoriteState;
   saveExcels(excels);
   renderFavoritesInSidebar();
-  
+
   try {
     // Sync to database in background
     const updatedExcels = await window.LayerDB.toggleExcelFavorite(excelId, newFavoriteState);
     saveExcels(updatedExcels);
     // Re-render favorites in case order changed
     renderFavoritesInSidebar();
-    
+
     // Update star icon again in case it was re-rendered
     const updatedStarBtn = document.querySelector(`[data-favorite-excel="${excelId}"]`);
     if (updatedStarBtn) {
@@ -18656,36 +19519,36 @@ function renderFavoritesInSidebar() {
     }
     return;
   }
-  
+
   const docs = loadDocs();
   const excels = loadExcels();
   const sidebar = document.querySelector('.sidebar-nav');
-  
+
   // Remove existing favorites section
   const existingSection = document.getElementById('favoritesSection');
   if (existingSection) {
     existingSection.remove();
   }
-  
+
   // Get favorited docs and excels using isFavorite field
   const favoriteDocs = docs.filter(doc => doc.isFavorite === true);
   const favoriteExcels = excels.filter(excel => excel.isFavorite === true);
-  
+
   if (favoriteDocs.length === 0 && favoriteExcels.length === 0) return;
-  
+
   // Helper to truncate title
   function truncateTitle(title, maxLen = 12) {
     if (title.length <= maxLen) return title;
     return title.substring(0, maxLen) + '...';
   }
-  
+
   // Create favorites section
   const favoritesSection = document.createElement('div');
   favoritesSection.id = 'favoritesSection';
-  
+
   const totalFavorites = favoriteDocs.length + favoriteExcels.length;
   const needsScroll = totalFavorites > 3;
-  
+
   favoritesSection.innerHTML = `
     <div class="spaces-divider"></div>
     <div class="spaces-section-label">
@@ -18730,7 +19593,7 @@ function renderFavoritesInSidebar() {
       `).join('')}
     </div>
   `;
-  
+
   sidebar.appendChild(favoritesSection);
 }
 
@@ -18761,7 +19624,7 @@ async function deleteSpaceConfirmed(spaceId) {
   closeModal();
   renderSpacesInSidebar();
   showToast('Space deleted successfully!');
-  
+
   // Navigate to home if viewing deleted space
   const activeSpace = document.querySelector(`[data-space-id="${spaceId}"]`);
   if (activeSpace && activeSpace.classList.contains('active')) {
@@ -18773,30 +19636,30 @@ function openSpaceView(spaceId) {
   const spaces = loadSpaces();
   // Handle both string UUIDs and numeric IDs
   const space = spaces.find(s => String(s.id) === String(spaceId));
-  
+
   if (!space) return;
-  
+
   // Set current space for doc/excel saving
   currentSpaceId = spaceId;
-  
+
   // Update active nav - clear all main nav items and set space as active
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.remove('active');
   });
-  
+
   document.querySelectorAll('.custom-space-item').forEach(item => {
     item.classList.remove('active');
   });
-  
+
   const spaceBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
   if (spaceBtn) spaceBtn.classList.add('active');
-  
+
   // Render space view
   const viewsContainer = document.getElementById('viewsContainer');
   if (viewsContainer) {
     viewsContainer.innerHTML = renderSpaceDetailView(space);
   }
-  
+
   updateBreadcrumb(space.name);
 }
 
@@ -18804,11 +19667,11 @@ function renderSpaceDetailView(space) {
   const allDocs = loadDocs();
   const allExcels = loadExcels();
   const excelFavorites = loadExcelFavorites();
-  
+
   // Filter docs and excels by space - use string comparison for UUID/number compatibility
   const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
   const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
-  
+
   // Recent items (last 5 docs + excels combined)
   const allItems = [
     ...docs.map(d => ({ ...d, type: 'doc', updatedAt: d.updatedAt })),
@@ -18817,16 +19680,16 @@ function renderSpaceDetailView(space) {
   const recentItems = [...allItems]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 5);
-  
+
   // Bookmarked items
-  const bookmarkedItems = allItems.filter(item => 
-    (item.type === 'doc' && item.isFavorite) || 
+  const bookmarkedItems = allItems.filter(item =>
+    (item.type === 'doc' && item.isFavorite) ||
     (item.type === 'excel' && isExcelFavorited(item.id))
   ).slice(0, 3);
-  
+
   // Initialize checklist after render
   setTimeout(() => renderChecklistSidebar(space.id), 100);
-  
+
   return `
     <div class="space-overview-container">
       <!-- Top Navigation Bar -->
@@ -19150,7 +20013,7 @@ function openSpaceAgents(spaceId) {
       </div>
     </div>
   `;
-  
+
   openModal('Space Agents', content, 'large');
 }
 
@@ -19160,7 +20023,7 @@ function openSpaceAutomation(spaceId) {
   if (!space) return;
 
   const automations = getSpaceAutomations(spaceId);
-  
+
   const content = `
     <div class="space-automation-container">
       <div class="automation-header">
@@ -19217,7 +20080,7 @@ function openSpaceAutomation(spaceId) {
       </div>
     </div>
   `;
-  
+
   openModal('Space Automation', content, 'large');
 }
 
@@ -19260,9 +20123,9 @@ function openSpaceAsk(spaceId) {
       </div>
     </div>
   `;
-  
+
   openModal('Ask AI', content, 'medium');
-  
+
   // Load chat history
   loadAskHistory(spaceId);
 }
@@ -19274,7 +20137,7 @@ function openSpaceShare(spaceId) {
 
   const members = getSpaceMembers(spaceId);
   const invites = getSpaceInvites(spaceId);
-  
+
   const content = `
     <div class="space-share-container">
       <div class="share-header">
@@ -19379,7 +20242,7 @@ function openSpaceShare(spaceId) {
       </div>
     </div>
   `;
-  
+
   openModal('Share Space', content, 'medium');
 }
 
@@ -19423,13 +20286,13 @@ function sendAskQuestion(spaceId) {
   const input = document.getElementById('askInput');
   const question = input.value.trim();
   if (!question) return;
-  
+
   // Add question to history
   addToAskHistory(spaceId, { role: 'user', content: question });
-  
+
   // Clear input
   input.value = '';
-  
+
   // Simulate AI response (would call actual AI service)
   setTimeout(() => {
     const response = `I understand you're asking about "${question}". This is a simulated response. In a real implementation, this would connect to an AI service to provide accurate answers based on your space data.`;
@@ -19485,12 +20348,12 @@ function getSpaceInvites(spaceId) {
 function sendSpaceInvite(spaceId) {
   const email = document.getElementById('inviteEmail').value;
   const role = document.getElementById('inviteRole').value;
-  
+
   if (!email) {
     showToast('Please enter an email address', 'error');
     return;
   }
-  
+
   // Implementation would send invite via email/SMS
   showToast(`Invite sent to ${email}`, 'success');
   document.getElementById('inviteEmail').value = '';
@@ -19516,7 +20379,7 @@ function switchShareTab(tabName) {
   document.querySelectorAll('.share-tab').forEach(tab => {
     tab.classList.remove('active');
   });
-  
+
   // Show selected tab
   document.getElementById(`${tabName}-tab`).classList.add('active');
   event.target.classList.add('active');
@@ -19545,10 +20408,10 @@ function filterSpaceDocs(spaceId) {
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   const allDocs = loadDocs();
   const docs = allDocs.filter(d => String(d.spaceId) === String(spaceId));
-  
+
   const container = document.getElementById('docsTreeContainer');
   if (!container) return;
-  
+
   const treeItems = container.querySelectorAll('.docs-tree-item[data-doc-id]');
   treeItems.forEach(item => {
     const text = item.querySelector('.docs-tree-item-text');
@@ -19592,7 +20455,7 @@ async function deleteDocConfirmed(docId) {
   await deleteDoc(docId);
   closeModal();
   showToast('Document deleted successfully!');
-  
+
   // Refresh current view
   const activeSpace = document.querySelector('.custom-space-item.active');
   if (activeSpace) {
@@ -19621,7 +20484,7 @@ async function deleteExcelConfirmed(excelId) {
   await deleteExcel(excelId);
   closeModal();
   showToast('Spreadsheet deleted successfully!');
-  
+
   // Refresh current view
   const activeSpace = document.querySelector('.custom-space-item.active');
   if (activeSpace) {
@@ -19636,7 +20499,7 @@ async function deleteExcelConfirmed(excelId) {
 function showToast(message) {
   const existing = document.querySelector('.layer-toast');
   if (existing) existing.remove();
-  
+
   const toast = document.createElement('div');
   toast.className = 'layer-toast';
   toast.innerHTML = `
@@ -19664,9 +20527,9 @@ function showToast(message) {
     z-index: 9999;
     animation: toastSlideIn 0.3s ease;
   `;
-  
+
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
@@ -19711,7 +20574,7 @@ let pendingShareEmails = [];
 
 function openShareModal() {
   pendingShareEmails = [];
-  
+
   const content = `
     <div class="share-modal-content">
       <div class="share-input-group">
@@ -19748,9 +20611,9 @@ function openShareModal() {
       </div>
     </div>
   `;
-  
+
   openModal('Share Document', content);
-  
+
   setTimeout(() => {
     document.getElementById('shareEmailInput')?.focus();
   }, 100);
@@ -19759,18 +20622,18 @@ function openShareModal() {
 function addShareEmail() {
   const input = document.getElementById('shareEmailInput');
   const email = input.value.trim();
-  
+
   if (!email || !email.includes('@')) {
     input.style.borderColor = 'hsl(0, 84%, 60%)';
     setTimeout(() => input.style.borderColor = '', 2000);
     return;
   }
-  
+
   if (pendingShareEmails.find(e => e.email === email)) {
     showToast('Email already added');
     return;
   }
-  
+
   pendingShareEmails.push({ email, role: 'Can view' });
   input.value = '';
   renderSharePeople();
@@ -19779,7 +20642,7 @@ function addShareEmail() {
 function renderSharePeople() {
   const container = document.getElementById('sharePersonItems');
   if (!container) return;
-  
+
   if (pendingShareEmails.length === 0) {
     container.innerHTML = `
       <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
@@ -19788,7 +20651,7 @@ function renderSharePeople() {
     `;
     return;
   }
-  
+
   container.innerHTML = pendingShareEmails.map((person, index) => `
     <div class="share-person-item">
       <div class="share-person-avatar">${person.email.charAt(0).toUpperCase()}</div>
@@ -19826,7 +20689,7 @@ function shareDocConfirm() {
     showToast('Add at least one email to share');
     return;
   }
-  
+
   // Save share settings to doc
   const docs = loadDocs();
   const docIndex = docs.findIndex(d => d.id === currentDocId);
@@ -19834,7 +20697,7 @@ function shareDocConfirm() {
     docs[docIndex].sharedWith = pendingShareEmails;
     saveDocs(docs);
   }
-  
+
   closeModal();
   showToast(`Document shared with ${pendingShareEmails.length} people`);
 }
@@ -19876,7 +20739,7 @@ function openPageStylesSidebar() {
     overlay.onclick = (e) => {
       if (e.target === overlay) closePageStylesSidebar();
     };
-    
+
     overlay.innerHTML = `
       <div class="page-styles-sidebar" id="pageStylesSidebar">
         <div class="page-styles-container">
@@ -20141,10 +21004,10 @@ function openPageStylesSidebar() {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(overlay);
   }
-  
+
   // Show
   requestAnimationFrame(() => {
     overlay.classList.add('show');
@@ -20155,20 +21018,20 @@ function openPageStylesSidebar() {
 function closePageStylesSidebar() {
   const overlay = document.getElementById('pageStylesOverlay');
   const sidebar = document.getElementById('pageStylesSidebar');
-  
+
   if (sidebar) sidebar.classList.remove('show');
   if (overlay) {
     overlay.classList.remove('show');
     setTimeout(() => overlay.remove(), 250);
   }
-  
+
   // Apply styles to document
   applyPageStyles();
 }
 
 function togglePageStyleOption(key, value) {
   pageStylesSettings[key] = value;
-  
+
   // Update UI
   const section = document.querySelector(`[onclick*="'${key}'"]`)?.closest('.page-styles-section');
   if (section) {
@@ -20179,13 +21042,13 @@ function togglePageStyleOption(key, value) {
       }
     });
   }
-  
+
   applyPageStyles();
 }
 
 function togglePageStyleToggle(key) {
   pageStylesSettings[key] = !pageStylesSettings[key];
-  
+
   // Update UI
   const toggles = document.querySelectorAll('.page-styles-toggle');
   toggles.forEach(toggle => {
@@ -20193,7 +21056,7 @@ function togglePageStyleToggle(key) {
       toggle.classList.toggle('active', pageStylesSettings[key]);
     }
   });
-  
+
   applyPageStyles();
 }
 
@@ -20201,7 +21064,7 @@ function applyPageStyles() {
   const editor = document.getElementById('docEditorContent') || document.querySelector('.notion-editor-content');
   const titleInput = document.getElementById('docTitleInput');
   const metaSection = document.querySelector('.notion-meta');
-  
+
   if (editor) {
     // Font style
     switch (pageStylesSettings.fontStyle) {
@@ -20217,7 +21080,7 @@ function applyPageStyles() {
         editor.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         if (titleInput) titleInput.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     }
-    
+
     // Font size
     switch (pageStylesSettings.fontSize) {
       case 'small':
@@ -20229,14 +21092,14 @@ function applyPageStyles() {
       default:
         editor.style.fontSize = '16px';
     }
-    
+
     // Page width
     const container = document.querySelector('.notion-page-container');
     if (container) {
       container.style.maxWidth = pageStylesSettings.pageWidth === 'full' ? '100%' : '720px';
     }
   }
-  
+
   // Show/hide meta section
   if (metaSection) {
     metaSection.style.display = (pageStylesSettings.owners || pageStylesSettings.lastModified) ? 'flex' : 'none';
@@ -20261,12 +21124,12 @@ function renderSpaceWidgets() {
   const spaces = loadSpaces();
   const allDocs = loadDocs();
   const allExcels = loadExcels();
-  
+
   if (spaces.length === 0) return '';
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return `
     <div class="dashboard-spaces-section">
       <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">
@@ -20277,32 +21140,32 @@ function renderSpaceWidgets() {
       </h3>
       <div class="dashboard-spaces-grid">
         ${spaces.map(space => {
-          const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
-          const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
-          const dueDate = space.dueDate ? new Date(space.dueDate) : null;
-          let dueDateClass = '';
-          let dueDateText = '';
-          
-          if (dueDate) {
-            dueDate.setHours(0, 0, 0, 0);
-            const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-            
-            if (daysUntilDue < 0) {
-              dueDateClass = 'overdue';
-              dueDateText = 'Overdue';
-            } else if (daysUntilDue <= 3) {
-              dueDateClass = 'soon';
-              dueDateText = daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? 'Due tomorrow' : 'Due in ' + daysUntilDue + ' days';
-            } else {
-              dueDateText = formatDate(space.dueDate);
-            }
-          }
-          
-          const colorVar = space.colorTag && space.colorTag !== 'none' ? 'var(--event-' + space.colorTag + ')' : 'var(--primary)';
-          const spaceWidgetTodos = getSpaceWidgetTodos(space.id);
-          const spaceWidgetNote = getSpaceWidgetNote(space.id);
-          
-          return `<div class="space-widget" style="--space-accent: ${colorVar};">
+    const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
+    const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
+    const dueDate = space.dueDate ? new Date(space.dueDate) : null;
+    let dueDateClass = '';
+    let dueDateText = '';
+
+    if (dueDate) {
+      dueDate.setHours(0, 0, 0, 0);
+      const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+      if (daysUntilDue < 0) {
+        dueDateClass = 'overdue';
+        dueDateText = 'Overdue';
+      } else if (daysUntilDue <= 3) {
+        dueDateClass = 'soon';
+        dueDateText = daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? 'Due tomorrow' : 'Due in ' + daysUntilDue + ' days';
+      } else {
+        dueDateText = formatDate(space.dueDate);
+      }
+    }
+
+    const colorVar = space.colorTag && space.colorTag !== 'none' ? 'var(--event-' + space.colorTag + ')' : 'var(--primary)';
+    const spaceWidgetTodos = getSpaceWidgetTodos(space.id);
+    const spaceWidgetNote = getSpaceWidgetNote(space.id);
+
+    return `<div class="space-widget" style="--space-accent: ${colorVar};">
             <!-- Hover Actions Bar -->
             <div class="space-widget-hover-actions">
               <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetTodo('${space.id}')" title="Create To-Do">
@@ -20381,7 +21244,7 @@ function renderSpaceWidgets() {
               ${dueDate ? '<div class="space-widget-due ' + dueDateClass + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>' + dueDateText + '</span></div>' : ''}
             </div>
           </div>`;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -20501,7 +21364,7 @@ function openEditSpaceModal(spaceId) {
   const spaces = loadSpaces();
   const space = spaces.find(s => String(s.id) === String(spaceId));
   if (!space) return;
-  
+
   const escapedSpaceId = String(spaceId).replace(/'/g, "\\'");
   const content = `
     <form id="editSpaceForm" onsubmit="handleEditSpace(event, '${escapedSpaceId}')">
@@ -20532,16 +21395,16 @@ function handleEditSpace(event, spaceId) {
   const name = form.name.value.trim();
   const description = form.description.value.trim();
   const dueDate = form.dueDate.value || null;
-  
+
   if (!name) return;
-  
+
   const spaces = loadSpaces();
   const idx = spaces.findIndex(s => String(s.id) === String(spaceId));
   if (idx !== -1) {
     spaces[idx] = { ...spaces[idx], name, description, dueDate };
     saveSpaces(spaces);
   }
-  
+
   closeModal();
   renderSpacesInSidebar();
   renderCurrentView();
@@ -20552,11 +21415,11 @@ function handleEditSpace(event, spaceId) {
 function renderWidgetBacklogTasks() {
   const tasks = loadBacklogTasks();
   const activeTasks = tasks.filter(t => !t.done).slice(0, 5);
-  
+
   if (activeTasks.length === 0) {
     return '<div class="widget-backlog-empty">No tasks in backlog</div>';
   }
-  
+
   return activeTasks.map((task, idx) => {
     const originalIdx = tasks.findIndex(t => t.id === task.id);
     return `
@@ -20598,7 +21461,7 @@ function loadChecklists() {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return {};
   }
-  
+
   try {
     return JSON.parse(localStorage.getItem(CHECKLISTS_KEY)) || {};
   } catch {
@@ -20609,8 +21472,8 @@ function loadChecklists() {
 // Save checklists to localStorage and sync to database
 async function saveChecklists(checklists) {
   try {
-  localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
-    
+    localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
+
     // Sync to database if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       // Update each space's checklist in the database
@@ -20636,7 +21499,7 @@ function getSpaceChecklist(spaceId) {
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return [];
   }
-  
+
   const checklists = loadChecklists();
   const spaceIdStr = String(spaceId);
   return checklists[spaceIdStr] || [];
@@ -20648,21 +21511,21 @@ async function saveSpaceChecklist(spaceId, items) {
     showToast('Please sign in to save checklists', 'error');
     return;
   }
-  
+
   const checklists = loadChecklists();
   const spaceIdStr = String(spaceId);
   checklists[spaceIdStr] = items;
-  
+
   // Save to localStorage first for immediate UI update
   localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
-  
+
   // Sync to database
   try {
     const spaces = loadSpaces();
     const space = spaces.find(s => String(s.id) === spaceIdStr);
     if (space) {
       await window.LayerDB.updateSpace(space.id, { checklist: items });
-}
+    }
   } catch (error) {
     console.error('Failed to save checklist to database:', error);
     showToast('Failed to save checklist', 'error');
@@ -20671,13 +21534,13 @@ async function saveSpaceChecklist(spaceId, items) {
 
 async function addChecklistItem(spaceId, text) {
   if (!text || !text.trim()) return;
-  
+
   // Require authentication
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     showToast('Please sign in to add checklist items', 'error');
     return;
   }
-  
+
   const items = getSpaceChecklist(spaceId);
   const newItem = {
     id: Date.now(),
@@ -20686,14 +21549,14 @@ async function addChecklistItem(spaceId, text) {
     createdAt: new Date().toISOString()
   };
   items.push(newItem);
-  
+
   // Optimistic update - update UI immediately
   const checklists = loadChecklists();
   const spaceIdStr = String(spaceId);
   checklists[spaceIdStr] = items;
   localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
   renderChecklistSidebar(spaceId);
-  
+
   // Sync to database in background
   saveSpaceChecklist(spaceId, items).catch(error => {
     console.error('Failed to save checklist item:', error);
@@ -20712,20 +21575,20 @@ async function toggleChecklistItem(spaceId, itemId) {
     showToast('Please sign in to update checklist items', 'error');
     return;
   }
-  
+
   const items = getSpaceChecklist(spaceId);
   const item = items.find(i => i.id === itemId);
   if (item) {
     const oldState = item.completed;
     item.completed = !item.completed;
-    
+
     // Optimistic update - update UI immediately
     const checklists = loadChecklists();
     const spaceIdStr = String(spaceId);
     checklists[spaceIdStr] = items;
     localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
     renderChecklistSidebar(spaceId);
-    
+
     // Sync to database in background
     saveSpaceChecklist(spaceId, items).catch(error => {
       console.error('Failed to toggle checklist item:', error);
@@ -20745,18 +21608,18 @@ async function deleteChecklistItem(spaceId, itemId) {
     showToast('Please sign in to delete checklist items', 'error');
     return;
   }
-  
+
   let items = getSpaceChecklist(spaceId);
   const deletedItem = items.find(i => i.id === itemId);
   items = items.filter(i => i.id !== itemId);
-  
+
   // Optimistic update - update UI immediately
   const checklists = loadChecklists();
   const spaceIdStr = String(spaceId);
   checklists[spaceIdStr] = items;
   localStorage.setItem(CHECKLISTS_KEY, JSON.stringify(checklists));
   renderChecklistSidebar(spaceId);
-  
+
   // Sync to database in background
   saveSpaceChecklist(spaceId, items).catch(error => {
     console.error('Failed to delete checklist item:', error);
@@ -20774,15 +21637,15 @@ async function deleteChecklistItem(spaceId, itemId) {
 function renderChecklistSidebar(spaceId) {
   const container = document.getElementById('checklistContainer');
   if (!container) return;
-  
+
   const items = getSpaceChecklist(spaceId);
   const completedCount = items.filter(i => i.completed).length;
   const totalCount = items.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  
+
   // Properly escape spaceId for use in onclick handlers (handle both UUID strings and numbers)
   const spaceIdEscaped = typeof spaceId === 'string' ? `'${spaceId.replace(/'/g, "\\'")}'` : spaceId;
-  
+
   container.innerHTML = `
     <div class="checklist-header">
       <div class="checklist-title">
@@ -20856,7 +21719,7 @@ function openInEditorSharePanel(type) {
   // type = 'doc' or 'excel'
   let overlay = document.getElementById('inEditorShareOverlay');
   let panel = document.getElementById('inEditorSharePanel');
-  
+
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'in-editor-share-overlay';
@@ -20864,17 +21727,17 @@ function openInEditorSharePanel(type) {
     overlay.onclick = closeInEditorSharePanel;
     document.body.appendChild(overlay);
   }
-  
+
   if (!panel) {
     panel = document.createElement('div');
     panel.className = 'in-editor-share-panel';
     panel.id = 'inEditorSharePanel';
     document.body.appendChild(panel);
   }
-  
+
   const itemId = type === 'doc' ? currentDocId : currentExcelId;
   const shareLink = 'https://layer.app/share/' + type + '/' + itemId;
-  
+
   panel.innerHTML = `
     <div class="in-editor-share-header">
       <div class="in-editor-share-title">Share ${type === 'doc' ? 'Document' : 'Spreadsheet'}</div>
@@ -20922,13 +21785,13 @@ function openInEditorSharePanel(type) {
       </div>
     </div>
   `;
-  
+
   // Show with animation
   requestAnimationFrame(() => {
     overlay.classList.add('open');
     panel.classList.add('open');
   });
-  
+
   setTimeout(() => {
     document.getElementById('inEditorShareEmailInput')?.focus();
   }, 300);
@@ -20937,10 +21800,10 @@ function openInEditorSharePanel(type) {
 function closeInEditorSharePanel() {
   const overlay = document.getElementById('inEditorShareOverlay');
   const panel = document.getElementById('inEditorSharePanel');
-  
+
   if (overlay) overlay.classList.remove('open');
   if (panel) panel.classList.remove('open');
-  
+
   setTimeout(() => {
     if (overlay) overlay.remove();
     if (panel) panel.remove();
@@ -20952,18 +21815,18 @@ let inEditorShareEmails = [];
 function addInEditorShareEmail() {
   const input = document.getElementById('inEditorShareEmailInput');
   const email = input.value.trim();
-  
+
   if (!email || !email.includes('@')) {
     input.style.borderColor = 'hsl(0, 84%, 60%)';
     setTimeout(() => input.style.borderColor = '', 2000);
     return;
   }
-  
+
   if (inEditorShareEmails.find(e => e.email === email)) {
     showToast('Email already added');
     return;
   }
-  
+
   inEditorShareEmails.push({ email, role: 'Can view' });
   input.value = '';
   renderInEditorSharePeople();
@@ -20972,7 +21835,7 @@ function addInEditorShareEmail() {
 function renderInEditorSharePeople() {
   const container = document.getElementById('inEditorSharePersonItems');
   if (!container) return;
-  
+
   if (inEditorShareEmails.length === 0) {
     container.innerHTML = `
       <div style="padding: 16px; text-align: center; color: var(--muted-foreground); font-size: 13px;">
@@ -20981,7 +21844,7 @@ function renderInEditorSharePeople() {
     `;
     return;
   }
-  
+
   container.innerHTML = inEditorShareEmails.map((person, index) => `
     <div class="share-person-item">
       <div class="share-person-avatar">${person.email.charAt(0).toUpperCase()}</div>
@@ -21027,7 +21890,7 @@ function confirmInEditorShare() {
     showToast('Add at least one email to share');
     return;
   }
-  
+
   showToast('Shared with ' + inEditorShareEmails.length + ' people!');
   inEditorShareEmails = [];
   closeInEditorSharePanel();
@@ -21061,19 +21924,19 @@ function handleAddMilestoneSubmit(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
-  
+
   const name = formData.get('name')?.trim();
   const total = parseInt(formData.get('total') || '0');
-  
+
   if (!name) return;
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex]) return;
-  
+
   if (!projects[projectIndex].milestones) {
     projects[projectIndex].milestones = [];
   }
-  
+
   projects[projectIndex].milestones.push({
     id: Date.now(),
     name: name,
@@ -21081,7 +21944,7 @@ function handleAddMilestoneSubmit(event, projectIndex) {
     completed: 0,
     createdAt: new Date().toISOString()
   });
-  
+
   saveProjects(projects);
   closeModal();
   renderCurrentView();
@@ -21097,15 +21960,15 @@ function updateMilestoneName(projectIndex, milestoneIndex, newName) {
 
 function openMilestoneMenu(projectIndex, milestoneIndex, event) {
   event.stopPropagation();
-  
+
   // Remove any existing menu
   const existingMenu = document.getElementById('milestoneContextMenu');
   if (existingMenu) existingMenu.remove();
-  
+
   const projects = loadProjects();
   const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
   if (!milestone) return;
-  
+
   const menu = document.createElement('div');
   menu.id = 'milestoneContextMenu';
   menu.className = 'task-context-menu';
@@ -21132,12 +21995,12 @@ function openMilestoneMenu(projectIndex, milestoneIndex, event) {
       Delete
     </button>
   `;
-  
+
   menu.style.left = event.clientX + 'px';
   menu.style.top = event.clientY + 'px';
-  
+
   document.body.appendChild(menu);
-  
+
   setTimeout(() => {
     document.addEventListener('click', hideMilestoneMenu, { once: true });
   }, 10);
@@ -21152,7 +22015,7 @@ function editMilestone(projectIndex, milestoneIndex) {
   const projects = loadProjects();
   const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
   if (!milestone) return;
-  
+
   const content = `
     <form onsubmit="handleEditMilestoneSubmit(event, ${projectIndex}, ${milestoneIndex})">
       <div class="form-group">
@@ -21180,17 +22043,17 @@ function handleEditMilestoneSubmit(event, projectIndex, milestoneIndex) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
-  
+
   const projects = loadProjects();
   if (!projects[projectIndex]?.milestones?.[milestoneIndex]) return;
-  
+
   projects[projectIndex].milestones[milestoneIndex] = {
     ...projects[projectIndex].milestones[milestoneIndex],
     name: formData.get('name')?.trim() || 'Untitled',
     total: parseInt(formData.get('total') || '0'),
     completed: parseInt(formData.get('completed') || '0')
   };
-  
+
   saveProjects(projects);
   closeModal();
   renderCurrentView();
@@ -21200,7 +22063,7 @@ function updateMilestoneProgress(projectIndex, milestoneIndex) {
   const projects = loadProjects();
   const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
   if (!milestone) return;
-  
+
   const newCompleted = prompt(`Update completed tasks for "${milestone.name}" (current: ${milestone.completed}/${milestone.total}):`, milestone.completed);
   if (newCompleted !== null) {
     const completed = parseInt(newCompleted);
@@ -21214,7 +22077,7 @@ function updateMilestoneProgress(projectIndex, milestoneIndex) {
 
 function deleteMilestone(projectIndex, milestoneIndex) {
   if (!confirm('Delete this milestone?')) return;
-  
+
   const projects = loadProjects();
   if (projects[projectIndex]?.milestones) {
     projects[projectIndex].milestones.splice(milestoneIndex, 1);
@@ -21227,9 +22090,9 @@ function openMilestoneDetail(projectIndex, milestoneIndex) {
   const projects = loadProjects();
   const milestone = projects[projectIndex]?.milestones?.[milestoneIndex];
   if (!milestone) return;
-  
+
   const progress = milestone.total > 0 ? Math.round((milestone.completed / milestone.total) * 100) : 0;
-  
+
   const content = `
     <div style="padding: 16px;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
@@ -21277,16 +22140,16 @@ function handleUpdateProjectSummary(projectIndex, summary) {
 
 function openSidebarPriorityDropdown(projectIndex, event) {
   event.stopPropagation();
-  
+
   // Close any other open dropdowns
   document.querySelectorAll('.sidebar-priority-dropdown.open').forEach(d => {
     d.classList.remove('open');
   });
-  
+
   const dropdown = document.getElementById(`sidebarPriorityDropdown-${projectIndex}`);
   if (dropdown) {
     dropdown.classList.add('open');
-    
+
     // Close when clicking outside
     setTimeout(() => {
       document.addEventListener('click', function closeDropdown(e) {
@@ -21346,7 +22209,7 @@ function handleDocAiSend() {
       container.appendChild(userMsg);
       input.value = '';
       container.scrollTop = container.scrollHeight;
-      
+
       // Show loading
       const loading = document.createElement('div');
       loading.className = 'ai-sidebar-message assistant ai-loading';
@@ -21384,7 +22247,7 @@ function toggleWhiteboardAiSidebar() {
   whiteboardAiSidebarOpen = !whiteboardAiSidebarOpen;
   const sidebar = document.getElementById('whiteboardAiSidebar');
   const backdrop = document.getElementById('whiteboardAiBackdrop');
-  
+
   if (sidebar) {
     if (whiteboardAiSidebarOpen) {
       // Create sidebar if not exists
@@ -21413,13 +22276,13 @@ function createWhiteboardAiSidebar() {
   // Remove existing
   document.getElementById('whiteboardAiSidebar')?.remove();
   document.getElementById('whiteboardAiBackdrop')?.remove();
-  
+
   const backdrop = document.createElement('div');
   backdrop.id = 'whiteboardAiBackdrop';
   backdrop.className = 'ai-sidebar-backdrop';
   backdrop.onclick = () => toggleWhiteboardAiSidebar();
   document.body.appendChild(backdrop);
-  
+
   const sidebar = document.createElement('div');
   sidebar.id = 'whiteboardAiSidebar';
   sidebar.className = 'ai-sidebar-overlay';
@@ -21516,37 +22379,37 @@ let isAiWriting = false;
 function setupDocAiCommand() {
   const editor = document.getElementById('docEditorContent');
   if (!editor) return;
-  
-  editor.addEventListener('input', async function(e) {
+
+  editor.addEventListener('input', async function (e) {
     if (isAiWriting) return;
-    
+
     // Get current text content to check for **prompt** pattern
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
-    
+
     const range = selection.getRangeAt(0);
     const textNode = range.startContainer;
-    
+
     if (textNode.nodeType === Node.TEXT_NODE) {
       const text = textNode.textContent;
       const cursorPos = range.startOffset;
-      
+
       // Check for complete **prompt** pattern (starts and ends with **)
       const beforeCursor = text.substring(0, cursorPos);
       const match = beforeCursor.match(/\*\*(.+?)\*\*$/);
-      
+
       if (match && match[1] && match[1].trim().length > 0) {
         const prompt = match[1].trim();
-        
+
         // Find the full match position
         const fullMatch = match[0];
         const startPos = beforeCursor.lastIndexOf(fullMatch);
         const beforeCommand = text.substring(0, startPos);
         const afterCursor = text.substring(cursorPos);
-        
+
         // Remove the **prompt** command from text
         textNode.textContent = beforeCommand + afterCursor;
-        
+
         // Create inline loading indicator with smooth animation
         const loadingSpan = document.createElement('span');
         loadingSpan.className = 'ai-inline-loading';
@@ -21559,15 +22422,15 @@ function setupDocAiCommand() {
             <span class="ai-writing-dots"><span></span><span></span><span></span></span>
           </span>
         `;
-        
+
         // Insert loading at cursor position
         const newRange = document.createRange();
         newRange.setStart(textNode, beforeCommand.length);
         newRange.collapse(true);
         newRange.insertNode(loadingSpan);
-        
+
         isAiWriting = true;
-        
+
         try {
           // Call AI to generate formatted document content
           if (typeof window.callGeminiAPI === 'function') {
@@ -21581,41 +22444,41 @@ Format the output as HTML with proper structure:
 - Use <strong> for emphasis
 - Keep the content professional and well-organized
 Do not include any explanation, just output the formatted HTML content directly.`;
-            
+
             const response = await window.callGeminiAPI(prompt, systemPrompt);
-            
+
             // Remove loading indicator
             loadingSpan.remove();
-            
+
             // Create a container for the AI-generated content
             const responseContainer = document.createElement('div');
             responseContainer.className = 'ai-generated-content';
             responseContainer.innerHTML = response;
-            
+
             // Insert with smooth typewriter animation
             const insertRange = document.createRange();
             insertRange.setStart(textNode, beforeCommand.length);
             insertRange.collapse(true);
-            
+
             // Animate the content appearing
             responseContainer.style.opacity = '0';
             responseContainer.style.transform = 'translateY(10px)';
             insertRange.insertNode(responseContainer);
-            
+
             // Trigger reflow and animate in
             requestAnimationFrame(() => {
               responseContainer.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
               responseContainer.style.opacity = '1';
               responseContainer.style.transform = 'translateY(0)';
             });
-            
+
             // Move cursor to end of inserted content
             const finalRange = document.createRange();
             finalRange.setStartAfter(responseContainer);
             finalRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(finalRange);
-            
+
             // Trigger auto-save
             if (typeof autoSaveDoc === 'function') {
               autoSaveDoc();
@@ -21625,7 +22488,7 @@ Do not include any explanation, just output the formatted HTML content directly.
           loadingSpan.remove();
           console.error('AI writing error:', error);
         }
-        
+
         isAiWriting = false;
       }
     }
@@ -21635,7 +22498,7 @@ Do not include any explanation, just output the formatted HTML content directly.
 // Initialize doc AI command when editor opens
 const origOpenDocEditor = window.openDocEditor;
 if (typeof origOpenDocEditor === 'function') {
-  window.openDocEditor = function(docId) {
+  window.openDocEditor = function (docId) {
     origOpenDocEditor(docId);
     setTimeout(() => {
       setupDocAiCommand();
@@ -21944,7 +22807,7 @@ async function sendAIAgentPrompt() {
   if (input && input.value.trim()) {
     const userMessage = input.value.trim();
     input.value = '';
-    
+
     // Switch to chat view and start conversation
     openAIChatView(userMessage);
   }
@@ -21986,11 +22849,11 @@ function saveAIChatHistory(conversations) {
 // Save current conversation
 function saveCurrentConversation() {
   if (aiChatMessages.length === 0) return;
-  
+
   const conversations = loadAIChatHistory();
   const firstUserMsg = aiChatMessages.find(m => m.role === 'user');
   const title = firstUserMsg ? firstUserMsg.content.substring(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '') : 'New Conversation';
-  
+
   if (currentConversationId) {
     // Update existing conversation
     const index = conversations.findIndex(c => c.id === currentConversationId);
@@ -22009,7 +22872,7 @@ function saveCurrentConversation() {
       updatedAt: new Date().toISOString()
     });
   }
-  
+
   // Keep only last 50 conversations
   saveAIChatHistory(conversations.slice(0, 50));
 }
@@ -22018,12 +22881,12 @@ function saveCurrentConversation() {
 function loadConversation(conversationId) {
   const conversations = loadAIChatHistory();
   const conversation = conversations.find(c => c.id === conversationId);
-  
+
   if (conversation) {
     aiChatMessages = [...conversation.messages];
     currentConversationId = conversationId;
     aiChatHistorySidebarOpen = false;
-    
+
     const viewsContainer = document.getElementById('viewsContainer');
     if (viewsContainer) {
       viewsContainer.innerHTML = renderAIChatView();
@@ -22034,15 +22897,15 @@ function loadConversation(conversationId) {
 // Delete a conversation
 function deleteConversation(conversationId, event) {
   event.stopPropagation();
-  
+
   const conversations = loadAIChatHistory();
   const filtered = conversations.filter(c => c.id !== conversationId);
   saveAIChatHistory(filtered);
-  
+
   if (currentConversationId === conversationId) {
     currentConversationId = null;
   }
-  
+
   // Re-render sidebar
   const sidebar = document.getElementById('aiHistorySidebar');
   if (sidebar) {
@@ -22053,10 +22916,10 @@ function deleteConversation(conversationId, event) {
 // Toggle history sidebar
 function toggleAIChatHistorySidebar() {
   aiChatHistorySidebarOpen = !aiChatHistorySidebarOpen;
-  
+
   const sidebar = document.getElementById('aiHistorySidebar');
   const overlay = document.getElementById('aiHistoryOverlay');
-  
+
   if (sidebar && overlay) {
     if (aiChatHistorySidebarOpen) {
       sidebar.classList.add('open');
@@ -22071,7 +22934,7 @@ function toggleAIChatHistorySidebar() {
 // Render sidebar content
 function renderHistorySidebarContent() {
   const conversations = loadAIChatHistory();
-  
+
   if (conversations.length === 0) {
     return `
       <div class="ai-history-empty">
@@ -22083,12 +22946,12 @@ function renderHistorySidebarContent() {
       </div>
     `;
   }
-  
+
   return conversations.map(conv => {
     const date = new Date(conv.updatedAt);
     const timeAgo = getTimeAgo(date);
     const isActive = conv.id === currentConversationId;
-    
+
     return `
       <div class="ai-history-item ${isActive ? 'active' : ''}" onclick="loadConversation('${conv.id}')">
         <div class="ai-history-item-icon">
@@ -22117,7 +22980,7 @@ function getTimeAgo(date) {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  
+
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -22130,7 +22993,7 @@ function openAIChatView(initialMessage) {
   aiGeneratedContent = null;
   currentConversationId = null; // Start fresh conversation
   aiChatHistorySidebarOpen = false;
-  
+
   if (initialMessage) {
     aiChatMessages.push({
       role: 'user',
@@ -22139,16 +23002,16 @@ function openAIChatView(initialMessage) {
     });
     saveCurrentConversation();
   }
-  
+
   // Render the chat view
   const viewsContainer = document.getElementById('viewsContainer');
   if (viewsContainer) {
     viewsContainer.innerHTML = renderAIChatView();
-    
+
     // Focus the input
     const chatInput = document.getElementById('aiChatInput');
     if (chatInput) chatInput.focus();
-    
+
     // If there's an initial message, send it
     if (initialMessage) {
       processAIMessage(initialMessage);
@@ -22158,7 +23021,7 @@ function openAIChatView(initialMessage) {
 
 function renderAIChatView() {
   const hasGeneratedContent = aiGeneratedContent !== null;
-  
+
   return `
     <div class="ai-chat-view clickup-style ${hasGeneratedContent ? 'has-generated-content' : ''}">
       <!-- History Sidebar Overlay -->
@@ -22262,7 +23125,7 @@ function renderAIChatMessages() {
       </div>
     `;
   }
-  
+
   return aiChatMessages.map((msg, index) => {
     if (msg.role === 'user') {
       return `
@@ -22316,34 +23179,34 @@ function renderAIChatMessages() {
 function formatAIResponse(content) {
   // Convert markdown-style formatting to HTML
   let formatted = escapeHtml(content);
-  
+
   // Bold text **text**
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
+
   // Italic text *text*
   formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
+
   // Headers with emoji (💡 Agent Ideas)
   formatted = formatted.replace(/^(💡|🎯|📋|✨|🚀)\s*(.+)$/gm, '<h3 class="ai-response-heading"><span class="ai-heading-icon">$1</span> $2</h3>');
-  
+
   // Numbered lists
-  formatted = formatted.replace(/^(\d+)\.\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm, 
+  formatted = formatted.replace(/^(\d+)\.\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm,
     '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div><strong>$2</strong> — $3</div></div>');
-  
+
   // Simple numbered lists
-  formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm, 
+  formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm,
     '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div>$2</div></div>');
-  
+
   // Line breaks
   formatted = formatted.replace(/\n\n/g, '</p><p>');
   formatted = formatted.replace(/\n/g, '<br>');
-  
+
   return `<p>${formatted}</p>`;
 }
 
 function renderFollowUps(followUps) {
   if (!followUps || followUps.length === 0) return '';
-  
+
   return `
     <div class="ai-chat-followups">
       <span class="ai-chat-followups-label">Follow ups</span>
@@ -22360,7 +23223,7 @@ function renderFollowUps(followUps) {
 
 function renderGeneratedContentPanel() {
   if (!aiGeneratedContent) return '';
-  
+
   return `
     <div class="ai-generated-panel">
       <div class="ai-generated-header">
@@ -22397,23 +23260,23 @@ function formatGeneratedContent(content, type) {
   if (type === 'code') {
     return `<pre class="ai-generated-code"><code>${escapeHtml(content)}</code></pre>`;
   }
-  
+
   // Format as professional document
   let formatted = escapeHtml(content);
-  
+
   // Headers
   formatted = formatted.replace(/^###\s+(.+)$/gm, '<h4 class="ai-doc-h4">$1</h4>');
   formatted = formatted.replace(/^##\s+(.+)$/gm, '<h3 class="ai-doc-h3">$1</h3>');
   formatted = formatted.replace(/^#\s+(.+)$/gm, '<h2 class="ai-doc-h2">$1</h2>');
-  
+
   // Bold and italic
   formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  
+
   // Paragraphs
   formatted = formatted.replace(/\n\n/g, '</p><p class="ai-doc-paragraph">');
   formatted = formatted.replace(/\n/g, '<br>');
-  
+
   return `<div class="ai-doc-content"><p class="ai-doc-paragraph">${formatted}</p></div>`;
 }
 
@@ -22427,17 +23290,17 @@ function handleAIChatInputKeydown(event) {
 async function sendAIChatMessage() {
   const input = document.getElementById('aiChatInput');
   if (!input || !input.value.trim() || aiChatIsLoading) return;
-  
+
   const userMessage = input.value.trim();
   input.value = '';
-  
+
   aiChatMessages.push({
     role: 'user',
     content: userMessage,
     timestamp: new Date()
   });
   saveCurrentConversation();
-  
+
   updateChatView();
   processAIMessage(userMessage);
 }
@@ -22446,16 +23309,16 @@ async function processAIMessage(message) {
   aiChatIsLoading = true;
   updateChatView();
   scrollChatToBottom();
-  
+
   try {
     // Check if this is a content generation request
     const isGeneration = detectContentGeneration(message);
-    
+
     const response = await window.callGeminiAPI(message);
-    
+
     // Parse the response for structured content
     const parsedResponse = parseAIResponse(response, isGeneration);
-    
+
     aiChatMessages.push({
       role: 'assistant',
       content: parsedResponse.message,
@@ -22463,12 +23326,12 @@ async function processAIMessage(message) {
       timestamp: new Date()
     });
     saveCurrentConversation();
-    
+
     // If there's generated content, set it for the right panel
     if (parsedResponse.generatedContent) {
       aiGeneratedContent = parsedResponse.generatedContent;
     }
-    
+
   } catch (error) {
     aiChatMessages.push({
       role: 'assistant',
@@ -22477,7 +23340,7 @@ async function processAIMessage(message) {
     });
     saveCurrentConversation();
   }
-  
+
   aiChatIsLoading = false;
   updateChatView();
   scrollChatToBottom();
@@ -22496,7 +23359,7 @@ function parseAIResponse(response, isGeneration) {
     followUps: [],
     generatedContent: null
   };
-  
+
   // Generate some follow-up suggestions based on context
   if (response.length > 200) {
     result.followUps = [
@@ -22505,7 +23368,7 @@ function parseAIResponse(response, isGeneration) {
       'What are the next steps?'
     ];
   }
-  
+
   // If this looks like generated content (essay, report, code), add to right panel
   if (isGeneration && response.length > 500) {
     const isCode = response.includes('function') || response.includes('const ') || response.includes('import ');
@@ -22515,7 +23378,7 @@ function parseAIResponse(response, isGeneration) {
       content: response
     };
   }
-  
+
   return result;
 }
 
@@ -22537,7 +23400,7 @@ function goBackToAILanding() {
   aiChatMessages = [];
   aiGeneratedContent = null;
   aiChatIsLoading = false;
-  
+
   const viewsContainer = document.getElementById('viewsContainer');
   if (viewsContainer) {
     viewsContainer.innerHTML = renderAIView();
@@ -22648,7 +23511,7 @@ const COMMON_TIMEZONES = [
 function getCurrentTimezoneLabel() {
   const tz = COMMON_TIMEZONES.find(t => t.value === selectedTimezone);
   if (tz) return tz.label.split(' ')[0];
-  
+
   // Fallback: calculate offset
   const offset = -(new Date().getTimezoneOffset() / 60);
   return `UTC${offset >= 0 ? '+' : ''}${offset}`;
@@ -22657,7 +23520,7 @@ function getCurrentTimezoneLabel() {
 function openTimeZoneModal() {
   const currentTz = selectedTimezone;
   const secondTz = secondaryTimezone;
-  
+
   const content = `
     <div class="timezone-modal-content">
       <div class="form-group">
@@ -22705,7 +23568,7 @@ function openTimeZoneModal() {
       </div>
     </div>
   `;
-  
+
   openModal('Time Zone Settings', content);
   updateTimezonePreview();
 }
@@ -22721,31 +23584,31 @@ function updateTimezonePreview() {
   const secondarySelect = document.getElementById('secondaryTimezoneSelect');
   const showSecondary = document.getElementById('showSecondaryTz')?.checked;
   const previewEl = document.getElementById('tzPreviewTimes');
-  
+
   if (!primarySelect || !previewEl) return;
-  
+
   const now = new Date();
   const primaryTz = primarySelect.value;
-  const primaryTime = now.toLocaleTimeString('en-US', { 
-    timeZone: primaryTz, 
-    hour: '2-digit', 
+  const primaryTime = now.toLocaleTimeString('en-US', {
+    timeZone: primaryTz,
+    hour: '2-digit',
     minute: '2-digit',
-    hour12: true 
+    hour12: true
   });
-  
+
   let html = `<div class="tz-preview-item primary"><span class="tz-label">${primaryTz.split('/')[1]?.replace('_', ' ') || primaryTz}</span><span class="tz-time">${primaryTime}</span></div>`;
-  
+
   if (showSecondary && secondarySelect) {
     const secondaryTz = secondarySelect.value;
-    const secondaryTime = now.toLocaleTimeString('en-US', { 
-      timeZone: secondaryTz, 
-      hour: '2-digit', 
+    const secondaryTime = now.toLocaleTimeString('en-US', {
+      timeZone: secondaryTz,
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
     html += `<div class="tz-preview-item secondary"><span class="tz-label">${secondaryTz.split('/')[1]?.replace('_', ' ') || secondaryTz}</span><span class="tz-time">${secondaryTime}</span></div>`;
   }
-  
+
   previewEl.innerHTML = html;
 }
 
@@ -22753,12 +23616,12 @@ function saveTimezoneSettings() {
   const primarySelect = document.getElementById('primaryTimezoneSelect');
   const secondarySelect = document.getElementById('secondaryTimezoneSelect');
   const showSecondary = document.getElementById('showSecondaryTz')?.checked;
-  
+
   if (primarySelect) {
     selectedTimezone = primarySelect.value;
     localStorage.setItem('layerTimezone', selectedTimezone);
   }
-  
+
   if (showSecondary && secondarySelect) {
     secondaryTimezone = secondarySelect.value;
     localStorage.setItem('layerSecondaryTimezone', secondaryTimezone);
@@ -22766,7 +23629,7 @@ function saveTimezoneSettings() {
     secondaryTimezone = null;
     localStorage.removeItem('layerSecondaryTimezone');
   }
-  
+
   closeModal();
   showToast('Time zone settings saved!');
   renderCurrentView();
@@ -22777,7 +23640,7 @@ function convertTimeToTimezone(time24, fromTz, toTz) {
   const [hours, minutes] = time24.split(':').map(Number);
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
-  
+
   return date.toLocaleTimeString('en-US', {
     timeZone: toTz,
     hour: '2-digit',
@@ -22793,7 +23656,7 @@ function openSmartScheduleModal() {
   const events = loadCalendarEvents();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const content = `
     <div class="smart-schedule-modal">
       <div class="smart-schedule-header">
@@ -22824,7 +23687,7 @@ function openSmartScheduleModal() {
           <div class="date-range-inputs">
             <input type="date" id="smartStartDate" class="form-input" value="${today.toISOString().split('T')[0]}" onchange="findAvailableSlots()">
             <span class="date-separator">to</span>
-            <input type="date" id="smartEndDate" class="form-input" value="${new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0]}" onchange="findAvailableSlots()">
+            <input type="date" id="smartEndDate" class="form-input" value="${new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}" onchange="findAvailableSlots()">
           </div>
         </div>
         
@@ -22832,19 +23695,19 @@ function openSmartScheduleModal() {
           <label class="form-label">Working Hours</label>
           <div class="time-range-inputs">
             <select id="smartStartHour" class="form-select" onchange="findAvailableSlots()">
-              ${Array.from({length: 24}, (_, i) => {
-                const h = i < 10 ? '0' + i : i;
-                const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`;
-                return `<option value="${h}:00" ${i === 9 ? 'selected' : ''}>${label}</option>`;
-              }).join('')}
+              ${Array.from({ length: 24 }, (_, i) => {
+    const h = i < 10 ? '0' + i : i;
+    const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
+    return `<option value="${h}:00" ${i === 9 ? 'selected' : ''}>${label}</option>`;
+  }).join('')}
             </select>
             <span class="time-separator">to</span>
             <select id="smartEndHour" class="form-select" onchange="findAvailableSlots()">
-              ${Array.from({length: 24}, (_, i) => {
-                const h = i < 10 ? '0' + i : i;
-                const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`;
-                return `<option value="${h}:00" ${i === 17 ? 'selected' : ''}>${label}</option>`;
-              }).join('')}
+              ${Array.from({ length: 24 }, (_, i) => {
+    const h = i < 10 ? '0' + i : i;
+    const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
+    return `<option value="${h}:00" ${i === 17 ? 'selected' : ''}>${label}</option>`;
+  }).join('')}
             </select>
           </div>
         </div>
@@ -22868,9 +23731,9 @@ function openSmartScheduleModal() {
       </div>
     </div>
   `;
-  
+
   openModal('Smart Scheduling', content, 'modal-large');
-  
+
   // Find slots after modal renders
   setTimeout(() => findAvailableSlots(), 100);
 }
@@ -22893,25 +23756,25 @@ function findAvailableSlots() {
   const endHourEl = document.getElementById('smartEndHour');
   const slotsContainer = document.getElementById('availableSlotsList');
   const slotsCount = document.getElementById('slotsCount');
-  
+
   if (!startDateEl || !endDateEl || !startHourEl || !endHourEl) return;
-  
+
   const startDate = new Date(startDateEl.value);
   const endDate = new Date(endDateEl.value);
   const workStartHour = parseInt(startHourEl.value.split(':')[0]);
   const workEndHour = parseInt(endHourEl.value.split(':')[0]);
   const duration = smartScheduleDuration;
-  
+
   const slots = [];
   const currentDate = new Date(startDate);
-  
+
   while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split('T')[0];
     const dayEvents = events.filter(e => e.date === dateStr && e.time);
-    
+
     // Skip weekends optionally
     const dayOfWeek = currentDate.getDay();
-    
+
     // Find busy time ranges
     const busyRanges = dayEvents.map(e => {
       const [startH, startM] = (e.time || '00:00').split(':').map(Number);
@@ -22921,23 +23784,23 @@ function findAvailableSlots() {
         end: e.endTime ? (endH * 60 + endM) : (startH * 60 + startM + 60)
       };
     }).sort((a, b) => a.start - b.start);
-    
+
     // Find free slots
     let currentMinute = workStartHour * 60;
     const endMinute = workEndHour * 60;
-    
+
     while (currentMinute + duration <= endMinute) {
       const slotEnd = currentMinute + duration;
-      
+
       // Check if slot overlaps with any event
-      const hasConflict = busyRanges.some(range => 
+      const hasConflict = busyRanges.some(range =>
         (currentMinute < range.end && slotEnd > range.start)
       );
-      
+
       if (!hasConflict) {
         const startTime = `${Math.floor(currentMinute / 60).toString().padStart(2, '0')}:${(currentMinute % 60).toString().padStart(2, '0')}`;
         const endTime = `${Math.floor(slotEnd / 60).toString().padStart(2, '0')}:${(slotEnd % 60).toString().padStart(2, '0')}`;
-        
+
         slots.push({
           date: dateStr,
           startTime,
@@ -22946,12 +23809,12 @@ function findAvailableSlots() {
           dayNum: currentDate.getDate(),
           monthName: currentDate.toLocaleDateString('en-US', { month: 'short' })
         });
-        
+
         // Jump to next slot (don't show consecutive slots)
         currentMinute = slotEnd;
       } else {
         // Find end of conflicting event
-        const conflictingEvent = busyRanges.find(range => 
+        const conflictingEvent = busyRanges.find(range =>
           (currentMinute < range.end && currentMinute + duration > range.start)
         );
         if (conflictingEvent) {
@@ -22961,14 +23824,14 @@ function findAvailableSlots() {
         }
       }
     }
-    
+
     currentDate.setDate(currentDate.getDate() + 1);
   }
-  
+
   // Render slots (limit to first 20)
   const displaySlots = slots.slice(0, 20);
   slotsCount.textContent = `${slots.length} slots found`;
-  
+
   if (displaySlots.length === 0) {
     slotsContainer.innerHTML = `
       <div class="no-slots-message">
@@ -22984,7 +23847,7 @@ function findAvailableSlots() {
     `;
     return;
   }
-  
+
   slotsContainer.innerHTML = displaySlots.map(slot => `
     <div class="available-slot-card" onclick="selectSmartSlot('${slot.date}', '${slot.startTime}', '${slot.endTime}')">
       <div class="slot-date-badge">
@@ -23007,7 +23870,7 @@ function findAvailableSlots() {
 function selectSmartSlot(date, startTime, endTime) {
   closeModal();
   openAdvancedEventModal(date, startTime);
-  
+
   // Pre-fill end time after modal opens
   setTimeout(() => {
     const endTimeSelect = document.querySelector('select[name="endTime"]');
@@ -23022,13 +23885,13 @@ function goToScheduleToday() {
   scheduleCurrentDate = new Date();
   scheduleSelectedDate = new Date();
   renderCurrentView();
-  
+
   // Scroll to current time in day/week view
   setTimeout(() => {
     const now = new Date();
     const currentHour = now.getHours();
     const scrollContainer = document.querySelector('.week-grid-scroll, .day-view-grid-scroll');
-    
+
     if (scrollContainer) {
       // Each hour is 80px, starting from 6 AM
       const hourOffset = currentHour >= 6 ? currentHour - 6 : currentHour + 18;
@@ -23052,7 +23915,7 @@ const TimelineV2 = {
   currentDate: new Date(),
   zoom: 1, // 0.5 - 2
   filter: 'active', // 'active', 'closed', 'all'
-  
+
   // Interaction state
   isDragging: false,
   isResizing: false,
@@ -23061,18 +23924,18 @@ const TimelineV2 = {
   dragOriginalLeft: 0,
   dragOriginalWidth: 0,
   resizeDirection: null,
-  
+
   // Scroll position (preserved across re-renders)
   scrollLeft: 0,
   scrollTop: 0,
-  
+
   // Current project context
   projectIndex: null,
-  
+
   // Cell size (base, adjusted by zoom)
   get cellWidth() { return 42 * this.zoom; },
   rowHeight: 76,
-  
+
   // Date range
   startDate: null,
   endDate: null,
@@ -23169,10 +24032,10 @@ const TLV2_COLORS = [
 function tlv2_calculateDateRange(project) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let minDate = new Date(today);
   let maxDate = new Date(today);
-  
+
   // Calculate padding based on view mode
   const paddings = {
     'day': { before: 3, after: 14 },
@@ -23180,12 +24043,12 @@ function tlv2_calculateDateRange(project) {
     'month': { before: 14, after: 60 },
     'quarter': { before: 30, after: 120 }
   };
-  
+
   const padding = paddings[TimelineV2.viewMode] || paddings.week;
-  
+
   minDate.setDate(minDate.getDate() - padding.before);
   maxDate.setDate(maxDate.getDate() + padding.after);
-  
+
   // Extend range based on task dates
   if (project && project.columns) {
     project.columns.forEach(col => {
@@ -23198,7 +24061,7 @@ function tlv2_calculateDateRange(project) {
         const colEnd = new Date(col.timelineEnd);
         if (colEnd > maxDate) maxDate = new Date(colEnd);
       }
-      
+
       // Check task dates
       (col.tasks || []).forEach(task => {
         if (task.startDate) {
@@ -23212,11 +24075,11 @@ function tlv2_calculateDateRange(project) {
       });
     });
   }
-  
+
   // Add padding
   minDate.setDate(minDate.getDate() - 5);
   maxDate.setDate(maxDate.getDate() + 10);
-  
+
   // Generate dates array
   const dates = [];
   const current = new Date(minDate);
@@ -23224,11 +24087,11 @@ function tlv2_calculateDateRange(project) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);
   }
-  
+
   TimelineV2.startDate = minDate;
   TimelineV2.endDate = maxDate;
   TimelineV2.dates = dates;
-  
+
   return { startDate: minDate, endDate: maxDate, dates };
 }
 
@@ -23238,36 +24101,36 @@ function tlv2_calculateDateRange(project) {
 
 function renderTimelineV2(projectIndex, container) {
   TimelineV2.projectIndex = projectIndex;
-  
+
   // Preserve scroll position
   const prevWrapper = document.getElementById('tlv2GanttWrapper');
   if (prevWrapper) {
     TimelineV2.scrollLeft = prevWrapper.scrollLeft;
     TimelineV2.scrollTop = prevWrapper.scrollTop;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Calculate date range
   const { dates, startDate } = tlv2_calculateDateRange(project);
-  
+
   // Build column data
   const columns = (project.columns || []).map((col, idx) => {
     const tasks = col.tasks || [];
     let minDate = col.timelineStart ? new Date(col.timelineStart) : null;
     let maxDate = col.timelineEnd ? new Date(col.timelineEnd) : null;
-    
+
     // Expand range based on task dates
     tasks.forEach(t => {
       const start = t.startDate ? new Date(t.startDate) : null;
       const end = t.endDate || t.dueDate ? new Date(t.endDate || t.dueDate) : start;
-      
+
       if (start && (!minDate || start < minDate)) minDate = new Date(start);
       if (end && (!maxDate || end > maxDate)) maxDate = new Date(end);
     });
-    
+
     return {
       id: `col-${idx}`,
       index: idx,
@@ -23281,7 +24144,7 @@ function renderTimelineV2(projectIndex, container) {
       dependsOn: col.dependsOn || []
     };
   });
-  
+
   // Calculate stats
   const allTasks = project.columns.flatMap(c => c.tasks || []);
   const stats = {
@@ -23289,9 +24152,9 @@ function renderTimelineV2(projectIndex, container) {
     completed: allTasks.filter(t => t.done).length,
     inProgress: project.columns.filter(c => c.title.toLowerCase().includes('progress')).flatMap(c => c.tasks || []).length
   };
-  
+
   const gridWidth = dates.length * TimelineV2.cellWidth;
-  
+
   container.innerHTML = `
     <div class="timeline-linear" id="tlv2Container">
       <!-- Header -->
@@ -23415,13 +24278,13 @@ function renderTimelineV2(projectIndex, container) {
       
       <div class="tl-kanban-board">
         ${project.columns.map((column, colIndex) => {
-          const tasks = column.tasks || [];
-          const completedCount = tasks.filter(t => t.done).length;
-          const totalCount = tasks.length;
-          const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-          const columnColor = column.color || tlv2_getColumnColor(column.title);
-          
-          return `
+    const tasks = column.tasks || [];
+    const completedCount = tasks.filter(t => t.done).length;
+    const totalCount = tasks.length;
+    const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const columnColor = column.color || tlv2_getColumnColor(column.title);
+
+    return `
           <div class="tl-kanban-column" data-col-index="${colIndex}">
             <div class="tl-kanban-col-header" style="--col-accent: ${columnColor};">
               <div class="tl-kanban-col-indicator" style="background: ${columnColor};"></div>
@@ -23472,10 +24335,10 @@ function renderTimelineV2(projectIndex, container) {
       </div>
     </div>
   `;
-  
+
   // Setup interactions
   tlv2_setupInteractions();
-  
+
   // Restore scroll
   requestAnimationFrame(() => {
     const wrapper = document.getElementById('tlv2GanttWrapper');
@@ -23488,7 +24351,7 @@ function renderTimelineV2(projectIndex, container) {
       header.scrollLeft = TimelineV2.scrollLeft;
     }
   });
-  
+
   // Dependencies rendering removed
 }
 
@@ -23504,7 +24367,7 @@ function tlv2_renderLeftPanel(columns) {
       </div>
     `;
   }
-  
+
   // Ultra-minimalistic design - just name + count
   return columns.map(col => {
     return `
@@ -23527,7 +24390,7 @@ function tlv2_renderMonthRow(dates) {
   const monthGroups = [];
   let currentMonth = null;
   let count = 0;
-  
+
   dates.forEach((date, idx) => {
     const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
     if (monthKey !== currentMonth) {
@@ -23540,19 +24403,19 @@ function tlv2_renderMonthRow(dates) {
       count++;
     }
   });
-  
+
   // Push last group
   if (count > 0) {
     monthGroups.push({ month: currentMonth, count, date: dates[dates.length - count] });
   }
-  
+
   return `
     <div class="tl-month-row">
       ${monthGroups.map(g => {
-        const monthName = g.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        const width = g.count * TimelineV2.cellWidth;
-        return `<div class="tl-month-cell" style="min-width: ${width}px; width: ${width}px;">${monthName}</div>`;
-      }).join('')}
+    const monthName = g.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const width = g.count * TimelineV2.cellWidth;
+    return `<div class="tl-month-cell" style="min-width: ${width}px; width: ${width}px;">${monthName}</div>`;
+  }).join('')}
     </div>
   `;
 }
@@ -23560,16 +24423,16 @@ function tlv2_renderMonthRow(dates) {
 function tlv2_renderDayRow(dates) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return `
     <div class="tl-day-row">
       ${dates.map(date => {
-        const isToday = date.toDateString() === today.toDateString();
-        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
-        const dayNum = date.getDate();
-        
-        return `
+    const isToday = date.toDateString() === today.toDateString();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+    const dayNum = date.getDate();
+
+    return `
           <div class="tl-date-col ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" 
                style="min-width: ${TimelineV2.cellWidth}px; width: ${TimelineV2.cellWidth}px;">
             ${isToday ? `<div class="tl-date-num">${dayNum}</div>` : `
@@ -23578,7 +24441,7 @@ function tlv2_renderDayRow(dates) {
             `}
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   `;
 }
@@ -23590,7 +24453,7 @@ function tlv2_renderDayRow(dates) {
 function tlv2_renderGanttRows(columns, dates, startDate) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return columns.map((col, rowIdx) => {
     // Background cells
     const cells = dates.map(date => {
@@ -23599,17 +24462,17 @@ function tlv2_renderGanttRows(columns, dates, startDate) {
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" 
                    style="min-width: ${TimelineV2.cellWidth}px;"></div>`;
     }).join('');
-    
+
     // Bar
     let barHtml = '';
     const progress = col.taskCount > 0 ? Math.round((col.completedCount / col.taskCount) * 100) : 0;
-    
+
     if (col.hasDates) {
       const startOffset = tlv2_daysBetween(startDate, col.minDate);
       const duration = Math.max(1, tlv2_daysBetween(col.minDate, col.maxDate) + 1);
       const left = Math.max(0, startOffset * TimelineV2.cellWidth);
       const width = Math.max(TimelineV2.cellWidth, duration * TimelineV2.cellWidth - 4);
-      
+
       barHtml = `
         <div class="tl-task-bar column-bar" 
              data-column-index="${col.index}"
@@ -23638,7 +24501,7 @@ function tlv2_renderGanttRows(columns, dates, startDate) {
       const todayOffset = tlv2_daysBetween(startDate, today);
       const left = Math.max(0, todayOffset * TimelineV2.cellWidth);
       const width = 7 * TimelineV2.cellWidth - 4;
-      
+
       barHtml = `
         <div class="tl-task-bar column-bar no-dates" 
              data-column-index="${col.index}"
@@ -23652,7 +24515,7 @@ function tlv2_renderGanttRows(columns, dates, startDate) {
         </div>
       `;
     }
-    
+
     return `
       <div class="tl-gantt-row" data-column-index="${col.index}" style="height: ${TimelineV2.rowHeight}px;">
         ${cells}
@@ -23674,12 +24537,12 @@ function tlv2_getColumnEmoji(title) {
 function tlv2_renderTodayLine(dates, startDate) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const offset = tlv2_daysBetween(startDate, today);
   if (offset < 0 || offset >= dates.length) return '';
-  
+
   const left = offset * TimelineV2.cellWidth + TimelineV2.cellWidth / 2;
-  
+
   return `<div class="tl-today-line" style="left: ${left}px;"></div>`;
 }
 
@@ -23702,16 +24565,16 @@ function tlv2_setupInteractions() {
 function tlv2_startDrag(event, columnIndex) {
   if (event.target.classList.contains('tl-bar-resize')) return;
   event.preventDefault();
-  
+
   const bar = event.currentTarget;
-  
+
   TimelineV2.isDragging = true;
   TimelineV2.dragTarget = bar;
   TimelineV2.dragColumnIndex = columnIndex;
   TimelineV2.dragStartX = event.clientX;
   TimelineV2.dragOriginalLeft = parseInt(bar.style.left) || 0;
   TimelineV2.dragOriginalWidth = parseInt(bar.style.width) || 100;
-  
+
   bar.classList.add('dragging');
   document.body.style.cursor = 'grabbing';
   document.body.style.userSelect = 'none';
@@ -23720,10 +24583,10 @@ function tlv2_startDrag(event, columnIndex) {
 function tlv2_startResize(event, columnIndex, direction) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   const bar = event.target.closest('.tl-task-bar');
   if (!bar) return;
-  
+
   TimelineV2.isResizing = true;
   TimelineV2.resizeDirection = direction;
   TimelineV2.dragTarget = bar;
@@ -23731,7 +24594,7 @@ function tlv2_startResize(event, columnIndex, direction) {
   TimelineV2.dragStartX = event.clientX;
   TimelineV2.dragOriginalLeft = parseInt(bar.style.left) || 0;
   TimelineV2.dragOriginalWidth = parseInt(bar.style.width) || 100;
-  
+
   bar.classList.add('resizing');
   document.body.style.cursor = 'ew-resize';
   document.body.style.userSelect = 'none';
@@ -23739,13 +24602,13 @@ function tlv2_startResize(event, columnIndex, direction) {
 
 function tlv2_handleMouseMove(event) {
   if (!TimelineV2.isDragging && !TimelineV2.isResizing) return;
-  
+
   const deltaX = event.clientX - TimelineV2.dragStartX;
   const daysDelta = Math.round(deltaX / TimelineV2.cellWidth);
-  
+
   // Minimum width is 1 day (1 cell)
   const minWidth = TimelineV2.cellWidth;
-  
+
   if (TimelineV2.isDragging) {
     const newLeft = TimelineV2.dragOriginalLeft + (daysDelta * TimelineV2.cellWidth);
     TimelineV2.dragTarget.style.left = `${Math.max(0, newLeft)}px`;
@@ -23757,7 +24620,7 @@ function tlv2_handleMouseMove(event) {
     } else {
       // Resize from left: adjust both left and width
       const potentialWidth = TimelineV2.dragOriginalWidth - (daysDelta * TimelineV2.cellWidth);
-      
+
       if (potentialWidth >= minWidth) {
         // Normal resize - move left edge, adjust width
         const newLeft = TimelineV2.dragOriginalLeft + (daysDelta * TimelineV2.cellWidth);
@@ -23776,17 +24639,17 @@ function tlv2_handleMouseMove(event) {
 
 function tlv2_handleMouseUp(event) {
   if (!TimelineV2.isDragging && !TimelineV2.isResizing) return;
-  
+
   const deltaX = event.clientX - TimelineV2.dragStartX;
   const daysDelta = Math.round(deltaX / TimelineV2.cellWidth);
-  
+
   if (TimelineV2.dragTarget) {
     TimelineV2.dragTarget.classList.remove('dragging', 'resizing');
   }
-  
+
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
-  
+
   // Save changes if moved
   if (daysDelta !== 0) {
     if (TimelineV2.isDragging) {
@@ -23795,7 +24658,7 @@ function tlv2_handleMouseUp(event) {
       tlv2_updateColumnDates(TimelineV2.dragColumnIndex, daysDelta, TimelineV2.resizeDirection);
     }
   }
-  
+
   // Reset state
   TimelineV2.isDragging = false;
   TimelineV2.isResizing = false;
@@ -23807,7 +24670,7 @@ function tlv2_updateColumnDates(columnIndex, daysDelta, mode) {
   const projects = loadProjects();
   const project = projects[TimelineV2.projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const column = project.columns[columnIndex];
 
   // Always compute the new dates from the bar's *actual* visual position/size.
@@ -23903,9 +24766,9 @@ function tlv2_setViewMode(mode) {
 function tlv2_navigate(direction) {
   const days = { 'day': 7, 'week': 14, 'month': 30, 'quarter': 90 };
   const offset = (days[TimelineV2.viewMode] || 14) * direction;
-  
+
   TimelineV2.currentDate.setDate(TimelineV2.currentDate.getDate() + offset);
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineV2(TimelineV2.projectIndex, container);
 }
@@ -23913,10 +24776,10 @@ function tlv2_navigate(direction) {
 function tlv2_goToToday() {
   TimelineV2.currentDate = new Date();
   TimelineV2.scrollLeft = 0;
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineV2(TimelineV2.projectIndex, container);
-  
+
   // Scroll to today
   requestAnimationFrame(() => {
     const todayLine = document.querySelector('.tl-today-line');
@@ -23930,7 +24793,7 @@ function tlv2_goToToday() {
 
 function tlv2_zoom(delta) {
   TimelineV2.zoom = Math.max(0.5, Math.min(2, TimelineV2.zoom + delta));
-  
+
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineV2(TimelineV2.projectIndex, container);
 }
@@ -23947,7 +24810,7 @@ function tlv2_syncScroll(wrapper) {
 function tlv2_handleKeydown(event) {
   if (!document.getElementById('tlv2Container')) return;
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-  
+
   switch (event.key.toLowerCase()) {
     case 't':
       tlv2_goToToday();
@@ -24001,13 +24864,13 @@ function tlv2_toggleMilestone(columnIndex) {
   const projectIndex = TimelineV2.projectIndex;
   const project = Store.projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const column = project.columns[columnIndex];
   column.isMilestone = !column.isMilestone;
-  
+
   Store.saveProjects();
   tlv2_render();
-  
+
   const status = column.isMilestone ? 'marked as milestone' : 'unmarked as milestone';
   if (typeof showToast === 'function') {
     showToast(`"${column.title}" ${status}`, 'success');
@@ -24023,17 +24886,17 @@ function tlv2_toggleMilestone(columnIndex) {
 function tlv2_openColorPicker(event, columnIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   // Remove any existing picker
   tlv2_closeColorPicker();
-  
+
   const projects = loadProjects();
   const project = projects[TimelineV2.projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const column = project.columns[columnIndex];
   const currentColor = column.color || tlv2_getColumnColor(column.title);
-  
+
   // Create color picker popover
   const picker = document.createElement('div');
   picker.id = 'tlv2ColorPicker';
@@ -24063,16 +24926,16 @@ function tlv2_openColorPicker(event, columnIndex) {
              onchange="tlv2_setColumnColor(${columnIndex}, this.value)">
     </div>
   `;
-  
+
   // Position the picker near the click
   document.body.appendChild(picker);
-  
+
   const rect = event.target.getBoundingClientRect();
   const pickerRect = picker.getBoundingClientRect();
-  
+
   let left = rect.left;
   let top = rect.bottom + 8;
-  
+
   // Keep within viewport
   if (left + pickerRect.width > window.innerWidth - 16) {
     left = window.innerWidth - pickerRect.width - 16;
@@ -24080,10 +24943,10 @@ function tlv2_openColorPicker(event, columnIndex) {
   if (top + pickerRect.height > window.innerHeight - 16) {
     top = rect.top - pickerRect.height - 8;
   }
-  
+
   picker.style.left = `${Math.max(16, left)}px`;
   picker.style.top = `${Math.max(16, top)}px`;
-  
+
   // Close on outside click
   setTimeout(() => {
     document.addEventListener('click', tlv2_handleColorPickerOutsideClick);
@@ -24107,16 +24970,16 @@ function tlv2_setColumnColor(columnIndex, color) {
   const projects = loadProjects();
   const project = projects[TimelineV2.projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   project.columns[columnIndex].color = color;
   saveProjects(projects);
-  
+
   tlv2_closeColorPicker();
-  
+
   // Re-render timeline
   const container = document.querySelector('.pd-content-scroll');
   if (container) renderTimelineV2(TimelineV2.projectIndex, container);
-  
+
   if (typeof showToast === 'function') {
     showToast('Column color updated');
   }
@@ -24149,7 +25012,7 @@ if (typeof advancedTimelineState === 'undefined') {
 // ============================================
 function renderAdvancedToolbar(projectIndex) {
   const state = advancedTimelineState;
-  
+
   return `
     <div class="tl-advanced-toolbar">
       <!-- Swimlanes Toggle -->
@@ -24240,7 +25103,7 @@ function renderAdvancedToolbar(projectIndex) {
 // ============================================
 function toggleSwimlanes(projectIndex) {
   advancedTimelineState.swimlanesEnabled = !advancedTimelineState.swimlanesEnabled;
-  
+
   if (advancedTimelineState.swimlanesEnabled) {
     openSwimlanesGroupByMenu(event, projectIndex);
   } else {
@@ -24250,10 +25113,10 @@ function toggleSwimlanes(projectIndex) {
 
 function openSwimlanesGroupByMenu(event, projectIndex) {
   event.stopPropagation();
-  
+
   // Close existing menus
   closeAllDropdowns();
-  
+
   const menu = document.createElement('div');
   menu.id = 'swimlanesGroupMenu';
   menu.className = 'tl-zoom-dropdown show';
@@ -24263,7 +25126,7 @@ function openSwimlanesGroupByMenu(event, projectIndex) {
     top: ${event.clientY + 10}px;
     min-width: 150px;
   `;
-  
+
   menu.innerHTML = `
     <button class="tl-zoom-preset ${advancedTimelineState.swimlaneGroupBy === 'priority' ? 'active' : ''}" 
             onclick="setSwimlanesGroupBy('priority', ${projectIndex})">
@@ -24278,9 +25141,9 @@ function openSwimlanesGroupByMenu(event, projectIndex) {
       By Status
     </button>
   `;
-  
+
   document.body.appendChild(menu);
-  
+
   setTimeout(() => {
     document.addEventListener('click', closeSwimlaneMenu);
   }, 10);
@@ -24302,7 +25165,7 @@ function setSwimlanesGroupBy(groupBy, projectIndex) {
 function renderSwimlanes(columns, projectIndex, dates, startDate) {
   const groupBy = advancedTimelineState.swimlaneGroupBy;
   const allTasks = [];
-  
+
   columns.forEach(col => {
     col.tasks.forEach(task => {
       allTasks.push({
@@ -24312,7 +25175,7 @@ function renderSwimlanes(columns, projectIndex, dates, startDate) {
       });
     });
   });
-  
+
   // Group tasks
   const groups = {};
   allTasks.forEach(task => {
@@ -24330,29 +25193,29 @@ function renderSwimlanes(columns, projectIndex, dates, startDate) {
       default:
         key = 'all';
     }
-    
+
     if (!groups[key]) groups[key] = [];
     groups[key].push(task);
   });
-  
+
   // Sort group keys
   let sortedKeys = Object.keys(groups);
   if (groupBy === 'priority') {
     const priorityOrder = ['high', 'medium', 'low', 'none'];
     sortedKeys.sort((a, b) => priorityOrder.indexOf(a) - priorityOrder.indexOf(b));
   }
-  
+
   const cellWidth = 48 * timelineState.zoom;
   let html = '';
-  
+
   sortedKeys.forEach(key => {
     const tasks = groups[key];
     const isCollapsed = advancedTimelineState.collapsedSwimlanes[key];
     const completedCount = tasks.filter(t => t.done).length;
-    
+
     let iconClass = '';
     let iconContent = '';
-    
+
     if (groupBy === 'priority') {
       iconClass = `priority-${key}`;
       iconContent = key === 'high' ? '!!!' : key === 'medium' ? '!!' : '!';
@@ -24363,7 +25226,7 @@ function renderSwimlanes(columns, projectIndex, dates, startDate) {
       iconClass = 'assignee';
       iconContent = key.charAt(0).toUpperCase();
     }
-    
+
     html += `
       <div class="tl-swimlane ${isCollapsed ? 'collapsed' : ''}" data-swimlane="${key}">
         <div class="tl-swimlane-header">
@@ -24410,7 +25273,7 @@ function renderSwimlanes(columns, projectIndex, dates, startDate) {
       </div>
     `;
   });
-  
+
   return html;
 }
 
@@ -24418,16 +25281,16 @@ function renderSwimlaneTaskBars(tasks, dates, startDate, projectIndex) {
   const cellWidth = 48 * timelineState.zoom;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let html = '';
-  
+
   tasks.forEach((task, idx) => {
     const cells = dates.map(date => {
       const isToday = date.toDateString() === today.toDateString();
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       return `<div class="tl-gantt-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" style="min-width: ${cellWidth}px; height: 44px;"></div>`;
     }).join('');
-    
+
     let barHtml = '';
     if (task.startDate) {
       const taskStart = new Date(task.startDate);
@@ -24436,10 +25299,10 @@ function renderSwimlaneTaskBars(tasks, dates, startDate, projectIndex) {
       const duration = Math.max(1, daysBetween(taskStart, taskEnd) + 1);
       const left = Math.max(0, startOffset * cellWidth);
       const width = Math.max(cellWidth - 4, duration * cellWidth - 4);
-      
+
       const isOverdue = taskEnd < today && !task.done;
       const isCritical = advancedTimelineState.criticalPathEnabled && isTaskOnCriticalPath(task);
-      
+
       barHtml = `
         <div class="tl-task-bar tl-task-bar-clickup tl-task-bar-child ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${isCritical ? 'critical-path' : ''}"
              style="left: ${left}px; width: ${width}px; top: ${idx * 44 + 9}px; background: linear-gradient(180deg, ${task.columnColor || '#6366f1'} 0%, ${adjustColor(task.columnColor || '#6366f1', -15)} 100%);"
@@ -24448,10 +25311,10 @@ function renderSwimlaneTaskBars(tasks, dates, startDate, projectIndex) {
         </div>
       `;
     }
-    
+
     html += `<div class="tl-gantt-row tl-gantt-row-clickup" style="height: 36px; position: relative;">${cells}${barHtml}</div>`;
   });
-  
+
   return html;
 }
 
@@ -24466,7 +25329,7 @@ function toggleSwimlaneCollapse(key, projectIndex) {
 function toggleCriticalPath(projectIndex) {
   advancedTimelineState.criticalPathEnabled = !advancedTimelineState.criticalPathEnabled;
   refreshAdvancedTimeline(projectIndex);
-  
+
   if (advancedTimelineState.criticalPathEnabled) {
     showToast('Critical path highlighted - longest dependency chain shown');
   }
@@ -24476,7 +25339,7 @@ function isTaskOnCriticalPath(task) {
   // Simple critical path logic - tasks with dependencies that are on the longest chain
   // In a real implementation, this would use topological sorting
   if (!task.dependencies || task.dependencies.length === 0) return false;
-  
+
   // For now, highlight tasks with dependencies
   return true;
 }
@@ -24491,17 +25354,17 @@ function calculateCriticalPath(columns) {
       });
     });
   });
-  
+
   // Find tasks with longest dependency chains
   const criticalTasks = new Set();
-  
+
   allTasks.forEach(task => {
     if (task.dependencies && task.dependencies.length > 0) {
       criticalTasks.add(task.id);
       task.dependencies.forEach(depId => criticalTasks.add(depId));
     }
   });
-  
+
   return Array.from(criticalTasks);
 }
 
@@ -24525,9 +25388,9 @@ function renderWorkloadView(columns, dates, projectIndex) {
       assignees[name].tasks.push(task);
     });
   });
-  
+
   const cellWidth = 48 * timelineState.zoom;
-  
+
   let html = `
     <div class="tl-workload-container">
       <div class="tl-workload-legend">
@@ -24553,10 +25416,10 @@ function renderWorkloadView(columns, dates, projectIndex) {
       </div>
       <div class="tl-workload-rows">
   `;
-  
+
   Object.values(assignees).forEach(assignee => {
     const avatarColor = getAvatarColor(assignee.name);
-    
+
     html += `
       <div class="tl-workload-row">
         <div class="tl-workload-assignee">
@@ -24570,7 +25433,7 @@ function renderWorkloadView(columns, dates, projectIndex) {
         </div>
         <div class="tl-workload-cells">
     `;
-    
+
     dates.forEach(date => {
       // Calculate hours for this date
       const hours = assignee.tasks.filter(task => {
@@ -24579,10 +25442,10 @@ function renderWorkloadView(columns, dates, projectIndex) {
         const end = task.dueDate ? new Date(task.dueDate) : start;
         return date >= start && date <= end;
       }).length * 2; // Assume 2 hours per task per day
-      
+
       const level = hours === 0 ? 0 : hours <= 2 ? 1 : hours <= 4 ? 2 : hours <= 6 ? 3 : hours <= 8 ? 4 : hours <= 10 ? 5 : 6;
       const isOverloaded = hours > 8;
-      
+
       html += `
         <div class="tl-workload-cell level-${level} ${isOverloaded ? 'overloaded' : ''}" 
              style="width: ${cellWidth}px;" 
@@ -24591,18 +25454,18 @@ function renderWorkloadView(columns, dates, projectIndex) {
         </div>
       `;
     });
-    
+
     html += `
         </div>
       </div>
     `;
   });
-  
+
   html += `
       </div>
     </div>
   `;
-  
+
   return html;
 }
 
@@ -24611,13 +25474,13 @@ function renderWorkloadView(columns, dates, projectIndex) {
 // ============================================
 function toggleBaselineView(projectIndex) {
   advancedTimelineState.showBaseline = !advancedTimelineState.showBaseline;
-  
+
   if (advancedTimelineState.showBaseline && Object.keys(advancedTimelineState.baselineData).length === 0) {
     // Save current dates as baseline
     saveBaseline(projectIndex);
     showToast('Baseline saved! Future changes will be compared against this snapshot.');
   }
-  
+
   refreshAdvancedTimeline(projectIndex);
 }
 
@@ -24625,7 +25488,7 @@ function saveBaseline(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   const baseline = {};
   project.columns.forEach((col, colIdx) => {
     col.tasks.forEach((task, taskIdx) => {
@@ -24637,9 +25500,9 @@ function saveBaseline(projectIndex) {
       }
     });
   });
-  
+
   advancedTimelineState.baselineData = baseline;
-  
+
   // Also save to project
   project.baselineData = baseline;
   project.baselineSavedAt = new Date().toISOString();
@@ -24649,28 +25512,28 @@ function saveBaseline(projectIndex) {
 function renderBaselineBar(task, startDate) {
   const baseline = advancedTimelineState.baselineData[task.id];
   if (!baseline) return '';
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const baseStart = baseline.startDate ? new Date(baseline.startDate) : null;
   const baseEnd = baseline.dueDate ? new Date(baseline.dueDate) : baseStart;
-  
+
   if (!baseStart) return '';
-  
+
   const startOffset = daysBetween(startDate, baseStart);
   const duration = Math.max(1, daysBetween(baseStart, baseEnd) + 1);
   const left = Math.max(0, startOffset * cellWidth);
   const width = Math.max(cellWidth - 4, duration * cellWidth - 4);
-  
+
   // Calculate variance
   const currentStart = task.startDate ? new Date(task.startDate) : null;
   let variance = 0;
   let varianceClass = '';
-  
+
   if (currentStart && baseStart) {
     variance = daysBetween(baseStart, currentStart);
     varianceClass = variance < 0 ? 'ahead' : variance > 0 ? 'behind' : '';
   }
-  
+
   return `
     <div class="tl-baseline-bar" style="left: ${left}px; width: ${width}px;"></div>
     ${variance !== 0 ? `
@@ -24686,16 +25549,16 @@ function renderBaselineBar(task, startDate) {
 // ============================================
 function openMiniCalendar(event, projectIndex) {
   event.stopPropagation();
-  
+
   const existing = document.getElementById('tlMiniCalendar');
   if (existing) {
     existing.remove();
     return;
   }
-  
+
   const today = new Date();
   const currentMonth = timelineState.currentDate || today;
-  
+
   const calendar = document.createElement('div');
   calendar.id = 'tlMiniCalendar';
   calendar.className = 'tl-mini-calendar show';
@@ -24703,10 +25566,10 @@ function openMiniCalendar(event, projectIndex) {
     left: ${event.clientX - 150}px;
     top: ${event.clientY + 20}px;
   `;
-  
+
   calendar.innerHTML = renderMiniCalendarContent(currentMonth, projectIndex);
   document.body.appendChild(calendar);
-  
+
   setTimeout(() => {
     document.addEventListener('click', closeMiniCalendar);
   }, 10);
@@ -24715,31 +25578,31 @@ function openMiniCalendar(event, projectIndex) {
 function renderMiniCalendarContent(displayMonth, projectIndex) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const year = displayMonth.getFullYear();
   const month = displayMonth.getMonth();
-  
+
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDay = firstDay.getDay();
-  
+
   const monthName = displayMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  
+
   let daysHtml = dayLabels.map(d => `<div class="tl-mini-calendar-day-label">${d}</div>`).join('');
-  
+
   // Previous month days
   const prevMonth = new Date(year, month, 0);
   for (let i = startDay - 1; i >= 0; i--) {
     const day = prevMonth.getDate() - i;
     daysHtml += `<div class="tl-mini-calendar-day other-month">${day}</div>`;
   }
-  
+
   // Current month days
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const date = new Date(year, month, day);
     const isToday = date.toDateString() === today.toDateString();
-    
+
     daysHtml += `
       <div class="tl-mini-calendar-day ${isToday ? 'today' : ''}" 
            onclick="navigateToDate(${year}, ${month}, ${day}, ${projectIndex})">
@@ -24747,13 +25610,13 @@ function renderMiniCalendarContent(displayMonth, projectIndex) {
       </div>
     `;
   }
-  
+
   // Next month days
   const remainingCells = 42 - (startDay + lastDay.getDate());
   for (let day = 1; day <= remainingCells; day++) {
     daysHtml += `<div class="tl-mini-calendar-day other-month">${day}</div>`;
   }
-  
+
   return `
     <div class="tl-mini-calendar-header">
       <span class="tl-mini-calendar-title">${monthName}</span>
@@ -24790,7 +25653,7 @@ function navigateMiniCalendar(direction, projectIndex) {
   const current = timelineState.currentDate || new Date();
   const newMonth = new Date(current.getFullYear(), current.getMonth() + direction, 1);
   timelineState.currentDate = newMonth;
-  
+
   const calendar = document.getElementById('tlMiniCalendar');
   if (calendar) {
     calendar.innerHTML = renderMiniCalendarContent(newMonth, projectIndex);
@@ -24802,7 +25665,7 @@ function navigateToDate(year, month, day, projectIndex) {
   timelineState.currentDate = targetDate;
   closeMiniCalendar();
   refreshAdvancedTimeline(projectIndex);
-  
+
   // Scroll to the date in the gantt
   setTimeout(() => {
     goToTimelineDate(targetDate, projectIndex);
@@ -24831,12 +25694,12 @@ function navigateToNextMonth(projectIndex) {
 function goToTimelineDate(targetDate, projectIndex) {
   const wrapper = document.getElementById('tlGanttWrapper');
   if (!wrapper) return;
-  
+
   const cellWidth = 48 * timelineState.zoom;
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Calculate approximate scroll position
   const allTasks = [];
   project.columns.forEach(col => {
@@ -24844,13 +25707,13 @@ function goToTimelineDate(targetDate, projectIndex) {
       if (task.startDate) allTasks.push(task);
     });
   });
-  
+
   if (allTasks.length === 0) return;
-  
+
   const startDates = allTasks.map(t => new Date(t.startDate));
   const minDate = new Date(Math.min(...startDates));
   const offset = daysBetween(minDate, targetDate);
-  
+
   wrapper.scrollLeft = Math.max(0, offset * cellWidth - wrapper.clientWidth / 2);
 }
 
@@ -24859,14 +25722,14 @@ function goToTimelineDate(targetDate, projectIndex) {
 // ============================================
 function showTaskInspector(taskId, projectIndex, event) {
   event.stopPropagation();
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   let task = null;
   let columnTitle = '';
-  
+
   project.columns.forEach(col => {
     col.tasks.forEach(t => {
       if (t.id === taskId) {
@@ -24875,37 +25738,37 @@ function showTaskInspector(taskId, projectIndex, event) {
       }
     });
   });
-  
+
   if (!task) return;
-  
+
   const existing = document.getElementById('tlTaskInspector');
   if (existing) existing.remove();
-  
+
   const inspector = document.createElement('div');
   inspector.id = 'tlTaskInspector';
   inspector.className = 'tl-task-inspector';
-  
+
   // Position near the click but within viewport
   let left = event.clientX + 20;
   let top = event.clientY - 100;
-  
+
   if (left + 360 > window.innerWidth) left = event.clientX - 380;
   if (top < 20) top = 20;
   if (top + 480 > window.innerHeight) top = window.innerHeight - 500;
-  
+
   inspector.style.cssText = `left: ${left}px; top: ${top}px;`;
-  
+
   const statusClass = task.done ? 'done' : columnTitle.toLowerCase().includes('progress') ? 'in-progress' : 'todo';
-  const statusIcon = task.done 
+  const statusIcon = task.done
     ? '<polyline points="22 4 12 14.01 9 11.01"/><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>'
     : '<circle cx="12" cy="12" r="10"/>';
-  
+
   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isOverdue = dueDate && dueDate < today && !task.done;
   const isDueSoon = dueDate && !isOverdue && daysBetween(today, dueDate) <= 3;
-  
+
   inspector.innerHTML = `
     <div class="tl-inspector-header">
       <div class="tl-inspector-status ${statusClass}">
@@ -24998,13 +25861,13 @@ function showTaskInspector(taskId, projectIndex, event) {
       </button>
     </div>
   `;
-  
+
   document.body.appendChild(inspector);
-  
+
   requestAnimationFrame(() => {
     inspector.classList.add('show');
   });
-  
+
   setTimeout(() => {
     document.addEventListener('click', handleInspectorOutsideClick);
   }, 10);
@@ -25030,7 +25893,7 @@ async function toggleTaskComplete(taskId, projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   project.columns.forEach((col, colIdx) => {
     col.tasks.forEach((task, taskIdx) => {
       if (task.id === taskId) {
@@ -25038,9 +25901,9 @@ async function toggleTaskComplete(taskId, projectIndex) {
       }
     });
   });
-  
+
   saveProjects(projects);
-  
+
   // Sync to DB if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
     try {
@@ -25049,7 +25912,7 @@ async function toggleTaskComplete(taskId, projectIndex) {
       console.error('Failed to sync task complete to database:', error);
     }
   }
-  
+
   refreshAdvancedTimeline(projectIndex);
   showToast(projects[projectIndex].columns.flatMap(c => c.tasks).find(t => t.id === taskId)?.done ? 'Task completed!' : 'Task reopened');
 }
@@ -25061,7 +25924,7 @@ function showKeyboardShortcuts() {
   const overlay = document.createElement('div');
   overlay.id = 'tlShortcutsOverlay';
   overlay.className = 'tl-shortcuts-overlay';
-  
+
   overlay.innerHTML = `
     <div class="tl-shortcuts-panel">
       <div class="tl-shortcuts-header">
@@ -25152,13 +26015,13 @@ function showKeyboardShortcuts() {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(overlay);
-  
+
   requestAnimationFrame(() => {
     overlay.classList.add('show');
   });
-  
+
   document.addEventListener('keydown', handleShortcutsEsc);
 }
 
@@ -25179,12 +26042,12 @@ function closeKeyboardShortcuts() {
 
 // Enhanced keyboard handler for timeline
 function setupAdvancedTimelineKeyboard(projectIndex) {
-  document.addEventListener('keydown', function(event) {
+  document.addEventListener('keydown', function (event) {
     // Don't trigger if user is typing in an input
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-    
+
     const key = event.key.toLowerCase();
-    
+
     switch (key) {
       case 't':
         goToTimelineToday(projectIndex);
@@ -25294,10 +26157,10 @@ let barContextMenuState = {
 function showBarContextMenu(event, id, type, projectIndex) {
   event.preventDefault();
   event.stopPropagation();
-  
+
   // Close any existing menu
   hideBarContextMenu();
-  
+
   // Store context state
   barContextMenuState.visible = true;
   barContextMenuState.targetId = id;
@@ -25305,7 +26168,7 @@ function showBarContextMenu(event, id, type, projectIndex) {
   barContextMenuState.projectIndex = projectIndex;
   barContextMenuState.clickX = event.clientX;
   barContextMenuState.clickY = event.clientY;
-  
+
   // Calculate clicked date position on bar
   const bar = event.currentTarget;
   const rect = bar.getBoundingClientRect();
@@ -25313,7 +26176,7 @@ function showBarContextMenu(event, id, type, projectIndex) {
   const barWidth = rect.width;
   const startDate = new Date(bar.dataset.startDate);
   const endDate = new Date(bar.dataset.endDate);
-  
+
   if (startDate && endDate && !isNaN(startDate) && !isNaN(endDate)) {
     const totalDays = daysBetween(startDate, endDate) + 1;
     const dayOffset = Math.floor((clickOffsetX / barWidth) * totalDays);
@@ -25323,7 +26186,7 @@ function showBarContextMenu(event, id, type, projectIndex) {
   } else {
     barContextMenuState.clickDate = new Date().toISOString().split('T')[0];
   }
-  
+
   // Create context menu
   const menu = document.createElement('div');
   menu.id = 'tlBarContextMenu';
@@ -25349,13 +26212,13 @@ function showBarContextMenu(event, id, type, projectIndex) {
       Edit dates
     </button>
   `;
-  
+
   // Position menu
   menu.style.left = `${event.clientX}px`;
   menu.style.top = `${event.clientY}px`;
-  
+
   document.body.appendChild(menu);
-  
+
   // Adjust position if menu goes off screen
   const menuRect = menu.getBoundingClientRect();
   if (menuRect.right > window.innerWidth) {
@@ -25364,7 +26227,7 @@ function showBarContextMenu(event, id, type, projectIndex) {
   if (menuRect.bottom > window.innerHeight) {
     menu.style.top = `${window.innerHeight - menuRect.height - 10}px`;
   }
-  
+
   // Add click outside listener
   setTimeout(() => {
     document.addEventListener('click', hideBarContextMenuOnClick);
@@ -25390,14 +26253,14 @@ function hideBarContextMenuOnClick(event) {
 }
 
 // Milestone menu functions removed
-function createMilestoneFromMenu() {}
-function addMarkerFromMenu() {}
+function createMilestoneFromMenu() { }
+function addMarkerFromMenu() { }
 
 // Edit bar dates
 function editBarDates() {
   hideBarContextMenu();
   const { targetId, targetType, projectIndex } = barContextMenuState;
-  
+
   if (targetType === 'column') {
     // Find column index
     const projects = loadProjects();
@@ -25414,12 +26277,12 @@ function editBarDates() {
 }
 
 // Remaining milestone functions removed
-function showMilestoneNameInput() {}
-function closeMilestoneInput() {}
-function confirmMilestoneCreation() {}
-function showMilestoneContextMenu() {}
-function renameMilestone() {}
-function deleteMilestone() {}
+function showMilestoneNameInput() { }
+function closeMilestoneInput() { }
+function confirmMilestoneCreation() { }
+function showMilestoneContextMenu() { }
+function renameMilestone() { }
+function deleteMilestone() { }
 function renderCustomMilestonesOnBar() { return ''; }
 
 // ============================================
@@ -25460,12 +26323,12 @@ function saveBookmarks(bookmarks) {
 function addBookmark(itemId, itemType, title, spaceId, metadata = {}) {
   const bookmarks = getAllBookmarks();
   const existingBookmark = bookmarks.find(b => b.itemId === itemId && b.itemType === itemType);
-  
+
   if (existingBookmark) {
     showToast('Already bookmarked!', 'warning');
     return false;
   }
-  
+
   const newBookmark = {
     id: generateId(),
     itemId,
@@ -25477,14 +26340,14 @@ function addBookmark(itemId, itemType, title, spaceId, metadata = {}) {
     tags: [],
     notes: ''
   };
-  
+
   bookmarks.push(newBookmark);
-  
+
   if (saveBookmarks(bookmarks)) {
     showToast('Added to bookmarks!', 'success');
     return true;
   }
-  
+
   return false;
 }
 
@@ -25492,7 +26355,7 @@ function addBookmark(itemId, itemType, title, spaceId, metadata = {}) {
 function removeBookmark(itemId, itemType) {
   const bookmarks = getAllBookmarks();
   const filteredBookmarks = bookmarks.filter(b => !(b.itemId === itemId && b.itemType === itemType));
-  
+
   if (saveBookmarks(filteredBookmarks)) {
     showToast('Removed from bookmarks', 'success');
     // Refresh the current view if we're on a space view
@@ -25505,7 +26368,7 @@ function removeBookmark(itemId, itemType) {
     }
     return true;
   }
-  
+
   return false;
 }
 
@@ -25520,7 +26383,7 @@ function getBookmarkedItemsForSpace(spaceId) {
   const bookmarks = getSpaceBookmarks(spaceId);
   const docs = loadDocs().filter(d => String(d.spaceId) === String(spaceId));
   const excels = loadExcels().filter(e => String(e.spaceId) === String(spaceId));
-  
+
   return bookmarks.map(bookmark => {
     if (bookmark.itemType === 'doc') {
       const doc = docs.find(d => d.id === bookmark.itemId);
@@ -25537,7 +26400,7 @@ function getBookmarkedItemsForSpace(spaceId) {
 function openBookmarkManager(spaceId) {
   const bookmarks = spaceId ? getSpaceBookmarks(spaceId) : getAllBookmarks();
   const space = spaceId ? getSpaceById(spaceId) : null;
-  
+
   const content = `
     <div class="bookmark-manager">
       <div class="bookmark-header">
@@ -25585,7 +26448,7 @@ function openBookmarkManager(spaceId) {
       </div>
     </div>
   `;
-  
+
   openModal('Bookmark Manager', content, 'large');
 }
 
@@ -25605,7 +26468,7 @@ function renderBookmarkList(bookmarks) {
       </div>
     `;
   }
-  
+
   return bookmarks.map(bookmark => `
     <div class="bookmark-item-card" data-bookmark-id="${bookmark.id}">
       <div class="bookmark-item-header">
@@ -25702,7 +26565,7 @@ function openBookmarkItem(itemId, itemType) {
 function removeBookmarkById(bookmarkId) {
   const bookmarks = getAllBookmarks();
   const filteredBookmarks = bookmarks.filter(b => b.id !== bookmarkId);
-  
+
   if (saveBookmarks(filteredBookmarks)) {
     showToast('Bookmark removed', 'success');
     // Refresh the bookmark list
@@ -25716,9 +26579,9 @@ function removeBookmarkById(bookmarkId) {
 function editBookmark(bookmarkId) {
   const bookmarks = getAllBookmarks();
   const bookmark = bookmarks.find(b => b.id === bookmarkId);
-  
+
   if (!bookmark) return;
-  
+
   const content = `
     <div class="edit-bookmark-form">
       <div class="form-group">
@@ -25739,7 +26602,7 @@ function editBookmark(bookmarkId) {
       </div>
     </div>
   `;
-  
+
   openModal('Edit Bookmark', content);
 }
 
@@ -25750,15 +26613,15 @@ function saveEditedBookmark(bookmarkId) {
     .split(',')
     .map(tag => tag.trim())
     .filter(tag => tag.length > 0);
-  
+
   if (!title) {
     showToast('Title is required', 'error');
     return;
   }
-  
+
   const bookmarks = getAllBookmarks();
   const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
-  
+
   if (bookmarkIndex !== -1) {
     bookmarks[bookmarkIndex] = {
       ...bookmarks[bookmarkIndex],
@@ -25766,7 +26629,7 @@ function saveEditedBookmark(bookmarkId) {
       notes,
       tags
     };
-    
+
     if (saveBookmarks(bookmarks)) {
       showToast('Bookmark updated', 'success');
       closeModal();
@@ -25834,14 +26697,14 @@ function openAddBookmarkModal(spaceId = '') {
       </div>
     </div>
   `;
-  
+
   openModal('Add Bookmark', content);
-  
+
   // Set up event listeners
-  document.getElementById('bookmarkItemType').addEventListener('change', function() {
+  document.getElementById('bookmarkItemType').addEventListener('change', function () {
     const itemSelectionGroup = document.getElementById('itemSelectionGroup');
     const itemIdSelect = document.getElementById('bookmarkItemId');
-    
+
     if (this.value) {
       itemSelectionGroup.style.display = 'block';
       populateItemSelection(this.value, itemIdSelect);
@@ -25859,7 +26722,7 @@ function switchBookmarkTab(tabName) {
   document.querySelectorAll('.form-tab').forEach(tab => {
     tab.classList.remove('active');
   });
-  
+
   // Show selected tab
   document.getElementById(`${tabName}-tab`).classList.add('active');
   event.target.classList.add('active');
@@ -25867,20 +26730,20 @@ function switchBookmarkTab(tabName) {
 
 function populateItemSelection(itemType, selectElement) {
   let items = [];
-  
+
   if (itemType === 'doc') {
     items = loadDocs();
   } else if (itemType === 'excel') {
     items = loadExcels();
   }
-  
+
   selectElement.innerHTML = '<option value="">Select an item...</option>' +
     items.map(item => `<option value="${item.id}">${escapeHtml(item.title)}</option>`).join('');
 }
 
 function saveNewBookmark(spaceId) {
   const activeTab = document.querySelector('.form-tab-content.active').id;
-  
+
   if (activeTab === 'existing-tab') {
     const itemType = document.getElementById('bookmarkItemType').value;
     const itemId = document.getElementById('bookmarkItemId').value;
@@ -25889,15 +26752,15 @@ function saveNewBookmark(spaceId) {
       .split(',')
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
-    
+
     if (!itemType || !itemId) {
       showToast('Please select an item', 'error');
       return;
     }
-    
+
     const items = itemType === 'doc' ? loadDocs() : loadExcels();
     const item = items.find(i => i.id === itemId);
-    
+
     if (item) {
       if (addBookmark(itemId, itemType, item.title, spaceId || item.spaceId, { notes, tags })) {
         closeModal();
@@ -25912,15 +26775,15 @@ function saveNewBookmark(spaceId) {
       .split(',')
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
-    
+
     if (!url || !title) {
       showToast('URL and title are required', 'error');
       return;
     }
-    
+
     const bookmarkId = 'web-' + generateId();
     const bookmarks = getAllBookmarks();
-    
+
     const newBookmark = {
       id: bookmarkId,
       itemId: bookmarkId,
@@ -25932,9 +26795,9 @@ function saveNewBookmark(spaceId) {
       tags,
       notes
     };
-    
+
     bookmarks.push(newBookmark);
-    
+
     if (saveBookmarks(bookmarks)) {
       showToast('Web link bookmarked!', 'success');
       closeModal();
@@ -25974,7 +26837,7 @@ function getCurrentUserName() {
 function getCurrentUserInitials() {
   const name = getCurrentUserName();
   if (!name || name === 'User') return 'U';
-  
+
   // Get first letter of first name, and first letter of last name if available
   const parts = name.trim().split(' ');
   if (parts.length >= 2) {
@@ -25985,10 +26848,10 @@ function getCurrentUserInitials() {
 
 function formatDate(dateString) {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
 }
 
@@ -25997,12 +26860,12 @@ function exportBookmarks() {
   const dataStr = JSON.stringify(bookmarks, null, 2);
   const dataBlob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(dataBlob);
-  
+
   const link = document.createElement('a');
   link.href = url;
   link.download = `layer-bookmarks-${new Date().toISOString().split('T')[0]}.json`;
   link.click();
-  
+
   URL.revokeObjectURL(url);
   showToast('Bookmarks exported!', 'success');
 }
@@ -26026,11 +26889,11 @@ function isProjectOwner(projectIndex) {
     console.log('✓ Using isOwner flag from DB:', project.isOwner);
     return project.isOwner;
   }
-  
+
   const currentUserEmail = window.LayerDB?.getCurrentUser()?.email || getCurrentUserEmail();
   const currentUserId = window.LayerDB?.getCurrentUser()?.id;
   const currentUserName = window.LayerDB?.getCurrentUser()?.user_metadata?.name || getCurrentUserName();
-  
+
   console.log('Checking project ownership:', {
     projectIndex,
     projectLeader: project.leader,
@@ -26040,26 +26903,26 @@ function isProjectOwner(projectIndex) {
     currentUserId,
     currentUserName
   });
-  
+
   // Secondary check: User ID match
   const projectUserId = project.userId || project.user_id;
   if (projectUserId && currentUserId && projectUserId === currentUserId) {
     console.log('✓ User is project creator (by ID)');
     return true;
   }
-  
+
   // Tertiary check: User email match
   if (project.userEmail === currentUserEmail) {
     console.log('✓ User is project creator (by email)');
     return true;
   }
-  
+
   // Fallback check: Leader name match (for backward compatibility)
   if (project.leader === currentUserName) {
     console.log('✓ User is project leader (by name)');
     return true;
   }
-  
+
   console.log('✗ User is not project owner');
   return false;
 }
@@ -26070,10 +26933,10 @@ window.isProjectOwner = isProjectOwner;
 // Helper function to check if current user is the project leader specifically
 function isProjectLeader(project) {
   if (!project) return false;
-  
+
   const currentUser = window.LayerDB?.getCurrentUser();
   if (!currentUser) return false;
-  
+
   // Check if current user ID matches project creator ID
   return project.user_id === currentUser.id;
 }
@@ -26081,13 +26944,13 @@ function isProjectLeader(project) {
 // Helper function to get project leader name for display
 function getProjectLeaderName(project) {
   if (!project) return 'Unknown';
-  
+
   // Use leader field if set
   if (project.leader) return project.leader;
-  
+
   // Fallback to user email
   if (project.userEmail) return project.userEmail;
-  
+
   return 'Project Creator';
 }
 
@@ -26116,46 +26979,46 @@ window.getProjectLeaderDisplayName = getProjectLeaderDisplayName;
 window.getProjectLeaderInitials = getProjectLeaderInitials;
 
 // Context menu functions for member avatars
-window.showMemberContextMenu = function(event, memberName, projectIndex, memberIndex) {
+window.showMemberContextMenu = function (event, memberName, projectIndex, memberIndex) {
   event.preventDefault();
-  
+
   // Remove any existing context menus
   const existingMenus = document.querySelectorAll('.context-menu');
   existingMenus.forEach(menu => menu.remove());
-  
+
   // Check if current user is project owner
   const isOwner = isProjectOwner(projectIndex);
-  
+
   // Don't show context menu if user is not owner (no admin actions available)
   if (!isOwner) {
     showNotification('Only project creator can manage team members', 'info');
     return;
   }
-  
+
   // Load projects and check if user is already leader
   const projects = loadProjects();
   const project = projects[projectIndex];
   const isLeader = project?.leader === memberName;
-  
+
   // Don't allow actions on the project creator
   const currentUser = window.LayerDB?.getCurrentUser();
   const memberIsOwner = (project.user_id && memberName === (currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0])) ||
-                       (project.userEmail === memberName) ||
-                       (project.leader === memberName && project.user_id === currentUser?.id);
-  
+    (project.userEmail === memberName) ||
+    (project.leader === memberName && project.user_id === currentUser?.id);
+
   if (memberIsOwner) {
     showNotification('Cannot perform actions on project creator', 'info');
     return;
   }
-  
+
   // Create context menu
   const contextMenu = document.createElement('div');
   contextMenu.className = 'context-menu';
-  
+
   // Extract email from member name if it contains @
   const displayName = memberName === 'You' ? getCurrentUserName() : memberName;
   const email = memberName.includes('@') ? memberName : null;
-  
+
   contextMenu.innerHTML = `
     <div class="context-menu-header">
       <div class="context-menu-user-name">${displayName}</div>
@@ -26171,25 +27034,25 @@ window.showMemberContextMenu = function(event, memberName, projectIndex, memberI
       <span>Remove from Project</span>
     </div>
   `;
-  
+
   document.body.appendChild(contextMenu);
-  
+
   // Position the context menu
   const rect = contextMenu.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  
+
   contextMenu.style.top = `${event.clientY}px`;
   contextMenu.style.left = `${event.clientX}px`;
-  
+
   if (rect.right > viewportWidth) {
     contextMenu.style.left = `${event.clientX - contextMenu.offsetWidth}px`;
   }
-  
+
   if (rect.bottom > viewportHeight) {
     contextMenu.style.top = `${event.clientY - contextMenu.offsetHeight}px`;
   }
-  
+
   // Close context menu when clicking outside
   setTimeout(() => {
     document.addEventListener('click', function closeContextMenu() {
@@ -26202,26 +27065,26 @@ window.showMemberContextMenu = function(event, memberName, projectIndex, memberI
   }, 100);
 };
 
-window.makeLeader = async function(memberName, projectIndex, memberIndex) {
+window.makeLeader = async function (memberName, projectIndex, memberIndex) {
   // Check if current user is project owner before allowing leader assignment
   if (!isProjectOwner(projectIndex)) {
     showNotification('Only the project creator can assign new leaders', 'error');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
     console.error('Project not found:', projectIndex);
     return;
   }
-  
+
   // Update project leader
   project.leader = memberName;
-  
+
   // Save to localStorage
   saveProjects(projects);
-  
+
   // Update database if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
     try {
@@ -26235,17 +27098,17 @@ window.makeLeader = async function(memberName, projectIndex, memberIndex) {
       return;
     }
   }
-  
+
   // Update UI - refresh team members display for immediate feedback
   if (currentView === 'project-detail') {
     refreshTeamMembersDisplay(projectIndex);
   } else {
     renderCurrentView();
   }
-  
+
   // Show notification
   showNotification(`${memberName} is now the project leader`, 'success');
-  
+
   // Close context menu
   const contextMenu = document.querySelector('.context-menu');
   if (contextMenu) {
@@ -26253,31 +27116,31 @@ window.makeLeader = async function(memberName, projectIndex, memberIndex) {
   }
 };
 
-window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
+window.kickFromProject = async function (memberName, projectIndex, memberIndex) {
   // Check if current user is project owner before allowing member removal
   if (!isProjectOwner(projectIndex)) {
     showNotification('Only project creator can remove members', 'error');
     return;
   }
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
     console.error('Project not found at index:', projectIndex);
     return;
   }
-  
+
   // Don't allow kicking the project creator
   const currentUser = window.LayerDB?.getCurrentUser();
   const memberIsOwner = (project.userId && memberName === (currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0])) ||
-                       (project.userEmail === memberName) ||
-                       (project.leader === memberName);
-  
+    (project.userEmail === memberName) ||
+    (project.leader === memberName);
+
   if (memberIsOwner) {
     showNotification('Cannot remove project creator from the project', 'error');
     return;
   }
-  
+
   if (confirm(`Remove ${memberName} from the project?`)) {
     try {
       // Check if using new project_members system
@@ -26285,10 +27148,10 @@ window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
         // Try to find the user ID from the member's email/name
         // First check if we have project_members data with user IDs
         if (project.projectMembers && Array.isArray(project.projectMembers)) {
-          const memberRecord = project.projectMembers.find(m => 
+          const memberRecord = project.projectMembers.find(m =>
             m.email === memberName || m.name === memberName || m.memberId === memberName
           );
-          
+
           if (memberRecord && memberRecord.memberId) {
             await window.LayerDB.removeProjectMember(project.id, memberRecord.memberId);
             console.log('✓ Member removed via project_members table');
@@ -26302,29 +27165,29 @@ window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
           await window.LayerDB.removeTeamMemberFromProject(project.id, memberName);
           console.log('✓ Member removed via legacy team_members array');
         }
-        
+
         // Refresh projects from DB to get updated data
         if (typeof refreshProjects === 'function') {
           await refreshProjects();
         }
       }
-      
+
       // Update UI - refresh team members display for immediate feedback
       if (currentView === 'project-detail') {
         refreshTeamMembersDisplay(projectIndex);
       } else {
         renderCurrentView();
       }
-      
+
       // Show notification
       showNotification(`${memberName} has been removed from the project`, 'warning');
-      
+
       // Close context menu
       const contextMenu = document.querySelector('.context-menu');
       if (contextMenu) {
         contextMenu.remove();
       }
-      
+
     } catch (error) {
       console.error('Error removing member from project:', error);
       showNotification(error.message || 'Failed to remove member', 'error');
@@ -26332,45 +27195,45 @@ window.kickFromProject = async function(memberName, projectIndex, memberIndex) {
   }
 };
 
-window.leaveProject = async function(projectIndex) {
+window.leaveProject = async function (projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) {
     console.error('Project not found at index:', projectIndex);
     return;
   }
-  
+
   // Check if user is owner - they can't leave, must delete or transfer
   if (isProjectOwner(projectIndex)) {
     showNotification('Project owners cannot leave. Transfer ownership or delete the project instead.', 'error');
     return;
   }
-  
+
   // Confirm before leaving
   if (!confirm(`Are you sure you want to leave the project "${project.name}"? You'll lose access to all project data.`)) {
     return;
   }
-  
+
   try {
     if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
       // Use the new leaveProject function which handles project_members
       await window.LayerDB.leaveProject(project.id);
       console.log('✓ User left project via project_members table');
-      
+
       // Refresh projects from DB to get updated data
       if (typeof refreshProjects === 'function') {
         await refreshProjects();
       }
     }
-    
+
     // Show notification
     showNotification(`You have left the project "${project.name}"`, 'info');
-    
+
     // Navigate back to projects view
     currentView = 'activity';
     selectedProjectIndex = null;
     renderCurrentView();
-    
+
   } catch (error) {
     console.error('Error leaving project:', error);
     showNotification(error.message || 'Failed to leave project. Please try again.', 'error');
@@ -26378,7 +27241,7 @@ window.leaveProject = async function(projectIndex) {
 };
 
 // Helper function to show notifications
-window.showNotification = function(message, type = 'info') {
+window.showNotification = function (message, type = 'info') {
   const notification = document.createElement('div');
   notification.className = `notification ${type}`;
   notification.textContent = message;
@@ -26396,9 +27259,9 @@ window.showNotification = function(message, type = 'info') {
     backdrop-filter: blur(10px);
     animation: slideInRight 0.3s ease;
   `;
-  
+
   // Set background color based on type
-  switch(type) {
+  switch (type) {
     case 'success':
       notification.style.background = 'linear-gradient(135deg, #10b981, #059669)';
       break;
@@ -26411,9 +27274,9 @@ window.showNotification = function(message, type = 'info') {
     default:
       notification.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
   }
-  
+
   document.body.appendChild(notification);
-  
+
   // Remove after 3 seconds
   setTimeout(() => {
     notification.style.animation = 'slideOutRight 0.3s ease';
@@ -26443,7 +27306,7 @@ styleSheet.textContent = notificationStyles;
 document.head.appendChild(styleSheet);
 
 // Close context menu when clicking elsewhere
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
   const contextMenu = document.querySelector('.context-menu');
   if (contextMenu && !contextMenu.contains(e.target)) {
     contextMenu.remove();
