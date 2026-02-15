@@ -1,0 +1,729 @@
+/* ============================================
+   Layer - Advanced Whiteboard Styles (User Flow Theme)
+   ============================================ */
+
+:root {
+  --wb-bg: #000000;
+  /* Deep black for high contrast */
+  --wb-grid-color: rgba(255, 255, 255, 0.08);
+  /* Slightly more visible grid */
+  --wb-ui-bg: rgba(20, 20, 20, 0.8);
+  --wb-ui-border: rgba(255, 255, 255, 0.15);
+  --wb-accent: #ffd700;
+  /* Gold/Yellow accent */
+  --wb-selection: rgba(255, 215, 0, 0.1);
+  --wb-selection-border: rgba(255, 215, 0, 0.5);
+  --wb-text: #ffffff;
+  --wb-text-secondary: #aaaaaa;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Overlay & Layout */
+.grip-diagram-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--wb-bg);
+  background-image:
+    radial-gradient(var(--wb-grid-color) 1px, transparent 1px);
+  background-size: 24px 24px;
+  z-index: 2000;
+  font-family: 'Kalam', cursive;
+  /* Excalidraw style */
+  color: var(--wb-text);
+  overflow: hidden;
+  letter-spacing: 0.5px;
+}
+
+.grip-canvas-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+  /* Default tool cursor */
+}
+
+.grip-canvas-container.cursor-grab {
+  cursor: grab;
+}
+
+.grip-canvas-container.cursor-grabbing {
+  cursor: grabbing;
+}
+
+/* Force grabbing when dragging, overriding everything */
+body.is-dragging-canvas .grip-canvas-container {
+  cursor: grabbing !important;
+}
+
+/* ... */
+
+.grip-transform-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ============================================
+   Nodes & Shapes
+   ============================================ */
+.grip-node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.grip-node.selected {
+  outline: 2px solid var(--wb-selection-border);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+  z-index: 100;
+}
+
+/* --- Node Types --- */
+
+/* 1. Pill Node (Start/End/Action) */
+.shape-pill {
+  background: #ffffff;
+  color: #000000;
+  border-radius: 999px;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 24px;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+}
+
+.shape-pill .grip-node-content {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2. Flow Card (Dark with accent bullets) */
+.shape-flow-card {
+  background: #111111;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #cccccc;
+  align-items: flex-start;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Yellow accent for bullet points if user types them specific ways, 
+   or we can just style the whole text nicely */
+.shape-flow-card .grip-node-content {
+  text-align: left;
+}
+
+.shape-flow-card b,
+.shape-flow-card strong {
+  color: var(--wb-accent);
+  font-weight: 600;
+}
+
+/* 3. Header (Large Text) */
+.shape-header {
+  background: transparent;
+  border: none;
+  font-size: 48px;
+  font-weight: 800;
+  color: #333;
+  /* Dark gray for "Helpers" style background text */
+  letter-spacing: -1px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  z-index: 0;
+  /* Background layer feel */
+}
+
+.shape-header.highlight {
+  color: #ffffff;
+  /* White for main titles */
+}
+
+/* 4. Sticky / Simple Card */
+.card-default {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  align-items: flex-start;
+}
+
+/* 5. Geometric Shapes */
+.shape-rect {
+  background: transparent;
+  border: 2px solid #555;
+  border-radius: 4px;
+}
+
+.shape-diamond {
+  background: #111;
+  border: 2px solid #555;
+  transform: rotate(45deg);
+  /* Note: content rotation needs handling or avoid text in diamonds for MVP */
+}
+
+.shape-ellipse {
+  background: transparent;
+  border: 2px solid #555;
+  border-radius: 50%;
+}
+
+
+/* Node Content Wrapper */
+.grip-node-content {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /* Allow text to be seen if it flows out, or use auto-resize */
+  outline: none;
+  white-space: pre-wrap;
+  cursor: text;
+  font-family: 'Kalam', cursive;
+  font-size: inherit;
+  /* Inherit from parent .grip-node */
+  /* Larger, more marker-like */
+  font-weight: 400;
+  line-height: 1.3;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Align text top-left for specifically text-only nodes if desired, 
+   but usually centering is good for shapes. 
+   Let's make 'text' tool nodes different */
+.grip-node.shape-text .grip-node-content {
+  justify-content: flex-start;
+  text-align: left;
+  align-items: flex-start;
+}
+
+.grip-node.auto-height {
+  height: auto !important;
+  min-height: 1em;
+}
+
+.grip-node:not(.selected) .grip-node-content {
+  pointer-events: none;
+  /* Allow drag unless selected */
+}
+
+
+/* ============================================
+   Controls (Handles)
+   ============================================ */
+
+/* Resize Handles */
+.grip-resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--wb-accent);
+  border: 1px solid #000;
+  border-radius: 50%;
+  z-index: 101;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.grip-node.selected .grip-resize-handle {
+  opacity: 1;
+}
+
+/* Node Action Toolbar (Appears on Selection) */
+.grip-node-toolbar {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: var(--wb-surface);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--wb-grid);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 102;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, top 0.2s;
+}
+
+.grip-node.selected .grip-node-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+  top: -42px;
+}
+
+.grip-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #fff;
+  /* or var(--wb-text) */
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.grip-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.grip-action-btn.delete:hover {
+  background: rgba(255, 60, 60, 0.2);
+  color: #ff4d4d;
+}
+
+.grip-action-btn.drag-handle {
+  cursor: move;
+  background: var(--wb-accent);
+  color: #000;
+}
+
+.grip-action-btn.drag-handle:hover {
+  background: var(--wb-accent);
+  /* Keep accent */
+  opacity: 0.9;
+}
+
+.grip-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Note Popup styling */
+.grip-node-note-popup {
+  position: absolute;
+  top: -10px;
+  /* offset */
+  left: 100%;
+  width: 200px;
+  background: #2e2e2e;
+  /* Post-it yellow? or Dark theme? Matches user flow aesthetic */
+  border: 1px solid #444;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grip-node-note-popup textarea {
+  width: 100%;
+  min-height: 80px;
+  background: #111;
+  color: #eee;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+/* ... existing logic ... */
+.grip-resize-handle.nw {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+
+.grip-resize-handle.ne {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+
+.grip-resize-handle.se {
+  bottom: -4px;
+  right: -4px;
+  cursor: nwse-resize;
+}
+
+.grip-resize-handle.sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
+}
+
+/* Connect Handles */
+.grip-handle-connect {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--wb-grid);
+  border: 1px solid var(--wb-text);
+  border-radius: 50%;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  cursor: crosshair;
+}
+
+.grip-handle-connect.connected {
+  background: #ff4d4d !important;
+  border-color: #ff4d4d !important;
+}
+
+.grip-node:hover .grip-handle-connect,
+.grip-node.selected .grip-handle-connect,
+.grip-node.connecting .grip-handle-connect {
+  opacity: 1;
+}
+
+.grip-handle-connect:hover {
+  background: var(--wb-accent);
+  transform: scale(1.5);
+}
+
+.grip-handle-connect.top {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.grip-handle-connect.right {
+  top: 50%;
+  right: -4px;
+  margin-top: -4px;
+}
+
+.grip-handle-connect.bottom {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.grip-handle-connect.left {
+  top: 50%;
+  left: -4px;
+  margin-top: -4px;
+}
+
+
+/* ============================================
+   UI Toolbars
+   ============================================ */
+
+.grip-toolbar-top {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 500;
+  font-family: 'Inter', sans-serif;
+}
+
+.grip-toolbar-group {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.grip-toolbar-bottom {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 500;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Tool Buttons */
+.grip-tool-btn {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  color: #888;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.grip-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.grip-tool-btn.active,
+.grip-tool-btn.context-active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.grip-tool-btn.active::after,
+.grip-tool-btn.context-active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--wb-accent);
+  border-radius: 50%;
+}
+
+.grip-btn-icon {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: #888;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.grip-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.grip-divider-vertical {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+}
+
+.grip-filename {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 8px;
+  color: #fff;
+}
+
+
+/* ============================================
+   Selection Box & Helpers
+   ============================================ */
+.grip-selection-box {
+  position: fixed;
+  border: 1px solid var(--wb-accent);
+  background: var(--wb-selection);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.grip-temp-connection {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 900;
+}
+
+/* ============================================
+   Properties Panel & Excalidraw Styling
+   ============================================ */
+
+/* Redesigned Properties Panel */
+.grip-properties-panel {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  width: 240px;
+  background: rgba(30, 30, 33, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.grip-prop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  /* Divider */
+  padding-bottom: 16px;
+}
+
+.grip-prop-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.grip-prop-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #888;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Color Picker Grid */
+.grip-color-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.grip-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.grip-color-swatch:hover {
+  transform: scale(1.1);
+  z-index: 2;
+}
+
+.grip-color-swatch.active {
+  box-shadow: 0 0 0 2px #fff;
+  transform: scale(1.05);
+}
+
+/* Range Sliders */
+.grip-range-input {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  margin: 10px 0;
+}
+
+.grip-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--wb-accent);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s;
+}
+
+.grip-range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Row of Buttons (Layering) */
+.grip-row-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.grip-prop-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.grip-prop-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.grip-prop-btn.danger {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.grip-prop-btn.danger:hover {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+/* Free Draw Path Styling */
+.grip-node-draw polyline {
+  transition: stroke 0.2s;
+}
+
+.grip-node-draw.selected polyline {
+  filter: drop-shadow(0 0 4px var(--wb-accent));
+}
+
+/* Additional Button Styles for Toolbar */
+.grip-tool-btn svg {
+  pointer-events: none;
+}
