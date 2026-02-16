@@ -572,6 +572,14 @@ function setupMobileNavigation() {
     item.addEventListener('click', () => {
       const view = item.dataset.view;
       if (view) {
+        // Remove active class from all mobile nav items
+        mobileNavItems.forEach(navItem => {
+          navItem.classList.remove('active');
+        });
+        
+        // Add active class to clicked item
+        item.classList.add('active');
+        
         setActiveNav(view);
         currentView = view;
         selectedProjectIndex = null;
@@ -662,6 +670,7 @@ function setupMobileSearch() {
   const searchBtn = document.getElementById('mobileSearchBtn');
   const searchOverlay = document.getElementById('mobileSearchOverlay');
   const mobileSearchInput = document.getElementById('mobileSearchInput');
+  const mobileSearchCloseBtn = document.getElementById('mobileSearchCloseBtn');
 
   if (searchBtn && searchOverlay) {
     searchBtn.addEventListener('click', () => {
@@ -676,6 +685,13 @@ function setupMobileSearch() {
         searchOverlay.classList.remove('active');
       }
     });
+
+    // Add event listener for the close button
+    if (mobileSearchCloseBtn) {
+      mobileSearchCloseBtn.addEventListener('click', () => {
+        searchOverlay.classList.remove('active');
+      });
+    }
 
     if (mobileSearchInput) {
       mobileSearchInput.addEventListener('input', (e) => {
@@ -1295,21 +1311,21 @@ async function checkExistingSession() {
 
         // Only update UI and show notifications on actual auth changes, not token refreshes
         console.log('🔍 Auth event type:', authEvent, 'Checking if should show welcome...');
-        
+
         // User signed in
         const username = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
-        
+
         // List of events that should trigger welcome message and UI updates
         const welcomeEvents = ['SIGNED_IN', 'INITIAL_SESSION'];
         // List of refresh events that should NOT trigger any UI updates
         const refreshEvents = ['TOKEN_REFRESHED', 'REFRESHED', 'UPDATED'];
-        
+
         if (welcomeEvents.includes(authEvent)) {
           console.log('✅ Processing auth change for event:', authEvent);
-          
+
           // Set up realtime subscription for projects only on actual sign-in
           setupRealtimeSubscription();
-          
+
           // Load user data only on actual sign-in
           await loadUserDataFromDB();
 
@@ -1317,7 +1333,7 @@ async function checkExistingSession() {
           if (typeof initializeRealtimeSubscriptions === 'function') {
             await initializeRealtimeSubscriptions();
           }
-          
+
           // Update UI
           await updateUserDisplay({ username: username, email: authUser.email });
 
@@ -3242,7 +3258,7 @@ const FocusStateManager = {
   focusLostTime: null,
   isRestoring: false,
   welcomeBackShown: false,
-  
+
   // Save current application state
   saveAppState() {
     try {
@@ -3252,11 +3268,11 @@ const FocusStateManager = {
         currentProjectIndex: window.currentProjectIndex || null,
         currentDocId: window.currentDocId || null,
         currentExcelId: window.currentExcelId || null,
-        
+
         // Scroll positions
         scrollX: window.pageXOffset || document.documentElement.scrollLeft,
         scrollY: window.pageYOffset || document.documentElement.scrollTop,
-        
+
         // Active elements and focus
         activeElement: document.activeElement ? {
           tagName: document.activeElement.tagName,
@@ -3265,16 +3281,16 @@ const FocusStateManager = {
           selectionStart: document.activeElement.selectionStart,
           selectionEnd: document.activeElement.selectionEnd
         } : null,
-        
+
         // Modal state
         openModal: document.querySelector('.modal.active') ? {
           title: document.querySelector('.modal-title')?.textContent,
           content: document.querySelector('.modal-body')?.innerHTML
         } : null,
-        
+
         // Sidebar state
         sidebarCollapsed: document.body.classList.contains('sidebar-collapsed'),
-        
+
         // Form inputs and text areas
         textInputs: Array.from(document.querySelectorAll('input[type="text"], textarea, [contenteditable="true"]')).map(el => ({
           id: el.id,
@@ -3282,26 +3298,26 @@ const FocusStateManager = {
           selectionStart: el.selectionStart,
           selectionEnd: el.selectionEnd
         })),
-        
+
         // Timestamp
         savedAt: Date.now()
       };
-      
+
       console.log('🔄 Focus state saved:', this.savedState);
     } catch (error) {
       console.error('Failed to save app state:', error);
     }
   },
-  
+
   // Restore saved application state
   async restoreAppState() {
     if (!this.savedState || this.isRestoring) return;
-    
+
     this.isRestoring = true;
-    
+
     try {
       console.log('🔄 Restoring focus state:', this.savedState);
-      
+
       // Restore view
       if (this.savedState.currentView && window.currentView !== this.savedState.currentView) {
         window.currentView = this.savedState.currentView;
@@ -3309,42 +3325,42 @@ const FocusStateManager = {
           await window.renderCurrentView();
         }
       }
-      
+
       // Wait a bit for DOM to update
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Restore scroll position
       if (this.savedState.scrollX !== undefined || this.savedState.scrollY !== undefined) {
         window.scrollTo(this.savedState.scrollX, this.savedState.scrollY);
       }
-      
+
       // Restore text inputs and contenteditable elements
       this.savedState.textInputs.forEach(input => {
-        const element = document.getElementById(input.id) || 
-                       document.querySelector(`[contenteditable="true"][id="${input.id}"]`) ||
-                       document.querySelector(`[contenteditable="true"]:contains("${input.value.substring(0, 20)}")`);
-        
+        const element = document.getElementById(input.id) ||
+          document.querySelector(`[contenteditable="true"][id="${input.id}"]`) ||
+          document.querySelector(`[contenteditable="true"]:contains("${input.value.substring(0, 20)}")`);
+
         if (element) {
           if (element.value !== undefined) {
             element.value = input.value;
           } else {
             element.innerText = input.value;
           }
-          
+
           // Restore cursor position
           if (input.selectionStart !== undefined) {
             element.setSelectionRange(input.selectionStart, input.selectionEnd);
           }
         }
       });
-      
+
       // Restore active element focus
       if (this.savedState.activeElement) {
         const element = document.getElementById(this.savedState.activeElement.id) ||
-                       document.querySelector(this.savedState.activeElement.tagName + 
-                         (this.savedState.activeElement.id ? `#${this.savedState.activeElement.id}` : '') +
-                         (this.savedState.activeElement.className ? `.${this.savedState.activeElement.className.split(' ').join('.')}` : ''));
-        
+          document.querySelector(this.savedState.activeElement.tagName +
+            (this.savedState.activeElement.id ? `#${this.savedState.activeElement.id}` : '') +
+            (this.savedState.activeElement.className ? `.${this.savedState.activeElement.className.split(' ').join('.')}` : ''));
+
         if (element) {
           element.focus();
           if (this.savedState.activeElement.selectionStart !== undefined) {
@@ -3355,29 +3371,29 @@ const FocusStateManager = {
           }
         }
       }
-      
+
       // Restore sidebar state
       if (this.savedState.sidebarCollapsed) {
         document.body.classList.add('sidebar-collapsed');
       } else {
         document.body.classList.remove('sidebar-collapsed');
       }
-      
+
       console.log('✅ Focus state restored successfully');
-      
+
     } catch (error) {
       console.error('Failed to restore app state:', error);
     } finally {
       this.isRestoring = false;
     }
   },
-  
+
   // Show subtle welcome back notification
   showSubtleWelcomeBack() {
     if (this.welcomeBackShown) return; // Don't show multiple times
-    
+
     this.welcomeBackShown = true;
-    
+
     // Create subtle notification
     const notification = document.createElement('div');
     notification.style.cssText = `
@@ -3397,19 +3413,19 @@ const FocusStateManager = {
       transition: all 0.3s ease;
       pointer-events: none;
     `;
-    
+
     const user = window.LayerDB?.getCurrentUser();
     const username = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
     notification.innerHTML = `Welcome back, ${username}`;
-    
+
     document.body.appendChild(notification);
-    
+
     // Animate in
     setTimeout(() => {
       notification.style.opacity = '1';
       notification.style.transform = 'translateY(0)';
     }, 100);
-    
+
     // Animate out and remove
     setTimeout(() => {
       notification.style.opacity = '0';
@@ -3420,37 +3436,37 @@ const FocusStateManager = {
         }
       }, 300);
     }, 3000);
-    
+
     // Reset flag after a delay
     setTimeout(() => {
       this.welcomeBackShown = false;
     }, 5000);
   },
-  
+
   // Initialize focus management
   initialize() {
     console.log('🎯 Initializing advanced focus management...');
-    
+
     // Save state when window loses focus
     window.addEventListener('blur', () => {
       console.log('🔄 Window losing focus - saving state...');
       this.focusLostTime = Date.now();
       this.saveAppState();
     });
-    
+
     // Restore state when window gains focus
     window.addEventListener('focus', async () => {
       console.log('🔄 Window gaining focus - restoring state...');
-      
+
       // Only restore if it's been more than 1 second since focus lost
       if (this.focusLostTime && (Date.now() - this.focusLostTime) > 1000) {
         await this.restoreAppState();
         this.showSubtleWelcomeBack();
       }
-      
+
       this.focusLostTime = null;
     });
-    
+
     // Also handle page visibility changes
     document.addEventListener('visibilitychange', async () => {
       if (document.hidden) {
@@ -3466,7 +3482,7 @@ const FocusStateManager = {
         this.focusLostTime = null;
       }
     });
-    
+
     console.log('✅ Advanced focus management initialized');
   }
 };

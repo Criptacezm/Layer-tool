@@ -44,36 +44,41 @@
 .logo-icon-animated .logo-rect {
   opacity: 0;
   transform-origin: center;
-  filter: blur(10px);
+  /* Removed blur for less glowy effect */
 }
 
 .logo-rect-1 {
-  animation: elegantReveal 1.2s cubic-bezier(0.2, 0, 0.2, 1) forwards 0.1s;
+  animation: logoBuildUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.05s;
 }
 
 .logo-rect-2 {
-  animation: elegantReveal 1.2s cubic-bezier(0.2, 0, 0.2, 1) forwards 0.25s;
+  animation: logoBuildUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.1s;
 }
 
 .logo-rect-3 {
-  animation: elegantReveal 1.2s cubic-bezier(0.2, 0, 0.2, 1) forwards 0.4s;
+  animation: logoBuildUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.15s;
 }
 
 .logo-rect-4 {
-  animation: elegantReveal 1.2s cubic-bezier(0.2, 0, 0.2, 1) forwards 0.55s;
+  animation: logoBuildUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.2s;
 }
 
-@keyframes elegantReveal {
-  from {
+@keyframes logoBuildUp {
+  0% {
     opacity: 0;
-    transform: scale(0.9) translateY(10px);
-    filter: blur(10px);
+    transform: scale(0.7) translateY(15px) rotate(-5deg);
   }
-
-  to {
+  40% {
+    opacity: 0.8;
+    transform: scale(1.02) translateY(-3px) rotate(1deg);
+  }
+  70% {
+    opacity: 0.95;
+    transform: scale(0.98) translateY(1px) rotate(-0.5deg);
+  }
+  100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
+    transform: scale(1) translateY(0) rotate(0deg);
   }
 }
 
@@ -158,6 +163,120 @@
 
 .light .loading-progress-container {
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile Loading Screen Enhancements */
+@media (max-width: 768px) {
+  .loading-animation-wrapper {
+    gap: 36px;
+  }
+  
+  .logo-animation {
+    width: 108px;
+    height: 108px;
+  }
+  
+  .loading-text-minimal {
+    gap: 8px;
+  }
+  
+  .loading-text-minimal .letter {
+    font-size: 16px;
+    letter-spacing: 0.25em;
+  }
+  
+  .loading-progress-container {
+    width: 140px;
+    margin-top: -10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .loading-animation-wrapper {
+    gap: 32px;
+  }
+  
+  .logo-animation {
+    width: 92px;
+    height: 92px;
+  }
+  
+  .loading-text-minimal {
+    gap: 6px;
+  }
+  
+  .loading-text-minimal .letter {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+  }
+  
+  .loading-progress-container {
+    width: 120px;
+    margin-top: -8px;
+  }
+}
+
+/* Mobile Touch Enhancements */
+@media (max-width: 768px) {
+  /* Enhanced touch targets */
+  button,
+  .btn,
+  .nav-item,
+  .mobile-nav-item,
+  .task-action-btn,
+  .calendar-nav-btn,
+  .filter-chip,
+  .filter-tab,
+  .kanban-add-task,
+  .mobile-header-btn,
+  .sidebar-create-btn,
+  .mobile-search-btn,
+  .mobile-search-close-btn {
+    min-height: 48px;
+    min-width: 48px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve scroll behavior on mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Enhanced focus states for accessibility */
+  button:focus,
+  .btn:focus,
+  .nav-item:focus,
+  .mobile-nav-item:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Better mobile typography */
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  /* Prevent overscroll bounce */
+  body {
+    overscroll-behavior-y: none;
+  }
+  
+  /* Enhanced mobile form controls */
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
 }
 
 /* ============================================
@@ -634,41 +753,66 @@ body {
   vertical-align: middle;
   transition: all 0.15s ease-out;
   cursor: pointer;
+  animation: logoSubtleMotion 4s ease-in-out infinite;
+}
+
+@keyframes logoSubtleMotion {
+  0%, 100% {
+    transform: rotate(0.2deg) scale(1);
+  }
+  25% {
+    transform: rotate(-0.2deg) scale(1.005);
+  }
+  50% {
+    transform: rotate(0.2deg) scale(0.995);
+  }
+  75% {
+    transform: rotate(-0.2deg) scale(1.002);
+  }
 }
 
 .logo-icon:hover {
   transform: translateY(-2px);
-  filter: brightness(1.1);
+  /* No glow effect */
+  filter: none;
 }
 
 @keyframes logoRectStagger {
   0% {
-    transform: translateY(0);
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-3px) translateX(1px) rotate(1deg);
   }
 
   50% {
-    transform: translateY(-2px);
+    transform: translateY(-2px) translateX(-1px) rotate(-1deg);
+  }
+
+  75% {
+    transform: translateY(-1px) translateX(1px) rotate(0.5deg);
   }
 
   100% {
-    transform: translateY(0);
+    transform: translateY(0) translateX(0) rotate(0deg);
   }
 }
 
 .logo-icon:hover rect:nth-child(1) {
-  animation: logoRectStagger 0.3s ease-out 0s;
+  animation: logoRectStagger 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0s;
 }
 
 .logo-icon:hover rect:nth-child(2) {
-  animation: logoRectStagger 0.3s ease-out 0.05s;
+  animation: logoRectStagger 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
 }
 
 .logo-icon:hover rect:nth-child(3) {
-  animation: logoRectStagger 0.3s ease-out 0.1s;
+  animation: logoRectStagger 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
 }
 
 .logo-icon:hover rect:nth-child(4) {
-  animation: logoRectStagger 0.3s ease-out 0.15s;
+  animation: logoRectStagger 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
 }
 
 .logo-text-container {
@@ -1907,15 +2051,23 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: 84px;
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--glass-border);
   z-index: 3000;
-  padding: 6px 8px;
-  padding-bottom: env(safe-area-inset-bottom, 6px);
+  padding: 10px 8px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 6px) + 10px);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .mobile-nav-item {
@@ -1923,29 +2075,33 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 8px;
+  gap: 4px;
+  padding: 10px 8px;
   background: transparent;
   border: none;
   color: var(--muted-foreground);
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 14px;
-  min-width: 52px;
+  min-width: 56px;
+  max-width: 72px;
   position: relative;
+  touch-action: manipulation;
+  flex-shrink: 0;
+  min-height: 60px;
 }
 
 .mobile-nav-item::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 2px;
   left: 50%;
   transform: translateX(-50%) scaleX(0);
   width: 20px;
-  height: 3px;
+  height: 2px;
   background: var(--primary);
   border-radius: 0 0 4px 4px;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1955,7 +2111,8 @@ body {
   transform: translateX(-50%) scaleX(1);
 }
 
-.mobile-nav-item:hover {
+.mobile-nav-item:hover,
+.mobile-nav-item:active {
   color: var(--foreground);
   background: var(--surface-hover);
 }
@@ -1970,15 +2127,88 @@ body {
   height: 20px;
   stroke-width: 2;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .mobile-nav-item.active .icon {
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 .mobile-nav-item span {
-  margin-top: 1px;
+  margin-top: 2px;
   text-transform: uppercase;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+/* Enhanced touch targets for accessibility */
+@media (max-width: 768px) {
+  .mobile-nav-item {
+    min-height: 64px;
+    padding: 12px 10px;
+  }
+  
+  .mobile-nav-item .icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Scroll indicator for horizontal scrolling */
+.mobile-bottom-nav::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to left, var(--glass-bg), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-bottom-nav:not(:hover)::after {
+  opacity: 1;
+}
+
+/* Specific styling for AI icon to match desktop */
+.mobile-nav-item[data-view="ai"] .icon.ai-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-nav-item[data-view="ai"].active .icon.ai-icon {
+  transform: scale(1.2);
+}
+
+/* Animation for active state */
+@keyframes navItemActive {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.mobile-nav-item:active {
+  animation: navItemActive 0.3s ease;
+}
+
+/* Ensure proper touch targets for accessibility */
+@media (hover: none) and (pointer: coarse) {
+  .mobile-nav-item {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  .mobile-nav-item span {
+    font-size: 8px;
+  }
 }
 
 /* Mobile Header Bar */
@@ -1988,7 +2218,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 60px;
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -2003,7 +2233,7 @@ body {
 .mobile-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .mobile-logo-icon {
@@ -2014,7 +2244,7 @@ body {
 }
 
 .mobile-header-logo {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--foreground);
   letter-spacing: -0.5px;
@@ -2027,13 +2257,13 @@ body {
 .mobile-header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .mobile-header-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   background: var(--surface);
   border: 1px solid var(--glass-border);
   display: flex;
@@ -2042,16 +2272,18 @@ body {
   color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 
-.mobile-header-btn:hover {
+.mobile-header-btn:hover,
+.mobile-header-btn:active {
   background: var(--surface-hover);
   color: var(--foreground);
 }
 
 .mobile-header-btn .icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 /* Mobile Theme Toggle */
@@ -2088,12 +2320,12 @@ body {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
   z-index: 4000;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mobile-search-overlay.active {
@@ -2111,6 +2343,9 @@ body {
   border-bottom: 1px solid var(--glass-border);
   transform: translateY(-100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .mobile-search-overlay.active .mobile-search-container {
@@ -2118,15 +2353,17 @@ body {
 }
 
 .mobile-search-input {
+  flex: 1;
   width: 100%;
-  padding: 14px 16px;
+  padding: 16px 16px;
   padding-left: 48px;
   background: var(--surface);
   border: 2px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: 16px;
   font-size: 16px;
   color: var(--foreground);
   transition: all 0.2s;
+  min-height: 52px;
 }
 
 .mobile-search-input:focus {
@@ -2145,6 +2382,32 @@ body {
   height: 20px;
 }
 
+.mobile-search-close-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.mobile-search-close-btn:hover,
+.mobile-search-close-btn:active {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.mobile-search-close-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
 /* ============================================
    RESPONSIVE DESIGN - Completely Redesigned Mobile Experience
    ============================================ */
@@ -2158,8 +2421,8 @@ body {
   /* Main content takes full width */
   .main-content {
     margin-left: 0 !important;
-    padding-top: 56px;
-    padding-bottom: 80px;
+    padding-top: 60px;
+    padding-bottom: 88px;
     min-height: 100vh;
   }
 
@@ -2176,8 +2439,9 @@ body {
   /* Mobile bottom nav */
   .mobile-bottom-nav {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-start;
     align-items: center;
+    flex-wrap: nowrap;
   }
 
   /* Hide desktop top bar, replace with mobile version */
@@ -2192,13 +2456,14 @@ body {
 
   /* Mobile View Title Styling */
   .view-title {
-    font-size: 24px !important;
+    font-size: 26px !important;
     font-weight: 800 !important;
     letter-spacing: -0.5px;
+    margin-bottom: 4px;
   }
 
   .view-header {
-    padding: 20px 16px 16px;
+    padding: 24px 16px 16px;
     border-bottom: none;
     background: transparent;
     flex-direction: column;
@@ -2219,12 +2484,12 @@ body {
   }
 
   .projects-container .view-header {
-    padding: 20px 16px 12px;
+    padding: 24px 16px 12px;
   }
 
   .project-card {
     margin: 0 16px 16px;
-    padding: 20px;
+    padding: 22px;
     border-radius: 20px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
   }
@@ -2234,7 +2499,7 @@ body {
   }
 
   .project-card-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
   }
 
@@ -2243,8 +2508,8 @@ body {
   }
 
   .progress-bar {
-    height: 8px;
-    border-radius: 4px;
+    height: 10px;
+    border-radius: 5px;
   }
 
   /* Mobile Schedule/Calendar - Compact Professional */
@@ -2268,7 +2533,7 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 12px 0;
+    padding: 16px 0;
     flex-wrap: nowrap;
   }
 
@@ -2280,65 +2545,65 @@ body {
   }
 
   .schedule-title-section .view-title {
-    font-size: 18px !important;
+    font-size: 20px !important;
     font-weight: 700 !important;
   }
 
   .schedule-subtitle {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted-foreground);
   }
 
   .calendar-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     background: transparent;
     padding: 0;
   }
 
   .calendar-nav-btns {
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: 10px;
     border: 1px solid var(--glass-border);
   }
 
   .calendar-nav-btn {
-    padding: 6px 10px;
+    padding: 8px 12px;
   }
 
   .calendar-nav-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .calendar-controls .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+
+  .calendar-controls .btn svg {
     width: 14px;
     height: 14px;
   }
 
-  .calendar-controls .btn {
-    padding: 6px 10px;
-    font-size: 11px;
-    border-radius: 8px;
-  }
-
-  .calendar-controls .btn svg {
-    width: 12px;
-    height: 12px;
-  }
-
   .calendar-grid {
-    border-radius: 14px;
-    font-size: 11px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    font-size: 12px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
   }
 
   .weekday-header {
-    padding: 8px 2px;
-    font-size: 9px;
+    padding: 10px 2px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.3px;
   }
 
   .calendar-day {
-    padding: 4px;
-    min-height: 52px;
+    padding: 6px;
+    min-height: 56px;
     border-radius: 0;
   }
 
@@ -2347,9 +2612,9 @@ body {
   }
 
   .calendar-day .day-number {
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
     font-weight: 600;
     border-radius: 6px;
   }
@@ -2359,14 +2624,14 @@ body {
   }
 
   .day-tasks-container {
-    gap: 2px;
+    gap: 3px;
   }
 
   .calendar-task {
-    font-size: 9px;
-    padding: 3px 5px;
-    border-radius: 4px;
-    border-left-width: 2px;
+    font-size: 10px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border-left-width: 3px;
   }
 
   .calendar-task .task-mini {
@@ -2379,12 +2644,12 @@ body {
   }
 
   .task-color-dot {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   .task-title-mini {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
     max-width: 40px;
   }
@@ -2398,17 +2663,17 @@ body {
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: 90px;
+    bottom: 94px;
     z-index: 1000;
-    font-size: 13px;
-    padding: 12px;
-    border-radius: 14px;
+    font-size: 14px;
+    padding: 16px;
+    border-radius: 16px;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
     border-left-width: 4px;
   }
 
   .calendar-task.expanded .task-title-mini {
-    font-size: 14px;
+    font-size: 15px;
     max-width: none;
   }
 
@@ -2432,11 +2697,11 @@ body {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
-    padding: 16px 0;
+    padding: 20px 0;
   }
 
   .backlog-title-section .view-title {
-    font-size: 24px !important;
+    font-size: 26px !important;
   }
 
   .backlog-progress-ring {
@@ -2448,23 +2713,23 @@ body {
   }
 
   .stat-chip {
-    padding: 6px 12px;
-    font-size: 13px;
-    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 14px;
+    border-radius: 12px;
     font-weight: 600;
   }
 
   .backlog-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 14px;
   }
 
   .backlog-filters {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
@@ -2475,41 +2740,41 @@ body {
 
   .filter-chip {
     flex-shrink: 0;
-    padding: 10px 16px;
-    font-size: 13px;
+    padding: 12px 18px;
+    font-size: 14px;
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
   .backlog-task-card {
-    padding: 16px 18px;
-    border-radius: 16px;
-    margin-bottom: 10px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    margin-bottom: 12px;
   }
 
   .task-checkbox {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
   }
 
   .task-content .task-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
   }
 
   .task-content .task-date {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .task-actions {
     opacity: 1;
-    gap: 8px;
+    gap: 10px;
   }
 
   .task-action-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
   }
 
   /* Mobile Issues View */
@@ -2518,23 +2783,23 @@ body {
   }
 
   .issues-container .view-header {
-    padding: 16px;
+    padding: 20px 16px;
   }
 
   .filter-tabs {
     width: 100%;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     -webkit-overflow-scrolling: touch;
-    gap: 8px;
+    gap: 10px;
   }
 
   .filter-tab {
     flex-shrink: 0;
-    padding: 10px 16px;
-    font-size: 13px;
+    padding: 12px 18px;
+    font-size: 14px;
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
   .table-header.issues-grid {
@@ -2544,30 +2809,30 @@ body {
   .table-row.issues-grid {
     display: flex;
     flex-direction: column;
-    padding: 18px;
-    margin: 0 16px 12px;
-    border-radius: 16px;
-    gap: 12px;
+    padding: 20px;
+    margin: 0 16px 14px;
+    border-radius: 18px;
+    gap: 14px;
     border: 1px solid var(--glass-border);
     background: var(--card);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
   }
 
   .issue-id {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--primary);
     letter-spacing: 0.5px;
   }
 
   .issue-title {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 600;
     line-height: 1.4;
   }
 
   .issue-description {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     -webkit-line-clamp: 2;
   }
@@ -2578,44 +2843,44 @@ body {
   }
 
   .inbox-container .view-title {
-    padding: 16px 0 20px;
+    padding: 20px 0 24px;
   }
 
   .activity-item {
-    padding: 18px;
-    border-radius: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    padding: 20px;
+    border-radius: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
   }
 
   /* Mobile Settings */
   .settings-container {
-    padding: 0 16px 32px;
+    padding: 0 16px 36px;
   }
 
   .settings-container .view-header {
-    padding: 20px 0;
+    padding: 24px 0;
     text-align: left;
   }
 
   .settings-container .view-title {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .settings-section {
-    border-radius: 20px;
-    margin-bottom: 24px;
+    border-radius: 22px;
+    margin-bottom: 28px;
   }
 
   .section-title {
-    padding: 20px 20px 8px;
+    padding: 24px 22px 10px;
   }
 
   .settings-item {
-    padding: 18px 20px;
+    padding: 20px 22px;
     flex-direction: column;
     align-items: flex-start;
-    gap: 14px;
+    gap: 16px;
   }
 
   .settings-label {
@@ -2636,23 +2901,23 @@ body {
 
   .modal {
     margin: 0;
-    max-height: 90vh;
-    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
+    border-radius: 26px 26px 0 0;
     max-width: 100%;
     width: 100%;
   }
 
   .modal-header {
-    padding: 20px 20px 16px;
+    padding: 24px 24px 18px;
   }
 
   .modal-title {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
   }
 
   .modal-content {
-    padding: 4px 20px 32px;
+    padding: 6px 24px 36px;
   }
 
   /* Mobile Project Detail - Compact Professional */
@@ -2661,33 +2926,33 @@ body {
   }
 
   .project-detail-main {
-    padding: 12px;
+    padding: 16px;
   }
 
   .project-detail-header {
     flex-direction: row;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 14px;
+    margin-bottom: 20px;
     flex-wrap: nowrap;
   }
 
   .back-btn {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     background: var(--surface);
     border: 1px solid var(--glass-border);
-    border-radius: 10px;
+    border-radius: 12px;
     flex-shrink: 0;
   }
 
   .back-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .project-detail-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     flex: 1;
     white-space: nowrap;
@@ -2703,88 +2968,88 @@ body {
   .project-info-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 10px;
+    padding: 12px 14px;
     background: var(--surface);
-    border-radius: 10px;
-    margin-bottom: 12px;
+    border-radius: 12px;
+    margin-bottom: 14px;
     flex-wrap: wrap;
   }
 
   .project-status-badge {
-    padding: 4px 10px;
-    font-size: 11px;
-    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 8px;
   }
 
   .kanban-board {
     padding-bottom: 16px;
-    gap: 8px;
+    gap: 10px;
     margin: 0 -4px;
     padding: 0 4px 16px;
     -webkit-overflow-scrolling: touch;
   }
 
   .kanban-column {
-    width: 240px;
-    min-width: 240px;
-    border-radius: 12px;
+    width: 260px;
+    min-width: 260px;
+    border-radius: 14px;
   }
 
   .kanban-column-header {
-    padding: 10px 12px;
-    font-size: 13px;
+    padding: 12px 14px;
+    font-size: 14px;
   }
 
   .kanban-column-header .column-count {
-    font-size: 11px;
-    padding: 2px 6px;
+    font-size: 12px;
+    padding: 3px 8px;
   }
 
   .kanban-tasks {
-    padding: 8px;
-    gap: 6px;
+    padding: 10px;
+    gap: 8px;
   }
 
   .kanban-task {
-    padding: 10px 12px;
-    border-radius: 10px;
-    font-size: 13px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
   }
 
   .kanban-task .task-title {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
   }
 
   /* Compact Add Task on Mobile */
   .kanban-add-task {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
     margin: 0 8px 8px;
   }
 
   /* Mobile Project Actions */
   .project-actions-mobile {
     position: fixed;
-    bottom: 70px;
-    left: 12px;
-    right: 12px;
+    bottom: 74px;
+    left: 16px;
+    right: 16px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     z-index: 100;
   }
 
   .project-actions-mobile .btn {
     flex: 1;
-    padding: 12px;
-    border-radius: 12px;
-    font-size: 13px;
+    padding: 14px;
+    border-radius: 14px;
+    font-size: 14px;
   }
 
   /* Mobile Focus Timer */
   .focus-timer-float {
-    bottom: 80px;
+    bottom: 84px;
     left: 16px;
     right: 16px;
   }
@@ -2792,51 +3057,51 @@ body {
   .focus-timer-widget {
     min-width: auto;
     width: 100%;
-    border-radius: 20px;
+    border-radius: 22px;
   }
 
   .timer-main {
-    padding: 16px 20px;
+    padding: 20px 24px;
   }
 
   .timer-display {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .timer-controls {
-    padding: 0 20px 16px;
+    padding: 0 24px 20px;
   }
 
   .timer-btn {
-    padding: 12px 20px;
-    font-size: 14px;
-    border-radius: 12px;
+    padding: 14px 24px;
+    font-size: 15px;
+    border-radius: 14px;
   }
 
   /* Mobile Empty States */
   .empty-state {
-    padding: 48px 24px;
-    min-height: 300px;
+    padding: 56px 28px;
+    min-height: 320px;
   }
 
   .empty-state-icon {
-    font-size: 48px;
+    font-size: 56px;
   }
 
   .empty-state-title {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .empty-state-text {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   /* Mobile Buttons */
   .btn {
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 14px 24px;
+    font-size: 15px;
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
   .btn-primary {
@@ -2848,14 +3113,14 @@ body {
   .form-input,
   .form-textarea,
   .form-select {
-    padding: 14px 16px;
+    padding: 16px 18px;
     font-size: 16px;
-    border-radius: 14px;
+    border-radius: 16px;
   }
 
   .form-actions {
     flex-direction: column-reverse;
-    gap: 12px;
+    gap: 14px;
   }
 
   .form-actions .btn {
@@ -2867,30 +3132,31 @@ body {
 
   /* Extra small screens - compact layout */
   .mobile-header {
-    height: 52px;
-    padding: 0 12px;
+    height: 56px;
+    padding: 0 14px;
   }
 
   .mobile-header-logo {
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .mobile-header-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
   }
 
   .mobile-bottom-nav {
-    height: 60px;
-    padding: 4px 4px;
+    height: 80px;
+    padding: 8px 4px;
   }
 
   .mobile-nav-item {
     min-width: 48px;
-    padding: 6px;
+    max-width: 64px;
+    padding: 8px 6px;
     font-size: 8px;
-    border-radius: 10px;
+    border-radius: 12px;
   }
 
   .mobile-nav-item .icon {
@@ -2898,62 +3164,66 @@ body {
     height: 18px;
   }
 
+  .mobile-nav-item span {
+    font-size: 7px;
+  }
+
   .main-content {
-    padding-top: 52px;
-    padding-bottom: 68px;
+    padding-top: 56px;
+    padding-bottom: 84px;
   }
 
   .view-title {
-    font-size: 20px !important;
+    font-size: 22px !important;
     font-weight: 700 !important;
   }
 
   .view-header {
-    padding: 16px 12px;
-    gap: 12px;
+    padding: 20px 14px;
+    gap: 14px;
   }
 
   /* Compact cards */
   .card {
-    margin: 0 12px 12px;
-    border-radius: 16px;
+    margin: 0 14px 14px;
+    border-radius: 18px;
   }
 
   .project-card {
-    margin: 0 12px 12px;
-    padding: 16px;
-    border-radius: 16px;
+    margin: 0 14px 14px;
+    padding: 18px;
+    border-radius: 18px;
   }
 
   .project-card-title {
-    font-size: 15px;
+    font-size: 16px;
   }
 
   /* Compact calendar */
   .calendar-day {
-    min-height: 50px;
-    padding: 4px 2px;
+    min-height: 52px;
+    padding: 6px 2px;
   }
 
   .calendar-day .day-number {
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
 
   .calendar-task {
-    padding: 3px 4px;
-    font-size: 9px;
+    padding: 4px 5px;
+    font-size: 10px;
   }
 
   .task-title-mini {
-    font-size: 9px;
-    max-width: 35px;
+    font-size: 10px;
+    max-width: 38px;
   }
 
   .task-color-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
   }
 
   .recurring-badge,
@@ -2962,160 +3232,160 @@ body {
   }
 
   .weekday-header {
-    font-size: 9px;
+    font-size: 10px;
     padding: 10px 2px;
   }
 
   /* Compact backlog */
   .backlog-task-card {
-    padding: 14px;
-    border-radius: 14px;
+    padding: 16px;
+    border-radius: 16px;
   }
 
   .task-checkbox {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
   }
 
   .task-content .task-title {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .task-action-btn {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
   }
 
   /* Compact filters */
   .filter-chip,
   .filter-tab {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 
   /* Compact issues */
   .table-row.issues-grid {
-    padding: 14px;
-    margin: 0 12px 10px;
-    border-radius: 14px;
+    padding: 16px;
+    margin: 0 14px 12px;
+    border-radius: 16px;
   }
 
   .issue-title {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   /* Compact inbox */
   .inbox-container {
-    padding: 0 12px;
+    padding: 0 14px;
   }
 
   .activity-item {
-    padding: 14px;
-    border-radius: 14px;
-    margin-bottom: 10px;
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 12px;
   }
 
   /* Compact settings */
   .settings-container {
-    padding: 0 12px 24px;
+    padding: 0 14px 28px;
   }
 
   .settings-section {
-    border-radius: 16px;
+    border-radius: 18px;
   }
 
   .settings-item {
-    padding: 14px 16px;
+    padding: 16px 18px;
   }
 
   /* Compact buttons */
   .btn {
-    padding: 10px 16px;
-    font-size: 13px;
-    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 12px;
   }
 
   /* Compact forms */
   .form-input,
   .form-textarea,
   .form-select {
-    padding: 12px 14px;
-    font-size: 15px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 16px;
+    border-radius: 14px;
   }
 
   /* Compact modal */
   .modal {
-    border-radius: 20px 20px 0 0;
+    border-radius: 22px 22px 0 0;
   }
 
   .modal-header {
-    padding: 16px;
+    padding: 20px;
   }
 
   .modal-title {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .modal-content {
-    padding: 4px 16px 24px;
+    padding: 6px 20px 28px;
   }
 
   /* Compact project detail */
   .project-detail-main {
-    padding: 12px;
+    padding: 14px;
   }
 
   .project-detail-title {
-    font-size: 20px;
+    font-size: 21px;
   }
 
   .kanban-column {
-    width: 260px;
-    min-width: 260px;
-    border-radius: 14px;
+    width: 240px;
+    min-width: 240px;
+    border-radius: 16px;
   }
 
   .kanban-task {
-    padding: 12px;
-    border-radius: 10px;
+    padding: 14px;
+    border-radius: 12px;
   }
 
   /* Compact focus timer */
   .focus-timer-float {
-    bottom: 68px;
-    left: 12px;
-    right: 12px;
+    bottom: 76px;
+    left: 14px;
+    right: 14px;
   }
 
   .focus-timer-widget {
-    border-radius: 16px;
+    border-radius: 18px;
   }
 
   .timer-main {
-    padding: 12px 16px;
+    padding: 14px 18px;
   }
 
   .timer-display {
-    font-size: 20px;
+    font-size: 22px;
   }
 
   /* Empty states */
   .empty-state {
-    padding: 40px 20px;
-    min-height: 250px;
+    padding: 44px 22px;
+    min-height: 280px;
   }
 
   .empty-state-icon {
-    font-size: 40px;
+    font-size: 44px;
   }
 
   .empty-state-title {
-    font-size: 16px;
+    font-size: 17px;
   }
 
   .empty-state-text {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
@@ -4841,6 +5111,22 @@ body {
     width: 100%;
     justify-content: space-between;
   }
+  
+  /* Enhanced tablet calendar navigation */
+  .schedule-month-selector {
+    min-width: 150px;
+  }
+  
+  /* Tablet calendar grid improvements */
+  .week-grid {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Tablet calendar touch targets */
+  .week-header-day {
+    min-width: 60px;
+  }
 }
 
 /* Responsive - Mobile */
@@ -4936,6 +5222,105 @@ body {
   .event-avatars {
     display: none;
   }
+  
+  /* Enhanced mobile calendar day touch targets */
+  .mini-cal-day {
+    min-height: 24px;
+    padding: 4px 2px;
+    font-size: 10px;
+    border-radius: 6px;
+  }
+  
+  /* Better touch targets for mobile */
+  .mini-cal-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  
+  /* Mobile optimized calendar grid */
+  .calendar-grid {
+    gap: 2px;
+  }
+  
+  .calendar-day {
+    padding: 6px;
+    border-radius: 8px;
+  }
+  
+  .calendar-day .day-number {
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 12px;
+  }
+  
+  /* Mobile agenda view improvements */
+  .agenda-day-header {
+    padding: 12px 16px;
+  }
+  
+  .agenda-event-card {
+    padding: 10px 14px;
+    margin: 0 12px 8px;
+  }
+  
+  /* Mobile day view improvements */
+  .day-view-container {
+    padding: 10px;
+  }
+  
+  .day-hours-grid {
+    gap: 8px;
+  }
+  
+  .hour-slot {
+    min-height: 40px;
+    font-size: 12px;
+  }
+  
+  .day-event-card {
+    margin: 2px 0;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  /* Month view mobile enhancements */
+  .month-grid {
+    gap: 2px;
+  }
+  
+  .month-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .month-day-number {
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+  }
+  
+  .month-events {
+    font-size: 9px;
+    gap: 1px;
+  }
+  
+  /* Mobile calendar header improvements */
+  .calendar-header {
+    padding: 8px;
+  }
+  
+  .calendar-title {
+    font-size: 16px;
+  }
+  
+  .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
 }
 
 /* Responsive - Small Mobile */
@@ -4986,6 +5371,138 @@ body {
 
   .schedule-breadcrumb {
     display: none;
+  }
+  
+  /* Further mobile optimizations for smallest screens */
+  .mini-cal-day {
+    min-height: 20px;
+    padding: 2px 1px;
+    font-size: 9px;
+  }
+  
+  .mini-cal-nav-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .calendar-day {
+    padding: 4px;
+  }
+  
+  .calendar-day .day-number {
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 11px;
+  }
+  
+  .agenda-event-card {
+    padding: 8px 12px;
+    margin: 0 8px 6px;
+  }
+  
+  .day-event-card {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  
+  .month-day {
+    min-height: 50px;
+    padding: 2px;
+  }
+  
+  .month-day-number {
+    font-size: 11px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+  
+  .calendar-nav-btn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  /* Mobile calendar swipe gestures */
+  .calendar-grid,
+  .week-grid,
+  .month-grid {
+    touch-action: pan-y;
+  }
+  
+  /* Mobile calendar touch enhancements */
+  .calendar-day,
+  .mini-cal-day,
+  .week-header-day,
+  .month-day,
+  .day-hour,
+  .agenda-event-card {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+    tap-highlight-color: rgba(59, 130, 246, 0.2);
+    user-select: none;
+  }
+  
+  /* Active/hover states for touch devices */
+  .calendar-day:active,
+  .mini-cal-day:active,
+  .week-header-day:active,
+  .month-day:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Smooth transition for mobile interactions */
+  .calendar-day,
+  .mini-cal-day,
+  .week-header-day,
+  .month-day,
+  .agenda-event-card,
+  .day-event-card {
+    transition: all 0.2s ease;
+  }
+  
+  /* Compact calendar view for very small screens */
+  .calendar-widget {
+    padding: 16px;
+  }
+  
+  /* Mobile calendar widget enhancements */
+  .calendar-widget {
+    margin: 0 8px 16px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Mobile calendar navigation */
+  .calendar-nav {
+    gap: 6px;
+  }
+  
+  .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .calendar-nav-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Mobile calendar day headers */
+  .calendar-day-header {
+    font-size: 10px;
+    padding: 4px 0;
+  }
+  
+  .calendar-title {
+    font-size: 14px;
+  }
+  
+  .calendar-header {
+    padding: 6px;
   }
 }
 
@@ -7177,6 +7694,31 @@ body {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 120px);
+  scroll-behavior: smooth;
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Webkit scrollbar styling */
+.space-main-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.space-main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.space-main-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.space-main-content::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }
 
 /* Cards Row */
@@ -7596,6 +8138,8 @@ body {
 
   .space-main-content {
     padding: 16px;
+    max-height: calc(100vh - 140px);
+    -webkit-overflow-scrolling: touch;
   }
 
   .table-header {
@@ -7991,6 +8535,12 @@ body {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+}
+
+.team-follower-status {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 2px;
 }
 
 .team-follower-email {
@@ -9635,9 +10185,11 @@ body {
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
@@ -10930,22 +11482,22 @@ body {
   position: relative;
 }
 
-.doc-shared-avatars > *:first-child {
+.doc-shared-avatars>*:first-child {
   margin-left: 0 !important;
 }
 
-.doc-shared-avatars > * {
+.doc-shared-avatars>* {
   transition: transform 0.2s ease, z-index 0.2s ease;
   position: relative;
 }
 
-.doc-shared-avatars > *:hover {
+.doc-shared-avatars>*:hover {
   transform: scale(1.1);
   z-index: 10;
 }
 
 /* Avatar tooltip styles */
-.doc-shared-avatars > *[title]:hover::after {
+.doc-shared-avatars>*[title]:hover::after {
   content: attr(title);
   position: absolute;
   bottom: -30px;
@@ -21321,6 +21873,88 @@ body {
   background: linear-gradient(135deg, hsla(217, 91%, 60%, 0.9), hsla(239, 84%, 67%, 0.9));
   border-color: hsla(0, 0%, 100%, 0.4);
   box-shadow: 0 4px 16px hsla(217, 91%, 60%, 0.35);
+}
+
+/* Dropdown Event Creation Form - Appears under cursor */
+.event-dropdown-form {
+  position: fixed;
+  z-index: 10000;
+  background: var(--glass-bg);
+  backdrop-filter: blur(64px);
+  -webkit-backdrop-filter: blur(64px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  width: 320px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: slideInFromTop 0.2s ease-out;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.event-dropdown-form .modal-content {
+  padding: 16px;
+}
+
+.event-dropdown-form .form-group {
+  margin-bottom: 12px;
+}
+
+.event-dropdown-form .form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+}
+
+.event-dropdown-form .form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  font-size: 14px;
+}
+
+.event-dropdown-form .time-picker-group {
+  margin: 12px 0;
+}
+
+.event-dropdown-form .form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.event-dropdown-form .btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.event-dropdown-form .btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+}
+
+.event-dropdown-form .btn-secondary {
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
 }
 
 /* Schedule Header Light Mode */

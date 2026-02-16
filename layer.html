@@ -302,6 +302,11 @@
           <path d="M21 21l-4.35-4.35" />
         </svg>
         <input type="text" id="mobileSearchInput" class="mobile-search-input" placeholder="Search..." />
+        <button class="mobile-search-close-btn" id="mobileSearchCloseBtn" title="Close search">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -329,12 +334,19 @@
       </svg>
       <span>Dashboard</span>
     </button>
-    <button class="mobile-nav-item active" data-view="my-issues">
+    <button class="mobile-nav-item" data-view="my-issues">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10" />
         <path d="M8 12l2 2 4-4" />
       </svg>
       <span>Issues</span>
+    </button>
+    <button class="mobile-nav-item" data-view="backlog">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+      </svg>
+      <span>Backlog</span>
     </button>
     <button class="mobile-nav-item" data-view="activity">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -350,6 +362,22 @@
         <line x1="3" y1="10" x2="21" y2="10" />
       </svg>
       <span>Schedule</span>
+    </button>
+    <button class="mobile-nav-item" data-view="team">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      <span>Team</span>
+    </button>
+    <button class="mobile-nav-item" data-view="ai">
+      <svg class="icon ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z" />
+        <circle cx="12" cy="11.5" r="2" />
+      </svg>
+      <span>AI</span>
     </button>
     <button class="mobile-nav-item" data-view="settings">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

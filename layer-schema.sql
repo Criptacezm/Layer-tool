@@ -250,6 +250,22 @@
         WHEN duplicate_column THEN null;
     END $$;
 
+    -- ============================================
+    -- Folders Table
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS folders (
+        id TEXT PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        color TEXT DEFAULT '#6366f1',
+        icon TEXT DEFAULT 'folder',
+        space_id UUID REFERENCES spaces(id) ON DELETE SET NULL,
+        is_favorite BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
     DO $$ BEGIN
         ALTER TABLE spaces ADD COLUMN due_date DATE;
     EXCEPTION
@@ -378,6 +394,7 @@
         reactions JSONB DEFAULT '[]',
         mentions JSONB DEFAULT '[]',
         is_read BOOLEAN DEFAULT FALSE,
+        is_favorite BOOLEAN DEFAULT FALSE, -- For favoriting messages
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
@@ -421,6 +438,7 @@
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_type ON team_chat_messages(channel_type);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_recipient_id ON team_chat_messages(recipient_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_created_at ON team_chat_messages(created_at);
+    CREATE INDEX IF NOT EXISTS idx_team_chat_messages_is_favorite ON team_chat_messages(is_favorite);
     CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_project_id ON project_invitations(project_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitations(inviter_id);
@@ -433,6 +451,7 @@
     CREATE INDEX IF NOT EXISTS idx_team_invitations_inviter_id ON team_invitations(inviter_id);
     CREATE INDEX IF NOT EXISTS idx_team_invitations_invitee_email ON team_invitations(invitee_email);
     CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON team_invitations(status);
+    CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
 
     -- ============================================
     -- Row Level Security (RLS) - Safe Enable
@@ -446,6 +465,7 @@
     ALTER TABLE docs ENABLE ROW LEVEL SECURITY;
     ALTER TABLE excels ENABLE ROW LEVEL SECURITY;
     ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
     ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
     ALTER TABLE team_chat_messages ENABLE ROW LEVEL SECURITY;
     ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
@@ -575,6 +595,16 @@
     CREATE POLICY "Users can update own spaces" ON spaces FOR UPDATE USING (auth.uid() = user_id);
     CREATE POLICY "Users can delete own spaces" ON spaces FOR DELETE USING (auth.uid() = user_id);
 
+    -- Folders policies
+    DROP POLICY IF EXISTS "Users can view own folders" ON folders;
+    DROP POLICY IF EXISTS "Users can insert own folders" ON folders;
+    DROP POLICY IF EXISTS "Users can update own folders" ON folders;
+    DROP POLICY IF EXISTS "Users can delete own folders" ON folders;
+    CREATE POLICY "Users can view own folders" ON folders FOR SELECT USING (auth.uid() = user_id);
+    CREATE POLICY "Users can insert own folders" ON folders FOR INSERT WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users can update own folders" ON folders FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete own folders" ON folders FOR DELETE USING (auth.uid() = user_id);
+
     -- Recurring Tasks policies
     DROP POLICY IF EXISTS "Users can view own recurring_tasks" ON recurring_tasks;
     DROP POLICY IF EXISTS "Users can insert own recurring_tasks" ON recurring_tasks;
@@ -687,6 +717,7 @@
     DROP TRIGGER IF EXISTS update_docs_updated_at ON docs;
     DROP TRIGGER IF EXISTS update_excels_updated_at ON excels;
     DROP TRIGGER IF EXISTS update_spaces_updated_at ON spaces;
+    DROP TRIGGER IF EXISTS update_folders_updated_at ON folders;
     DROP TRIGGER IF EXISTS update_recurring_tasks_updated_at ON recurring_tasks;
     DROP TRIGGER IF EXISTS update_team_chat_messages_updated_at ON team_chat_messages;
     DROP TRIGGER IF EXISTS update_project_invitations_updated_at ON project_invitations;
@@ -703,6 +734,7 @@
     CREATE TRIGGER update_docs_updated_at BEFORE UPDATE ON docs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_excels_updated_at BEFORE UPDATE ON excels FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_spaces_updated_at BEFORE UPDATE ON spaces FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    CREATE TRIGGER update_folders_updated_at BEFORE UPDATE ON folders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_recurring_tasks_updated_at BEFORE UPDATE ON recurring_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_team_chat_messages_updated_at BEFORE UPDATE ON team_chat_messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_project_invitations_updated_at BEFORE UPDATE ON project_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

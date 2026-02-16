@@ -2702,6 +2702,45 @@ window.LayerDB = {
     return true;
   },
 
+  // Toggle favorite status of a team chat message
+  toggleMessageFavorite: async (messageId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+
+    // First, get the current message to check if it belongs to the current user or if it's a DM
+    const { data: message, error: fetchError } = await supabaseClient
+      .from('team_chat_messages')
+      .select('id, user_id, recipient_id, channel_id, channel_type')
+      .match({ id: messageId })
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!message) throw new Error('Message not found');
+
+    // Check if the current user can modify this message
+    // For DMs, both sender and recipient can favorite/unfavorite
+    // For channels, only the sender can favorite/unfavorite
+    const canModify = message.user_id === currentUser.id || 
+                     (message.channel_type === 'dm' && message.recipient_id === currentUser.id);
+
+    if (!canModify) {
+      throw new Error('Not authorized to modify this message');
+    }
+
+    // Toggle the favorite status
+    const { data, error } = await supabaseClient
+      .from('team_chat_messages')
+      .update({ 
+        is_favorite: !message.is_favorite,
+        updated_at: new Date().toISOString()
+      })
+      .match({ id: messageId })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   // Clear all messages in a DM chat
   clearDMChat: async (channelId) => {
     if (!currentUser) throw new Error('Not authenticated');
@@ -3119,5 +3158,173 @@ window.LayerDB = {
     } catch (error) {
       console.error('Error marking chat read:', error);
     }
-  }
+  },
+
+  // Mark a specific message as read
+  markMessageAsRead: async function (messageId) {
+    if (!currentUser) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('team_chat_messages')
+        .update({ is_read: true })
+        .eq('id', messageId)
+        .eq('recipient_id', currentUser.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  },
+
+  // Folder functions
+  loadFolders: loadFoldersFromDB,
+  saveFolder: saveFolderToDB,
+  deleteFolder: deleteFolderFromDB
 };
+
+// ============================================
+// Folder Functions
+// ============================================
+
+async function saveFolderToDB(folderData) {
+  console.log('Saving folder to DB, currentUser:', currentUser);
+  
+  if (!currentUser) {
+    console.warn('No user logged in, saving to localStorage only');
+    // Even if no user, still save to localStorage as fallback
+    return saveFolderToLocalStorage(folderData);
+  }
+
+  try {
+    console.log('Inserting folder data:', {
+      user_id: currentUser.id,
+      id: folderData.id,
+      name: folderData.name,
+      description: folderData.description || '',
+      color: folderData.color || '#6366f1',
+      icon: folderData.icon || 'folder',
+      space_id: folderData.space_id || null,
+      is_favorite: folderData.is_favorite || false,
+      created_at: folderData.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    const { data, error } = await supabaseClient
+      .from('folders')
+      .upsert({
+        user_id: currentUser.id,
+        id: folderData.id,
+        name: folderData.name,
+        description: folderData.description || '',
+        color: folderData.color || '#6366f1',
+        icon: folderData.icon || 'folder',
+        space_id: folderData.space_id || null,
+        is_favorite: folderData.is_favorite || false,
+        created_at: folderData.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+    
+    console.log('Folder saved to DB successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error saving folder to DB:', error);
+    console.error('Error details:', error.message, error.details);
+    // Fallback to localStorage
+    return saveFolderToLocalStorage(folderData);
+  }
+}
+
+async function loadFoldersFromDB() {
+  console.log('Loading folders from DB, currentUser:', currentUser);
+  
+  if (!currentUser) {
+    console.warn('No user logged in, loading from localStorage');
+    return loadFoldersFromLocalStorage();
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folders')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Database error loading folders:', error);
+      throw error;
+    }
+    
+    console.log('Folders loaded from DB:', data);
+    return data || [];
+  } catch (error) {
+    console.error('Error loading folders from DB:', error);
+    console.error('Error details:', error.message, error.details);
+    // Fallback to localStorage
+    return loadFoldersFromLocalStorage();
+  }
+}
+
+async function deleteFolderFromDB(folderId) {
+  if (!currentUser) {
+    console.warn('No user logged in, deleting from localStorage only');
+    return deleteFolderFromLocalStorage(folderId);
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('folders')
+      .delete()
+      .eq('id', folderId)
+      .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+    
+    console.log('Folder deleted from DB:', folderId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting folder from DB:', error);
+    // Fallback to localStorage
+    return deleteFolderFromLocalStorage(folderId);
+  }
+}
+
+// LocalStorage fallback functions
+function saveFolderToLocalStorage(folderData) {
+  let folders = JSON.parse(localStorage.getItem('folders') || '[]');
+  const existingIndex = folders.findIndex(f => f.id === folderData.id);
+  
+  if (existingIndex >= 0) {
+    folders[existingIndex] = { ...folders[existingIndex], ...folderData };
+  } else {
+    folders.push(folderData);
+  }
+  
+  localStorage.setItem('folders', JSON.stringify(folders));
+  return folderData;
+}
+
+function loadFoldersFromLocalStorage() {
+  return JSON.parse(localStorage.getItem('folders') || '[]');
+}
+
+function deleteFolderFromLocalStorage(folderId) {
+  let folders = JSON.parse(localStorage.getItem('folders') || '[]');
+  folders = folders.filter(f => f.id !== folderId);
+  localStorage.setItem('folders', JSON.stringify(folders));
+  return true;
+}
+
+// Export functions for use in other files
+window.saveFolderToDB = saveFolderToDB;
+window.loadFoldersFromDB = loadFoldersFromDB;
+window.deleteFolderFromDB = deleteFolderFromDB;

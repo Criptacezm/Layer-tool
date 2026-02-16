@@ -400,7 +400,7 @@ function renderInboxView() {
         if (cursorEl) cursorEl.style.display = 'none';
       }
     }
-    
+
     // Initialize shared content widget
     initializeSharedContentWidget();
   }, 100);
@@ -2107,111 +2107,7 @@ for (let i = 0; i < 24; i++) {
 }
 
 // ============================================
-// Keyboard Shortcuts Handler (Google Calendar style)
-// ============================================
-function initCalendarKeyboardShortcuts() {
-  document.addEventListener('keydown', handleCalendarKeydown);
-}
 
-function handleCalendarKeydown(e) {
-  // Don't handle if typing in input/textarea
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-  if (!calendarKeyboardShortcutsEnabled) return;
-
-  const key = e.key.toLowerCase();
-
-  // View shortcuts
-  if (key === 'd' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    setScheduleViewMode('day');
-  } else if (key === 'w' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    setScheduleViewMode('week');
-  } else if (key === 'm' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    setScheduleViewMode('month');
-  } else if (key === 'a' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    setScheduleViewMode('agenda');
-  } else if (key === 'y' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    setScheduleViewMode('year');
-  }
-  // Navigation shortcuts
-  else if (key === 't') {
-    e.preventDefault();
-    goToScheduleToday();
-  } else if (key === 'n' || key === 'arrowright') {
-    if (!e.ctrlKey && !e.metaKey && key === 'n') {
-      e.preventDefault();
-      navigateScheduleNext();
-    }
-  } else if (key === 'p' || key === 'arrowleft') {
-    if (!e.ctrlKey && !e.metaKey && key === 'p') {
-      e.preventDefault();
-      navigateSchedulePrev();
-    }
-  }
-  // Quick add shortcut
-  else if (key === 'c' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    openAdvancedEventModal();
-  }
-  // Search shortcut
-  else if (key === '/' || (key === 'k' && (e.ctrlKey || e.metaKey))) {
-    e.preventDefault();
-    focusCalendarSearch();
-  }
-  // Escape to close quick add
-  else if (key === 'escape') {
-    if (calendarQuickAddOpen) {
-      closeCalendarQuickAdd();
-    }
-  }
-  // Question mark for shortcuts help
-  else if (key === '?' || (key === '/' && e.shiftKey)) {
-    e.preventDefault();
-    showKeyboardShortcutsModal();
-  }
-}
-
-function showKeyboardShortcutsModal() {
-  const content = `
-    <div class="keyboard-shortcuts-grid">
-      <div class="shortcuts-section">
-        <h4>Views</h4>
-        <div class="shortcut-item"><kbd>D</kbd><span>Day view</span></div>
-        <div class="shortcut-item"><kbd>W</kbd><span>Week view</span></div>
-        <div class="shortcut-item"><kbd>M</kbd><span>Month view</span></div>
-        <div class="shortcut-item"><kbd>A</kbd><span>Agenda view</span></div>
-        <div class="shortcut-item"><kbd>Y</kbd><span>Year view</span></div>
-      </div>
-      <div class="shortcuts-section">
-        <h4>Navigation</h4>
-        <div class="shortcut-item"><kbd>T</kbd><span>Go to today</span></div>
-        <div class="shortcut-item"><kbd>N</kbd><span>Next period</span></div>
-        <div class="shortcut-item"><kbd>P</kbd><span>Previous period</span></div>
-        <div class="shortcut-item"><kbd>G</kbd><span>Go to date</span></div>
-      </div>
-      <div class="shortcuts-section">
-        <h4>Actions</h4>
-        <div class="shortcut-item"><kbd>C</kbd><span>Create event</span></div>
-        <div class="shortcut-item"><kbd>/</kbd><span>Search</span></div>
-        <div class="shortcut-item"><kbd>Esc</kbd><span>Close dialog</span></div>
-        <div class="shortcut-item"><kbd>?</kbd><span>Show shortcuts</span></div>
-      </div>
-    </div>
-  `;
-  openModal('Keyboard Shortcuts', content);
-}
-
-function focusCalendarSearch() {
-  const searchInput = document.getElementById('calendarSearchInput');
-  if (searchInput) {
-    searchInput.focus();
-    searchInput.select();
-  }
-}
 
 // ============================================
 // Quick Add Bar (Google Calendar style)
@@ -2406,7 +2302,9 @@ function handleCalendarDragStart(e, dateStr) {
 
   dragCreateState = {
     isDragging: true,
+    startX: e.clientX,
     startY: e.clientY,
+    currentX: e.clientX,
     currentY: e.clientY,
     columnDate: dateStr,
     columnElement: column,
@@ -2433,6 +2331,7 @@ function handleCalendarDragMove(e) {
   if (!dragCreateState.isDragging) return;
 
   e.preventDefault();
+  dragCreateState.currentX = e.clientX;
   dragCreateState.currentY = e.clientY;
   updateDragPreview(e.clientY);
 }
@@ -2495,25 +2394,30 @@ function handleCalendarDragEnd(e) {
   document.removeEventListener('mousemove', handleCalendarDragMove);
   document.removeEventListener('mouseup', handleCalendarDragEnd);
 
-  const { columnDate, startTime, endTime, previewElement, startY, currentY } = dragCreateState;
-
-  // Remove preview
-  if (previewElement) {
-    previewElement.remove();
-  }
+  const { columnDate, startTime, endTime, previewElement, startY, currentY, startX, currentX } = dragCreateState;
 
   // Check if this was a real drag (moved at least 20px) or just a click
   const dragDistance = Math.abs(currentY - startY);
 
   if (dragDistance > 20 && columnDate && startTime) {
-    // Open create modal with pre-filled times
-    openCreateEventModalWithTime(columnDate, startTime, endTime || startTime);
+    // Open create dropdown with pre-filled times at cursor position
+    // Pass the preview element to keep it visible
+    openCreateEventDropdown(e.clientX, e.clientY, columnDate, startTime, endTime || startTime, previewElement);
+    // Don't remove preview element here - it will be removed when dropdown is closed
+    return;
+  }
+
+  // Remove preview for clicks or short drags
+  if (previewElement) {
+    previewElement.remove();
   }
 
   // Reset state
   dragCreateState = {
     isDragging: false,
+    startX: 0,
     startY: 0,
+    currentX: 0,
     currentY: 0,
     columnDate: null,
     columnElement: null,
@@ -2521,7 +2425,243 @@ function handleCalendarDragEnd(e) {
   };
 }
 
-// Open create modal with pre-selected time range
+// Open create dropdown at cursor position
+function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement = null) {
+  // Require authentication to create events
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create events', 'error');
+    if (typeof openAuthModal === 'function') openAuthModal();
+    return;
+  }
+
+  // Remove any existing dropdown
+  const existingDropdown = document.getElementById('eventDropdownForm');
+  if (existingDropdown) {
+    existingDropdown.remove();
+  }
+
+  const duration = calculateDuration(startTime, endTime);
+
+  const content = `
+    <div class="event-dropdown-form" id="eventDropdownForm">
+      <div class="modal-content">
+        <form id="createEventForm" onsubmit="handleCreateEventSubmit(event, '${date}'); closeEventDropdown(); return false;">
+          <div class="form-group">
+            <label>Title <span class="required">*</span></label>
+            <input type="text" name="title" class="form-input" required placeholder="Meeting / Deadline / Task..." autofocus>
+          </div>
+          
+          <div class="time-picker-group">
+            <div class="time-picker-group-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+              Time
+            </div>
+            
+            <div class="time-picker-row">
+              <span class="time-picker-label">From</span>
+              <div class="time-picker-select-wrapper">
+                <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+                  <option value="">No time</option>
+                  ${generateTimeOptions(startTime)}
+                </select>
+              </div>
+              <span class="time-picker-divider">→</span>
+              <div class="time-picker-select-wrapper">
+                <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+                  <option value="">No time</option>
+                  ${generateTimeOptions(endTime)}
+                </select>
+              </div>
+            </div>
+            
+            <div class="time-duration-hint" id="durationHint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+              <span>${duration ? `Duration: ${duration}` : 'Select time'}</span>
+            </div>
+            
+            <div class="quick-duration-btns">
+              <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(30)">30 min</button>
+              <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(60)">1 hour</button>
+              <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(90)">1.5 hours</button>
+              <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(120)">2 hours</button>
+              <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(180)">3 hours</button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Color</label>
+            <select name="color" class="form-select">
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="purple">Purple</option>
+              <option value="orange">Orange</option>
+              <option value="red">Red</option>
+            </select>
+          </div>
+          
+          <!-- Repeat Section -->
+          <div class="form-group-collapsible">
+            <div class="form-collapsible-header" onclick="toggleRepeatSection()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                <path d="M17 1l4 4-4 4"/>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                <path d="M7 23l-4-4 4-4"/>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+              </svg>
+              <span>Repeat</span>
+              <span class="repeat-summary-badge" id="repeatSummaryBadge" style="display:none;"></span>
+              <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </div>
+            <div class="form-collapsible-content" id="repeatSection">
+              <div class="repeat-options-grid">
+                <div class="form-group-inline">
+                  <label>Frequency</label>
+                  <select name="repeatType" class="form-select form-select-sm" onchange="handleRepeatTypeChange(this.value, '${date}')">
+                    <option value="none">Does not repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly on ${new Date(date).toLocaleDateString('en-US', { weekday: 'long' })}</option>
+                    <option value="weekdays">Every weekday (Mon-Fri)</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly on day ${new Date(date).getDate()}</option>
+                    <option value="custom">Custom...</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Custom Days Selection (hidden by default) -->
+              <div class="repeat-custom-days" id="repeatCustomDays" style="display:none;">
+                <label class="form-label" style="font-size:12px; margin-bottom:8px;">Repeat on</label>
+                <div class="repeat-days-grid">
+                  ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => `
+                    <label class="repeat-day-chip ${i === new Date(date).getDay() ? 'selected' : ''}">
+                      <input type="checkbox" name="repeatDays" value="${i}" ${i === new Date(date).getDay() ? 'checked' : ''} onchange="updateRepeatDayChip(this)">
+                      <span>${day}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+              
+              <!-- End Repeat Options (hidden when none) -->
+              <div class="repeat-end-options" id="repeatEndOptions" style="display:none;">
+                <div class="form-group-inline" style="margin-top:12px;">
+                  <label>Ends</label>
+                  <select name="repeatEndType" class="form-select form-select-sm" onchange="handleRepeatEndTypeChange(this.value)">
+                    <option value="never">Never</option>
+                    <option value="after">After occurrences</option>
+                    <option value="on">On date</option>
+                  </select>
+                </div>
+                
+                <div class="repeat-end-after" id="repeatEndAfter" style="display:none; margin-top:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" name="repeatCount" class="form-input form-input-sm" value="10" min="1" max="365" style="width:70px;">
+                    <span style="color:var(--muted-foreground); font-size:13px;">occurrences</span>
+                  </div>
+                </div>
+                
+                <div class="repeat-end-on" id="repeatEndOn" style="display:none; margin-top:8px;">
+                  <input type="date" name="repeatEndDate" class="form-input form-input-sm" value="${getDefaultRepeatEndDate(date)}">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeEventDropdown()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Add dropdown to body
+  document.body.insertAdjacentHTML('beforeend', content);
+
+  // Position the dropdown near the cursor
+  const dropdown = document.getElementById('eventDropdownForm');
+  
+  // Store preview element reference for later cleanup
+  window.currentEventPreviewElement = previewElement;
+  
+  // Calculate position to avoid going off-screen
+  const rect = dropdown.getBoundingClientRect();
+  let posX = x + 10; // Small offset from cursor
+  let posY = y + 10; // Small offset from cursor
+
+  // Adjust if it goes off the right edge
+  if (posX + rect.width > window.innerWidth) {
+    posX = window.innerWidth - rect.width - 10;
+  }
+  
+  // Adjust if it goes off the bottom edge
+  if (posY + rect.height > window.innerHeight) {
+    posY = y - rect.height - 10; // Position above cursor if needed
+  }
+  
+  // Ensure it doesn't go off the left edge
+  if (posX < 10) {
+    posX = 10;
+  }
+  
+  // Ensure it doesn't go off the top edge
+  if (posY < 10) {
+    posY = 10;
+  }
+  
+  dropdown.style.left = `${posX}px`;
+  dropdown.style.top = `${posY}px`;
+
+  // Add click listener to close dropdown when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', handleDropdownClickOutside);
+  }, 10);
+}
+
+// Function to close the event dropdown
+function closeEventDropdown() {
+  const dropdown = document.getElementById('eventDropdownForm');
+  if (dropdown) {
+    dropdown.remove();
+  }
+  
+  // Remove the preview element if it exists
+  if (window.currentEventPreviewElement) {
+    window.currentEventPreviewElement.remove();
+    window.currentEventPreviewElement = null;
+  }
+  
+  // Remove the click listener
+  document.removeEventListener('click', handleDropdownClickOutside);
+  
+  // Reset drag state
+  dragCreateState = {
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    columnDate: null,
+    columnElement: null,
+    previewElement: null
+  };
+}
+
+// Handler to close dropdown when clicking outside
+function handleDropdownClickOutside(e) {
+  const dropdown = document.getElementById('eventDropdownForm');
+  if (dropdown && !dropdown.contains(e.target)) {
+    closeEventDropdown();
+  }
+}
+
+// Legacy function kept for compatibility (will be deprecated)
 function openCreateEventModalWithTime(date, startTime, endTime) {
   // Require authentication to create events
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
@@ -2850,6 +2990,11 @@ function renderScheduleView() {
     mainContent = renderMonthViewAdvanced(events, today);
   }
 
+  // Prepare the schedule container with swipe functionality
+  setTimeout(() => {
+    initCalendarSwipe();
+  }, 100);
+  
   return `
     <div class="advanced-schedule-container">
       <!-- Left Sidebar -->
@@ -2981,9 +3126,6 @@ function renderScheduleView() {
               </button>
               <button class="schedule-search-btn" onclick="toggleCalendarSearch()" title="Search (/)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              </button>
-              <button class="schedule-shortcuts-btn" onclick="showKeyboardShortcutsModal()" title="Keyboard shortcuts (?)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h8M6 16h.01M18 16h.01"/></svg>
               </button>
             </div>
             <button class="btn btn-primary schedule-add-btn" onclick="openAdvancedEventModal()">
@@ -3295,6 +3437,10 @@ function renderMonthViewAdvanced(events, today) {
 function setScheduleViewMode(mode) {
   scheduleViewMode = mode;
   renderCurrentView();
+  // Reinitialize swipe functionality after view change
+  setTimeout(() => {
+    initCalendarSwipe();
+  }, 100);
 }
 
 // Navigate Mini Calendar
@@ -4470,6 +4616,10 @@ function navigateScheduleNext() {
     scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 30);
   }
   renderCurrentView();
+  // Reinitialize swipe functionality after navigation
+  setTimeout(() => {
+    initCalendarSwipe();
+  }, 100);
 }
 
 function navigateSchedulePrev() {
@@ -4485,6 +4635,10 @@ function navigateSchedulePrev() {
     scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 30);
   }
   renderCurrentView();
+  // Reinitialize swipe functionality after navigation
+  setTimeout(() => {
+    initCalendarSwipe();
+  }, 100);
 }
 
 function toggleCalendarSearch() {
@@ -4925,7 +5079,13 @@ async function handleCreateEventSubmit(e, date) {
     // Use async save if authenticated
     await saveCalendarEventAsync(newEvent);
     saveExpandedTaskId(newEvent.id);
-    closeModal();
+    // Close appropriate form based on which one is present
+    const dropdown = document.getElementById('eventDropdownForm');
+    if (dropdown) {
+      closeEventDropdown();
+    } else {
+      closeModal();
+    }
     renderCurrentView();
     return;
   }
@@ -5018,7 +5178,13 @@ async function handleCreateEventSubmit(e, date) {
     saveExpandedTaskId(generatedEvents[0].id);
   }
 
-  closeModal();
+  // Close appropriate form based on which one is present
+  const dropdown = document.getElementById('eventDropdownForm');
+  if (dropdown) {
+    closeEventDropdown();
+  } else {
+    closeModal();
+  }
   showToast(`Created ${generatedEvents.length} recurring events`);
   renderCurrentView();
 }
@@ -5553,12 +5719,12 @@ function renderProjectDetailView(projectIndex) {
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
                   </svg>
-                  ${res.type === 'existing' && res.docId ? 
-                    `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
-                    res.link ? 
-                      `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
-                      `<span>${res.name}</span>`
-                  }
+                  ${res.type === 'existing' && res.docId ?
+      `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
+      res.link ?
+        `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
+        `<span>${res.name}</span>`
+    }
                   <button class="pd-resource-remove" onclick="removeProjectResource(${projectIndex}, ${idx})">×</button>
                 </div>
               `).join('')}
@@ -5572,57 +5738,7 @@ function renderProjectDetailView(projectIndex) {
             </div>
             
             <!-- Tasks Kanban Section -->
-            <div class="pd-section pd-tasks-section">
-              <div class="pd-section-header">
-                <h3 class="pd-section-title">Tasks</h3>
-                <button class="pd-btn-secondary" onclick="handleAddColumn(${projectIndex})">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                  Add Column
-                </button>
-              </div>
-              <div class="pd-kanban">
-                ${project.columns.map((column, colIndex) => `
-                  <div class="pd-kanban-col" data-col-index="${colIndex}">
-                    <div class="pd-kanban-header">
-                      <h4 class="pd-kanban-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
-                      <div class="pd-kanban-meta">
-                        <span class="pd-kanban-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
-                        <button class="pd-kanban-del" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 6L6 18M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div class="pd-kanban-tasks">
-                      ${column.tasks.map((task, taskIndex) => `
-                        <div class="pd-task ${task.done ? 'done' : ''}" draggable="true" data-task-index="${taskIndex}">
-                          <label class="pd-task-check">
-                            <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex})">
-                            <span class="pd-checkmark">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <path d="M20 6L9 17l-5-5"/>
-                              </svg>
-                            </span>
-                          </label>
-                          <span class="pd-task-title">${task.title}</span>
-                          <button class="pd-task-del" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                          </button>
-                        </div>
-                      `).join('')}
-                    </div>
-                    <div class="pd-add-task">
-                      <input type="text" placeholder="+ Add a task..." onkeypress="handleAddProjectTaskKeypress(event, ${projectIndex}, ${colIndex})">
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
+
           </div>
         </main>
         
@@ -5664,9 +5780,9 @@ function renderProjectDetailView(projectIndex) {
                 <span class="pd-prop-label">Members</span>
                 <div class="pd-members-list" id="pdMembersList-${projectIndex}">
                   ${teamMembers.map((member, idx) => {
-    const initials = getMemberAvatarInitialsWithFullNames(member);
-    const backgroundColor = getNameColor(member);
-    return `
+      const initials = getMemberAvatarInitialsWithFullNames(member);
+      const backgroundColor = getNameColor(member);
+      return `
                     <div class="pd-member-item" data-member="${member}" data-member-id="${idx}" data-project-index="${projectIndex}">
                       <div class="pd-member-avatar" id="memberAvatar-${projectIndex}-${idx}" style="background: ${backgroundColor}" oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${idx})" title="${member === 'You' ? getCurrentUserName() : member}">
                         ${initials}
@@ -5677,7 +5793,7 @@ function renderProjectDetailView(projectIndex) {
                       </span>
                     </div>
                   `;
-  }).join('')}
+    }).join('')}
                   <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
@@ -6013,12 +6129,12 @@ function renderOverviewTab(projectIndex, container) {
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          ${res.type === 'existing' && res.docId ? 
-            `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
-            res.link ? 
-              `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
-              `<span>${res.name}</span>`
-          }
+          ${res.type === 'existing' && res.docId ?
+      `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
+      res.link ?
+        `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
+        `<span>${res.name}</span>`
+    }
           <button class="pd-resource-remove" onclick="removeProjectResource(${projectIndex}, ${idx})">×</button>
         </div>
       `).join('')}
@@ -6032,57 +6148,7 @@ function renderOverviewTab(projectIndex, container) {
     </div>
     
     <!-- Tasks Kanban Section -->
-    <div class="pd-section pd-tasks-section">
-      <div class="pd-section-header">
-        <h3 class="pd-section-title">Tasks</h3>
-        <button class="pd-btn-secondary" onclick="handleAddColumn(${projectIndex})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Add Column
-        </button>
-      </div>
-      <div class="pd-kanban">
-        ${project.columns.map((column, colIndex) => `
-          <div class="pd-kanban-col" data-col-index="${colIndex}">
-            <div class="pd-kanban-header">
-              <h4 class="pd-kanban-title" contenteditable="true" onblur="handleRenameColumn(${projectIndex}, ${colIndex}, this.textContent)">${column.title}</h4>
-              <div class="pd-kanban-meta">
-                <span class="pd-kanban-count">${column.tasks.filter(t => t.done).length}/${column.tasks.length}</span>
-                <button class="pd-kanban-del" onclick="handleDeleteColumn(${projectIndex}, ${colIndex})" title="Delete column">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="pd-kanban-tasks">
-              ${column.tasks.map((task, taskIndex) => `
-                <div class="pd-task ${task.done ? 'done' : ''}" draggable="true" data-task-index="${taskIndex}">
-                  <label class="pd-task-check">
-                    <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
-                    <span class="pd-checkmark">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <path d="M20 6L9 17l-5-5"/>
-                      </svg>
-                    </span>
-                  </label>
-                  <span class="pd-task-title">${task.title}</span>
-                  <button class="pd-task-del" onclick="handleDeleteProjectTask(${projectIndex}, ${colIndex}, ${taskIndex}, event)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-            <div class="pd-add-task">
-              <input type="text" placeholder="+ Add a task..." onkeypress="handleAddProjectTaskKeypress(event, ${projectIndex}, ${colIndex})">
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+
   `;
 }
 
@@ -12029,6 +12095,146 @@ function showToast(message) {
   }, 10);
 }
 
+// Folder Dropdown Functions
+let currentFolderDropdown = null;
+
+function openFolderDropdown(button) {
+  // Close any existing dropdown
+  closeFolderDropdown();
+  
+  // Create dropdown container if it doesn't exist
+  let container = button.closest('.folder-dropdown-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'folder-dropdown-container';
+    button.parentNode.insertBefore(container, button);
+    container.appendChild(button);
+  }
+  
+  // Create dropdown form
+  const dropdown = document.createElement('div');
+  dropdown.className = 'folder-dropdown-form';
+  dropdown.innerHTML = `
+    <div class="folder-dropdown-header">
+      <h3 class="folder-dropdown-title">Create New Folder</h3>
+      <p class="folder-dropdown-subtitle">Enter a name for your new folder</p>
+    </div>
+    <input 
+      type="text" 
+      class="folder-dropdown-input" 
+      placeholder="Folder name" 
+      id="folder-name-input"
+      autocomplete="off"
+      maxlength="100"
+    >
+    <div class="folder-dropdown-actions">
+      <button type="button" class="folder-dropdown-btn cancel" onclick="closeFolderDropdown()">Cancel</button>
+      <button type="button" class="folder-dropdown-btn create" onclick="createFolder()">Create</button>
+    </div>
+  `;
+  
+  container.appendChild(dropdown);
+  currentFolderDropdown = dropdown;
+  
+  // Focus the input
+  const input = dropdown.querySelector('#folder-name-input');
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 10);
+  
+  // Add event listeners
+  document.addEventListener('click', handleFolderDropdownOutsideClick);
+  input.addEventListener('keydown', handleFolderInputKeydown);
+  
+  // Prevent form submission on Enter in input
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      createFolder();
+    }
+  });
+}
+
+function closeFolderDropdown() {
+  if (currentFolderDropdown) {
+    // Remove event listeners
+    document.removeEventListener('click', handleFolderDropdownOutsideClick);
+    const input = currentFolderDropdown.querySelector('#folder-name-input');
+    if (input) {
+      input.removeEventListener('keydown', handleFolderInputKeydown);
+    }
+    
+    // Remove dropdown
+    currentFolderDropdown.remove();
+    currentFolderDropdown = null;
+  }
+}
+
+function handleFolderDropdownOutsideClick(e) {
+  if (currentFolderDropdown && !currentFolderDropdown.contains(e.target) && 
+      !e.target.closest('.add-folder-btn')) {
+    closeFolderDropdown();
+  }
+}
+
+function handleFolderInputKeydown(e) {
+  if (e.key === 'Escape') {
+    closeFolderDropdown();
+  }
+}
+
+async function createFolder() {
+  console.log('Creating folder...');
+  
+  if (!currentFolderDropdown) return;
+  
+  const input = currentFolderDropdown.querySelector('#folder-name-input');
+  const folderName = input.value.trim();
+  
+  if (!folderName) {
+    showToast('Please enter a folder name');
+    input.focus();
+    return;
+  }
+  
+  try {
+    // Create folder data
+    const folderData = {
+      id: 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: folderName,
+      description: '',
+      color: '#6366f1',
+      icon: 'folder',
+      space_id: null,
+      is_favorite: false,
+      created_at: new Date().toISOString()
+    };
+    
+    console.log('Folder data to save:', folderData);
+    
+    // Save to database
+    const savedFolder = await saveFolderToDB(folderData);
+    
+    console.log('Saved folder result:', savedFolder);
+    
+    if (savedFolder) {
+      showToast(`Folder "${folderName}" created successfully!`);
+      
+      // Close the dropdown
+      closeFolderDropdown();
+      
+      // Render folders in the placeholder
+      await renderFoldersInPlaceholder();
+    } else {
+      throw new Error('Failed to save folder');
+    }
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    showToast('Failed to create folder. Please try again.');
+  }
+}
+
 function openAddMilestoneModal(projectIndex) {
   const content = `
     <form onsubmit="handleAddMilestone(event, ${projectIndex})">
@@ -12047,6 +12253,132 @@ function openAddMilestoneModal(projectIndex) {
     </form>
   `;
   openModal('Add Milestone', content);
+}
+
+async function renderFoldersInPlaceholder() {
+  console.log('Rendering folders in placeholder...');
+  
+  const placeholder = document.querySelector('.folders-placeholder');
+  if (!placeholder) return;
+
+  try {
+    // Load folders from database
+    const folders = await loadFoldersFromDB();
+    
+    console.log('Folders loaded for rendering:', folders);
+    
+    if (folders && folders.length > 0) {
+      // Clear the placeholder content
+      placeholder.innerHTML = '';
+      
+      // Create folders container
+      const foldersContainer = document.createElement('div');
+      foldersContainer.className = 'folders-grid';
+      
+      // Add each folder
+      folders.forEach(folder => {
+        const folderElement = document.createElement('div');
+        folderElement.className = 'folder-item';
+        folderElement.innerHTML = `
+          <div class="folder-icon" style="background-color: ${folder.color || '#6366f1'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div class="folder-name">${folder.name}</div>
+          <div class="folder-actions">
+            <button class="folder-action-btn" onclick="openFolder('${folder.id}')" title="Open folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+              </svg>
+            </button>
+            <button class="folder-action-btn delete" onclick="deleteFolder('${folder.id}')" title="Delete folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
+        `;
+        foldersContainer.appendChild(folderElement);
+      });
+      
+      // Add the "Add Folder" button
+      const addButtonContainer = document.createElement('div');
+      addButtonContainer.className = 'folder-add-container';
+      addButtonContainer.innerHTML = `
+        <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add Folder
+        </button>
+      `;
+      foldersContainer.appendChild(addButtonContainer);
+      
+      placeholder.appendChild(foldersContainer);
+      console.log('Folders rendered successfully');
+    } else {
+      // Show empty state
+      placeholder.innerHTML = `
+        <div class="folder-icon-large">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="folders-text">Add new Folder to your Space</div>
+        <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+          Add Folder
+        </button>
+      `;
+      console.log('Empty state rendered');
+    }
+  } catch (error) {
+    console.error('Error rendering folders:', error);
+  }
+}
+
+async function deleteFolder(folderId) {
+  if (!confirm('Are you sure you want to delete this folder and all its contents?')) {
+    return;
+  }
+  
+  try {
+    // First delete all files in the folder
+    await deleteFolderContents(folderId);
+    
+    // Then delete the folder itself
+    const success = await deleteFolderFromDB(folderId);
+    if (success) {
+      showToast('Folder deleted successfully!');
+      await renderFoldersInPlaceholder();
+    } else {
+      throw new Error('Failed to delete folder');
+    }
+  } catch (error) {
+    console.error('Error deleting folder:', error);
+    showToast('Failed to delete folder. Please try again.');
+  }
+}
+
+async function openFolder(folderId) {
+  console.log('Opening folder:', folderId);
+  
+  try {
+    // Load folders and find the selected folder
+    const folders = await loadFoldersFromDB();
+    const folder = folders.find(f => f.id === folderId);
+    
+    if (!folder) {
+      showToast('Folder not found');
+      return;
+    }
+    
+    // Show folder explorer view
+    showFolderExplorer(folder);
+  } catch (error) {
+    console.error('Error opening folder:', error);
+    showToast('Failed to open folder');
+  }
 }
 
 function handleAddMilestone(event, projectIndex) {
@@ -12171,10 +12503,10 @@ function openAddResourceModal(button, projectIndex) {
 function toggleResourceType(projectIndex) {
   const container = document.getElementById(`resource-form-container-${projectIndex}`);
   const resourceType = container.querySelector('input[name="resourceType"]:checked').value;
-  
+
   const customFields = document.getElementById(`custom-resource-fields-${projectIndex}`);
   const existingDocFields = document.getElementById(`existing-doc-fields-${projectIndex}`);
-  
+
   if (resourceType === 'custom') {
     customFields.style.display = 'block';
     existingDocFields.style.display = 'none';
@@ -12202,7 +12534,7 @@ async function shareDocWithTeamMembers(docId, teamMembers) {
     // Get current document to see existing shares
     const docs = await window.LayerDB.loadDocs();
     const currentDoc = docs.find(d => d.id === docId);
-    
+
     if (!currentDoc) {
       console.log('Document not found:', docId);
       return;
@@ -12259,9 +12591,9 @@ function handleAddResource(event, projectIndex) {
   event.preventDefault();
   const form = event.target;
   const resourceType = form.resourceType.value;
-  
+
   let name, link, docId;
-  
+
   if (resourceType === 'custom') {
     name = form.name.value.trim();
     link = form.link.value.trim();
@@ -12272,7 +12604,7 @@ function handleAddResource(event, projectIndex) {
       showToast('Please select a document');
       return;
     }
-    
+
     // Get document details
     const docs = loadDocs();
     const selectedDoc = docs.find(doc => doc.id === docId);
@@ -12280,7 +12612,7 @@ function handleAddResource(event, projectIndex) {
       showToast('Selected document not found');
       return;
     }
-    
+
     name = selectedDoc.title;
     link = null; // Will be generated as a link to the doc
   }
@@ -12290,12 +12622,12 @@ function handleAddResource(event, projectIndex) {
     projects[projectIndex].resources = [];
   }
 
-  const resourceData = { 
-    name, 
-    link, 
+  const resourceData = {
+    name,
+    link,
     docId,
     type: resourceType,
-    addedAt: new Date().toISOString() 
+    addedAt: new Date().toISOString()
   };
 
   projects[projectIndex].resources.push(resourceData);
@@ -13960,7 +14292,7 @@ function renderTeamView() {
           // Only update if we got results, otherwise might be offline or error
           if (dms) {
             teamDirectMessages = dms;
-            
+
             // 🚀 BACKGROUND LOAD: Preload all DM messages for instant access
             console.log('🔄 Starting background load of all DM messages...');
             preloadAllDMMessages();
@@ -14284,7 +14616,7 @@ function renderTeamChatContent() {
     <div class="team-chat-content">
       <div class="team-messages-list">
         ${messages.map(msg => `
-          <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}">
+          <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}" oncontextmenu="showMessageContextMenu(event, '${msg.id}', '${msg.user_id}', '${msg.channel_type}')">
             <div class="team-message-avatar">
               ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
       `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
@@ -14314,9 +14646,9 @@ function renderTeamChatContent() {
                 ${msg.reactions && Object.keys(msg.reactions).length > 0 ? `
                   <div class="team-message-reactions">
                     ${Object.entries(msg.reactions).map(([emoji, users]) => {
-                      const currentUser = window.LayerDB?.getCurrentUser();
-                      const hasReacted = users.includes(currentUser?.id);
-                      return `
+      const currentUser = window.LayerDB?.getCurrentUser();
+      const hasReacted = users.includes(currentUser?.id);
+      return `
                         <button class="team-message-reaction ${hasReacted ? 'reacted' : ''}" 
                                 onclick="addReaction('${msg.id}', '${emoji}')"
                                 title="${users.length > 0 ? `${users.length} user${users.length > 1 ? 's' : ''} reacted` : 'React'}">
@@ -14324,7 +14656,7 @@ function renderTeamChatContent() {
                           <span class="team-message-reaction-count">${users.length}</span>
                         </button>
                       `;
-                    }).join('')}
+    }).join('')}
                   </div>
                 ` : ''}
               </div>
@@ -14358,16 +14690,6 @@ function renderTeamMessageInput() {
               </svg>
             </button>
           </div>
-          <button class="toolbar-btn" title="AI">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Formatting">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 4v16M10 4v16M14 12h7M14 8h7M14 16h7"/>
-            </svg>
-          </button>
           <button class="toolbar-btn" title="Attach file">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -14391,11 +14713,6 @@ function renderTeamMessageInput() {
           <button class="toolbar-btn" title="File">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Bookmark">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
             </svg>
           </button>
         </div>
@@ -14643,6 +14960,15 @@ async function renderTeamMembersPanel() {
     const isOnline = f.isOwner || f.status === 'online';
     const statusClass = isOnline ? 'online' : 'offline';
 
+    // Get last active status for the user
+    const presenceData = userPresenceMap.get(userId);
+    const lastSeen = presenceData?.last_seen ? new Date(presenceData.last_seen).toLocaleDateString() : 'Recently';
+    const isActive = presenceData?.is_online;
+    
+    // Determine status text based on presence
+    const statusText = isActive ? 'Online' : `Last seen: ${lastSeen}`;
+    const statusClassFinal = isActive ? 'online' : 'offline';
+
     return `
           <div class="team-follower-item" 
                data-email="${email}" 
@@ -14654,13 +14980,19 @@ async function renderTeamMembersPanel() {
               <div class="team-follower-avatar">
                 ${avatar ? `<img src="${avatar}" alt="${name}">` : `<span>${initial}</span>`}
               </div>
-              <div class="team-follower-status ${statusClass}" title="${isOnline ? 'Online' : 'Offline'}"></div>
+              <div class="team-follower-status ${statusClassFinal}" title="${isActive ? 'Online' : 'Offline'}"></div>
             </div>
             <div class="team-follower-info">
               <span class="team-follower-name">${name}</span>
-              <span class="team-follower-email">${email}</span>
+              ${f.isOwner ? '' : `<span class="team-follower-email">${statusText}</span>`}
             </div>
             ${f.isOwner ? '<span class="team-owner-badge">Owner</span>' : ''}
+            ${!f.isOwner ? `<button class="conversation-button" title="Start conversation" onclick="startTeamConversation('${userId}', '${name.replace(/'/g, "\\'")}', '${email}')">
+              <svg viewBox="0 0 24 24">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                <path d="M12 8v4l3 3"/>
+              </svg>
+            </button>` : ''}
           </div>
         `;
   }).join('')}
@@ -15055,7 +15387,7 @@ function updateDMAvatarStatus(userId, isOnline, lastSeen) {
 // Update all DM avatars based on presence map
 function updateAllDMAvatars() {
   const dmItems = document.querySelectorAll('.team-chat-item.dm');
-  
+
   dmItems.forEach(item => {
     const onclickAttr = item.getAttribute('onclick');
     if (onclickAttr) {
@@ -15064,7 +15396,7 @@ function updateAllDMAvatars() {
       if (match && match[1]) {
         const partnerId = match[1];
         const presence = userPresenceMap.get(partnerId);
-        
+
         const dmAvatar = item.querySelector('.team-dm-avatar');
         if (dmAvatar) {
           if (presence) {
@@ -15444,9 +15776,157 @@ async function clearLocalDMChat(dmId, partnerName) {
   }
 }
 
+// Message Context Menu
+function showMessageContextMenu(event, messageId, messageUserId, channelType) {
+  event.preventDefault(); // Prevent default browser menu
+
+  // Remove existing context menu
+  const existingMenu = document.querySelector('.context-menu');
+  if (existingMenu) existingMenu.remove();
+
+  // Check if message belongs to current user or if it's a DM where user can modify
+  const isCurrentUserMessage = messageUserId === window.currentUserProfile?.id;
+  const isDM = channelType === 'dm';
+
+  // Create context menu element
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'context-menu';
+
+  // Build menu items based on permissions
+  let menuItems = '';
+
+  // Delete option - only for user's own messages
+  if (isCurrentUserMessage) {
+    menuItems += `
+      <div class="context-menu-item delete" onclick="deleteMessage('${messageId}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>Delete Message</span>
+      </div>
+    `;
+  }
+
+  // Add divider if both options are available
+  if (menuItems) {
+    menuItems += '<div class="context-menu-divider"></div>';
+  }
+
+  // Favorite option - available for any message
+  menuItems += `
+    <div class="context-menu-item favorite" onclick="toggleMessageFavorite('${messageId}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+      <span>Toggle Favorite</span>
+    </div>
+  `;
+
+  contextMenu.innerHTML = menuItems;
+
+  document.body.appendChild(contextMenu);
+
+  // Position the context menu
+  const menuRect = contextMenu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = event.clientX;
+  let top = event.clientY;
+
+  // Adjust if menu goes off screen
+  if (left + menuRect.width > viewportWidth) {
+    left = viewportWidth - menuRect.width - 10;
+  }
+  if (top + menuRect.height > viewportHeight) {
+    top = viewportHeight - menuRect.height - 10;
+  }
+
+  contextMenu.style.left = `${left}px`;
+  contextMenu.style.top = `${top}px`;
+
+  // Close menu when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeContextMenu(e) {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.remove();
+        document.removeEventListener('click', closeContextMenu);
+      }
+    });
+  }, 10);
+}
+
+// Delete a message
+async function deleteMessage(messageId) {
+  try {
+    // Remove the context menu
+    const contextMenu = document.querySelector('.context-menu');
+    if (contextMenu) contextMenu.remove();
+
+    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+      return;
+    }
+
+    if (window.LayerDB && window.LayerDB.deleteTeamMessage) {
+      await window.LayerDB.deleteTeamMessage(messageId);
+      
+      // Remove the message from the local cache
+      if (teamMessages[teamCurrentChannel]) {
+        teamMessages[teamCurrentChannel] = teamMessages[teamCurrentChannel].filter(msg => msg.id !== messageId);
+      }
+      
+      // Refresh the chat display
+      updateChatContentOnly();
+      
+      showNotification('Message deleted', 'success');
+    } else {
+      showNotification('Database connection not available', 'error');
+    }
+  } catch (error) {
+    console.error('Failed to delete message:', error);
+    showNotification('Failed to delete message. Please try again.', 'error');
+  }
+}
+
+// Toggle message favorite status
+async function toggleMessageFavorite(messageId) {
+  try {
+    // Remove the context menu
+    const contextMenu = document.querySelector('.context-menu');
+    if (contextMenu) contextMenu.remove();
+
+    if (window.LayerDB && window.LayerDB.toggleMessageFavorite) {
+      const result = await window.LayerDB.toggleMessageFavorite(messageId);
+      
+      // Update the local message cache
+      if (teamMessages[teamCurrentChannel]) {
+        const messageIndex = teamMessages[teamCurrentChannel].findIndex(msg => msg.id === messageId);
+        if (messageIndex !== -1) {
+          teamMessages[teamCurrentChannel][messageIndex].is_favorite = result.is_favorite;
+        }
+      }
+      
+      // Refresh the chat display
+      updateChatContentOnly();
+      
+      showNotification(result.is_favorite ? 'Message favorited' : 'Message unfavorited', 'success');
+    } else {
+      showNotification('Database connection not available', 'error');
+    }
+  } catch (error) {
+    console.error('Failed to toggle favorite:', error);
+    showNotification(error.message || 'Failed to toggle favorite. Please try again.', 'error');
+  }
+}
+
 // Make functions globally available
 window.showTeamMemberContextMenu = showTeamMemberContextMenu;
 window.showDMContextMenu = showDMContextMenu;
+window.showMessageContextMenu = showMessageContextMenu;
+window.deleteMessage = deleteMessage;
+window.toggleMessageFavorite = toggleMessageFavorite;
+window.startTeamConversation = startTeamConversation;
 window.muteTeamMember = muteTeamMember;
 window.unfollowTeamMember = unfollowTeamMember;
 window.clearLocalDMChat = clearLocalDMChat;
@@ -15572,6 +16052,13 @@ async function selectTeamChannel(channelId) {
 
   // Update chat content only (smoother) - this ensures the latest messages are shown
   updateChatContentOnly();
+  
+  // Always scroll to bottom when switching to a channel to show latest messages
+  setTimeout(() => {
+    if (chatScrollManager) {
+      chatScrollManager.scrollToBottom(false); // Use immediate scroll (non-smooth) for better UX when switching tabs
+    }
+  }, 100); // Small delay to ensure content is rendered
 
   // START POLLING (Enhanced Real-time Updates)
   // Clear any existing poll
@@ -15591,7 +16078,7 @@ async function selectTeamChannel(channelId) {
 
         if (newLength !== prevLength) {
           console.log(`🔄 Active channel poll detected ${newLength - prevLength} new messages, updating UI`);
-          
+
           // Force update of the message list
           const messagesList = document.querySelector('.team-messages-list');
           if (messagesList) {
@@ -15604,7 +16091,7 @@ async function selectTeamChannel(channelId) {
         }
       } catch (error) {
         console.error('❌ Error in active channel polling:', error);
-        
+
         // Don't stop polling on error, just log it
         // The polling will continue and hopefully recover
       }
@@ -15622,6 +16109,7 @@ class ChatScrollManager {
     this.isAtBottom = true;
     this.isUserScrolling = false;
     this.scrollTimeout = null;
+    this.markReadTimeout = null;
     this.messagesList = null;
     this.lastScrollHeight = 0;
     this.newMessageCount = 0;
@@ -15678,7 +16166,7 @@ class ChatScrollManager {
     if (!this.scrollToBottomBtn) return;
 
     const countElement = this.scrollToBottomBtn.querySelector('.new-message-count');
-    
+
     if (this.newMessageCount > 0 && !this.isAtBottom) {
       this.scrollToBottomBtn.classList.add('visible');
       countElement.style.display = 'flex';
@@ -15703,10 +16191,16 @@ class ChatScrollManager {
       this.updateScrollButton();
     }
 
+    // Mark visible messages as read when scrolling (with debouncing)
+    clearTimeout(this.markReadTimeout);
+    this.markReadTimeout = setTimeout(() => {
+      this.markVisibleMessagesAsRead();
+    }, 500); // Debounce to avoid too many DB calls
+
     // Detect if user is actively scrolling
     clearTimeout(this.scrollTimeout);
     this.isUserScrolling = true;
-    
+
     this.scrollTimeout = setTimeout(() => {
       this.isUserScrolling = false;
     }, 150);
@@ -15739,7 +16233,7 @@ class ChatScrollManager {
     } else if (!smooth) {
       this.messagesList.scrollTop = this.messagesList.scrollHeight;
     }
-    
+
     this.isAtBottom = true;
     this.messagesList.classList.remove('has-new-messages');
     this.newMessageCount = 0;
@@ -15773,18 +16267,77 @@ class ChatScrollManager {
     this.lastScrollHeight = currentHeight;
   }
 
+  // Mark visible messages as read when user scrolls to them
+  async markVisibleMessagesAsRead() {
+    if (!this.messagesList || !window.LayerDB || !teamCurrentChannel) return;
+
+    // Only mark as read for DMs
+    const channel = teamDirectMessages.find(dm => dm.id === teamCurrentChannel);
+    if (!channel) return;
+
+    try {
+      // Get all message elements
+      const messageElements = this.messagesList.querySelectorAll('.team-message[data-message-id]');
+      
+      // Find messages that are currently visible (in viewport)
+      const visibleMessages = [];
+      const rect = this.messagesList.getBoundingClientRect();
+      const viewTop = rect.top;
+      const viewBottom = rect.bottom;
+
+      messageElements.forEach(element => {
+        const msgRect = element.getBoundingClientRect();
+        const isVisible = (msgRect.top <= viewBottom) && (msgRect.bottom >= viewTop);
+        
+        if (isVisible) {
+          const messageId = element.getAttribute('data-message-id');
+          if (messageId) {
+            visibleMessages.push(messageId);
+          }
+        }
+      });
+
+      // Mark visible messages as read in the database
+      let hasChanges = false;
+      if (visibleMessages.length > 0) {
+        for (const messageId of visibleMessages) {
+          // Update the message in local state to mark as read
+          const channelId = teamCurrentChannel;
+          if (teamMessages[channelId]) {
+            const message = teamMessages[channelId].find(msg => msg.id === messageId);
+            if (message && !message.isRead) {
+              message.isRead = true; // Update local state
+              hasChanges = true;
+              
+              // Update in database
+              await window.LayerDB.markMessageAsRead(messageId);
+            }
+          }
+        }
+        
+        // Update UI to reflect new read status only if there were changes
+        if (hasChanges) {
+          updateChatContentOnly();
+        }
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }
+
   destroy() {
     if (this.messagesList) {
       this.messagesList.removeEventListener('scroll', this.handleScroll.bind(this));
       this.messagesList.removeEventListener('wheel', this.handleWheel.bind(this));
       this.messagesList.removeEventListener('touchmove', this.handleTouch.bind(this));
     }
-    
+
     if (this.scrollToBottomBtn) {
       this.scrollToBottomBtn.remove();
     }
-    
+
     clearTimeout(this.scrollTimeout);
+    clearTimeout(this.markReadTimeout);
   }
 }
 
@@ -15905,10 +16458,10 @@ function updateMessageReactions(messageId, reactions) {
 }
 
 // Global click handler to close reaction pickers
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.team-message-reaction-trigger') && 
-      !e.target.closest('.team-reaction-picker') && 
-      !e.target.closest('.team-message-reaction')) {
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.team-message-reaction-trigger') &&
+    !e.target.closest('.team-reaction-picker') &&
+    !e.target.closest('.team-message-reaction')) {
     document.querySelectorAll('.team-reaction-picker').forEach(picker => {
       picker.classList.remove('show');
     });
@@ -15923,19 +16476,19 @@ function updateChatContentOnly() {
     const messages = teamMessages[teamCurrentChannel] || [];
     const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
       teamDirectMessages.find(d => d.id === teamCurrentChannel);
-    
+
     // Store current scroll position and whether we're at bottom
     const wasAtBottom = chatScrollManager ? chatScrollManager.isAtBottom : true;
     const scrollHeight = messagesList.scrollHeight;
-    
+
     // Generate only the messages HTML
     const messagesHTML = messages.map(msg => `
       <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}">
         <div class="team-message-avatar">
           ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
-      `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-      `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
-    }
+        `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+        `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
+      }
         </div>
         <div class="team-message-body">
           <div class="team-message-header">
@@ -15967,18 +16520,30 @@ function updateChatContentOnly() {
               </div>
             ` : ''}
           </div>
+          ${!msg.isSystem ? `
+            <div class="team-message-status">
+              ${msg.userId === window.currentUser?.id ? `
+                ${msg.isRead ? 
+                  `<span class="message-status seen" title="Seen">✓✓</span>` : 
+                  `<span class="message-status received" title="Received">✓</span>`
+                }
+              ` : `
+                <!-- Status for received messages could go here if needed -->
+              `}
+            </div>
+          ` : ''}
         </div>
       </div>
     `).join('');
-    
+
     // Update only the innerHTML of the messages list
     messagesList.innerHTML = messagesHTML;
-    
+
     // Re-initialize reactions for the new messages
     if (typeof initializeMessageReactions === 'function') {
       initializeMessageReactions();
     }
-    
+
     // Handle scroll behavior
     if (chatScrollManager) {
       if (wasAtBottom) {
@@ -15989,11 +16554,11 @@ function updateChatContentOnly() {
         const newScrollHeight = messagesList.scrollHeight;
         if (newScrollHeight > scrollHeight) {
           // New content was added, show scroll-to-bottom button
-          chatScrollManager.showScrollButton();
+          chatScrollManager.updateScrollButton && chatScrollManager.updateScrollButton();
         }
       }
     }
-    
+
     console.log(`✅ Updated message list for ${teamCurrentChannel} with ${messages.length} messages`);
   } else {
     console.warn('⚠️ Messages list container not found, falling back to full update');
@@ -16262,7 +16827,7 @@ async function startGlobalDMPolling() {
       for (const dm of teamDirectMessages) {
         const channelId = dm.id.toLowerCase();
         const prevLength = teamMessages[channelId]?.length || 0;
-        
+
         // Silently load messages to check for updates
         await loadTeamMessages(channelId, 'dm');
         const newLength = teamMessages[channelId]?.length || 0;
@@ -16270,7 +16835,7 @@ async function startGlobalDMPolling() {
         // If we have new messages and this isn't the active channel, update sidebar
         if (newLength > prevLength && teamCurrentChannel !== channelId) {
           dm.unread = (dm.unread || 0) + (newLength - prevLength);
-          
+
           // Update last message info
           const latestMessage = teamMessages[channelId][teamMessages[channelId].length - 1];
           if (latestMessage) {
@@ -16282,7 +16847,7 @@ async function startGlobalDMPolling() {
           }
 
           console.log(`📨 New messages in DM ${dm.name}: ${newLength - prevLength} new`);
-          
+
           // Update sidebar to show new unread badges
           updateTeamSidebar();
         }
@@ -16331,6 +16896,7 @@ async function loadTeamMessages(channelId, channelType = 'channel') {
       fileUrl: msg.file_url,
       fileName: msg.file_name,
       replyTo: msg.reply_to,
+      isRead: msg.is_read || false, // Include read status
       reactions: msg.reactions || {} // Include reactions from database
     }));
 
@@ -16501,7 +17067,7 @@ async function preloadAllDMMessages() {
   }
 
   console.log(`🚀 Preloading messages for ${teamDirectMessages.length} DM conversations...`);
-  
+
   const startTime = Date.now();
   let loadedCount = 0;
   let errorCount = 0;
@@ -16520,10 +17086,10 @@ async function preloadAllDMMessages() {
 
   // Wait for all preloading to complete
   await Promise.allSettled(loadPromises);
-  
+
   const duration = Date.now() - startTime;
   console.log(`🎉 DM message preloading complete! ${loadedCount}/${teamDirectMessages.length} loaded in ${duration}ms (${errorCount} errors)`);
-  
+
   // Log which DMs are now ready for instant access
   const readyDMs = teamDirectMessages.filter(dm => teamMessages[dm.id] && teamMessages[dm.id].length > 0);
   console.log(`📱 ${readyDMs.length} DMs are now ready for instant access:`, readyDMs.map(dm => dm.name || dm.id));
@@ -16538,13 +17104,13 @@ async function preloadTeamDMMessages() {
 
   try {
     console.log('🔄 Starting app-level DM and message preloading...');
-    
+
     // Load DMs first
     const dms = await window.LayerDB.getDirectMessages();
     if (dms && dms.length > 0) {
       teamDirectMessages = dms;
       console.log(`📋 Loaded ${dms.length} DM conversations`);
-      
+
       // Then preload all messages
       await preloadAllDMMessages();
     } else {
@@ -16582,7 +17148,7 @@ async function setupTeamChatRealtime(channelId) {
         handleTeamChatRealtimeUpdate(payload, channelId);
       }
     });
-    
+
     console.log(`✅ Realtime subscription setup complete for ${channelId}`);
   } catch (error) {
     console.error(`❌ Failed to setup realtime for ${channelId}:`, error);
@@ -16712,6 +17278,7 @@ async function handleTeamChatRealtimeUpdate(payload, subscriptionChannelId) {
       userId: newRecord.user_id,
       isEdited: newRecord.is_edited,
       editedAt: newRecord.edited_at,
+      isRead: newRecord.is_read || false, // Include read status
       reactions: newRecord.reactions || {} // Include reactions from database
     };
 
@@ -18263,7 +18830,7 @@ function initThemeSelector() {
 }
 
 // Apply saved theme on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const saved = localStorage.getItem('layerTheme') || 'dark';
   applyTheme(saved);
   initThemeSelector();
@@ -18273,6 +18840,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (focusState && focusState.active) {
     restoreFocusMode(focusState);
   }
+  
+  // Render folders
+  await renderFoldersInPlaceholder();
 });
 
 
@@ -19304,7 +19874,7 @@ function openDocEditor(docId = null) {
   const overlay = document.createElement('div');
   overlay.className = 'doc-editor-overlay';
   overlay.id = 'docEditorOverlay';
-  
+
   // 🔄 UPDATE STATE: Store reference to overlay
   documentEditorState.overlayElement = overlay;
 
@@ -19540,11 +20110,11 @@ function openDocEditor(docId = null) {
         // Update currentDocId to use database ID
         currentDocId = savedDoc.id;
         console.log('📝 Document created successfully with DB ID:', currentDocId);
-        
+
         // Refresh local cache
         const docs = await window.LayerDB.loadDocs();
         saveDocs(docs);
-        
+
         // Show success message
         if (typeof showToast === 'function') {
           showToast('Document created and auto-saved', 'success');
@@ -19555,7 +20125,7 @@ function openDocEditor(docId = null) {
         const docs = loadDocs();
         docs.unshift(newDoc);
         saveDocs(docs);
-        
+
         if (typeof showToast === 'function') {
           showToast('Document saved locally (cloud sync failed)', 'warning');
         }
@@ -19710,7 +20280,7 @@ async function autoSaveDoc() {
         // Check if this is a new document (temporary ID) or existing document
         const docs = await window.LayerDB.loadDocs();
         const existingDoc = docs.find(d => d.id === currentDocId);
-        
+
         if (existingDoc) {
           // Document exists, update it
           console.log('📝 Updating existing doc:', currentDocId);
@@ -19731,7 +20301,7 @@ async function autoSaveDoc() {
           currentDocId = savedDoc.id;
           console.log('📝 Doc created with DB ID:', currentDocId);
         }
-        
+
         // Refresh local cache
         const updatedDocs = await window.LayerDB.loadDocs();
         saveDocs(updatedDocs);
@@ -19777,7 +20347,7 @@ async function autoSaveDoc() {
 
 function closeDocEditor() {
   console.log('🔒 Closing document editor...');
-  
+
   // 🧹 COMPREHENSIVE CLEANUP: Remove all overlays and reset state
   const overlays = document.querySelectorAll('.doc-editor-overlay');
   overlays.forEach(overlay => {
@@ -19788,11 +20358,11 @@ function closeDocEditor() {
 
   // Reset body styles
   document.body.style.overflow = '';
-  
+
   // Reset document state
   currentDocId = null;
   isSavingDoc = false; // Reset save lock
-  
+
   // 🔄 REFRESH DASHBOARD: Update the inbox view to reflect any changes
   // Use a small delay to ensure DOM is fully cleaned up
   setTimeout(() => {
@@ -20914,7 +21484,7 @@ async function handleCreateSpace(event) {
 function renderSpacesInSidebar() {
   const spaces = loadSpaces();
   const workspaceSection = document.querySelector('.workspace-section');
-  
+
   if (!workspaceSection) return;
 
   // Remove existing spaces from workspace section
@@ -20933,7 +21503,7 @@ function renderSpacesInSidebar() {
 
   // Create space items and append to workspace section (after Projects button)
   const projectsButton = workspaceSection.querySelector('[data-view="activity"]');
-  
+
   spaces.forEach(space => {
     const spaceItem = document.createElement('div');
     spaceItem.className = 'workspace-space-item';
@@ -20951,7 +21521,7 @@ function renderSpacesInSidebar() {
         </button>
       </div>
     `;
-    
+
     // Insert after the Projects button
     if (projectsButton) {
       projectsButton.parentNode.insertBefore(spaceItem, projectsButton.nextSibling);
@@ -21217,13 +21787,13 @@ function confirmDeleteSpace(spaceId, spaceName) {
 async function deleteSpaceConfirmed(spaceId) {
   await deleteSpace(spaceId);
   closeModal();
-  
+
   // Remove old spacesSection if it still exists
   const oldSpacesSection = document.getElementById('spacesSection');
   if (oldSpacesSection) {
     oldSpacesSection.remove();
   }
-  
+
   renderSpacesInSidebar();
   showToast('Space deleted successfully!');
 
@@ -21508,7 +22078,7 @@ function renderSpaceDetailView(space) {
               </svg>
             </div>
             <div class="folders-text">Add new Folder to your Space</div>
-            <button class="add-folder-btn" onclick="showToast('Folder feature coming soon!', 'info')">
+            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
               Add Folder
             </button>
           </div>
@@ -22156,7 +22726,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (oldSpacesSection) {
     oldSpacesSection.remove();
   }
-  
+
   renderSpacesInSidebar();
 });
 
@@ -22315,7 +22885,7 @@ async function shareDocConfirm() {
       await window.LayerDB.updateDoc(currentDocId, { shared_with: pendingShareEmails });
       console.log('✅ Share saved to database successfully');
     }
-    
+
     // Also update localStorage for immediate local consistency
     const docs = loadDocs();
     const docIndex = docs.findIndex(d => d.id === currentDocId);
@@ -22323,18 +22893,18 @@ async function shareDocConfirm() {
       docs[docIndex].sharedWith = pendingShareEmails;
       saveDocs(docs);
     }
-    
+
     // Clear cache to ensure fresh data on next load
     clearSharedUsersCache('doc', currentDocId);
 
     closeModal();
     showToast(`Document shared with ${pendingShareEmails.length} people`);
-    
+
     // Refresh shared content widget after a short delay to allow DB propagation
     setTimeout(() => {
       loadSharedContentWidget();
     }, 500);
-    
+
     // Update current document's shared users display if in editor
     if (currentDocId) {
       setTimeout(async () => {
@@ -23372,9 +23942,9 @@ const sharedUsersCache = new Map();
 
 async function loadExistingSharedUsers(type) {
   const itemId = type === 'doc' ? currentDocId : currentExcelId;
-  
+
   console.log('🟢 Loading existing shared users - Type:', type, 'Item ID:', itemId);
-  
+
   if (!itemId) {
     console.log('🟢 No item ID, clearing shared users');
     inEditorShareEmails = [];
@@ -23411,10 +23981,10 @@ async function loadExistingSharedUsers(type) {
         console.log('🟢 Excel query result:', { data, error });
         item = data;
       }
-      
+
       inEditorShareEmails = item?.shared_with || [];
       console.log('🟢 Loaded shared users from database:', inEditorShareEmails);
-      
+
       // Cache the result for instant loading next time
       sharedUsersCache.set(cacheKey, inEditorShareEmails);
     } else {
@@ -23431,7 +24001,7 @@ async function loadExistingSharedUsers(type) {
         inEditorShareEmails = excel?.sharedWith || excel?.shared_with || [];
         console.log('🟢 Loaded from localStorage excels:', inEditorShareEmails);
       }
-      
+
       // Cache the result for instant loading next time
       sharedUsersCache.set(cacheKey, inEditorShareEmails);
     }
@@ -23467,7 +24037,7 @@ function openInEditorSharePanel(type) {
   // Get team members data
   const getTeamMembersForShare = async () => {
     let teamMembers = [];
-    
+
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       try {
         const currentUser = window.LayerDB.getCurrentUser();
@@ -23480,10 +24050,10 @@ function openInEditorSharePanel(type) {
 
         const followers = await window.LayerDB.getFollowers();
         const realFollowers = followers.filter(f => f.status === 'accepted');
-        
+
         // Process followers to get team members (excluding current user)
         const seenUserIds = new Set([currentUserInfo?.id]);
-        
+
         realFollowers.forEach(f => {
           let otherPerson = null;
 
@@ -23516,7 +24086,7 @@ function openInEditorSharePanel(type) {
         console.error('Error loading team members for share:', error);
       }
     }
-    
+
     return teamMembers;
   };
 
@@ -23531,12 +24101,12 @@ function openInEditorSharePanel(type) {
         <label style="font-size: 13px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 8px; display: block;">Team members</label>
         <div class="share-team-grid">
           ${teamMembers.map(member => {
-            const initials = member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
-            const avatarHtml = member.avatar_url 
-              ? `<img src="${member.avatar_url}" alt="${member.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />`
-              : `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600;">${initials}</div>`;
-            
-            return `
+      const initials = member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
+      const avatarHtml = member.avatar_url
+        ? `<img src="${member.avatar_url}" alt="${member.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />`
+        : `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600;">${initials}</div>`;
+
+      return `
               <div class="share-team-member" onclick="addTeamMemberToShare('${member.email}', '${member.name}', '${member.avatar_url || ''}')" style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; border: 1px solid var(--border);">
                 ${avatarHtml}
                 <div style="flex: 1; min-width: 0;">
@@ -23548,7 +24118,7 @@ function openInEditorSharePanel(type) {
                 </button>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -23660,7 +24230,7 @@ function addTeamMemberToShare(email, name, avatarUrl) {
 
   // Re-render the people list
   renderInEditorSharePeople();
-  
+
   // Show success message
   showToast(`${name} added to share list`);
 }
@@ -23702,11 +24272,11 @@ async function addInEditorShareEmail() {
     console.log('Could not fetch user profile for avatar:', error);
   }
 
-  inEditorShareEmails.push({ 
-    email, 
+  inEditorShareEmails.push({
+    email,
     name: userName,
     avatar_url: userAvatarUrl,
-    role: 'Can view' 
+    role: 'Can view'
   });
   input.value = '';
   renderInEditorSharePeople();
@@ -23714,7 +24284,7 @@ async function addInEditorShareEmail() {
 
 function renderInEditorSharePeople() {
   console.log('🟡 Rendering share people - Current users:', inEditorShareEmails);
-  
+
   const container = document.getElementById('inEditorSharePersonItems');
   if (!container) {
     console.log('🟡 Container not found');
@@ -23740,7 +24310,7 @@ function renderInEditorSharePeople() {
       if (person.avatar_url) {
         return `<img src="${person.avatar_url}" alt="${person.name || person.email}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border);" />`;
       } else {
-        const initials = person.name 
+        const initials = person.name
           ? person.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
           : person.email.charAt(0).toUpperCase();
         const colors = [
@@ -23802,7 +24372,7 @@ function updateDocHeaderAvatars(sharedUsers) {
     if (person.avatar_url) {
       return `<img src="${person.avatar_url}" alt="${person.name || person.email}" style="width: ${size}px; height: ${size}px; border-radius: 50%; object-fit: cover; border: 2px solid var(--background); margin-left: -8px;" title="${person.name || person.email}" />`;
     } else {
-      const initials = person.name 
+      const initials = person.name
         ? person.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
         : person.email.charAt(0).toUpperCase();
       const colors = [
@@ -23819,7 +24389,7 @@ function updateDocHeaderAvatars(sharedUsers) {
   };
 
   let avatarsHtml = displayUsers.map((user, index) => getAvatarHtml(user)).join('');
-  
+
   if (remainingCount > 0) {
     avatarsHtml += `
       <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--muted); display: flex; align-items: center; justify-content: center; color: var(--foreground); font-size: 10px; font-weight: 600; border: 2px solid var(--background); margin-left: -8px; cursor: pointer;" title="${remainingCount} more people">
@@ -23841,7 +24411,7 @@ async function updateCurrentDocSharedUsers() {
     // Get current document from database
     const docs = await window.LayerDB.loadDocs();
     const currentDoc = docs.find(d => d.id === currentDocId);
-    
+
     if (!currentDoc || !currentDoc.sharedWith || currentDoc.sharedWith.length === 0) {
       updateDocHeaderAvatars([]);
       return;
@@ -23850,7 +24420,7 @@ async function updateCurrentDocSharedUsers() {
     // Fetch user profiles for shared users
     const sharedUsers = currentDoc.sharedWith;
     const userEmails = sharedUsers.map(user => user.email || user);
-    
+
     // Get user profiles for each shared email
     const userProfiles = [];
     for (const email of userEmails) {
@@ -23861,7 +24431,7 @@ async function updateCurrentDocSharedUsers() {
           .select('id, email, name, avatar_url')
           .ilike('email', email)
           .maybeSingle();
-        
+
         if (profile) {
           userProfiles.push(profile);
         } else {
@@ -23905,7 +24475,7 @@ function updateExcelHeaderAvatars(sharedUsers) {
     if (person.avatar_url) {
       return `<img src="${person.avatar_url}" alt="${person.name || person.email}" style="width: ${size}px; height: ${size}px; border-radius: 50%; object-fit: cover; border: 2px solid var(--background); margin-left: -8px;" title="${person.name || person.email}" />`;
     } else {
-      const initials = person.name 
+      const initials = person.name
         ? person.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
         : person.email.charAt(0).toUpperCase();
       const colors = [
@@ -23922,7 +24492,7 @@ function updateExcelHeaderAvatars(sharedUsers) {
   };
 
   let avatarsHtml = displayUsers.map((user, index) => getAvatarHtml(user)).join('');
-  
+
   if (remainingCount > 0) {
     avatarsHtml += `
       <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--muted); display: flex; align-items: center; justify-content: center; color: var(--foreground); font-size: 10px; font-weight: 600; border: 2px solid var(--background); margin-left: -8px; cursor: pointer;" title="${remainingCount} more people">
@@ -23937,19 +24507,19 @@ function updateExcelHeaderAvatars(sharedUsers) {
 function updateInEditorShareRole(index, role) {
   if (inEditorShareEmails[index]) {
     inEditorShareEmails[index].role = role;
-    
+
     // Immediately save changes to database
     const itemId = currentDocId || currentExcelId;
     const type = currentDocId ? 'doc' : 'excel';
-    
+
     if (itemId && window.LayerDB && window.LayerDB.isAuthenticated()) {
       saveInEditorShareChanges(type, itemId);
     } else {
       saveInEditorShareChangesToLocalStorage(type, itemId);
     }
-    
+
     console.log('🔧 Updated role for', inEditorShareEmails[index].email, 'to', role);
-    
+
     // Refresh shared content widget to reflect role change
     setTimeout(() => {
       refreshSharedContent();
@@ -23960,13 +24530,13 @@ function updateInEditorShareRole(index, role) {
 function removeInEditorSharePerson(index) {
   const removedPerson = inEditorShareEmails[index];
   inEditorShareEmails.splice(index, 1);
-  
+
   console.log('🔴 Removing person from share:', removedPerson);
-  
+
   // Immediately save changes to database
   const itemId = currentDocId || currentExcelId;
   const type = currentDocId ? 'doc' : 'excel';
-  
+
   if (itemId && window.LayerDB && window.LayerDB.isAuthenticated()) {
     // Save to database immediately
     saveInEditorShareChanges(type, itemId);
@@ -23974,10 +24544,10 @@ function removeInEditorSharePerson(index) {
     // Fallback to localStorage
     saveInEditorShareChangesToLocalStorage(type, itemId);
   }
-  
+
   renderInEditorSharePeople();
   showToast(`${removedPerson.name || removedPerson.email} removed from share`);
-  
+
   // Refresh shared content widget to reflect removal
   setTimeout(() => {
     refreshSharedContent();
@@ -23988,7 +24558,7 @@ function removeInEditorSharePerson(index) {
 async function saveInEditorShareChanges(type, itemId) {
   try {
     console.log('🔴 Saving share changes to database - Type:', type, 'Item ID:', itemId);
-    
+
     if (type === 'doc') {
       const result = await window.LayerDB.updateDoc(itemId, { shared_with: inEditorShareEmails });
       console.log('🔴 Doc update result:', result);
@@ -23996,13 +24566,13 @@ async function saveInEditorShareChanges(type, itemId) {
       const result = await window.LayerDB.updateExcel(itemId, { shared_with: inEditorShareEmails });
       console.log('🔴 Excel update result:', result);
     }
-    
+
     // Immediately refresh shared content widget to notify the shared user
     console.log('🔄 Refreshing shared content widget after sharing...');
     setTimeout(() => {
       loadSharedContentWidget();
     }, 500);
-    
+
   } catch (error) {
     console.error('🔴 Failed to save share changes:', error);
     showToast('Failed to save share changes', 'error');
@@ -24012,7 +24582,7 @@ async function saveInEditorShareChanges(type, itemId) {
 // Helper function to save share changes to localStorage
 function saveInEditorShareChangesToLocalStorage(type, itemId) {
   console.log('🔴 Saving share changes to localStorage - Type:', type, 'Item ID:', itemId);
-  
+
   if (type === 'doc') {
     const docs = loadDocs();
     const docIndex = docs.findIndex(d => d.id === itemId);
@@ -24062,9 +24632,9 @@ async function confirmInEditorShare() {
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       const itemId = currentDocId || currentExcelId;
       const type = currentDocId ? 'doc' : 'excel';
-      
+
       console.log('🔵 Saving to database - Type:', type, 'Item ID:', itemId);
-      
+
       if (type === 'doc') {
         const result = await window.LayerDB.updateDoc(itemId, { shared_with: inEditorShareEmails });
         console.log('🔵 Doc update result:', result);
@@ -24072,9 +24642,9 @@ async function confirmInEditorShare() {
         const result = await window.LayerDB.updateExcel(itemId, { shared_with: inEditorShareEmails });
         console.log('🔵 Excel update result:', result);
       }
-      
+
       showToast('Shared with ' + inEditorShareEmails.length + ' people!');
-      
+
       // Refresh shared content widget to show real-time updates
       setTimeout(() => {
         refreshSharedContent();
@@ -25876,12 +26446,58 @@ function selectSmartSlot(date, startTime, endTime) {
   }, 100);
 }
 
+// Mobile Swipe Support for Calendar
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+function initCalendarSwipe() {
+  const container = document.querySelector('.advanced-schedule-container');
+  if (!container) return;
+  
+  container.addEventListener('touchstart', handleTouchStart, false);
+  container.addEventListener('touchend', handleTouchEnd, false);
+}
+
+function handleTouchStart(event) {
+  touchStartX = event.changedTouches[0].screenX;
+  touchStartY = event.changedTouches[0].screenY;
+}
+
+function handleTouchEnd(event) {
+  touchEndX = event.changedTouches[0].screenX;
+  touchEndY = event.changedTouches[0].screenY;
+  handleSwipeGesture();
+}
+
+function handleSwipeGesture() {
+  const minSwipeDistance = 50;
+  const dx = touchEndX - touchStartX;
+  const dy = touchEndY - touchStartY;
+  
+  // Check if horizontal swipe is dominant
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipeDistance) {
+    if (dx > 0) {
+      // Swipe right - go to previous
+      navigateSchedulePrev();
+    } else {
+      // Swipe left - go to next
+      navigateScheduleNext();
+    }
+  }
+}
+
 // Enhanced goToScheduleToday - scroll to current time
 function goToScheduleToday() {
   scheduleCurrentDate = new Date();
   scheduleSelectedDate = new Date();
   renderCurrentView();
-
+  // Reinitialize swipe functionality after navigation
+  setTimeout(() => {
+    initCalendarSwipe();
+  }, 100);
+  
   // Scroll to current time in day/week view
   setTimeout(() => {
     const now = new Date();
@@ -29434,16 +30050,16 @@ async function loadSharedContentWidget() {
       console.log('🔄 Loaded shared docs:', sharedDocs.length, 'shared excels:', sharedExcels.length);
       console.log('🔄 Shared docs details:', sharedDocs.map(d => ({ id: d.id, title: d.title, sharedWith: d.sharedWith })));
       console.log('🔄 Shared excels details:', sharedExcels.map(e => ({ id: e.id, title: e.title, sharedWith: e.sharedWith })));
-      
+
       // Fetch user information for shared content
       const allShared = [...sharedDocs, ...sharedExcels];
       const userIds = [...new Set(allShared.map(item => item.sharedBy).filter(Boolean))];
-      
+
       if (userIds.length > 0) {
         console.log('🔄 Fetching user info for', userIds.length, 'users');
         const userPromises = userIds.map(userId => window.LayerDB.getProfileById(userId));
         const userProfiles = await Promise.all(userPromises);
-        
+
         // Create a map of user ID to user profile
         const userMap = {};
         userProfiles.forEach((profile, index) => {
@@ -29451,19 +30067,19 @@ async function loadSharedContentWidget() {
             userMap[userIds[index]] = profile;
           }
         });
-        
+
         // Attach user info to shared items
         sharedDocs = sharedDocs.map(doc => ({
           ...doc,
           sharedByUser: userMap[doc.sharedBy] || null
         }));
-        
+
         sharedExcels = sharedExcels.map(excel => ({
           ...excel,
           sharedByUser: userMap[excel.sharedBy] || null
         }));
       }
-      
+
       // Reset error count on successful load
       sharedContentErrorCount = 0;
     } else {
@@ -29473,11 +30089,11 @@ async function loadSharedContentWidget() {
       const allExcels = loadExcels();
       const currentUserEmail = localStorage.getItem('userEmail') || '';
       console.log('🔄 Current user email from localStorage:', currentUserEmail);
-      
-      sharedDocs = allDocs.filter(doc => 
+
+      sharedDocs = allDocs.filter(doc =>
         doc.shared_with && doc.shared_with.some(user => user.email === currentUserEmail)
       );
-      sharedExcels = allExcels.filter(excel => 
+      sharedExcels = allExcels.filter(excel =>
         excel.shared_with && excel.shared_with.some(user => user.email === currentUserEmail)
       );
       console.log('🔄 Found shared docs in localStorage:', sharedDocs.length);
@@ -29491,13 +30107,13 @@ async function loadSharedContentWidget() {
   } catch (error) {
     sharedContentErrorCount++;
     console.error(`❌ Error loading shared content (${sharedContentErrorCount}/${MAX_SHARED_CONTENT_ERRORS}):`, error);
-    
+
     // Stop polling if too many errors occur
     if (sharedContentErrorCount >= MAX_SHARED_CONTENT_ERRORS) {
       console.error('🛑 Too many errors loading shared content. Stopping polling.');
       stopSharedContentPolling();
     }
-    
+
     widgetContainer.innerHTML = `
       <div style="text-align: center; padding: 20px; color: var(--destructive); font-size: 13px;">
         <div style="margin-bottom: 8px;">Failed to load shared content</div>
@@ -29516,9 +30132,9 @@ function renderSharedContentWidget(sharedDocs, sharedExcels) {
   if (!widgetContainer) return;
 
   const allShared = [...sharedDocs, ...sharedExcels];
-  
+
   console.log('🔄 Rendering widget with', allShared.length, 'items');
-  
+
   if (allShared.length === 0) {
     widgetContainer.innerHTML = `
       <div style="text-align: center; padding: 20px; color: var(--muted-foreground); font-size: 13px;">
@@ -29547,8 +30163,8 @@ function renderSharedContentWidget(sharedDocs, sharedExcels) {
 
   const contentHtml = allShared.slice(0, 5).map(item => {
     const isDoc = item.title && item.title.endsWith('.doc') || !item.title || !item.title.includes('.excel');
-    
-    const icon = isDoc ? 
+
+    const icon = isDoc ?
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
@@ -29559,20 +30175,20 @@ function renderSharedContentWidget(sharedDocs, sharedExcels) {
 
     const typeLabel = isDoc ? 'Document' : 'Spreadsheet';
     const timeAgo = getTimeAgo(new Date(item.updatedAt));
-    
+
     // Create user avatar HTML
     const userAvatar = item.sharedByUser ? `
       <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-        ${item.sharedByUser.avatar_url ? 
-          `<img src="${item.sharedByUser.avatar_url}" alt="${item.sharedByUser.name || item.sharedByUser.email}" 
+        ${item.sharedByUser.avatar_url ?
+        `<img src="${item.sharedByUser.avatar_url}" alt="${item.sharedByUser.name || item.sharedByUser.email}" 
                style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);">` :
-          `<div style="width: 28px; height: 28px; border-radius: 50%; background: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--muted-foreground); border: 1px solid var(--border);">
+        `<div style="width: 28px; height: 28px; border-radius: 50%; background: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--muted-foreground); border: 1px solid var(--border);">
             ${(item.sharedByUser.name || item.sharedByUser.email || 'U').charAt(0).toUpperCase()}
           </div>`
-        }
+      }
       </div>
     ` : '';
-    
+
     return `
       <div class="shared-content-item" onclick="openSharedContent('${isDoc ? 'doc' : 'excel'}', '${item.id}')" style="
         display: flex; 
@@ -29611,28 +30227,28 @@ function renderSharedContentWidget(sharedDocs, sharedExcels) {
       </div>
     ` : ''}
   `;
-  
+
   console.log('✅ Widget rendered successfully');
 }
 
 // Manual test function - call this to immediately update the widget
-window.testSharedWidget = function() {
+window.testSharedWidget = function () {
   console.log('🧪 Testing shared widget update...');
   loadSharedContentWidget();
 };
 
 // Debug function to test sharing system
-window.debugSharedContent = async function() {
+window.debugSharedContent = async function () {
   console.log('🔍 Debugging shared content...');
-  
+
   // Check current user
   const currentUser = window.LayerDB?.getCurrentUser?.();
   console.log('🔍 Current user:', currentUser);
-  
+
   // Check authentication
   const isAuthenticated = window.LayerDB?.isAuthenticated?.();
   console.log('🔍 Is authenticated:', isAuthenticated);
-  
+
   // Load all docs to see what's available
   if (window.LayerDB && isAuthenticated) {
     try {
@@ -29640,23 +30256,23 @@ window.debugSharedContent = async function() {
         .from('docs')
         .select('*')
         .limit(5);
-      
+
       console.log('🔍 Sample docs in database:', allDocs);
-      
+
       const { data: allExcels } = await window.supabaseClient
         .from('excels')
         .select('*')
         .limit(5);
-      
+
       console.log('🔍 Sample excels in database:', allExcels);
-      
+
       // Test loading shared content
       const sharedDocs = await window.LayerDB.loadSharedDocs();
       const sharedExcels = await window.LayerDB.loadSharedExcels();
-      
+
       console.log('🔍 Shared docs found:', sharedDocs);
       console.log('🔍 Shared excels found:', sharedExcels);
-      
+
     } catch (error) {
       console.error('🔍 Debug error:', error);
     }
@@ -29666,7 +30282,7 @@ window.debugSharedContent = async function() {
 // Open shared content (doc or excel)
 async function openSharedContent(type, id) {
   console.log('🔄 Opening shared content:', type, id);
-  
+
   if (type === 'doc') {
     // Load the shared doc from database first so it's available locally
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
@@ -29676,7 +30292,7 @@ async function openSharedContent(type, id) {
           .select('*')
           .eq('id', id)
           .maybeSingle();
-        
+
         if (data && !error) {
           // Store in local docs cache so openDocEditor can find it
           const docs = loadDocs();
@@ -29714,7 +30330,7 @@ async function openSharedContent(type, id) {
           .select('*')
           .eq('id', id)
           .maybeSingle();
-        
+
         if (data && !error) {
           const excels = loadExcels();
           const existingIndex = excels.findIndex(e => e.id === id);
@@ -29760,7 +30376,7 @@ function showAllSharedContent() {
 // Helper function to get time ago string
 function getTimeAgo(date) {
   const seconds = Math.floor((new Date() - date) / 1000);
-  
+
   if (seconds < 60) return 'just now';
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
   if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
@@ -29779,14 +30395,14 @@ function initializeSharedContentWidget() {
   }
 
   console.log('🔄 Initializing shared content widget...');
-  
+
   // Load immediately
   loadSharedContentWidget();
-  
+
   // Set up realtime subscription for instant updates
   if (window.LayerRealtime) {
     console.log('🔄 Setting up realtime subscription for shared content...');
-    
+
     // Register callbacks for shared content updates
     window.LayerRealtime.registerRealtimeCallbacks({
       onSharedContentUpdated: (payload) => {
@@ -29803,7 +30419,7 @@ function initializeSharedContentWidget() {
         loadSharedContentWidget();
       }
     });
-    
+
     // Subscribe to shared content changes
     window.LayerRealtime.subscribeToSharedContent((payload) => {
       console.log('🔄 Shared content changed via realtime:', payload);
@@ -29811,13 +30427,13 @@ function initializeSharedContentWidget() {
     });
   } else {
     console.warn('⚠️ LayerRealtime not available, falling back to polling');
-    
+
     // Fallback to polling every 30 seconds for real-time updates
     sharedContentPollingInterval = setInterval(() => {
       console.log('🔄 Auto-polling shared content...');
       loadSharedContentWidget();
     }, 30000);
-    
+
     console.log('✅ Shared content polling started (every 30 seconds)');
   }
 }
