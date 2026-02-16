@@ -5,6 +5,23 @@
 // ============================================
 // State
 // ============================================
+// Available themes for first-time setup
+const AVAILABLE_THEMES = [
+  { id: 'dark', name: 'Dark', mode: 'dark' },
+  { id: 'light', name: 'Light', mode: 'light' },
+  { id: 'pink', name: 'Pink', mode: 'dark' },
+  { id: 'purple', name: 'Purple', mode: 'dark' },
+  { id: 'ocean', name: 'Ocean', mode: 'dark' },
+  { id: 'forest', name: 'Forest', mode: 'dark' },
+  { id: 'midnight', name: 'Midnight', mode: 'dark' },
+  { id: 'dracula', name: 'Dracula', mode: 'dark' },
+  { id: 'gruvbox', name: 'Gruvbox', mode: 'dark' },
+  { id: 'rosepine', name: 'Rosé Pine', mode: 'dark' }
+];
+
+// Track if we're in first-time setup
+let isFirstTimeSetup = false;
+
 let currentView = 'inbox';
 let currentFilter = 'all';
 let searchQuery = '';
@@ -340,6 +357,12 @@ function init() {
 
   // Set up theme toggle
   setupThemeToggle();
+
+  // Set up first-time setup form
+  const setupForm = document.getElementById('firstTimeSetupForm');
+  if (setupForm) {
+    setupForm.addEventListener('submit', handleFirstTimeSetupSubmit);
+  }
 
   // Check for existing user session
   checkExistingSession();
@@ -1296,6 +1319,19 @@ async function checkExistingSession() {
 
     // Listen for auth state changes
     window.addEventListener('authStateChanged', async (event) => {
+      const { user, session, event: eventType } = event.detail;
+        
+      // Check if this is a first-time Google user
+      if (user && session && eventType === 'SIGNED_IN') {
+        const isFirstTime = await detectFirstTimeGoogleUser();
+        if (isFirstTime) {
+          // Delay to ensure UI is ready
+          setTimeout(() => {
+            showFirstTimeSetup();
+          }, 500);
+          return; // Skip normal sign-in flow
+        }
+      }
       const { user: authUser, session: authSession, event: authEvent } = event.detail;
 
       console.log('Auth state changed:', authEvent, authUser?.email);
@@ -1457,6 +1493,214 @@ async function handleUrlParameters() {
     }
   } catch (error) {
     console.error('Error handling URL parameters:', error);
+  }
+}
+
+// ============================================
+// First-Time User Setup
+// ============================================
+
+function showFirstTimeSetup() {
+  const modal = document.getElementById('firstTimeSetupModal');
+  if (!modal) return;
+  
+  isFirstTimeSetup = true;
+  modal.classList.add('active');
+  populateThemeGrid();
+  
+  // Auto-focus username field
+  setTimeout(() => {
+    const usernameInput = document.getElementById('setupUsername');
+    if (usernameInput) {
+      usernameInput.focus();
+    }
+  }, 300);
+}
+
+function closeFirstTimeSetup() {
+  const modal = document.getElementById('firstTimeSetupModal');
+  if (!modal) return;
+  
+  isFirstTimeSetup = false;
+  modal.classList.remove('active');
+}
+
+function populateThemeGrid() {
+  const themeGrid = document.getElementById('themeGrid');
+  if (!themeGrid) return;
+  
+  themeGrid.innerHTML = '';
+  
+  AVAILABLE_THEMES.forEach(theme => {
+    const themeCard = document.createElement('div');
+    themeCard.className = 'theme-card';
+    themeCard.dataset.theme = theme.id;
+    themeCard.dataset.mode = theme.mode;
+    
+    themeCard.innerHTML = `
+      <div class="theme-preview">
+        <div class="theme-preview-header"></div>
+        <div class="theme-preview-sidebar"></div>
+        <div class="theme-preview-content">
+          <div class="theme-preview-dot"></div>
+        </div>
+      </div>
+      <div class="theme-card-info">
+        <div class="theme-card-name">${theme.name}</div>
+        <div class="theme-card-mode">${theme.mode === 'dark' ? 'Dark' : 'Light'}</div>
+      </div>
+    `;
+    
+    themeCard.addEventListener('click', () => {
+      // Remove selected class from all cards
+      document.querySelectorAll('.theme-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      
+      // Add selected class to clicked card
+      themeCard.classList.add('selected');
+      
+      // Temporarily apply theme for preview
+      applyThemePreview(theme.id, theme.mode);
+    });
+    
+    themeGrid.appendChild(themeCard);
+  });
+  
+  // Select default theme (dark)
+  const defaultCard = themeGrid.querySelector('[data-theme="dark"]');
+  if (defaultCard) {
+    defaultCard.classList.add('selected');
+  }
+}
+
+function applyThemePreview(themeId, mode) {
+  const html = document.documentElement;
+  const body = document.body;
+  
+  // Reset any existing theme classes
+  html.removeAttribute('data-theme');
+  html.removeAttribute('data-mode');
+  body.classList.remove('light');
+  
+  // Apply new theme
+  if (themeId === 'light') {
+    body.classList.add('light');
+  } else if (themeId === 'dark') {
+    // Default dark theme - no attributes needed
+  } else {
+    html.setAttribute('data-theme', themeId);
+    html.setAttribute('data-mode', mode);
+  }
+}
+
+function getSelectedTheme() {
+  const selectedCard = document.querySelector('.theme-card.selected');
+  if (!selectedCard) return { theme: 'dark', mode: 'dark' };
+  
+  return {
+    theme: selectedCard.dataset.theme,
+    mode: selectedCard.dataset.mode
+  };
+}
+
+async function handleFirstTimeSetupSubmit(event) {
+  event.preventDefault();
+  
+  const usernameInput = document.getElementById('setupUsername');
+  const submitBtn = document.getElementById('setupSubmitBtn');
+  
+  const username = usernameInput.value.trim();
+  if (!username) {
+    showNotification('Please enter your name', 'error');
+    usernameInput.focus();
+    return;
+  }
+  
+  const selectedTheme = getSelectedTheme();
+  
+  // Show loading state
+  submitBtn.disabled = true;
+  submitBtn.classList.add('loading');
+  submitBtn.textContent = 'Saving...';
+  
+  try {
+    // Save user preferences to database
+    if (window.LayerDB && typeof window.LayerDB.updateUserPreferences === 'function') {
+      await window.LayerDB.updateUserPreferences({
+        theme: selectedTheme.theme,
+        left_panel_width: 280
+      });
+    }
+    
+    // Update user profile with username
+    if (window.LayerDB && typeof window.LayerDB.updateUserProfile === 'function') {
+      await window.LayerDB.updateUserProfile({
+        name: username
+      });
+    }
+    
+    // Save to localStorage as fallback
+    localStorage.setItem('layerTheme', selectedTheme.theme);
+    localStorage.setItem('layerThemeMode', selectedTheme.mode);
+    
+    // Close setup modal
+    closeFirstTimeSetup();
+    
+    // Show success message
+    showNotification(`Welcome, ${username}! Theme set to ${selectedTheme.theme}.`, 'success');
+    
+    // Reload user data to reflect changes
+    await loadUserDataFromDB();
+    
+    // Update user display
+    const currentUser = window.LayerDB?.getCurrentUser();
+    if (currentUser) {
+      await updateUserDisplay({
+        username: username,
+        email: currentUser.email
+      });
+    }
+    
+    // Re-render the current view
+    renderCurrentView();
+    
+  } catch (error) {
+    console.error('Failed to complete setup:', error);
+    showNotification('Failed to save your preferences. Please try again.', 'error');
+    
+    // Restore button state
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+    submitBtn.textContent = 'Get Started';
+  }
+}
+
+// Detect if user is a first-time Google user
+async function detectFirstTimeGoogleUser() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return false;
+  
+  const currentUser = window.LayerDB.getCurrentUser();
+  if (!currentUser) return false;
+  
+  // Check if user has a name set in profile or user_metadata
+  const username = currentUser.user_metadata?.name || 
+                  currentUser.email?.split('@')[0] || 
+                  '';
+  
+  // Check if user has preferences stored
+  try {
+    const prefs = await window.LayerDB.getUserPreferences();
+    const hasTheme = prefs && prefs.theme;
+    
+    // If user has no name in profile but Google gave us one, this is still "configured"
+    const hasMetadataName = currentUser.user_metadata?.name?.trim();
+    
+    // Consider first-time if: no theme preference OR no name in profile
+    return !hasTheme || !hasMetadataName;
+  } catch (error) {
+    console.error('Error checking first-time status:', error);
+    return false;
   }
 }
 

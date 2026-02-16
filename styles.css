@@ -661,11 +661,11 @@ body {
 /* Project Nested Navigation Active State */
 .workspace-section .nav-item-nested.active,
 .workspace-section .nav-item-nested:hover {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--primary);
   border-color: transparent;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;
@@ -1135,11 +1135,11 @@ body {
 
 .nav-item:hover,
 .nav-item.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--primary);
   border-color: transparent;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;
@@ -1288,35 +1288,67 @@ body {
 .focus-toggle-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 12px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--foreground);
-  font-size: 14px;
-  font-weight: 500;
+  padding: 14px 16px;
+  background: var(--glass-bg-primary);
+  border: 1px solid var(--glass-border-normal);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
 }
 
 .focus-toggle-btn:hover {
-  background: var(--surface-hover);
+  background: var(--glass-bg-secondary);
   border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  color: var(--primary);
+}
+
+.focus-toggle-btn:hover .icon {
+  transform: scale(1.1) rotate(15deg);
+  filter: drop-shadow(0 0 8px var(--primary));
+}
+
+.focus-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.focus-toggle-btn:hover::before {
+  left: 100%;
 }
 
 .focus-toggle-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg-tertiary);
+}
+
+.focus-toggle-btn:active .icon {
+  transform: scale(0.95);
 }
 
 .focus-toggle-btn .icon {
   color: currentColor;
-  transition: color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 20px;
+  height: 20px;
 }
 
 .focus-toggle-btn:hover .icon {

@@ -568,6 +568,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(340, 75%, 55%, 0.18);
   --glass-shadow: 0 8px 32px hsla(340, 75%, 55%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(350, 50%, 98%);
+  --schedule-surface-hover: hsl(345, 55%, 95%);
+  --schedule-border: hsl(345, 35%, 88%);
+  --schedule-border-subtle: hsl(345, 40%, 93%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(335, 25%, 45%);
+  --schedule-text: hsl(335, 45%, 18%);
+  --schedule-shadow: 0 1px 3px hsla(340, 75%, 55%, 0.08), 0 1px 2px hsla(340, 75%, 55%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(340, 75%, 55%, 0.12), 0 2px 4px hsla(340, 75%, 55%, 0.06);
+  --timeline-grid-line: hsl(345, 30%, 92%);
+  --timeline-hour-line: hsl(345, 25%, 88%);
 }
 
 [data-theme="pink"][data-mode="light"] body {
@@ -661,6 +675,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(256, 65%, 55%, 0.15);
   --glass-shadow: 0 8px 32px hsla(256, 65%, 55%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(265, 50%, 98%);
+  --schedule-surface-hover: hsl(265, 48%, 94%);
+  --schedule-border: hsl(265, 35%, 86%);
+  --schedule-border-subtle: hsl(265, 40%, 92%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(260, 25%, 45%);
+  --schedule-text: hsl(260, 40%, 16%);
+  --schedule-shadow: 0 1px 3px hsla(256, 65%, 55%, 0.08), 0 1px 2px hsla(256, 65%, 55%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(256, 65%, 55%, 0.12), 0 2px 4px hsla(256, 65%, 55%, 0.06);
+  --timeline-grid-line: hsl(265, 30%, 90%);
+  --timeline-hour-line: hsl(265, 25%, 86%);
 }
 
 [data-theme="purple"][data-mode="light"] body {
@@ -708,6 +736,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(174, 50%, 42%, 0.15);
   --glass-shadow: 0 8px 32px hsla(174, 50%, 42%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(175, 40%, 97%);
+  --schedule-surface-hover: hsl(170, 38%, 93%);
+  --schedule-border: hsl(170, 30%, 85%);
+  --schedule-border-subtle: hsl(170, 35%, 90%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(195, 30%, 40%);
+  --schedule-text: hsl(195, 50%, 16%);
+  --schedule-shadow: 0 1px 3px hsla(174, 50%, 42%, 0.08), 0 1px 2px hsla(174, 50%, 42%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(174, 50%, 42%, 0.12), 0 2px 4px hsla(174, 50%, 42%, 0.06);
+  --timeline-grid-line: hsl(170, 25%, 88%);
+  --timeline-hour-line: hsl(170, 20%, 84%);
 }
 
 [data-theme="ocean"][data-mode="light"] body {
@@ -729,6 +771,8 @@
   --foreground: hsl(150, 45%, 14%);
   --card: hsl(0, 0%, 100%);
   --card-foreground: hsl(150, 45%, 14%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(150, 45%, 14%);
 
   --primary: hsl(150, 65%, 38%);
   --primary-foreground: hsl(0, 0%, 100%);
@@ -738,6 +782,9 @@
 
   --muted: hsl(145, 30%, 89%);
   --muted-foreground: hsl(150, 25%, 38%);
+
+  --accent: hsl(150, 60%, 45%);
+  --accent-foreground: hsl(0, 0%, 100%);
 
   --border: hsl(143, 47%, 93%);
   --border-strong: hsl(150, 65%, 38%);
@@ -750,6 +797,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(150, 65%, 38%, 0.15);
   --glass-shadow: 0 8px 32px hsla(150, 65%, 38%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(145, 40%, 97%);
+  --schedule-surface-hover: hsl(145, 38%, 93%);
+  --schedule-border: hsl(143, 47%, 93%);
+  --schedule-border-subtle: hsl(145, 35%, 91%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(150, 25%, 38%);
+  --schedule-text: hsl(150, 45%, 14%);
+  --schedule-shadow: 0 1px 3px hsla(150, 65%, 38%, 0.08), 0 1px 2px hsla(150, 65%, 38%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(150, 65%, 38%, 0.12), 0 2px 4px hsla(150, 65%, 38%, 0.06);
+  --timeline-grid-line: hsl(143, 40%, 91%);
+  --timeline-hour-line: hsl(143, 35%, 87%);
 }
 
 [data-theme="forest"][data-mode="light"] body {
@@ -771,6 +832,8 @@
   --foreground: hsl(220, 50%, 14%);
   --card: hsl(0, 0%, 100%);
   --card-foreground: hsl(220, 50%, 14%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(220, 50%, 14%);
 
   --primary: hsl(220, 85%, 52%);
   --primary-foreground: hsl(0, 0%, 100%);
@@ -780,6 +843,9 @@
 
   --muted: hsl(220, 40%, 91%);
   --muted-foreground: hsl(220, 28%, 42%);
+
+  --accent: hsl(220, 80%, 60%);
+  --accent-foreground: hsl(0, 0%, 100%);
 
   --border: hsl(220, 32%, 86%);
   --border-strong: hsl(220, 85%, 52%);
@@ -792,6 +858,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(220, 85%, 52%, 0.15);
   --glass-shadow: 0 8px 32px hsla(220, 85%, 52%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(220, 55%, 98%);
+  --schedule-surface-hover: hsl(220, 48%, 94%);
+  --schedule-border: hsl(220, 32%, 86%);
+  --schedule-border-subtle: hsl(220, 40%, 91%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(220, 28%, 42%);
+  --schedule-text: hsl(220, 50%, 14%);
+  --schedule-shadow: 0 1px 3px hsla(220, 85%, 52%, 0.08), 0 1px 2px hsla(220, 85%, 52%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(220, 85%, 52%, 0.12), 0 2px 4px hsla(220, 85%, 52%, 0.06);
+  --timeline-grid-line: hsl(220, 28%, 89%);
+  --timeline-hour-line: hsl(220, 25%, 85%);
 }
 
 [data-theme="midnight"][data-mode="light"] body {
@@ -813,6 +893,8 @@
   --foreground: hsl(250, 30%, 18%);
   --card: hsl(0, 0%, 100%);
   --card-foreground: hsl(250, 30%, 18%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(250, 30%, 18%);
 
   --primary: hsl(330, 75%, 52%);
   --primary-foreground: hsl(0, 0%, 100%);
@@ -822,6 +904,9 @@
 
   --muted: hsl(340, 35%, 91%);
   --muted-foreground: hsl(250, 20%, 45%);
+
+  --accent: hsl(330, 80%, 60%);
+  --accent-foreground: hsl(0, 0%, 100%);
 
   --border: hsl(340, 30%, 86%);
   --border-strong: hsl(330, 75%, 52%);
@@ -834,6 +919,20 @@
   --glass-bg: hsla(0, 0%, 100%, 0.92);
   --glass-border: hsla(330, 75%, 52%, 0.15);
   --glass-shadow: 0 8px 32px hsla(330, 75%, 52%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(0, 0%, 100%);
+  --schedule-surface: hsl(340, 50%, 98%);
+  --schedule-surface-hover: hsl(340, 45%, 94%);
+  --schedule-border: hsl(340, 30%, 86%);
+  --schedule-border-subtle: hsl(340, 35%, 91%);
+  --schedule-card: hsl(0, 0%, 100%);
+  --schedule-muted: hsl(250, 20%, 45%);
+  --schedule-text: hsl(250, 30%, 18%);
+  --schedule-shadow: 0 1px 3px hsla(330, 75%, 52%, 0.08), 0 1px 2px hsla(330, 75%, 52%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(330, 75%, 52%, 0.12), 0 2px 4px hsla(330, 75%, 52%, 0.06);
+  --timeline-grid-line: hsl(340, 28%, 89%);
+  --timeline-hour-line: hsl(340, 25%, 85%);
 }
 
 [data-theme="dracula"][data-mode="light"] body {
@@ -881,6 +980,20 @@
   --glass-bg: hsla(50, 100%, 97%, 0.92);
   --glass-border: hsla(42, 90%, 38%, 0.15);
   --glass-shadow: 0 8px 32px hsla(42, 90%, 38%, 0.08);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(50, 100%, 97%);
+  --schedule-surface: hsl(50, 65%, 92%);
+  --schedule-surface-hover: hsl(50, 55%, 88%);
+  --schedule-border: hsl(48, 35%, 78%);
+  --schedule-border-subtle: hsl(48, 40%, 82%);
+  --schedule-card: hsl(50, 100%, 97%);
+  --schedule-muted: hsl(30, 8%, 38%);
+  --schedule-text: hsl(30, 12%, 20%);
+  --schedule-shadow: 0 1px 3px hsla(42, 90%, 38%, 0.08), 0 1px 2px hsla(42, 90%, 38%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(42, 90%, 38%, 0.12), 0 2px 4px hsla(42, 90%, 38%, 0.06);
+  --timeline-grid-line: hsl(48, 30%, 80%);
+  --timeline-hour-line: hsl(48, 25%, 76%);
 }
 
 [data-theme="gruvbox"][data-mode="light"] body {
@@ -928,6 +1041,20 @@
   --glass-bg: hsla(35, 100%, 99%, 0.92);
   --glass-border: hsla(270, 30%, 52%, 0.12);
   --glass-shadow: 0 8px 32px hsla(270, 30%, 52%, 0.06);
+
+  /* Schedule/Calendar Variables */
+  --schedule-bg: hsl(35, 100%, 99%);
+  --schedule-surface: hsl(32, 45%, 94%);
+  --schedule-surface-hover: hsl(32, 40%, 90%);
+  --schedule-border: hsl(28, 22%, 84%);
+  --schedule-border-subtle: hsl(28, 25%, 88%);
+  --schedule-card: hsl(35, 100%, 99%);
+  --schedule-muted: hsl(251, 12%, 50%);
+  --schedule-text: hsl(257, 35%, 35%);
+  --schedule-shadow: 0 1px 3px hsla(270, 30%, 52%, 0.08), 0 1px 2px hsla(270, 30%, 52%, 0.04);
+  --schedule-shadow-lg: 0 4px 12px hsla(270, 30%, 52%, 0.12), 0 2px 4px hsla(270, 30%, 52%, 0.06);
+  --timeline-grid-line: hsl(28, 20%, 82%);
+  --timeline-hour-line: hsl(28, 18%, 78%);
 }
 
 [data-theme="rosepine"][data-mode="light"] body {
@@ -996,6 +1123,7 @@
   width: 100%;
   height: 100%;
   filter: drop-shadow(0 0 4px hsla(263, 70%, 50%, 0.3));
+  transition: all 0.2s ease;
 }
 
 .ai-nav-icon-animated .ai-icon-glasses {
@@ -1003,26 +1131,27 @@
 }
 
 .nav-item[data-view="ai"]:hover .ai-nav-icon-animated {
-  transform: scale(1.1) rotate(5deg);
+  transform: scale(1.1);
 }
 
 .nav-item[data-view="ai"]:hover .ai-nav-icon-animated svg {
-  filter: drop-shadow(0 0 8px hsla(263, 70%, 50%, 0.6));
+  filter: drop-shadow(0 0 6px hsla(263, 70%, 50%, 0.5));
+  transform: scale(1.05);
 }
 
 @keyframes aiIconPulse {
-
   0%,
   100% {
     transform: scale(1);
     opacity: 0.9;
   }
-
   50% {
-    transform: scale(1.05);
+    transform: scale(1.03);
     opacity: 1;
   }
 }
+
+
 
 /* Colorful gradient effect for AI icon */
 .ai-nav-icon-gradient {
