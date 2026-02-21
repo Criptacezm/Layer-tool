@@ -66,13 +66,24 @@ function renderInboxView() {
           <!-- Dashboard Header with Edit Toggle -->
           <div class="dashboard-header-row">
             <h2 class="view-title" style="margin-bottom: 0; font-size: 28px; font-weight: 700;">Dashboard</h2>
-            <button class="dashboard-edit-toggle" id="dashboardEditToggle" onclick="toggleDashboardEditMode()" title="Customize widget layout">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-              </svg>
-              <span>Edit Layout</span>
-            </button>
+            <div class="dashboard-header-actions">
+              <button class="dashboard-ai-sidebar-toggle" id="dashboardAiSidebarToggle" onclick="toggleDashboardAiSidebar()" title="Toggle AI Sidebar">
+                <svg class="icon collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                <svg class="icon expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+                <span class="toggle-text">Hide AI</span>
+              </button>
+              <button class="dashboard-edit-toggle" id="dashboardEditToggle" onclick="toggleDashboardEditMode()" title="Customize widget layout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Edit Layout</span>
+              </button>
+            </div>
           </div>
           
           <!-- Enhanced Dashboard Widgets Grid -->
@@ -166,19 +177,180 @@ function renderInboxView() {
               </div>
               <div class="quick-actions-grid">
                 <button class="quick-action-btn" onclick="openDocEditor()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <style>
+                      @keyframes lineExpand {
+                        0% {
+                          stroke-dashoffset: 8;
+                          transform: scaleX(0);
+                          transform-origin: left;
+                        }
+                        100% {
+                          stroke-dashoffset: 0;
+                          transform: scaleX(1);
+                        }
+                      }
+                      
+                      @keyframes linePulse {
+                        0%, 100% {
+                          opacity: 1;
+                          stroke-width: 2;
+                        }
+                        50% {
+                          opacity: 0.6;
+                          stroke-width: 2.5;
+                        }
+                      }
+                      
+                      .quick-action-btn:hover .doc-line {
+                        animation: lineExpand 0.4s ease-out, linePulse 0.5s ease-in-out;
+                        stroke-dasharray: 8;
+                      }
+                      
+                      .quick-action-btn:hover .doc-line:nth-child(4) {
+                        animation-delay: 0.15s;
+                      }
+                    </style>
+                    
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line class="doc-line" x1="16" y1="13" x2="8" y2="13"></line>
+                    <line class="doc-line" x1="16" y1="17" x2="8" y2="17"></line>
+                  </svg>
                   New Doc
                 </button>
                 <button class="quick-action-btn" onclick="openCreateIssueModal()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <style>
+                      @keyframes circlePulse {
+                        0%, 100% {
+                          transform: scale(1);
+                        }
+                        50% {
+                          transform: scale(1.1);
+                        }
+                      }
+                      
+                      @keyframes plusExpand {
+                        0% {
+                          transform: scale(0);
+                          opacity: 0;
+                        }
+                        50% {
+                          transform: scale(1.2);
+                        }
+                        100% {
+                          transform: scale(1);
+                          opacity: 1;
+                        }
+                      }
+                      
+                      @keyframes rotate {
+                        0% {
+                          transform: rotate(0deg);
+                        }
+                        100% {
+                          transform: rotate(90deg);
+                        }
+                      }
+                      
+                      .quick-action-btn:hover .plus-circle {
+                        animation: circlePulse 0.4s ease-in-out;
+                        transform-origin: center;
+                      }
+                      
+                      .quick-action-btn:hover .plus-lines {
+                        animation: plusExpand 0.4s ease-out, rotate 0.4s ease-in-out;
+                        transform-origin: center;
+                      }
+                    </style>
+                    
+                    <circle class="plus-circle" cx="12" cy="12" r="10"></circle>
+                    <path class="plus-lines" d="M12 8v8M8 12h8"></path>
+                  </svg>
                   New Issue
                 </button>
                 <button class="quick-action-btn" onclick="currentView = 'activity'; renderCurrentView();">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <style>
+                      @keyframes folderOpen {
+                        0%, 100% {
+                          transform: translateY(0) scaleY(1);
+                        }
+                        50% {
+                          transform: translateY(-3px) scaleY(1.05);
+                        }
+                      }
+                      
+                      @keyframes tabWiggle {
+                        0%, 100% {
+                          transform: translateY(0) rotate(0deg);
+                        }
+                        25% {
+                          transform: translateY(-2px) rotate(-2deg);
+                        }
+                        75% {
+                          transform: translateY(-2px) rotate(2deg);
+                        }
+                      }
+                      
+                      @keyframes pathDraw {
+                        0% {
+                          stroke-dashoffset: 100;
+                        }
+                        100% {
+                          stroke-dashoffset: 0;
+                        }
+                      }
+                      
+                      .quick-action-btn:hover .folder-path {
+                        animation: folderOpen 0.4s ease-in-out, pathDraw 0.5s ease-out;
+                        stroke-dasharray: 100;
+                        transform-origin: bottom center;
+                      }
+                    </style>
+                    
+                    <path class="folder-path" d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
                   Projects
                 </button>
                 <button class="quick-action-btn" onclick="currentView = 'schedule'; renderCurrentView();">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <style>
+                      @keyframes calendarPop {
+                        0%, 100% {
+                          transform: scale(1);
+                        }
+                        50% {
+                          transform: scale(1.08);
+                        }
+                      }
+                      
+                      @keyframes slideDown {
+                        0% {
+                          transform: translateY(-2px);
+                          opacity: 0.5;
+                        }
+                        100% {
+                          transform: translateY(0);
+                          opacity: 1;
+                        }
+                      }
+                      
+                      .quick-action-btn:hover .icon {
+                        animation: calendarPop 0.3s ease-in-out;
+                      }
+                      
+                      .quick-action-btn:hover .icon .divider {
+                        animation: slideDown 0.3s ease-out;
+                      }
+                    </style>
+                    
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line class="divider" x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
                   Calendar
                 </button>
               </div>
@@ -703,54 +875,98 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
     { id: 'done', label: 'Done' },
   ];
 
-  const getStatusBadgeClass = (status) => {
-    const classes = {
-      'todo': 'badge-todo',
-      'in-progress': 'badge-in-progress',
-      'review': 'badge-review',
-      'done': 'badge-done',
-    };
-    return classes[status] || 'badge-todo';
+  // Helper for status styling
+  const getStatusClass = (status) => {
+    const map = { 'todo': 'status-todo', 'in-progress': 'status-inprogress', 'review': 'status-review', 'done': 'status-done' };
+    return map[status] || 'status-todo';
   };
 
-  const getPriorityBadgeClass = (priority) => {
-    const classes = {
-      'high': 'badge-priority-high',
-      'medium': 'badge-priority-medium',
-      'low': 'badge-priority-low',
-    };
-    return classes[priority] || '';
+  // Helper for capitalization
+  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).replace('-', ' ') : '';
+
+  // Helper for priority badges
+  const getPriorityBadge = (priority) => {
+    const p = priority || 'medium';
+    return `<span class="priority-badge ${p}">${capitalize(p)}</span>`;
   };
+
+  // List Header
+  const listHeader = `
+    <div class="issues-list-header">
+      <div class="col-id">ID</div>
+      <div class="col-status">Status</div>
+      <div class="col-title">Title</div>
+      <div class="col-priority">Priority</div>
+      <div class="col-date">Date</div>
+      <div class="col-actions"></div>
+    </div>
+  `;
+
+  // List Items
+  const listItems = issues.map((issue, index) => `
+    <div class="issue-list-item" onclick="openIssueDetailModal(${index})">
+      <div class="col-id">#${issue.id}</div>
+      <div class="col-status">
+        <span class="status-dot ${getStatusClass(issue.status)}"></span>
+        <span class="status-label">${capitalize(issue.status)}</span>
+      </div>
+      <div class="col-title">
+        <span class="issue-title-text">${issue.title}</span>
+      </div>
+      <div class="col-priority">
+        ${getPriorityBadge(issue.priority)}
+      </div>
+      <div class="col-date">
+        ${new Date(issue.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+      </div>
+      <div class="col-actions">
+        <button class="action-btn-icon" onclick="event.stopPropagation(); handleDeleteIssue(${index})" title="Delete">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  // Main Render
+  const inlineForm = renderInlineCreateIssueForm();
 
   if (issues.length === 0) {
-    // ... (empty state unchanged - keep as-is)
     return `
-      <div class="issues-container">
-        <div class="view-header">
-          <div class="filter-tabs">
-            ${filters.map(f => `
-              <button class="filter-tab ${filter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.label}</button>
-            `).join('')}
+      <div class="issues-container-modern">
+        <!-- Minimal Toolbar -->
+        <div class="issues-toolbar">
+          <div class="issues-toolbar-left">
+             <h2 class="view-title">Issues</h2>
+             <div class="issues-count-badge">${issues.length}</div>
           </div>
-          <button class="btn btn-primary" onclick="openCreateIssueModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            New Issue
-          </button>
+          <div class="issues-toolbar-right">
+             <div class="search-bar-minimal">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+               <input type="text" placeholder="Filter..." value="${searchQuery}" oninput="renderMyIssuesView('${filter}', this.value)">
+             </div>
+             <div class="filter-group-minimal">
+               ${filters.map(f => `
+                 <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '${searchQuery}')">${f.label}</button>
+               `).join('')}
+             </div>
+             <button class="btn-primary-small" onclick="toggleCreateIssueForm()">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+               New Issue
+             </button>
+          </div>
         </div>
-        <div class="empty-state">
-          <div class="empty-state-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
-              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-              <rect x="9" y="3" width="6" height="4" rx="1"/>
-              <path d="M9 14l2 2 4-4"/>
-            </svg>
-          </div>
-          <h3 class="empty-state-title">No issues yet</h3>
-          <p class="empty-state-text">Create your first issue to get started</p>
-          <button class="btn btn-primary" onclick="openCreateIssueModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Create New Issue
-          </button>
+
+        <!-- Empty State with Embedded Form -->
+        <div class="empty-state-minimal">
+           <div id="emptyStateContent">
+             <div class="empty-icon">
+               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4"/><path d="M12 16V8"/></svg>
+             </div>
+             <h3>No issues found</h3>
+             <p>Get started by creating a new issue.</p>
+             <button class="btn-text" onclick="toggleCreateIssueForm()">Create Issue</button>
+           </div>
+           ${inlineForm}
         </div>
       </div>
     `;
@@ -758,49 +974,143 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
 
   return `
     <div class="issues-container-modern">
-      <div class="issues-header">
-        <div class="issues-header-left">
-          <h2 class="issues-title">My Issues</h2>
-          <div class="issues-count">${issues.length} issue${issues.length !== 1 ? 's' : ''}</div>
+      <!-- Minimal Toolbar -->
+      <div class="issues-toolbar">
+        <div class="issues-toolbar-left">
+           <h2 class="view-title">Issues</h2>
+           <div class="issues-count-badge">${issues.length}</div>
         </div>
-        <div class="issues-header-right">
-          <div class="filter-tabs">
-            ${filters.map(f => `
-              <button class="filter-tab ${filter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.label}</button>
-            `).join('')}
-          </div>
-          <button class="btn btn-primary" onclick="openCreateIssueModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            New Issue
-          </button>
+        <div class="issues-toolbar-right">
+           <div class="search-bar-minimal">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+             <input type="text" placeholder="Filter..." value="${searchQuery}" oninput="renderMyIssuesView('${filter}', this.value)">
+           </div>
+           <div class="filter-group-minimal">
+             ${filters.map(f => `
+               <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '${searchQuery}')">${f.label}</button>
+             `).join('')}
+           </div>
+           <button class="btn-primary-small" onclick="toggleCreateIssueForm()">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+             New Issue
+           </button>
         </div>
       </div>
-      
-      <div class="issues-list">
-        ${issues.map((issue, index) => `
-          <div class="issue-card" onclick="openIssueDetailModal(${index})">
-            <div class="issue-card-left">
-              <div class="issue-status-indicator ${issue.status}"></div>
-              <div class="issue-main-info">
-                <div class="issue-id-badge">${issue.id}</div>
-                <div class="issue-title-text">${issue.title}</div>
-              </div>
-            </div>
-            <div class="issue-card-right">
-              <div class="issue-meta-badges">
-                <span class="issue-status-badge ${getStatusBadgeClass(issue.status)}">${capitalizeStatus(issue.status)}</span>
-                ${issue.priority ? `<span class="issue-priority-badge ${getPriorityBadgeClass(issue.priority)}">${issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)}</span>` : ''}
-              </div>
-              <div class="issue-updated-text">${issue.updated}</div>
-              <button class="issue-delete-btn" onclick="event.stopPropagation(); handleDeleteIssue(${index})" title="Delete issue">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-          </div>
-        `).join('')}
+
+      <!-- Inline Create Form (Hidden by default) -->
+      ${inlineForm}
+
+      <div class="issues-list-wrapper">
+        ${listHeader}
+        <div class="issues-list-body">
+          ${listItems}
+        </div>
       </div>
     </div>
   `;
+  
+  // Restore sidebar state
+  restorePdSidebarState();
+}
+
+// New helper functions for inline form
+function renderInlineCreateIssueForm() {
+  return `
+    <div id="inlineCreateIssueFormContainer" class="inline-issue-card" style="display: none;">
+      <form id="inlineCreateIssueForm" onsubmit="handleInlineCreateIssueSubmit(event)">
+        <div class="inline-card-header">
+          <div class="inline-card-badge">New Issue</div>
+          <button type="button" class="btn-close-minimal" onclick="toggleCreateIssueForm()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="inline-card-body">
+          <input type="text" name="title" class="inline-card-title-input" placeholder="What needs to be done?" required autocomplete="off">
+          <textarea name="description" class="inline-card-desc-input" placeholder="Add a description..." rows="2"></textarea>
+        </div>
+        <div class="inline-card-footer">
+          <div class="inline-card-tools">
+            <div class="select-pill-wrapper">
+              <span class="select-icon priority"></span>
+              <select name="priority" class="select-pill" aria-label="Priority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="select-pill-wrapper">
+              <span class="select-icon status"></span>
+              <select name="status" class="select-pill" aria-label="Status">
+                <option value="todo" selected>To Do</option>
+                <option value="in-progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+          </div>
+          <div class="inline-card-actions">
+            <button type="button" class="btn-text-cancel" onclick="toggleCreateIssueForm()">Cancel</button>
+            <button type="submit" class="btn-primary-create">Create Issue</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function toggleCreateIssueForm() {
+  const container = document.getElementById('inlineCreateIssueFormContainer');
+  const emptyStateContent = document.getElementById('emptyStateContent');
+
+  if (container) {
+    const isHidden = container.style.display === 'none';
+    container.style.display = isHidden ? 'block' : 'none';
+    
+    if (emptyStateContent) {
+      emptyStateContent.style.display = isHidden ? 'none' : 'block';
+    }
+
+    if (isHidden) {
+      const input = container.querySelector('input[name="title"]');
+      if (input) setTimeout(() => input.focus(), 50);
+      
+      // If we are in empty state, maybe scroll to form?
+      container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+async function handleInlineCreateIssueSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+
+  const title = formData.get('title');
+  const description = formData.get('description');
+  const priority = formData.get('priority');
+  const status = formData.get('status');
+
+  if (title.trim()) {
+    try {
+      await addIssue({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        status,
+        assignee: 'Zeyad Maher'
+      });
+      form.reset();
+      // Keep it hidden or open? User might want to create multiple. 
+      // "Rectangle container under the button" - usually collapses on success.
+      toggleCreateIssueForm();
+      renderCurrentView();
+    } catch (e) {
+      console.error('Failed to create issue:', e);
+      if (typeof showToast === 'function') {
+        showToast('Failed to create issue', 'error');
+      }
+    }
+  }
 }
 
 function openIssueDetailModal(index) {
@@ -1042,342 +1352,7 @@ function setupIssueFilterListeners() {
    Layer - Backlog View (Professional Layout with Features)
    ============================================ */
 
-// Backlog filter state
-let backlogFilterState = 'all'; // 'all', 'active', 'completed'
-let backlogSortState = 'newest'; // 'newest', 'oldest', 'alphabetical'
-
-function setBacklogFilter(filter) {
-  backlogFilterState = filter;
-  renderCurrentView();
-}
-
-function setBacklogSort(sort) {
-  backlogSortState = sort;
-  renderCurrentView();
-}
-
-function moveToProject(taskIndex) {
-  const projects = loadProjects();
-  if (projects.length === 0) {
-    openModal('No Projects', `
-      <div style="padding: 24px; text-align: center;">
-        <p style="color: var(--muted-foreground); margin-bottom: 20px;">You need to create a project first before moving tasks.</p>
-        <button class="btn btn-primary" onclick="closeModal(); currentView = 'activity'; renderCurrentView();">
-          Go to Projects
-        </button>
-      </div>
-    `);
-    return;
-  }
-
-  const content = `
-    <div style="padding: 16px;">
-      <p style="color: var(--muted-foreground); margin-bottom: 20px;">Select a project to move this task to:</p>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${projects.map((p, i) => `
-          <button class="project-select-btn" onclick="confirmMoveToProject(${taskIndex}, ${i})" style="
-            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 10px; cursor: pointer; transition: all 0.2s;
-            text-align: left; width: 100%;
-          " onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--surface-hover)'"
-             onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--surface)'">
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--primary);"></div>
-            <span style="font-weight: 500; color: var(--foreground);">${p.name}</span>
-          </button>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  openModal('Move to Project', content);
-}
-
-function confirmMoveToProject(taskIndex, projectIndex) {
-  const tasks = loadBacklogTasks();
-  const task = tasks[taskIndex];
-  if (!task) return;
-
-  // Add to project's To Do column
-  addTaskToColumn(projectIndex, 0, task.title);
-
-  // Remove from backlog
-  deleteBacklogTask(taskIndex);
-
-  closeModal();
-  renderCurrentView();
-}
-
-function renderBacklogView() {
-  let tasks = loadBacklogTasks();
-  const totalTasks = tasks.length;
-  const doneTasks = tasks.filter(t => t.done).length;
-  const activeTasks = totalTasks - doneTasks;
-  const progress = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
-
-  // Apply filters
-  let filteredTasks = [...tasks];
-  if (backlogFilterState === 'active') {
-    filteredTasks = filteredTasks.filter(t => !t.done);
-  } else if (backlogFilterState === 'completed') {
-    filteredTasks = filteredTasks.filter(t => t.done);
-  }
-
-  // Apply sorting
-  if (backlogSortState === 'oldest') {
-    filteredTasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  } else if (backlogSortState === 'alphabetical') {
-    filteredTasks.sort((a, b) => a.title.localeCompare(b.title));
-  } else {
-    filteredTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  // Empty State
-  if (tasks.length === 0) {
-    return `
-      <div class="backlog-container backlog-modern">
-        <div class="backlog-empty-state">
-          <div class="empty-illustration">
-            <svg viewBox="0 0 120 120" fill="none" style="width: 120px; height: 120px;">
-              <rect x="20" y="30" width="80" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="2"/>
-              <rect x="30" y="45" width="40" height="6" rx="3" fill="var(--muted)"/>
-              <rect x="30" y="55" width="60" height="6" rx="3" fill="var(--muted)"/>
-              <rect x="30" y="65" width="25" height="6" rx="3" fill="var(--muted)"/>
-              <circle cx="90" cy="85" r="18" fill="var(--primary)" opacity="0.15"/>
-              <path d="M90 79v12M84 85h12" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h1 class="empty-title">Start your backlog</h1>
-          <p class="empty-description">
-            Capture ideas and tasks here. When you're ready, move them to a project.
-          </p>
-          <div class="backlog-quick-add-wrapper">
-            <input 
-              type="text" 
-              id="quickAddInput" 
-              class="backlog-quick-input"
-              placeholder="What needs to be done?" 
-              onkeypress="handleQuickAddKeypress(event)"
-            />
-            <button class="quick-add-btn" onclick="handleQuickAddClick()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // Main View with Tasks
-  return `
-    <div class="backlog-container backlog-modern">
-      <div class="backlog-header">
-        <div class="backlog-title-section">
-          <h1 class="view-title">Backlog</h1>
-          <div class="backlog-stats-row">
-            <span class="stat-chip">${totalTasks} total</span>
-            <span class="stat-chip active">${activeTasks} active</span>
-            <span class="stat-chip done">${doneTasks} done</span>
-          </div>
-        </div>
-        <div class="backlog-progress-ring">
-          <svg viewBox="0 0 80 80" class="progress-ring-svg">
-            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="6"/>
-            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--primary)" stroke-width="6"
-              stroke-dasharray="${2 * Math.PI * 32}"
-              stroke-dashoffset="${2 * Math.PI * 32 * (1 - progress / 100)}"
-              stroke-linecap="round"
-              transform="rotate(-90 40 40)"/>
-          </svg>
-          <span class="progress-value">${progress}%</span>
-        </div>
-      </div>
-
-      <div class="backlog-toolbar">
-        <div class="backlog-filters">
-          <button class="filter-chip ${backlogFilterState === 'all' ? 'active' : ''}" onclick="setBacklogFilter('all')">All</button>
-          <button class="filter-chip ${backlogFilterState === 'active' ? 'active' : ''}" onclick="setBacklogFilter('active')">Active</button>
-          <button class="filter-chip ${backlogFilterState === 'completed' ? 'active' : ''}" onclick="setBacklogFilter('completed')">Completed</button>
-        </div>
-        <div class="backlog-sort">
-          <select class="sort-select" onchange="setBacklogSort(this.value)" value="${backlogSortState}">
-            <option value="newest" ${backlogSortState === 'newest' ? 'selected' : ''}>Newest first</option>
-            <option value="oldest" ${backlogSortState === 'oldest' ? 'selected' : ''}>Oldest first</option>
-            <option value="alphabetical" ${backlogSortState === 'alphabetical' ? 'selected' : ''}>A-Z</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="backlog-tasks-grid">
-        ${filteredTasks.map((task, displayIndex) => {
-    const originalIndex = tasks.findIndex(t => t.id === task.id);
-    return `
-          <div class="backlog-task-card ${task.done ? 'done' : ''}">
-            <div class="task-card-main">
-              <button class="task-checkbox" onclick="handleToggleBacklogTask(${originalIndex})">
-                ${task.done ?
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" fill="var(--primary)" stroke="var(--primary)"/><path d="M8 12l3 3 5-6" stroke="white"/></svg>' :
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'
-      }
-              </button>
-              <div class="task-content" ondblclick="handleUpdateBacklogTask(${originalIndex}, prompt('Edit task:', '${task.title.replace(/'/g, "\\'")}'))">
-                <span class="task-title">${task.title}</span>
-                <span class="task-date">${formatRelativeDate(task.createdAt)}</span>
-              </div>
-            </div>
-            <div class="task-actions">
-              <button class="task-action-btn" onclick="moveToProject(${originalIndex})" title="Move to project">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                  <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
-                </svg>
-              </button>
-              <button class="task-action-btn delete" onclick="handleDeleteBacklogTask(${originalIndex})" title="Delete">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-        `}).join('')}
-      </div>
-
-      ${filteredTasks.length === 0 ? `
-        <div class="backlog-no-results">
-          <p>No ${backlogFilterState} tasks found</p>
-        </div>
-      ` : ''}
-
-      <div class="backlog-add-section">
-        <input 
-          type="text" 
-          id="quickAddInput" 
-          class="backlog-quick-input"
-          placeholder="+ Add new task" 
-          onkeypress="handleQuickAddKeypress(event)"
-        />
-      </div>
-
-      ${doneTasks > 0 ? `
-        <div class="backlog-clear-section">
-          <button class="clear-completed-btn" onclick="clearCompletedBacklog()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m5 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-            </svg>
-            Clear completed (${doneTasks})
-          </button>
-        </div>
-      ` : ''}
-    </div>
-  `;
-}
-
-function formatRelativeDate(dateStr) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return date.toLocaleDateString();
-}
-
-function clearCompletedBacklog() {
-  const tasks = loadBacklogTasks();
-  const activeTasks = tasks.filter(t => !t.done);
-  saveBacklogTasks(activeTasks);
-  renderCurrentView();
-}
-
-// Handlers (unchanged from your version)
-async function handleToggleBacklogTask(index) {
-  try {
-    await toggleBacklogTask(index);
-    renderCurrentView();
-  } catch (e) {
-    console.error('Failed to toggle backlog task:', e);
-  }
-}
-
-async function handleUpdateBacklogTask(index, title) {
-  if (title !== null) {
-    try {
-      await updateBacklogTask(index, title.trim() || 'New task');
-      renderCurrentView();
-    } catch (e) {
-      console.error('Failed to update backlog task:', e);
-    }
-  }
-}
-
-function handleDeleteBacklogTask(index) {
-  const confirmHTML = `
-    <div style="padding: 32px; text-align: center;">
-      <h3 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: var(--foreground);">Delete Task?</h3>
-      <p style="margin: 0 0 32px; color: var(--muted-foreground); font-size: 15px; line-height: 1.6;">
-        This action is permanent and cannot be undone.
-      </p>
-      <div style="display: flex; gap: 16px; justify-content: center;">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-destructive" onclick="confirmDeleteBacklogTask(${index})">Delete Task</button>
-      </div>
-    </div>
-  `;
-  openModal('Confirm Delete', confirmHTML);
-}
-
-async function confirmDeleteBacklogTask(index) {
-  try {
-    await deleteBacklogTask(index);
-    closeModal();
-    renderCurrentView();
-  } catch (e) {
-    console.error('Failed to delete backlog task:', e);
-    if (typeof showNotification === 'function') {
-      showNotification('Failed to delete task', 'error');
-    }
-  }
-}
-
-async function handleQuickAddKeypress(event) {
-  if (event.key === 'Enter') {
-    const input = event.target;
-    const title = input.value.trim();
-    if (title) {
-      try {
-        await addBacklogTask(title);
-        input.value = '';
-        renderCurrentView();
-      } catch (e) {
-        console.error('Failed to add backlog task:', e);
-      }
-    }
-  }
-}
-
-// Handle quick add button click
-async function handleQuickAddClick() {
-  const input = document.getElementById('quickAddInput');
-  if (!input) return;
-
-  const title = input.value.trim();
-  if (title) {
-    try {
-      await addBacklogTask(title);
-      input.value = '';
-      renderCurrentView();
-    } catch (e) {
-      console.error('Failed to add backlog task:', e);
-    }
-  } else {
-    // If empty, focus the input
-    input.focus();
-  }
-}
+// Backlog feature removed (view and handlers)
 
 
 
@@ -1657,12 +1632,9 @@ function openDeleteTaskModal(eventId) {
   const task = events.find(e => e.id == eventId);
   if (!task) return;
 
-  // Non-recurring: keep the simple confirm flow
+  // Non-recurring: show inline confirmation
   if (!task.isRecurring || !task.recurringId) {
-    if (!confirm('Delete this task permanently?')) return;
-    deleteSingleCalendarEvent(eventId);
-    // Preserve scroll when deleting task
-    renderCurrentView(true);
+    showInlineDeleteConfirmation(eventId, task);
     return;
   }
 
@@ -1682,6 +1654,142 @@ function openDeleteTaskModal(eventId) {
   `;
 
   openModal('Delete task', content);
+}
+
+function showInlineDeleteConfirmation(eventId, task) {
+  // First, hide the context menu if it's open
+  hideTaskContextMenu();
+  
+  // Find the task element that triggered the delete
+  const taskElement = document.querySelector(`[onclick*="openEditTaskModal('${eventId}')"]:not(button), [data-event-id="${eventId}"]`);
+  
+  // If not found, try agenda event card
+  let targetElement = taskElement || document.querySelector(`.agenda-event-card[onclick*="openEditTaskModal('${eventId}')"]`);
+  
+  // If still not found, try to find by context menu trigger
+  if (!targetElement) {
+    // Try to find the closest event card from the context menu
+    const contextMenu = document.getElementById('taskContextMenu');
+    if (contextMenu) {
+      // Find the element that was right-clicked
+      // This is harder to track, so we'll create a temporary overlay
+      createFloatingConfirmation(eventId, task);
+      return;
+    }
+  }
+  
+  if (targetElement) {
+    // Create confirmation container
+    const confirmContainer = document.createElement('div');
+    confirmContainer.className = 'inline-delete-confirmation';
+    confirmContainer.style.cssText = `
+      position: absolute;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      font-size: 14px;
+      color: var(--foreground);
+      min-width: 200px;
+    `;
+    
+    confirmContainer.innerHTML = `
+      <div style="margin-bottom: 12px;">Delete this task permanently?</div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-sm btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;" onclick="cancelInlineDeleteConfirmation(this)">Cancel</button>
+        <button class="btn btn-sm btn-destructive" style="flex: 1; padding: 6px 12px; font-size: 12px;" onclick="confirmInlineDelete('${eventId}', this)">Delete</button>
+      </div>
+    `;
+    
+    // Position the confirmation near the task
+    const rect = targetElement.getBoundingClientRect();
+    document.body.appendChild(confirmContainer);
+    
+    // Position to the right of the task element
+    const top = rect.top + window.scrollY;
+    const left = rect.right + 5 + window.scrollX;
+    
+    confirmContainer.style.top = top + 'px';
+    confirmContainer.style.left = left + 'px';
+    
+    // Store reference to original element
+    confirmContainer.setAttribute('data-original-element', targetElement.outerHTML.substring(0, 50));
+  } else {
+    // Fallback: create floating confirmation
+    createFloatingConfirmation(eventId, task);
+  }
+}
+
+function createFloatingConfirmation(eventId, task) {
+  // Create a semi-transparent overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'delete-confirmation-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+  
+  // Create confirmation container
+  const confirmContainer = document.createElement('div');
+  confirmContainer.className = 'inline-delete-confirmation';
+  confirmContainer.style.cssText = `
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-size: 15px;
+    color: var(--foreground);
+    min-width: 280px;
+    max-width: 400px;
+  `;
+  
+  confirmContainer.innerHTML = `
+    <div style="margin-bottom: 16px;"><strong>Delete this task permanently?</strong></div>
+    <div style="margin-bottom: 20px; color: var(--muted-foreground); font-size: 14px;">"${task.title}"</div>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn btn-secondary" style="flex: 1;" onclick="cancelInlineDeleteConfirmation(this)">Cancel</button>
+      <button class="btn btn-destructive" style="flex: 1;" onclick="confirmInlineDelete('${eventId}', this)">Delete</button>
+    </div>
+  `;
+  
+  overlay.appendChild(confirmContainer);
+  document.body.appendChild(overlay);
+  
+  // Close on click outside
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      cancelInlineDeleteConfirmation();
+    }
+  });
+}
+
+function cancelInlineDeleteConfirmation(element) {
+  // Remove confirmation container and overlay
+  const containers = document.querySelectorAll('.inline-delete-confirmation, #delete-confirmation-overlay');
+  containers.forEach(container => container.remove());
+}
+
+async function confirmInlineDelete(eventId, element) {
+  // Remove confirmation first to avoid UI conflicts
+  cancelInlineDeleteConfirmation();
+  
+  // Perform the actual deletion
+  await deleteSingleCalendarEvent(eventId);
+  
+  // Refresh the view after deletion is complete
+  renderCurrentView(true);
 }
 
 async function deleteSingleCalendarEvent(eventId) {
@@ -1744,7 +1852,9 @@ function openEditTaskModal(eventId) {
   const dateValue = task.date || new Date().toISOString().split('T')[0];
 
   const content = `
-    <form id="editEventForm">
+    <div class="event-dropdown-form" id="eventDropdownForm">
+      <div class="modal-content">
+        <form id="editEventForm">
       <div class="form-group">
         <label>Title <span class="required">*</span></label>
         <input type="text" name="title" class="form-input" value="${task.title}" required>
@@ -1861,12 +1971,31 @@ function openEditTaskModal(eventId) {
       </div>
       
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-secondary" onclick="closeEventDropdown()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
       </div>
     </form>
+      </div>
+    </div>
   `;
-  openModal('Edit Task', content);
+
+  // Add dropdown to body
+  document.body.insertAdjacentHTML('beforeend', content);
+
+  // Position the dropdown in the center of the screen
+  const dropdown = document.getElementById('eventDropdownForm');
+  if (dropdown) {
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = '50%';
+    dropdown.style.top = '50%';
+    dropdown.style.transform = 'translate(-50%, -50%)';
+    dropdown.style.zIndex = '10000';
+  }
+
+  // Add click listener to close dropdown when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', handleDropdownClickOutside);
+  }, 10);
 
   // Attach event listener after modal is opened
   setTimeout(() => {
@@ -5544,6 +5673,8 @@ function renderProjectDetailView(projectIndex) {
   const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
   const targetDateFormatted = formatDateAdvanced(project.targetDate);
 
+  const isSidebarCollapsed = localStorage.getItem('pdSidebarCollapsed') === 'true';
+
   return `
     <div class="project-detail-advanced">
       <!-- Advanced Header with Breadcrumb & Tabs -->
@@ -5576,24 +5707,216 @@ function renderProjectDetailView(projectIndex) {
               Project detail
             </button>
             <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'timeline' ? 'active' : ''}" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="19" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <style>
+                  @keyframes docPop {
+                    0%, 100% {
+                      transform: scale(1);
+                    }
+                    50% {
+                      transform: scale(1.08);
+                    }
+                  }
+                  
+                  @keyframes lineType {
+                    0% {
+                      stroke-dashoffset: 10;
+                      transform: scaleX(0);
+                      opacity: 0;
+                    }
+                    100% {
+                      stroke-dashoffset: 0;
+                      transform: scaleX(1);
+                      opacity: 1;
+                    }
+                  }
+                  
+                  @keyframes linePulse {
+                    0%, 100% {
+                      stroke-width: 2;
+                    }
+                    50% {
+                      stroke-width: 2.5;
+                    }
+                  }
+                  
+                  .pd-tab:hover .doc-frame {
+                    animation: docPop 0.4s ease-in-out;
+                  }
+                  
+                  .pd-tab:hover .text-line {
+                    animation: lineType 0.4s ease-out, linePulse 0.5s ease-in-out;
+                    stroke-dasharray: 10;
+                    transform-origin: left;
+                  }
+                  
+                  .pd-tab:hover .text-line:nth-child(2) {
+                    animation-delay: 0.1s;
+                  }
+                  
+                  .pd-tab:hover .text-line:nth-child(3) {
+                    animation-delay: 0.2s;
+                  }
+                </style>
+                
+                <rect class="doc-frame" x="3" y="4" width="18" height="18" rx="2"></rect>
+                <line class="text-line" x1="9" y1="8" x2="15" y2="8"></line>
+                <line class="text-line" x1="9" y1="12" x2="19" y2="12"></line>
+                <line class="text-line" x1="9" y1="16" x2="13" y2="16"></line>
               </svg>
               Gantt
             </button>
             <button class="pd-tab" onclick="openGripDiagram(${projectIndex})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <style>
+                  @keyframes boardPop {
+                    0%, 100% {
+                      transform: scale(1);
+                    }
+                    50% {
+                      transform: scale(1.08);
+                    }
+                  }
+                  
+                  @keyframes drawLine {
+                    0% {
+                      stroke-dashoffset: 20;
+                      opacity: 0;
+                    }
+                    100% {
+                      stroke-dashoffset: 0;
+                      opacity: 1;
+                    }
+                  }
+                  
+                  @keyframes penWrite {
+                    0%, 100% {
+                      transform: translate(0, 0) rotate(0deg);
+                    }
+                    25% {
+                      transform: translate(-2px, -2px) rotate(-10deg);
+                    }
+                    50% {
+                      transform: translate(2px, -1px) rotate(5deg);
+                    }
+                    75% {
+                      transform: translate(-1px, -2px) rotate(-5deg);
+                    }
+                  }
+                  
+                  .pd-tab:hover .board-content {
+                    animation: boardPop 0.4s ease-in-out;
+                  }
+                  
+                  .pd-tab:hover .board-line {
+                    animation: drawLine 0.4s ease-out;
+                    stroke-dasharray: 20;
+                  }
+                  
+                  .pd-tab:hover .board-line:nth-child(2) {
+                    animation-delay: 0.1s;
+                  }
+                  
+                  .pd-tab:hover .board-line:nth-child(3) {
+                    animation-delay: 0.2s;
+                  }
+                  
+                  .pd-tab:hover .pen {
+                    animation: penWrite 0.6s ease-in-out;
+                    transform-origin: bottom right;
+                  }
+                </style>
+                
+                <!-- Whiteboard frame -->
+                <g class="board-content">
+                  <rect x="2" y="3" width="18" height="14" rx="1"></rect>
+                  
+                  <!-- Content lines on board -->
+                  <line class="board-line" x1="5" y1="7" x2="11" y2="7"></line>
+                  <line class="board-line" x1="5" y1="10" x2="14" y2="10"></line>
+                  <line class="board-line" x1="5" y1="13" x2="9" y2="13"></line>
+                </g>
+                
+                <!-- Stand legs -->
+                <line x1="6" y1="17" x2="5" y2="22"></line>
+                <line x1="16" y1="17" x2="17" y2="22"></line>
+                
+                <!-- Pen/marker (more prominent) -->
+                <g class="pen">
+                  <path d="M18 14l3 3"></path>
+                  <path d="M17 13l1-1 3 3-1 1z"></path>
+                  <line x1="21" y1="16" x2="22" y2="17"></line>
+                </g>
               </svg>
               Whiteboard
+            </button>
+            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'backlog' ? 'active' : ''}" data-tab="backlog" onclick="switchProjectTab('backlog', ${projectIndex})">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <style>
+                  @keyframes clipboardPop {
+                    0%, 100% {
+                      transform: scale(1) translateY(0);
+                    }
+                    50% {
+                      transform: scale(1.1) translateY(-2px);
+                    }
+                  }
+                  
+                  @keyframes checkmark {
+                    0% {
+                      stroke-dashoffset: 20;
+                      opacity: 0;
+                    }
+                    50% {
+                      opacity: 1;
+                    }
+                    100% {
+                      stroke-dashoffset: 0;
+                      opacity: 0;
+                    }
+                  }
+                  
+                  .pd-tab:hover .icon .clipboard-body {
+                    animation: clipboardPop 0.5s ease-in-out;
+                  }
+                  
+                  .pd-tab:hover .icon .checkmark {
+                    animation: checkmark 0.6s ease-in-out;
+                  }
+                  
+                  .checkmark {
+                    opacity: 0;
+                    stroke-dasharray: 20;
+                    stroke-dashoffset: 20;
+                  }
+                </style>
+                
+                <g class="clipboard-body">
+                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                  <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                </g>
+                
+                <polyline class="checkmark" points="9 12 11 14 15 10" stroke-width="2"></polyline>
+              </svg>
+              Backlog
             </button>
           </div>
         </div>
         
         <div class="pd-header-right">
+          <button class="pd-action-btn" onclick="toggleSidebar()" title="Toggle sidebar" id="sidebarToggleBtn">
+            ${isSidebarCollapsed ?
+              `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="11 18 6 13 11 8"/>
+                <polyline points="18 18 13 13 18 8"/>
+              </svg>` :
+              `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>`
+            }
+          </button>
 
           <button class="pd-action-btn" onclick="copyProjectLink(${projectIndex})" title="Copy link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5621,7 +5944,7 @@ function renderProjectDetailView(projectIndex) {
       </header>
       
       <!-- Main Layout Grid -->
-      <div class="pd-layout">
+      <div class="pd-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}">
         <!-- Main Content -->
         <main class="pd-main">
           <div class="pd-content-scroll">
@@ -5743,7 +6066,7 @@ function renderProjectDetailView(projectIndex) {
         </main>
         
         <!-- Sidebar -->
-        <aside class="pd-sidebar" id="pdSidebar">
+        <aside class="pd-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}" id="pdSidebar">
           
           <!-- Properties Section -->
           <div class="pd-sidebar-section">
@@ -5952,26 +6275,38 @@ function getActivityIcon(type) {
   return icons[type] || icons.create;
 }
 
-// Toggle Project Detail Sidebar Collapse
-function togglePdSidebar() {
-  const sidebar = document.getElementById('pdSidebar');
-  if (!sidebar) return;
-
-  sidebar.classList.toggle('collapsed');
-
-  // Save state to localStorage
-  const isCollapsed = sidebar.classList.contains('collapsed');
-  localStorage.setItem('pdSidebarCollapsed', isCollapsed);
-}
-
 // Restore sidebar state on load
 function restorePdSidebarState() {
   const sidebar = document.getElementById('pdSidebar');
-  if (!sidebar) return;
+  const layout = document.querySelector('.pd-layout');
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  
+  if (!sidebar || !layout) return;
 
   const isCollapsed = localStorage.getItem('pdSidebarCollapsed') === 'true';
   if (isCollapsed) {
     sidebar.classList.add('collapsed');
+    layout.classList.add('sidebar-collapsed');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="11 18 6 13 11 8"/>
+          <polyline points="18 18 13 13 18 8"/>
+        </svg>
+      `;
+    }
+  } else {
+    sidebar.classList.remove('collapsed');
+    layout.classList.remove('sidebar-collapsed');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      `;
+    }
   }
 }
 // Timeline State is defined in Enhanced Timeline section below
@@ -6011,12 +6346,19 @@ function switchProjectTab(tabName, projectIndex) {
         renderTimelineView(projectIndex, contentScroll);
       }
       break;
+    case 'backlog':
+      contentScroll.classList.remove('timeline-full-width');
+      renderBacklogTab(projectIndex, contentScroll);
+      break;
     case 'overview':
     default:
       contentScroll.classList.remove('timeline-full-width');
       renderOverviewTab(projectIndex, contentScroll);
       break;
   }
+  
+  // Ensure sidebar state is preserved after tab switch
+  restorePdSidebarState();
 }
 
 
@@ -6176,6 +6518,511 @@ if (typeof timelineState === 'undefined') {
     scrollLeft: 0,  // Save scroll position
     scrollTop: 0    // Save scroll position
   };
+}
+
+function renderBacklogTab(projectIndex, container) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  
+  if (!project) return;
+
+  // Get all tasks from all columns that could be considered backlog items
+  const allTasks = [];
+  const backlogColumns = ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'];
+  
+  (project.columns || []).forEach((column, colIndex) => {
+    if (backlogColumns.includes(column.title)) {
+      (column.tasks || []).forEach((task, taskIndex) => {
+        allTasks.push({
+          ...task,
+          columnIndex: colIndex,
+          taskIndex: taskIndex,
+          columnTitle: column.title
+        });
+      });
+    }
+  });
+
+  // Also include tasks without specific status that might be considered backlog
+  (project.columns || []).forEach((column, colIndex) => {
+    if (!backlogColumns.includes(column.title)) {
+      (column.tasks || []).forEach((task, taskIndex) => {
+        if (!task.status || task.status === 'todo' || task.status === 'backlog') {
+          allTasks.push({
+            ...task,
+            columnIndex: colIndex,
+            taskIndex: taskIndex,
+            columnTitle: column.title
+          });
+        }
+      });
+    }
+  });
+
+  // Sort tasks by priority and creation date
+  allTasks.sort((a, b) => {
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
+    const aPriority = priorityOrder[a.priority] || 2;
+    const bPriority = priorityOrder[b.priority] || 2;
+    
+    if (aPriority !== bPriority) {
+      return bPriority - aPriority; // Higher priority first
+    }
+    
+    // Then by creation date (newest first)
+    const aDate = new Date(a.createdAt || 0);
+    const bDate = new Date(b.createdAt || 0);
+    return bDate - aDate;
+  });
+
+  const stats = {
+    total: allTasks.length,
+    high: allTasks.filter(t => t.priority === 'high').length,
+    medium: allTasks.filter(t => t.priority === 'medium').length,
+    low: allTasks.filter(t => t.priority === 'low').length,
+    completed: allTasks.filter(t => t.done).length
+  };
+
+  container.innerHTML = `
+    <div class="backlog-container backlog-modern">
+      ${allTasks.length === 0 ? `
+        <!-- Empty State -->
+        <div class="backlog-empty-state">
+          <div class="empty-illustration">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="120" height="120">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+              <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+            </svg>
+          </div>
+          <h2 class="empty-title">No backlog tasks</h2>
+          <p class="empty-description">Tasks that need to be planned will appear here. Start by adding your first task to get organized.</p>
+          <button class="btn-primary" onclick="openAddProjectBacklogTaskModal(${projectIndex})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add First Task
+          </button>
+        </div>
+      ` : `
+        <!-- Backlog Header -->
+        <div class="backlog-header">
+          <div class="backlog-title-section">
+            <h2>Backlog</h2>
+            <div class="backlog-stats-row">
+              <div class="stat-chip ${stats.total > 0 ? 'active' : ''}">${stats.total} total</div>
+              <div class="stat-chip ${stats.high > 0 ? '' : ''}">${stats.high} high</div>
+              <div class="stat-chip ${stats.medium > 0 ? '' : ''}">${stats.medium} medium</div>
+              <div class="stat-chip ${stats.low > 0 ? '' : ''}">${stats.low} low</div>
+              ${stats.completed > 0 ? `<div class="stat-chip done">${stats.completed} done</div>` : ''}
+            </div>
+          </div>
+          <div class="backlog-progress-ring">
+            <svg class="progress-ring-svg" width="80" height="80">
+              <circle cx="40" cy="40" r="36" fill="none" stroke="var(--glass-border)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="36" fill="none" stroke="var(--primary)" stroke-width="8"
+                      stroke-dasharray="${2 * Math.PI * 36}"
+                      stroke-dashoffset="${2 * Math.PI * 36 * (1 - (stats.completed / stats.total))}"
+                      stroke-linecap="round"/>
+            </svg>
+            <div class="progress-value">${Math.round((stats.completed / stats.total) * 100) || 0}%</div>
+          </div>
+        </div>
+
+        <!-- Backlog Toolbar -->
+        <div class="backlog-toolbar">
+          <div class="backlog-filters">
+            <button class="filter-chip active" onclick="filterProjectBacklogTasks(${projectIndex}, 'all', 'priority')">All</button>
+            <button class="filter-chip" onclick="filterProjectBacklogTasks(${projectIndex}, 'high', 'priority')">High</button>
+            <button class="filter-chip" onclick="filterProjectBacklogTasks(${projectIndex}, 'medium', 'priority')">Medium</button>
+            <button class="filter-chip" onclick="filterProjectBacklogTasks(${projectIndex}, 'low', 'priority')">Low</button>
+          </div>
+          <select class="sort-select" onchange="sortProjectBacklogTasks(${projectIndex}, this.value)">
+            <option value="priority">Sort by Priority</option>
+            <option value="date">Sort by Date</option>
+            <option value="name">Sort by Name</option>
+          </select>
+        </div>
+
+        <!-- Backlog Tasks Grid -->
+        <div class="backlog-tasks-grid" id="backlogTasksList">
+          ${allTasks.map(task => `
+            <div class="backlog-task-card ${task.done ? 'done' : ''}" data-task-id="${task.columnIndex}-${task.taskIndex}">
+              <div class="task-card-main">
+                <button class="task-checkbox" onclick="toggleProjectBacklogTaskStatus(${projectIndex}, ${task.columnIndex}, ${task.taskIndex}, !${task.done})">
+                  ${task.done ? 
+                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>` :
+                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="4"/>
+                    </svg>`
+                  }
+                </button>
+                <div class="task-content" onclick="editProjectBacklogTask(${projectIndex}, ${task.columnIndex}, ${task.taskIndex})">
+                  <div class="task-title">${task.title || 'Untitled Task'}</div>
+                  <div class="task-date">${task.columnTitle} ${task.dueDate ? `• Due ${new Date(task.dueDate).toLocaleDateString()}` : ''}</div>
+                </div>
+              </div>
+              <div class="task-actions">
+                <button class="task-action-btn" onclick="editProjectBacklogTask(${projectIndex}, ${task.columnIndex}, ${task.taskIndex})" title="Edit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button class="task-action-btn" onclick="moveProjectBacklogTaskToColumn(${projectIndex}, ${task.columnIndex}, ${task.taskIndex})" title="Move">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+                <button class="task-action-btn delete" onclick="deleteProjectBacklogTask(${projectIndex}, ${task.columnIndex}, ${task.taskIndex})" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Add Task Section -->
+        <div class="backlog-add-section">
+          <div class="backlog-quick-add-wrapper">
+            <input type="text" class="backlog-quick-input" placeholder="Add a new task..." 
+                   onkeypress="if(event.key === 'Enter') { const value = this.value.trim(); if(value) { quickAddProjectBacklogTask(${projectIndex}, value); this.value = ''; } }">
+            <button class="quick-add-btn" onclick="const input = this.previousElementSibling; const value = input.value.trim(); if(value) { quickAddProjectBacklogTask(${projectIndex}, value); input.value = ''; }">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        ${stats.completed > 0 ? `
+          <!-- Clear Completed Section -->
+          <div class="backlog-clear-section">
+            <button class="clear-completed-btn" onclick="clearCompletedProjectBacklogTasks(${projectIndex})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+              </svg>
+              Clear ${stats.completed} completed
+            </button>
+          </div>
+        ` : ''}
+      `}
+    </div>
+  `;
+  
+  // Restore sidebar state
+  restorePdSidebarState();
+}
+
+// Helper functions for backlog tab
+function toggleProjectBacklogTaskStatus(projectIndex, columnIndex, taskIndex, isDone) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const task = project.columns[columnIndex].tasks[taskIndex];
+  if (task) {
+    task.done = isDone;
+    saveProjects(projects);
+    renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  }
+}
+
+function editProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const task = project.columns[columnIndex].tasks[taskIndex];
+  if (!task) return;
+  
+  const content = `
+    <form onsubmit="saveProjectBacklogTaskEdit(event, ${projectIndex}, ${columnIndex}, ${taskIndex})">
+      <div class="form-group">
+        <label>Task Title</label>
+        <input type="text" name="title" value="${task.title || ''}" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" rows="3">${task.description || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select name="priority">
+          <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+          <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+          <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" name="dueDate" value="${task.dueDate || ''}">
+      </div>
+      <div class="form-actions">
+        <button type="button" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary">Save Changes</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Edit Backlog Task', content);
+}
+
+function saveProjectBacklogTaskEdit(event, projectIndex, columnIndex, taskIndex) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const task = project.columns[columnIndex].tasks[taskIndex];
+  if (task) {
+    task.title = formData.get('title');
+    task.description = formData.get('description');
+    task.priority = formData.get('priority');
+    task.dueDate = formData.get('dueDate');
+    task.updatedAt = new Date().toISOString();
+    
+    saveProjects(projects);
+    closeModal();
+    renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  }
+}
+
+function moveProjectBacklogTaskToColumn(projectIndex, columnIndex, taskIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  const task = project.columns[columnIndex].tasks[taskIndex];
+  if (!task) return;
+  
+  const columns = project.columns.map((col, idx) => 
+    `<option value="${idx}">${col.title}</option>`
+  ).join('');
+  
+  const content = `
+    <form onsubmit="confirmMoveProjectBacklogTask(event, ${projectIndex}, ${columnIndex}, ${taskIndex})">
+      <div class="form-group">
+        <label>Move to Column</label>
+        <select name="targetColumn" required>
+          ${columns}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="button" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary">Move Task</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Move Task to Column', content);
+}
+
+function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskIndex) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const targetColumnIndex = parseInt(formData.get('targetColumn'));
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Remove task from current column
+  const task = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
+  
+  // Add to target column
+  if (project.columns[targetColumnIndex]) {
+    project.columns[targetColumnIndex].tasks.push(task);
+  }
+  
+  saveProjects(projects);
+  closeModal();
+  renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+}
+
+function deleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
+  const content = `
+    <div style="padding: 32px; text-align: center;">
+      <h3 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: var(--foreground);">Delete Task?</h3>
+      <p style="margin: 0 0 24px; color: var(--muted-foreground);">This action cannot be undone.</p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" onclick="closeModal()" style="padding: 8px 16px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px;">Cancel</button>
+        <button type="button" onclick="confirmDeleteProjectBacklogTask(${projectIndex}, ${columnIndex}, ${taskIndex})" style="padding: 8px 16px; background: var(--destructive); color: white; border: none; border-radius: 6px;">Delete</button>
+      </div>
+    </div>
+  `;
+  
+  openModal('Confirm Delete', content);
+}
+
+function confirmDeleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project || !project.columns[columnIndex]) return;
+  
+  project.columns[columnIndex].tasks.splice(taskIndex, 1);
+  saveProjects(projects);
+  closeModal();
+  renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+}
+
+function openAddProjectBacklogTaskModal(projectIndex) {
+  const content = `
+    <form onsubmit="handleAddProjectBacklogTaskForm(event, ${projectIndex})">
+      <div class="form-group">
+        <label>Task Title</label>
+        <input type="text" name="title" placeholder="Enter task title..." required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" rows="3" placeholder="Enter task description..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select name="priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" name="dueDate">
+      </div>
+      <div class="form-actions">
+        <button type="button" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary">Add Task</button>
+      </div>
+    </form>
+  `;
+  
+  openModal('Add Backlog Task', content);
+}
+
+function handleAddProjectBacklogTaskForm(event, projectIndex) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Find or create a backlog column
+  let backlogColumn = project.columns.find(col => 
+    ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
+  );
+  
+  if (!backlogColumn) {
+    // Create a new backlog column
+    backlogColumn = {
+      title: 'Backlog',
+      tasks: [],
+      color: '#6b7280'
+    };
+    project.columns.push(backlogColumn);
+  }
+  
+  const newTask = {
+    id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    title: formData.get('title'),
+    description: formData.get('description'),
+    priority: formData.get('priority'),
+    dueDate: formData.get('dueDate'),
+    done: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  backlogColumn.tasks.push(newTask);
+  saveProjects(projects);
+  closeModal();
+  renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+}
+
+function filterProjectBacklogTasks(projectIndex, value, type) {
+  // This function would implement filtering logic
+  // For now, just re-render the current tab
+  if (projectIndex !== undefined && projectIndex !== null) {
+    renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  }
+}
+
+function sortProjectBacklogTasks(projectIndex, value) {
+  // This function would implement sorting logic
+  // For now, just re-render the current tab
+  if (projectIndex !== undefined && projectIndex !== null) {
+    renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  }
+}
+
+function quickAddProjectBacklogTask(projectIndex, title) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  // Find or create a backlog column
+  let backlogColumn = project.columns.find(col => 
+    ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
+  );
+  
+  if (!backlogColumn) {
+    // Create a new backlog column
+    backlogColumn = {
+      title: 'Backlog',
+      tasks: [],
+      color: '#6b7280'
+    };
+    project.columns.push(backlogColumn);
+  }
+  
+  const newTask = {
+    id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    title: title,
+    description: '',
+    priority: 'medium',
+    dueDate: '',
+    done: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  backlogColumn.tasks.push(newTask);
+  saveProjects(projects);
+  renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+}
+
+function clearCompletedProjectBacklogTasks(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (!project) return;
+  
+  let clearedCount = 0;
+  
+  // Remove completed tasks from backlog columns
+  project.columns.forEach((column, colIndex) => {
+    if (['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(column.title)) {
+      const originalLength = column.tasks.length;
+      column.tasks = column.tasks.filter(task => !task.done);
+      clearedCount += originalLength - column.tasks.length;
+    }
+  });
+  
+  if (clearedCount > 0) {
+    saveProjects(projects);
+    renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  }
+}
+
+function getCurrentProjectIndex() {
+  // This would need to be implemented based on how the current project is tracked
+  // For now, return null as a placeholder
+  return null;
 }
 
 // Timeline task colors palette
@@ -12067,6 +12914,39 @@ function showProjectQuickActions(projectIndex, event) {
   showComingSoonToast();
 }
 
+function toggleSidebar() {
+  const sidebar = document.getElementById('pdSidebar');
+  const layout = document.querySelector('.pd-layout');
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  
+  if (sidebar && layout) {
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+      sidebar.classList.remove('collapsed');
+      layout.classList.remove('sidebar-collapsed');
+      toggleBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      `;
+      localStorage.setItem('pdSidebarCollapsed', 'false');
+    } else {
+      sidebar.classList.add('collapsed');
+      layout.classList.add('sidebar-collapsed');
+      toggleBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="11 18 6 13 11 8"/>
+          <polyline points="18 18 13 13 18 8"/>
+        </svg>
+      `;
+      localStorage.setItem('pdSidebarCollapsed', 'true');
+    }
+  }
+}
+
 function copyProjectLink(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
@@ -13496,23 +14376,84 @@ function generateTeamChartData(project, teamMembers) {
 
 // Column management handlers
 function handleAddColumn(projectIndex) {
-  const columnName = prompt('Enter column name:', 'New Column');
-  if (columnName && columnName.trim()) {
-    // Save the current active tab before re-render
-    const activeTab = document.querySelector('.pd-tab.active');
-    const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-
-    addColumnToProject(projectIndex, columnName.trim());
-
-    renderCurrentView();
-
-    // Restore the active tab if we're in project detail view and timeline was active
-    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
-      requestAnimationFrame(() => {
-        switchProjectTab('timeline', projectIndex);
-      });
+  // Find the kanban header where the button is located
+  const kanbanHeader = document.querySelector(`[data-project-index="${projectIndex}"], .tl-kanban-header`);
+  
+  // Look for a more specific selector
+  const parentContainer = document.querySelector(`.pd-tab[data-tab="kanban"][data-project-index="${projectIndex}"]`) || 
+                        document.querySelector('.tl-kanban-header');
+  
+  // Find the add column button container
+  const addButton = parentContainer.querySelector('.tl-kanban-add-col-btn');
+  
+  // Hide the original button temporarily
+  addButton.style.display = 'none';
+  
+  // Create input field for column name
+  const inputField = document.createElement('input');
+  inputField.type = 'text';
+  inputField.placeholder = 'Enter column name...';
+  inputField.className = 'tl-kanban-col-input';
+  inputField.value = 'New Column';
+  
+  // Style the input to match the button
+  inputField.style.padding = '8px 12px';
+  inputField.style.marginLeft = '10px';
+  inputField.style.border = '1px solid var(--border)';
+  inputField.style.borderRadius = '6px';
+  inputField.style.backgroundColor = 'var(--background)';
+  inputField.style.color = 'var(--foreground)';
+  inputField.style.fontSize = '14px';
+  
+  // Insert input field next to the button
+  addButton.parentNode.insertBefore(inputField, addButton.nextSibling);
+  
+  // Focus the input field and select the text
+  inputField.focus();
+  inputField.select();
+  
+  // Handle input submission
+  inputField.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      const columnName = inputField.value;
+      if (columnName && columnName.trim()) {
+        // Save the current active tab before re-render
+        const activeTab = document.querySelector('.pd-tab.active');
+        const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
+        
+        addColumnToProject(projectIndex, columnName.trim());
+        
+        renderCurrentView();
+        
+        // Restore the active tab if we're in project detail view and timeline was active
+        if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+          requestAnimationFrame(() => {
+            switchProjectTab('timeline', projectIndex);
+          });
+        }
+      } else {
+        // Remove the input and show the button again if empty
+        inputField.remove();
+        addButton.style.display = 'inline-flex';
+      }
     }
-  }
+  });
+  
+  // Handle cancel on blur if empty
+  inputField.addEventListener('blur', function() {
+    if (!inputField.value.trim()) {
+      inputField.remove();
+      addButton.style.display = 'inline-flex';
+    }
+  });
+  
+  // Handle escape key to cancel
+  inputField.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      inputField.remove();
+      addButton.style.display = 'inline-flex';
+    }
+  });
 }
 
 function handleDeleteColumn(projectIndex, columnIndex) {
@@ -14019,23 +14960,64 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
 
-  // Prompt user for task title
-  const title = prompt('Enter task title:');
-  if (title && title.trim()) {
-    const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
-    addTaskToColumn(projectIndex, columnIndex, title.trim());
-    renderCurrentView();
-    if (scrollPos && restoreKanbanScrollPosition) {
-      restoreKanbanScrollPosition(scrollPos);
+  // Find the column body where the input should be added
+  const columnElement = event.target.closest('.tl-kanban-column');
+  const taskListContainer = columnElement.querySelector('.tl-kanban-col-tasks');
+  
+  // Clear any existing input fields
+  const existingInputs = taskListContainer.querySelectorAll('.tl-kanban-task-input');
+  existingInputs.forEach(input => input.remove());
+  
+  // Create input field for task title
+  const inputField = document.createElement('input');
+  inputField.type = 'text';
+  inputField.placeholder = 'Enter task title...';
+  inputField.className = 'tl-kanban-task-input';
+  inputField.style.width = 'calc(100% - 20px)';
+  inputField.style.padding = '8px';
+  inputField.style.margin = '10px';
+  inputField.style.border = '1px solid var(--border)';
+  inputField.style.borderRadius = '6px';
+  inputField.style.backgroundColor = 'var(--background)';
+  inputField.style.color = 'var(--foreground)';
+  
+  // Focus the input field
+  inputField.focus();
+  
+  // Handle input submission
+  inputField.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      const title = inputField.value;
+      if (title && title.trim()) {
+        const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
+        addTaskToColumn(projectIndex, columnIndex, title.trim());
+        renderCurrentView();
+        if (scrollPos && restoreKanbanScrollPosition) {
+          restoreKanbanScrollPosition(scrollPos);
+        }
+        
+        // Restore the active tab if we're in project detail view and timeline was active
+        if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+          requestAnimationFrame(() => {
+            switchProjectTab('timeline', projectIndex);
+          });
+        }
+      } else {
+        // Remove the input if empty
+        taskListContainer.removeChild(inputField);
+      }
     }
-
-    // Restore the active tab if we're in project detail view and timeline was active
-    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
-      requestAnimationFrame(() => {
-        switchProjectTab('timeline', projectIndex);
-      });
+  });
+  
+  // Add cancel on blur if empty
+  inputField.addEventListener('blur', function() {
+    if (!inputField.value.trim()) {
+      taskListContainer.removeChild(inputField);
     }
-  }
+  });
+  
+  // Insert input field at the top of the task list
+  taskListContainer.insertBefore(inputField, taskListContainer.firstChild);
 }
 
 function showComingSoonToast() {
@@ -18362,11 +19344,43 @@ async function rejectFollowRequest(requestId, followerId) {
    Layer - Settings View (Professional Layout)
    ============================================ */
 
-function renderSettingsView() {
+async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'dark';
   const appVersion = '0.1.0';
   const lastSync = new Date().toLocaleString();
+
+  // Get current user info - ONLY use saved profile name, never Google metadata
   const currentUser = window.LayerDB?.getCurrentUser();
+  let name = 'User';
+  let email = 'Not signed in';
+  
+  if (currentUser) {
+    email = currentUser.email || 'Not signed in';
+    
+    // ONLY try to get saved profile name from database (async for fresh data)
+    try {
+      const profile = await window.LayerDB?.getProfile();
+      if (profile && profile.name) {
+        name = profile.name;
+        console.log('renderSettingsView: Using saved profile name (IGNORING Google):', name);
+      } else {
+        // If no saved profile, use email split (NEVER use Google metadata)
+        name = currentUser.email?.split('@')[0] || 'User';
+        console.log('renderSettingsView: No saved profile, using email split (NOT Google name):', name);
+      }
+    } catch (error) {
+      // If error getting profile, use email split (NEVER use Google metadata)
+      name = currentUser.email?.split('@')[0] || 'User';
+      console.log('renderSettingsView: Error getting profile, using email split (NOT Google name):', name);
+    }
+  } else {
+    // Fallback to localStorage only if no database user
+    const savedName = localStorage.getItem('userDisplayName');
+    if (savedName && savedName !== 'User') {
+      name = savedName;
+      console.log('renderSettingsView: Using localStorage fallback:', name);
+    }
+  }
 
   // Load notification settings
   const notifyDeadlines = localStorage.getItem('layerNotifyDeadlines') !== 'false';
@@ -18387,6 +19401,7 @@ function renderSettingsView() {
     { value: 'dracula', label: 'Dracula' },
     { value: 'gruvbox', label: 'Gruvbox Dark' },
     { value: 'rosepine', label: 'Rosé Pine' },
+    { value: 'claude', label: 'Claude' },
   ];
 
   // Helper for avatar
@@ -18405,9 +19420,6 @@ function renderSettingsView() {
     return `<div class="settings-avatar-placeholder">?</div>`;
   };
 
-  const name = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Guest User';
-  const email = currentUser?.email || 'Not signed in';
-
   return `
     <div class="settings-container">
       <!-- Header -->
@@ -18420,16 +19432,71 @@ function renderSettingsView() {
       <div class="settings-section card">
         <h3 class="section-title">Account</h3>
         
-        <div class="settings-profile-card">
+        <div class="settings-profile-card" id="profileCard">
           <div class="settings-avatar-wrapper">
             ${getAvatarHtml(currentUser)}
           </div>
           <div style="flex: 1;">
-            <h4 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--foreground);">${name}</h4>
-            <p style="margin: 4px 0 0; font-size: 14px; color: var(--muted-foreground);">${email}</p>
-            <div style="margin-top: 8px; display: flex; gap: 8px;">
-              <span class="badge badge-sm" style="background: var(--primary); color: white;">Free Plan</span>
-              ${currentUser ? `<span class="badge badge-sm" style="background: var(--muted); color: var(--muted-foreground);">ID: ${currentUser.id.substring(0, 8)}...</span>` : ''}
+            <!-- View Mode -->
+            <div id="profileViewMode">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <h4 id="displayName" style="margin: 0; font-size: 20px; font-weight: 700; color: var(--foreground);">${name}</h4>
+                <button class="btn-edit-profile" onclick="toggleEditMode()" title="Edit profile">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+              </div>
+              <p style="margin: 4px 0 0; font-size: 14px; color: var(--muted-foreground);">${email}</p>
+              <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="badge badge-sm" style="background: var(--primary); color: white;">Free Plan</span>
+                ${currentUser ? `<span class="badge badge-sm" style="background: var(--muted); color: var(--muted-foreground);">ID: ${currentUser.id.substring(0, 8)}...</span>` : ''}
+              </div>
+            </div>
+            
+            <!-- Edit Mode -->
+            <div id="profileEditMode" style="display: none;">
+              <div class="profile-edit-header">
+                <span class="edit-indicator">Editing Profile</span>
+              </div>
+              
+              <div class="form-group-advanced">
+                <label class="form-label" for="usernameInput">Username</label>
+                <div class="input-wrapper-advanced">
+                  <input 
+                    type="text" 
+                    id="usernameInput" 
+                    class="form-input-advanced" 
+                    value="${name}"
+                    maxlength="30"
+                    placeholder="Enter your username"
+                    oninput="handleUsernameInput(this.value)"
+                    onfocus="this.parentElement.classList.add('focused')"
+                    onblur="this.parentElement.classList.remove('focused')"
+                  >
+                  <div class="input-validation" id="usernameValidation">
+                    <div class="validation-icon" id="validationIcon"></div>
+                  </div>
+                </div>
+                <div class="validation-message" id="validationMessage"></div>
+                <div class="input-meta">
+                  <span class="char-counter" id="charCounter">${name.length}/30</span>
+                </div>
+              </div>
+              
+              <div class="edit-actions">
+                <button class="btn btn-secondary" onclick="cancelUsernameEdit()">
+                  Cancel
+                </button>
+                <button class="btn btn-primary" id="saveUsernameBtn" onclick="saveUsernameChanges()" disabled>
+                  <span class="btn-text">Save Changes</span>
+                  <svg class="btn-spinner" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <button class="btn btn-destructive-outline" onclick="window.LayerDB.signOut()">
@@ -18874,107 +19941,28 @@ function clearFocusModeState() {
   localStorage.removeItem(FOCUS_MODE_KEY);
 }
 
-function openFocusModeModal() {
-  const projects = loadProjects();
-
-  if (projects.length === 0) {
-    openModal('Focus Mode', `
-      <div style="padding: 32px; text-align: center;">
-        <div style="margin-bottom: 20px;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--muted-foreground);">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-        </div>
-        <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: var(--foreground);">No Projects Yet</h3>
-        <p style="color: var(--muted-foreground); margin-bottom: 24px; font-size: 14px;">
-          Create a project first to start focus mode.
-        </p>
-        <button class="btn btn-primary" onclick="closeModal(); currentView = 'activity'; renderCurrentView();">
-          Create Project
-        </button>
-      </div>
-    `);
-    return;
+function toggleFocusModeExpand() {
+  const expandable = document.getElementById('focusModeExpandable');
+  const projectSelect = document.getElementById('focusProjectSelect');
+  
+  if (!expandable.classList.contains('expanded')) {
+    // Populate projects when expanding
+    const projects = loadProjects();
+    if (projects.length === 0) {
+      projectSelect.innerHTML = '<option value="">No projects available</option>';
+    } else {
+      projectSelect.innerHTML = projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+    }
+    
+    expandable.classList.add('expanded');
+  } else {
+    expandable.classList.remove('expanded');
   }
+}
 
-  const content = `
-    <div style="padding: 24px 24px 16px 24px;">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <div style="margin-bottom: 12px;">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--muted-foreground);">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-        </div>
-        <p style="color: var(--muted-foreground); font-size: 14px; margin: 0;">
-          Select a project to focus on and track your time
-        </p>
-      </div>
-      
-      <div class="form-group" style="margin-bottom: 24px;">
-        <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--foreground); font-size: 14px;">Choose Project</label>
-        <select id="focusProjectSelect" class="form-select" style="font-size: 15px; padding: 12px 14px; width: 100%; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--foreground);">
-          ${projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('')}
-        </select>
-      </div>
-      
-      <div class="form-group" style="margin-bottom: 28px;">
-        <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--foreground); font-size: 14px;">Focus Duration (optional)</label>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-          <button type="button" class="focus-duration-btn" data-duration="25" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">25 min</button>
-          <button type="button" class="focus-duration-btn" data-duration="45" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">45 min</button>
-          <button type="button" class="focus-duration-btn" data-duration="60" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">1 hour</button>
-          <button type="button" class="focus-duration-btn selected" data-duration="0" onclick="selectFocusDuration(this)" style="justify-content: center; padding: 12px;">No limit</button>
-        </div>
-      </div>
-      
-      <div class="form-actions" style="display: flex; gap: 12px; margin-top: 0; justify-content: flex-end;">
-        <button class="btn btn-secondary" onclick="closeModal()" style="padding: 10px 16px; border-radius: 8px; font-weight: 500;">Cancel</button>
-        <button class="btn btn-primary" onclick="startFocusMode()" style="padding: 10px 20px; border-radius: 8px; font-weight: 500; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
-            <polygon points="5 3 19 12 5 21 5 3"/>
-          </svg>
-          Start Focus
-        </button>
-      </div>
-    </div>
-  `;
-
-  openModal('Focus Mode', content);
-
-  // Add styles for duration buttons
-  setTimeout(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .focus-duration-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--muted-foreground);
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-align: center;
-      }
-      .focus-duration-btn:hover {
-        border-color: var(--primary);
-        color: var(--foreground);
-        background: var(--surface-hover);
-      }
-      .focus-duration-btn.selected {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: var(--primary-foreground);
-      }
-    `;
-    document.head.appendChild(style);
-  }, 0);
+function openFocusModeModal() {
+  // Legacy function - redirect to expandable version
+  toggleFocusModeExpand();
 }
 
 function selectFocusDuration(btn) {
@@ -18984,14 +19972,14 @@ function selectFocusDuration(btn) {
 
 function startFocusMode() {
   const select = document.getElementById('focusProjectSelect');
+  const durationSelect = document.getElementById('focusDurationSelect');
   const projectIndex = parseInt(select.value);
   const projects = loadProjects();
   const project = projects[projectIndex];
 
   if (!project) return;
 
-  const durationBtn = document.querySelector('.focus-duration-btn.selected');
-  const duration = durationBtn ? parseInt(durationBtn.dataset.duration) : 0;
+  const duration = durationSelect ? parseInt(durationSelect.value) : 0;
 
   // Get tasks from the project's To Do and In Progress columns
   focusTasks = [];
@@ -19028,7 +20016,12 @@ function startFocusMode() {
     tasks: focusTasks
   });
 
-  closeModal();
+  // Close expandable panel instead of modal
+  const expandable = document.getElementById('focusModeExpandable');
+  if (expandable) {
+    expandable.classList.remove('expanded');
+  }
+  
   showFocusTimer(project.name);
 }
 
@@ -19568,6 +20561,7 @@ function showToast(message) {
 const DOCS_KEY = 'layerDocs';
 const EXCELS_KEY = 'layerExcels';
 const SPACES_KEY = 'layerSpaces';
+const DRAFTS_KEY = 'layerDrafts';
 
 // State
 let currentDocId = null;
@@ -19578,6 +20572,254 @@ let isSavingDoc = false; // Prevent concurrent saves
 // ============================================
 // Create Dropdown (legacy - moved to sidebar)
 // ============================================
+
+// Function to create a whiteboard draft
+async function createWhiteboardDraft() {
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create whiteboards', 'error');
+    return null;
+  }
+
+  try {
+    // Create a draft project for the whiteboard
+    const draftProject = {
+      name: 'Untitled Whiteboard',
+      description: 'Whiteboard draft',
+      status: 'todo',
+      startDate: new Date().toISOString().split('T')[0],
+      targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      grip_diagram: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 }, // Empty whiteboard
+      isDraft: true, // Mark as draft
+      isWhiteboard: true // Specific marker for whiteboard
+    };
+
+    // Create the project
+    const newProject = await addProject(draftProject);
+    
+    if (newProject) {
+      // Create a draft entry for the whiteboard
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        try {
+          const draftEntry = {
+            title: newProject.name,
+            content: '', // Whiteboards don't have content in the traditional sense
+            type: 'whiteboard',
+            metadata: { projectId: newProject.id },
+            createdAt: newProject.createdAt || new Date().toISOString(),
+            updatedAt: newProject.updatedAt || newProject.createdAt || new Date().toISOString()
+          };
+          
+          const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+          console.log('✅ Whiteboard draft saved to DB:', savedDraft.id);
+          
+          // Update cache
+          if (window.cachedDrafts) {
+            window.cachedDrafts.unshift(savedDraft);
+          }
+        } catch (error) {
+          console.error('❌ Failed to save whiteboard draft to DB:', error);
+        }
+      } else {
+        // Fallback to localStorage for unauthenticated users
+        const drafts = loadDrafts();
+        const draftEntry = {
+          id: newProject.id,
+          title: newProject.name,
+          type: 'whiteboard',
+          createdAt: newProject.createdAt || new Date().toISOString(),
+          updatedAt: newProject.updatedAt || newProject.createdAt || new Date().toISOString()
+        };
+        drafts.push(draftEntry);
+        saveDrafts(drafts);
+      }
+      
+      // Mark drafts view for refresh
+      window.draftsNeedRefresh = true;
+      
+      showToast('Whiteboard created and saved as draft', 'success');
+      
+      // Return the project index for the newly created project
+      const projects = loadProjects();
+      const projectIndex = projects.findIndex(p => p.id === newProject.id);
+      return projectIndex;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to create whiteboard draft:', error);
+    showToast('Failed to create whiteboard draft', 'error');
+    return null;
+  }
+}
+
+// Function to open a whiteboard draft
+function openGripDiagramForDraft(draftId) {
+  const projects = loadProjects();
+  const projectIndex = projects.findIndex(p => p.id === draftId);
+  
+  if (projectIndex !== -1) {
+    openGripDiagram(projectIndex);
+  } else {
+    console.error('Draft project not found:', draftId);
+    showToast('Draft project not found', 'error');
+  }
+}
+
+async function openDocEditorForDraft(draftId) {
+  try {
+    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+      showToast('Please sign in to open drafts', 'error');
+      return;
+    }
+
+    if (!window.cachedDrafts) {
+      await initDraftsFromDB();
+    }
+
+    const draft = (window.cachedDrafts || []).find(d => String(d.id) === String(draftId));
+    const docId = draft?.metadata?.docId;
+    if (!docId) {
+      console.error('Doc draft missing metadata.docId:', draftId, draft);
+      showToast('Draft is missing document reference', 'error');
+      return;
+    }
+
+    // Ensure docs cache is populated so openDocEditor treats this as existing
+    let docs = loadDocs();
+    if (!docs || docs.length === 0 || !docs.find(d => String(d.id) === String(docId))) {
+      await initDocsFromDB();
+    }
+
+    openDocEditor(docId);
+  } catch (error) {
+    console.error('Failed to open document draft:', error);
+    showToast('Failed to open draft', 'error');
+  }
+}
+
+async function openExcelEditorForDraft(draftId) {
+  try {
+    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+      showToast('Please sign in to open drafts', 'error');
+      return;
+    }
+
+    if (!window.cachedDrafts) {
+      await initDraftsFromDB();
+    }
+
+    const draft = (window.cachedDrafts || []).find(d => String(d.id) === String(draftId));
+    const excelId = draft?.metadata?.excelId;
+    if (!excelId) {
+      console.error('Sheet draft missing metadata.excelId:', draftId, draft);
+      showToast('Draft is missing spreadsheet reference', 'error');
+      return;
+    }
+
+    // Ensure excels cache is populated so openExcelEditor treats this as existing
+    let excels = loadExcels();
+    if (!excels || excels.length === 0 || !excels.find(e => String(e.id) === String(excelId))) {
+      await initExcelsFromDB();
+    }
+
+    openExcelEditor(excelId);
+  } catch (error) {
+    console.error('Failed to open spreadsheet draft:', error);
+    showToast('Failed to open draft', 'error');
+  }
+}
+
+// Function to delete a draft
+async function deleteDraft(draftId, draftType) {
+  try {
+    // Delete from database based on type
+    if (draftType === 'whiteboard') {
+      // For whiteboards, delete the associated project
+      const projects = loadProjects();
+      const projectIndex = projects.findIndex(p => p.id === draftId);
+      if (projectIndex !== -1) {
+        await deleteProject(projectIndex);
+      }
+    } else if (draftType === 'doc') {
+      // For documents, delete from docs table
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        await window.LayerDB.deleteDoc(draftId);
+      }
+    } else if (draftType === 'sheet') {
+      // For spreadsheets, delete from excels table
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        await window.LayerDB.deleteExcel(draftId);
+      }
+    }
+
+    // Remove from drafts database
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.deleteDraft(draftId);
+      // Update cache
+      if (window.cachedDrafts) {
+        window.cachedDrafts = window.cachedDrafts.filter(d => d.id !== draftId);
+      }
+    } else {
+      // Fallback to localStorage for unauthenticated users
+      const drafts = loadDrafts();
+      const updatedDrafts = drafts.filter(d => d.id !== draftId);
+      saveDrafts(updatedDrafts);
+    }
+
+    // Mark drafts view for refresh
+    window.draftsNeedRefresh = true;
+
+    showToast('Draft deleted successfully', 'success');
+  } catch (error) {
+    console.error('Failed to delete draft:', error);
+    showToast('Failed to delete draft', 'error');
+  }
+}
+
+// Function to clear all drafts
+async function clearAllDrafts() {
+  if (!confirm('Are you sure you want to delete ALL drafts? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const drafts = loadDrafts();
+    
+    // Delete all whiteboard projects
+    const whiteboardDrafts = drafts.filter(d => d.type === 'whiteboard');
+    for (const draft of whiteboardDrafts) {
+      const projects = loadProjects();
+      const projectIndex = projects.findIndex(p => p.id === draft.id);
+      if (projectIndex !== -1) {
+        await deleteProject(projectIndex);
+      }
+    }
+    
+    // Clear all drafts from storage
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const drafts = await window.LayerDB.loadDrafts();
+      for (const draft of drafts) {
+        await window.LayerDB.deleteDraft(draft.id);
+      }
+      window.cachedDrafts = [];
+    } else {
+      // Fallback to localStorage for unauthenticated users
+      localStorage.removeItem(DRAFTS_KEY);
+    }
+    
+    // Refresh the view
+    if (window.currentView === 'drafts' && typeof renderCurrentView === 'function') {
+      renderCurrentView();
+    }
+    
+    showToast('All drafts cleared successfully', 'success');
+  } catch (error) {
+    console.error('Failed to clear all drafts:', error);
+    showToast('Failed to clear drafts', 'error');
+  }
+}
+
 function toggleCreateDropdown() {
   const container = document.getElementById('createDropdownContainer');
   if (container) {
@@ -19718,6 +20960,58 @@ function saveDocs(docs) {
   localStorage.setItem(DOCS_KEY, JSON.stringify(docs));
 }
 
+// Draft Storage
+function loadDrafts() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+
+  try {
+    // Return cached drafts if available, otherwise load from DB
+    if (window.cachedDrafts) {
+      return window.cachedDrafts;
+    }
+    
+    // Load asynchronously and cache
+    window.LayerDB.loadDrafts().then(drafts => {
+      window.cachedDrafts = drafts;
+      return drafts;
+    }).catch(error => {
+      console.error('Error loading drafts from DB:', error);
+      return [];
+    });
+    
+    return window.cachedDrafts || [];
+  } catch (error) {
+    console.error('Error loading drafts:', error);
+    return [];
+  }
+}
+
+function saveDrafts(drafts) {
+  // This function is deprecated - use individual save/update operations
+  console.warn('saveDrafts() is deprecated. Use individual draft save/update operations.');
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    window.cachedDrafts = drafts;
+  }
+}
+
+// Initialize drafts from DB on page load
+async function initDraftsFromDB() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const drafts = await window.LayerDB.loadDrafts();
+      window.cachedDrafts = drafts;
+      console.log('✅ Drafts loaded from DB:', drafts.length, 'items');
+      return drafts;
+    } catch (error) {
+      console.error('❌ Error loading drafts from DB:', error);
+      return [];
+    }
+  }
+  return [];
+}
+
 // Initialize docs from DB on page load
 async function initDocsFromDB() {
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
@@ -19800,57 +21094,102 @@ let documentEditorState = {
   isOpen: false,
   currentDocId: null,
   overlayElement: null,
-  isClosing: false
+  isClosing: false,
+  openTimestamp: null,
+  eventListeners: [] // Track event listeners for proper cleanup
 };
+
+// 🛡️ DEBOUNCE: Prevent rapid successive calls
+let docEditorOpenTimeout = null;
 
 // ============================================
 // Doc Editor - Professional Word-like UI
 // ============================================
 function openDocEditor(docId = null) {
-  toggleCreateDropdown();
+  // 🛡️ CRITICAL: Prevent all duplicate calls using a global lock
+  if (window._docEditorOpeningLock) {
+    console.log('📝 Document editor opening in progress, ignoring duplicate call');
+    return;
+  }
+
+  // 🛡️ DEBOUNCE: Clear any pending timeout
+  if (docEditorOpenTimeout) {
+    clearTimeout(docEditorOpenTimeout);
+    docEditorOpenTimeout = null;
+  }
 
   // 🛡️ PREVENT DUPLICATION: Check global state first
   if (documentEditorState.isOpen && !documentEditorState.isClosing) {
     console.log('📝 Document editor already open, focusing existing one');
+    // If trying to open a different doc, show a toast
+    if (docId && documentEditorState.currentDocId !== docId) {
+      showToast('Please close the current document first', 'info');
+    }
     // Focus the existing editor instead of creating duplicate
     const contentDiv = document.getElementById('docEditorContent');
     if (contentDiv) {
       contentDiv.focus();
+      // Bring the overlay to front
+      const overlay = document.getElementById('docEditorOverlay');
+      if (overlay) {
+        overlay.style.zIndex = '10000';
+      }
     }
     return;
   }
 
   // 🛡️ PREVENT DUPLICATION: Check if editor is already open (fallback)
   const existingOverlay = document.getElementById('docEditorOverlay');
-  if (existingOverlay) {
+  if (existingOverlay && existingOverlay.parentNode) {
     console.log('📝 Document editor already open (fallback check), focusing existing one');
+    // If trying to open a different doc, show a toast
+    if (docId && documentEditorState.currentDocId !== docId) {
+      showToast('Please close the current document first', 'info');
+    }
     // Focus the existing editor instead of creating duplicate
     const contentDiv = document.getElementById('docEditorContent');
     if (contentDiv) {
       contentDiv.focus();
+      existingOverlay.style.zIndex = '10000';
     }
     return;
   }
 
-  // Require authentication for creating new docs
-  if (!docId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
-    showToast('Please sign in to create documents', 'error');
+  // 🛡️ PREVENT DUPLICATION: If closing, wait for close to complete
+  if (documentEditorState.isClosing) {
+    console.log('📝 Document editor is closing, waiting for completion...');
+    docEditorOpenTimeout = setTimeout(() => {
+      openDocEditor(docId);
+    }, 100);
     return;
   }
 
-  let doc = null;
-  if (docId) {
-    const docs = loadDocs();
-    doc = docs.find(d => d.id === docId);
-  }
+  // Set the lock to prevent duplicate calls
+  window._docEditorOpeningLock = true;
 
-  // 🔄 UPDATE STATE: Mark editor as opening
-  documentEditorState.isOpen = true;
-  documentEditorState.currentDocId = doc ? doc.id : Date.now();
-  documentEditorState.isClosing = false;
+  try {
+    // Require authentication for creating new docs
+    if (!docId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
+      showToast('Please sign in to create documents', 'error');
+      window._docEditorOpeningLock = false;
+      return;
+    }
 
-  currentDocId = doc ? doc.id : Date.now();
-  const isFavorited = doc ? isDocFavorited(doc.id) : false;
+    let doc = null;
+    if (docId) {
+      const docs = loadDocs();
+      doc = docs.find(d => d.id === docId);
+    }
+
+    // 🔄 UPDATE STATE: Mark editor as opening
+    documentEditorState.isOpen = true;
+    documentEditorState.currentDocId = doc ? doc.id : Date.now();
+    documentEditorState.isClosing = false;
+    documentEditorState.openTimestamp = Date.now();
+    documentEditorState.eventListeners = []; // Reset event listeners array
+
+    currentDocId = doc ? doc.id : Date.now();
+    const isFavorited = doc ? isDocFavorited(doc.id) : false;
 
   // Get current user for author display
   const currentUser = window.LayerDB?.getCurrentUser() || {};
@@ -20099,7 +21438,8 @@ function openDocEditor(docId = null) {
       content: '',
       spaceId: currentSpaceId || null,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      isDraft: true // Mark as draft initially
     };
 
     // Save to Supabase immediately and synchronously
@@ -20111,31 +21451,130 @@ function openDocEditor(docId = null) {
         currentDocId = savedDoc.id;
         console.log('📝 Document created successfully with DB ID:', currentDocId);
 
-        // Refresh local cache
+        // Create a draft entry for the document
+        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+          try {
+            const draftEntry = {
+              title: savedDoc.title,
+              content: savedDoc.content || '',
+              type: 'doc',
+              metadata: { docId: savedDoc.id },
+              createdAt: savedDoc.createdAt,
+              updatedAt: savedDoc.updatedAt
+            };
+            
+            const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+            console.log('✅ Document draft saved to DB:', savedDraft.id);
+            
+            // Update cache
+            if (window.cachedDrafts) {
+              window.cachedDrafts.unshift(savedDraft);
+            }
+          } catch (error) {
+            console.error('❌ Failed to save document draft to DB:', error);
+          }
+        } else {
+          // Fallback to localStorage for unauthenticated users
+          const drafts = loadDrafts();
+          const draftEntry = {
+            id: savedDoc.id,
+            title: savedDoc.title,
+            type: 'doc',
+            createdAt: savedDoc.createdAt,
+            updatedAt: savedDoc.updatedAt
+          };
+          drafts.push(draftEntry);
+          saveDrafts(drafts);
+        }
+
+        // Mark drafts view for refresh
+        window.draftsNeedRefresh = true;
+
         const docs = await window.LayerDB.loadDocs();
         saveDocs(docs);
-
+        
         // Show success message
         if (typeof showToast === 'function') {
-          showToast('Document created and auto-saved', 'success');
+          showToast('Document created and saved as draft', 'success');
         }
       } catch (error) {
-        console.error('❌ Failed to create doc in database:', error);
-        // Still save to localStorage as fallback
-        const docs = loadDocs();
-        docs.unshift(newDoc);
-        saveDocs(docs);
-
-        if (typeof showToast === 'function') {
-          showToast('Document saved locally (cloud sync failed)', 'warning');
-        }
+        console.error('Failed to create doc in database:', error);
+        showToast('Failed to save document', 'error');
       }
     })();
+  } else {
+    // For existing documents, check if title is "Untitled" and generate from content
+    if (doc.title === 'Untitled' && doc.content && doc.content.trim() !== '') {
+      const generatedTitle = generateTitleFromContent(doc.content);
+      if (generatedTitle !== 'Untitled') {
+        // Update the title input immediately
+        setTimeout(() => {
+          const titleInput = document.getElementById('docTitleInput');
+          if (titleInput) {
+            titleInput.value = generatedTitle;
+            console.log('📝 Updated existing document title from content:', generatedTitle);
+            
+            // Save the updated title
+            (async () => {
+              try {
+                await window.LayerDB.updateDoc(doc.id, { title: generatedTitle });
+                const docs = await window.LayerDB.loadDocs();
+                saveDocs(docs);
+                
+                // Update drafts
+                if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+                  try {
+                    const drafts = await window.LayerDB.loadDrafts();
+                    const draftIndex = drafts.findIndex(d => d.id === doc.id);
+                    if (draftIndex !== -1) {
+                      const updatedDraft = {
+                        ...drafts[draftIndex],
+                        title: generatedTitle,
+                        updatedAt: new Date().toISOString()
+                      };
+                      await window.LayerDB.updateDraft(doc.id, updatedDraft);
+                      
+                      // Update cache
+                      if (window.cachedDrafts) {
+                        const cacheIndex = window.cachedDrafts.findIndex(d => d.id === doc.id);
+                        if (cacheIndex !== -1) {
+                          window.cachedDrafts[cacheIndex] = updatedDraft;
+                        }
+                      }
+                    }
+                  } catch (error) {
+                    console.error('❌ Failed to update draft title in DB:', error);
+                  }
+                } else {
+                  // Fallback to localStorage
+                  const drafts = loadDrafts();
+                  const draftIndex = drafts.findIndex(d => d.id === doc.id);
+                  if (draftIndex !== -1) {
+                    drafts[draftIndex].title = generatedTitle;
+                    drafts[draftIndex].updatedAt = new Date().toISOString();
+                    saveDrafts(drafts);
+                  }
+                }
+                
+                console.log('✅ Updated existing document title in database');
+              } catch (error) {
+                console.error('Failed to update existing document title:', error);
+              }
+            })();
+          }
+        }, 100);
+      }
+    }
   }
 
   setTimeout(() => {
     document.getElementById('docTitleInput')?.focus();
   }, 100);
+
+  } finally {
+    // 🛡️ RELEASE LOCK: Always release the lock when done
+    window._docEditorOpeningLock = false;
+  }
 }
 
 function setupNotionEditor() {
@@ -20180,9 +21619,33 @@ function setupNotionEditor() {
     autoSaveDoc();
   });
 
+  // Generate title from content when title is still "Untitled"
+  contentDiv.addEventListener('input', function() {
+    const titleInput = document.getElementById('docTitleInput');
+    if (titleInput && titleInput.value.trim() === 'Untitled') {
+      const generatedTitle = generateTitleFromContent(this.innerHTML);
+      if (generatedTitle !== 'Untitled') {
+        titleInput.value = generatedTitle;
+        syncDraftCardTitle(currentDocId, generatedTitle);
+        console.log('📝 Auto-generated title from content:', generatedTitle);
+      }
+    }
+  });
+
   // Use MutationObserver for reliable change detection (catches formatting changes too)
   const observer = new MutationObserver(function (mutations) {
     triggerAutoSave();
+    
+    // Also check for title generation from content
+    const titleInput = document.getElementById('docTitleInput');
+    if (titleInput && titleInput.value.trim() === 'Untitled') {
+      const generatedTitle = generateTitleFromContent(contentDiv.innerHTML);
+      if (generatedTitle !== 'Untitled') {
+        titleInput.value = generatedTitle;
+        syncDraftCardTitle(currentDocId, generatedTitle);
+        console.log('📝 Auto-generated title from content (MutationObserver):', generatedTitle);
+      }
+    }
   });
   observer.observe(contentDiv, {
     childList: true,
@@ -20196,6 +21659,12 @@ function setupNotionEditor() {
     titleInput.addEventListener('input', triggerAutoSave);
     titleInput.addEventListener('blur', function () {
       autoSaveDoc();
+    });
+    
+    // Real-time title sync with draft cards
+    titleInput.addEventListener('input', function() {
+      const newTitle = this.value.trim() || 'Untitled';
+      syncDraftCardTitle(currentDocId, newTitle);
     });
   }
 
@@ -20256,6 +21725,103 @@ function showAutoSaveIndicator() {
   }, 2000);
 }
 
+// Generate a meaningful title from document content
+function generateTitleFromContent(content) {
+  if (!content || content.trim() === '') {
+    return 'Untitled';
+  }
+  
+  // Remove HTML tags and get plain text
+  const plainText = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  
+  if (!plainText) {
+    return 'Untitled';
+  }
+  
+  // Get first few words or characters
+  const words = plainText.split(/\s+/).filter(word => word.length > 0);
+  
+  if (words.length === 0) {
+    return 'Untitled';
+  }
+  
+  // Try to get first 3-5 words, but limit to 50 characters
+  let title = '';
+  let charCount = 0;
+  let wordCount = 0;
+  
+  for (const word of words) {
+    if (charCount + word.length + (title ? 1 : 0) > 50) {
+      break;
+    }
+    if (wordCount >= 5) {
+      break;
+    }
+    
+    if (title) {
+      title += ' ';
+      charCount += 1;
+    }
+    
+    title += word;
+    charCount += word.length;
+    wordCount++;
+  }
+  
+  // Capitalize first letter
+  if (title.length > 0) {
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+  }
+  
+  // Add ellipsis if truncated
+  if ((words.length > wordCount) || (plainText.length > 50)) {
+    title += '...';
+  }
+  
+  return title || 'Untitled';
+}
+
+// Real-time sync of draft card title with notion title input
+function syncDraftCardTitle(draftId, newTitle) {
+  if (!draftId) return;
+  
+  console.log(`🔄 Syncing title for draft ${draftId}: "${newTitle}"`);
+  
+  // Update draft card title in the DOM if drafts view is currently visible
+  const draftCards = document.querySelectorAll('.draft-card');
+  let updatedInDOM = false;
+  
+  draftCards.forEach(card => {
+    const titleElement = card.querySelector('.draft-card-title');
+    if (titleElement && titleElement.getAttribute('onclick') && titleElement.getAttribute('onclick').includes(draftId)) {
+      titleElement.textContent = newTitle;
+      updatedInDOM = true;
+      console.log(`✅ Updated draft card title in DOM: "${newTitle}"`);
+    }
+  });
+  
+  if (!updatedInDOM && draftCards.length > 0) {
+    console.log(`ℹ️ Draft card not found in DOM for ID: ${draftId} (drafts view may not be visible)`);
+  }
+  
+  // Also update in localStorage drafts data for consistency
+  try {
+    const drafts = loadDrafts();
+    const draftIndex = drafts.findIndex(d => d.id === draftId);
+    if (draftIndex !== -1) {
+      const oldTitle = drafts[draftIndex].title;
+      drafts[draftIndex].title = newTitle;
+      drafts[draftIndex].updatedAt = new Date().toISOString();
+      saveDrafts(drafts);
+      console.log(`✅ Updated draft title in localStorage: "${oldTitle}" → "${newTitle}"`);
+    } else {
+      console.log(`⚠️ Draft not found in localStorage for ID: ${draftId}`);
+    }
+  } catch (error) {
+    console.error('❌ Failed to sync draft title in localStorage:', error);
+  }
+}
+
 async function autoSaveDoc() {
   // Prevent concurrent saves
   if (isSavingDoc) {
@@ -20268,8 +21834,19 @@ async function autoSaveDoc() {
 
   if (!titleInput || !contentDiv) return;
 
-  const title = titleInput.value.trim() || 'Untitled';
+  let title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
+  
+  // If title is still "Untitled", try to generate one from content
+  if (title === 'Untitled') {
+    const generatedTitle = generateTitleFromContent(content);
+    if (generatedTitle !== 'Untitled') {
+      title = generatedTitle;
+      // Update the title input field with the generated title
+      titleInput.value = title;
+      console.log('📝 Generated title from content:', title);
+    }
+  }
 
   isSavingDoc = true;
 
@@ -20300,6 +21877,18 @@ async function autoSaveDoc() {
           // Update currentDocId to use the database ID
           currentDocId = savedDoc.id;
           console.log('📝 Doc created with DB ID:', currentDocId);
+        }
+
+        // Sync draft title
+        const drafts = loadDrafts();
+        const draftIndex = drafts.findIndex(d => d.id === currentDocId);
+        if (draftIndex !== -1) {
+          drafts[draftIndex].title = title;
+          drafts[draftIndex].updatedAt = new Date().toISOString();
+          saveDrafts(drafts);
+          console.log('📝 Draft title synced:', title);
+          // Mark drafts view for refresh so title shows updated
+          window.draftsNeedRefresh = true;
         }
 
         // Refresh local cache
@@ -20340,6 +21929,17 @@ async function autoSaveDoc() {
       });
       saveDocs(docs);
     }
+
+    // Sync draft title in localStorage
+    const drafts = loadDrafts();
+    const draftIndex = drafts.findIndex(d => d.id === currentDocId);
+    if (draftIndex !== -1) {
+      drafts[draftIndex].title = title;
+      drafts[draftIndex].updatedAt = new Date().toISOString();
+      saveDrafts(drafts);
+      // Mark drafts view for refresh so title shows updated
+      window.draftsNeedRefresh = true;
+    }
   } finally {
     isSavingDoc = false;
   }
@@ -20348,10 +21948,23 @@ async function autoSaveDoc() {
 function closeDocEditor() {
   console.log('🔒 Closing document editor...');
 
+  // 🛡️ PREVENT RE-ENTRY: Mark as closing to prevent race conditions
+  documentEditorState.isClosing = true;
+
+  // 🧹 COMPREHENSIVE CLEANUP: Remove tracked event listeners
+  if (documentEditorState.eventListeners && documentEditorState.eventListeners.length > 0) {
+    documentEditorState.eventListeners.forEach(({ element, event, handler }) => {
+      if (element && handler) {
+        element.removeEventListener(event, handler);
+      }
+    });
+    documentEditorState.eventListeners = [];
+  }
+
   // 🧹 COMPREHENSIVE CLEANUP: Remove all overlays and reset state
   const overlays = document.querySelectorAll('.doc-editor-overlay');
   overlays.forEach(overlay => {
-    // Remove event listeners before removing element
+    // Remove any remaining event listeners
     overlay.removeEventListener('click', closeDocEditor);
     overlay.remove();
   });
@@ -20363,13 +21976,28 @@ function closeDocEditor() {
   currentDocId = null;
   isSavingDoc = false; // Reset save lock
 
+  // 🛡️ RESET GLOBAL STATE: Mark editor as closed so it can be reopened
+  documentEditorState.isOpen = false;
+  documentEditorState.currentDocId = null;
+  documentEditorState.isClosing = false;
+  documentEditorState.overlayElement = null;
+
   // 🔄 REFRESH DASHBOARD: Update the inbox view to reflect any changes
   // Use a small delay to ensure DOM is fully cleaned up
   setTimeout(() => {
-    if (currentView === 'inbox') {
-      console.log('🔄 Refreshing dashboard after document close...');
-      renderCurrentView();
-    }
+    (async () => {
+      if (currentView === 'drafts') {
+        window.draftsNeedRefresh = true;
+        if (typeof initDraftsFromDB === 'function') {
+          try { await initDraftsFromDB(); } catch (e) {}
+        }
+      }
+
+      if (currentView === 'inbox' || currentView === 'drafts') {
+        console.log('🔄 Refreshing view after document close...');
+        renderCurrentView();
+      }
+    })();
   }, 100);
 }
 
@@ -20870,7 +22498,8 @@ function openExcelEditor(excelId = null) {
       data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
       spaceId: currentSpaceId || null,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      isDraft: true // Mark as draft initially
     };
 
     // Save to Supabase (auth is guaranteed by check at function start)
@@ -20879,8 +22508,54 @@ function openExcelEditor(excelId = null) {
         const savedExcel = await window.LayerDB.saveExcel(newExcel);
         // Update currentExcelId to use database ID
         currentExcelId = savedExcel.id;
+
+        // Create a draft entry for the spreadsheet
+        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+          try {
+            const draftEntry = {
+              title: savedExcel.title,
+              content: JSON.stringify(savedExcel.data || []),
+              type: 'sheet',
+              metadata: { excelId: savedExcel.id },
+              createdAt: savedExcel.createdAt,
+              updatedAt: savedExcel.updatedAt
+            };
+            
+            const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+            console.log('✅ Spreadsheet draft saved to DB:', savedDraft.id);
+            
+            // Update cache
+            if (!window.cachedDrafts) {
+              window.cachedDrafts = [];
+            }
+            window.cachedDrafts.unshift(savedDraft);
+          } catch (error) {
+            console.error('❌ Failed to save spreadsheet draft to DB:', error);
+          }
+        } else {
+          // Fallback to localStorage for unauthenticated users
+          const drafts = loadDrafts();
+          const draftEntry = {
+            id: savedExcel.id,
+            title: savedExcel.title,
+            type: 'sheet',
+            createdAt: savedExcel.createdAt,
+            updatedAt: savedExcel.updatedAt
+          };
+          drafts.push(draftEntry);
+          saveDrafts(drafts);
+        }
+
+        // Mark drafts view for refresh
+        window.draftsNeedRefresh = true;
+
         const excels = await window.LayerDB.loadExcels();
         saveExcels(excels);
+        
+        // Show success message
+        if (typeof showToast === 'function') {
+          showToast('Spreadsheet created and saved as draft', 'success');
+        }
       } catch (error) {
         console.error('Failed to create excel in database:', error);
         showToast('Failed to save spreadsheet', 'error');
@@ -20888,7 +22563,75 @@ function openExcelEditor(excelId = null) {
     })();
 
     setTimeout(() => {
-      document.getElementById('excelTitleInput')?.focus();
+      const excelTitleInput = document.getElementById('excelTitleInput');
+      excelTitleInput?.focus();
+      
+      // Generate title immediately if current title is "Untitled Spreadsheet" and there's data
+      if (excelTitleInput && excelTitleInput.value.trim() === 'Untitled Spreadsheet' && data && data.length > 0) {
+        const generatedTitle = generateTitleFromExcelData(data);
+        if (generatedTitle !== 'Untitled Spreadsheet') {
+          excelTitleInput.value = generatedTitle;
+          console.log('📊 Generated spreadsheet title on open:', generatedTitle);
+        }
+      }
+      
+      // Add real-time title sync for Excel spreadsheets
+      if (excelTitleInput) {
+        excelTitleInput.addEventListener('input', function() {
+          const newTitle = this.value.trim() || 'Untitled Spreadsheet';
+          syncDraftCardTitle(currentExcelId, newTitle);
+          scheduleExcelTitleAutosave();
+        });
+      }
+    }, 100);
+  } else {
+    // For existing spreadsheets, check if title is "Untitled Spreadsheet" and generate from data
+    if (excel.title === 'Untitled Spreadsheet' && excel.data && excel.data.length > 0) {
+      const generatedTitle = generateTitleFromExcelData(excel.data);
+      if (generatedTitle !== 'Untitled Spreadsheet') {
+        // Update the title input immediately
+        setTimeout(() => {
+          const titleInput = document.getElementById('excelTitleInput');
+          if (titleInput) {
+            titleInput.value = generatedTitle;
+            console.log('📊 Updated existing spreadsheet title from data:', generatedTitle);
+            
+            // Save the updated title
+            (async () => {
+              try {
+                await window.LayerDB.updateExcel(excel.id, { title: generatedTitle });
+                const excels = await window.LayerDB.loadExcels();
+                saveExcels(excels);
+                
+                // Update drafts
+                const drafts = loadDrafts();
+                const draftIndex = drafts.findIndex(d => d.id === excel.id);
+                if (draftIndex !== -1) {
+                  drafts[draftIndex].title = generatedTitle;
+                  drafts[draftIndex].updatedAt = new Date().toISOString();
+                  saveDrafts(drafts);
+                }
+                
+                console.log('✅ Updated existing spreadsheet title in database');
+              } catch (error) {
+                console.error('Failed to update existing spreadsheet title:', error);
+              }
+            })();
+          }
+        }, 100);
+      }
+    }
+    
+    // Always autosave when editing the title of an existing spreadsheet
+    setTimeout(() => {
+      const titleInput = document.getElementById('excelTitleInput');
+      if (titleInput) {
+        titleInput.addEventListener('input', function() {
+          const newTitle = this.value.trim() || 'Untitled Spreadsheet';
+          syncDraftCardTitle(currentExcelId, newTitle);
+          scheduleExcelTitleAutosave();
+        });
+      }
     }, 100);
   }
 }
@@ -20923,7 +22666,7 @@ function renderExcelGrid(data) {
     row.forEach((cell, colIndex) => {
       html += `<div class="excel-cell">
         <input type="text" value="${cell}" data-row="${rowIndex}" data-col="${colIndex}" 
-               onchange="updateExcelCell(${rowIndex}, ${colIndex}, this.value)" />
+               oninput="updateExcelCell(${rowIndex}, ${colIndex}, this.value)" />
       </div>`;
     });
   });
@@ -20933,12 +22676,32 @@ function renderExcelGrid(data) {
 
 let excelSaveTimeout = null;
 function updateExcelCell(row, col, value) {
+  // Generate title immediately if current title is "Untitled Spreadsheet"
+  const titleInput = document.getElementById('excelTitleInput');
+  if (titleInput && titleInput.value.trim() === 'Untitled Spreadsheet') {
+    const data = getExcelData();
+    const generatedTitle = generateTitleFromExcelData(data);
+    if (generatedTitle !== 'Untitled Spreadsheet') {
+      titleInput.value = generatedTitle;
+      console.log('📊 Generated spreadsheet title from cell change:', generatedTitle);
+    }
+  }
+  
   // Auto-save on cell change
   clearTimeout(excelSaveTimeout);
   excelSaveTimeout = setTimeout(() => {
     autoSaveExcel();
     showAutoSaveIndicator();
   }, 1000);
+}
+
+let excelTitleSaveTimeout = null;
+function scheduleExcelTitleAutosave() {
+  clearTimeout(excelTitleSaveTimeout);
+  excelTitleSaveTimeout = setTimeout(() => {
+    autoSaveExcel();
+    showAutoSaveIndicator();
+  }, 800);
 }
 
 async function autoSaveExcel() {
@@ -20950,16 +22713,159 @@ async function autoSaveExcel() {
     return; // Silently fail - user was warned on open
   }
 
-  const title = titleInput.value.trim() || 'Untitled Spreadsheet';
+  let title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
 
+  // Generate title from data if current title is "Untitled Spreadsheet"
+  if (title === 'Untitled Spreadsheet') {
+    const generatedTitle = generateTitleFromExcelData(data);
+    if (generatedTitle !== 'Untitled Spreadsheet') {
+      title = generatedTitle;
+      // Update the title input field
+      titleInput.value = title;
+      console.log('📊 Auto-generated spreadsheet title from data:', title);
+    }
+  }
+
   try {
-    await window.LayerDB.updateExcel(currentExcelId, { title, data });
+    // If the sheet was just created, currentExcelId may still be a temporary local ID
+    // (e.g. Date.now()) while the initial insert is still in-flight.
+    // In that case, do an insert first and create the draft reference.
+    const isTempId = (typeof currentExcelId === 'number') || (typeof currentExcelId === 'string' && !String(currentExcelId).includes('-'));
+    if (isTempId) {
+      const newExcel = {
+        id: currentExcelId,
+        title,
+        data,
+        spaceId: currentSpaceId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDraft: true
+      };
+
+      const savedExcel = await window.LayerDB.saveExcel(newExcel);
+      currentExcelId = savedExcel.id;
+
+      // Ensure a draft row exists pointing at this excel
+      try {
+        if (!window.cachedDrafts) {
+          await initDraftsFromDB();
+        }
+        const existingDraft = (window.cachedDrafts || []).find(d => d.type === 'sheet' && String(d?.metadata?.excelId) === String(savedExcel.id));
+        if (!existingDraft) {
+          const draftEntry = {
+            title: savedExcel.title,
+            content: JSON.stringify(savedExcel.data || []),
+            type: 'sheet',
+            metadata: { excelId: savedExcel.id },
+            createdAt: savedExcel.createdAt || new Date().toISOString(),
+            updatedAt: savedExcel.updatedAt || savedExcel.createdAt || new Date().toISOString()
+          };
+          const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+          if (!window.cachedDrafts) {
+            window.cachedDrafts = [];
+          }
+          window.cachedDrafts.unshift(savedDraft);
+        }
+      } catch (e) {
+        console.error('Failed to ensure sheet draft exists:', e);
+      }
+    } else {
+      await window.LayerDB.updateExcel(currentExcelId, { title, data });
+    }
+
     const excels = await window.LayerDB.loadExcels();
     saveExcels(excels);
+
+    // Sync draft title
+    const drafts = loadDrafts();
+    const draftIndex = drafts.findIndex(d => d.id === currentExcelId);
+    if (draftIndex !== -1) {
+      drafts[draftIndex].title = title;
+      drafts[draftIndex].updatedAt = new Date().toISOString();
+      saveDrafts(drafts);
+      console.log('📊 Excel draft title synced:', title);
+      // Mark drafts view for refresh so title shows updated
+      window.draftsNeedRefresh = true;
+      
+      // Also sync the draft card title in real-time
+      syncDraftCardTitle(currentExcelId, title);
+    }
   } catch (error) {
     console.error('Failed to auto-save excel to database:', error);
   }
+}
+
+// Generate title from spreadsheet data
+function generateTitleFromExcelData(data) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return 'Untitled Spreadsheet';
+  }
+
+  // Try to find a meaningful title from the first row or first column
+  let title = '';
+
+  // Look for non-empty cells in the first row (headers)
+  const firstRow = data[0];
+  if (firstRow && firstRow.length > 0) {
+    // Find the first non-empty cell in first row
+    for (let i = 0; i < firstRow.length; i++) {
+      const cellValue = firstRow[i] ? firstRow[i].toString().trim() : '';
+      if (cellValue && cellValue.length > 0 && cellValue.length <= 50) {
+        title = cellValue;
+        break;
+      }
+    }
+  }
+
+  // If no title found in first row, look at first column
+  if (!title) {
+    for (let i = 0; i < data.length; i++) {
+      const cellValue = data[i][0] ? data[i][0].toString().trim() : '';
+      if (cellValue && cellValue.length > 0 && cellValue.length <= 50) {
+        title = cellValue;
+        break;
+      }
+    }
+  }
+
+  // If still no title, look for any non-empty cell
+  if (!title) {
+    for (let r = 0; r < data.length; r++) {
+      for (let c = 0; c < data[r].length; c++) {
+        const cellValue = data[r][c] ? data[r][c].toString().trim() : '';
+        if (cellValue && cellValue.length > 0 && cellValue.length <= 50) {
+          title = cellValue;
+          break;
+        }
+      }
+      if (title) break;
+    }
+  }
+
+  // Clean up the title
+  if (title) {
+    title = title.replace(/[""'']/g, '').trim();
+    
+    // Capitalize first letter if it's not already
+    if (title.length > 0 && title[0] !== title[0].toUpperCase()) {
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+    }
+    
+    // Add "Spreadsheet" suffix if it doesn't sound like a title
+    if (!title.includes('Sheet') && !title.includes('Table') && !title.includes('Data')) {
+      title += ' Spreadsheet';
+    }
+    
+    // Limit length
+    if (title.length > 60) {
+      title = title.substring(0, 57) + '...';
+    }
+    
+    return title;
+  }
+
+  return 'Untitled Spreadsheet';
 }
 
 function getExcelData() {
@@ -21019,6 +22925,21 @@ function closeExcelEditor() {
     document.body.style.overflow = '';
   }
   currentExcelId = null;
+
+  setTimeout(() => {
+    (async () => {
+      if (currentView === 'drafts') {
+        window.draftsNeedRefresh = true;
+        if (typeof initDraftsFromDB === 'function') {
+          try { await initDraftsFromDB(); } catch (e) {}
+        }
+      }
+
+      if (currentView === 'drafts' && typeof renderCurrentView === 'function') {
+        renderCurrentView();
+      }
+    })();
+  }, 100);
 }
 
 function saveCurrentExcel() {
@@ -21075,7 +22996,7 @@ function closeInExcelSavePanel() {
   }
 }
 
-function confirmSaveExcelToSpace(spaceId) {
+async function confirmSaveExcelToSpace(spaceId) {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) {
     closeModal();
@@ -21085,37 +23006,44 @@ function confirmSaveExcelToSpace(spaceId) {
   const title = titleInput.value.trim() || 'Untitled Spreadsheet';
   const data = getExcelData();
 
-  const excels = loadExcels();
-  const existingIndex = excels.findIndex(e => e.id === currentExcelId);
-
-  if (existingIndex !== -1) {
-    excels[existingIndex] = {
-      ...excels[existingIndex],
-      title,
-      data,
-      spaceId: spaceId,
-      updatedAt: new Date().toISOString()
-    };
-  } else {
-    excels.unshift({
-      id: currentExcelId,
-      title,
-      data,
-      spaceId: spaceId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+  // Require authentication
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save spreadsheets', 'error');
+    return;
   }
 
-  saveExcels(excels);
-  closeModal();
+  try {
+    // Save to Supabase database
+    await window.LayerDB.updateExcel(currentExcelId, { title, data, spaceId });
+    
+    // Load updated data and sync to localStorage
+    const excels = await window.LayerDB.loadExcels();
+    saveExcels(excels);
+    
+    // Update drafts
+    const drafts = loadDrafts();
+    const draftIndex = drafts.findIndex(d => d.id === currentExcelId);
+    if (draftIndex !== -1) {
+      drafts[draftIndex].title = title;
+      drafts[draftIndex].updatedAt = new Date().toISOString();
+      saveDrafts(drafts);
+      window.draftsNeedRefresh = true;
+    }
+    
+    closeModal();
+    
+    // Refresh favorites sidebar
+    renderFavoritesInSidebar();
 
-  // Refresh favorites sidebar
-  renderFavoritesInSidebar();
-
-  const spaces = loadSpaces();
-  const space = spaces.find(s => String(s.id) === String(spaceId));
-  showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
+    const spaces = loadSpaces();
+    const space = spaces.find(s => String(s.id) === String(spaceId));
+    showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
+    
+    console.log('✅ Spreadsheet saved to database:', { id: currentExcelId, title, spaceId });
+  } catch (error) {
+    console.error('Failed to save spreadsheet to database:', error);
+    showToast('Failed to save spreadsheet', 'error');
+  }
 }
 
 function exportExcelAsCSV() {
@@ -21841,8 +23769,12 @@ function renderSpaceDetailView(space) {
   const excelFavorites = loadExcelFavorites();
 
   // Filter docs and excels by space - use string comparison for UUID/number compatibility
-  const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
-  const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
+  const rawDocs = allDocs.filter(d => String(d.spaceId) === String(space.id));
+  const rawExcels = allExcels.filter(e => String(e.spaceId) === String(space.id));
+
+  // Deduplicate docs and excels to prevent data corruption issues
+  const docs = Array.from(new Map(rawDocs.map(item => [item.id, item])).values());
+  const excels = Array.from(new Map(rawExcels.map(item => [item.id, item])).values());
 
   // Recent items (last 5 docs + excels combined)
   const allItems = [
@@ -21852,6 +23784,10 @@ function renderSpaceDetailView(space) {
   const recentItems = [...allItems]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 5);
+
+  // Filter out recent items from the main lists to prevent duplication in the UI
+  const recentDocIds = new Set(recentItems.filter(i => i.type === 'doc').map(i => i.id));
+  const displayDocs = docs.filter(d => !recentDocIds.has(d.id));
 
   // Bookmarked items
   const bookmarkedItems = allItems.filter(item =>
@@ -22733,6 +24669,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Make functions globally accessible
 window.openFocusModeModal = openFocusModeModal;
+window.toggleFocusModeExpand = toggleFocusModeExpand;
 window.selectFocusDuration = selectFocusDuration;
 window.startFocusMode = startFocusMode;
 window.toggleTimerExpand = toggleTimerExpand;
@@ -22742,11 +24679,8 @@ window.toggleFocusTask = toggleFocusTask;
 window.openAddRecurringModal = openAddRecurringModal;
 window.handleAddRecurringSubmit = handleAddRecurringSubmit;
 window.deleteRecurringTask = deleteRecurringTask;
-window.setBacklogFilter = setBacklogFilter;
-window.setBacklogSort = setBacklogSort;
-window.moveToProject = moveToProject;
-window.confirmMoveToProject = confirmMoveToProject;
-window.clearCompletedBacklog = clearCompletedBacklog;
+
+
 window.openShareModal = openShareModal;
 window.openPageStylesSidebar = openPageStylesSidebar;
 window.closePageStylesSidebar = closePageStylesSidebar;
@@ -23380,20 +25314,17 @@ function renderSpaceWidgets() {
     const spaceWidgetTodos = getSpaceWidgetTodos(space.id);
     const spaceWidgetNote = getSpaceWidgetNote(space.id);
 
-    return `<div class="space-widget" style="--space-accent: ${colorVar};">
+    return `<div class="space-widget" style="--space-accent: ${colorVar}; --space-accent-rgb: ${colorVar.includes('event-') ? 'var(--event-' + space.colorTag + '-rgb)' : 'var(--primary-rgb)'};">
             <!-- Hover Actions Bar -->
             <div class="space-widget-hover-actions">
               <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetTodo('${space.id}')" title="Create To-Do">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                <span>To-Do</span>
               </button>
               <button class="space-hover-action-btn" onclick="event.stopPropagation(); showSpaceWidgetNote('${space.id}')" title="Add Note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                <span>Note</span>
               </button>
               <button class="space-hover-action-btn" onclick="event.stopPropagation(); openEditSpaceModal('${space.id}')" title="Edit Space">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                <span>Edit</span>
               </button>
             </div>
             
@@ -23442,19 +25373,77 @@ function renderSpaceWidgets() {
             <!-- Default Content -->
             <div class="space-widget-content" onclick="openSpaceView('${space.id}')">
               <div class="space-widget-header">
-                <div class="space-widget-icon">${getSpaceIconSVGById(space.icon)}</div>
-                <h4 class="space-widget-title">${space.name}</h4>
+                <div class="space-widget-title-section">
+                  <div class="space-widget-icon">${getSpaceIconSVGById(space.icon)}</div>
+                  <div>
+                    <h4 class="space-widget-title">${space.name}</h4>
+                    ${space.description ? '<p class="space-widget-description">' + space.description + '</p>' : ''}
+                  </div>
+                </div>
               </div>
-              ${space.description ? '<p class="space-widget-description">' + space.description + '</p>' : ''}
               <div class="space-widget-stats">
                 <div class="space-widget-stat">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   <span>${docs.length} docs</span>
                 </div>
-                <div class="space-widget-stat">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-                  <span>${excels.length} sheets</span>
-                </div>
+                <button class="quick-action-btn" onclick="openExcelEditor()">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <style>
+                      @keyframes tablePop {
+                        0%, 100% {
+                          transform: scale(1);
+                        }
+                        50% {
+                          transform: scale(1.08);
+                        }
+                      }
+                      
+                      @keyframes gridDraw {
+                        0% {
+                          stroke-dashoffset: 18;
+                          opacity: 0;
+                        }
+                        100% {
+                          stroke-dashoffset: 0;
+                          opacity: 1;
+                        }
+                      }
+                      
+                      @keyframes gridPulse {
+                        0%, 100% {
+                          stroke-width: 2;
+                        }
+                        50% {
+                          stroke-width: 2.5;
+                        }
+                      }
+                      
+                      .quick-action-btn:hover .table-frame {
+                        animation: tablePop 0.4s ease-in-out;
+                      }
+                      
+                      .quick-action-btn:hover .grid-line {
+                        animation: gridDraw 0.4s ease-out, gridPulse 0.5s ease-in-out;
+                        stroke-dasharray: 18;
+                      }
+                      
+                      .quick-action-btn:hover .grid-line:nth-child(2) {
+                        animation-delay: 0.1s;
+                      }
+                      
+                      .quick-action-btn:hover .grid-line:nth-child(3) {
+                        animation-delay: 0.2s;
+                      }
+                    </style>
+                    
+                    <rect class="table-frame" x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line class="grid-line" x1="3" y1="9" x2="21" y2="9"></line>
+                    <line class="grid-line" x1="9" y1="3" x2="9" y2="21"></line>
+                    <line class="grid-line" x1="9" y1="3" x2="9" y2="21"></line>
+                  </svg>
+                  New Sheet
+                </button>
+                <span>${excels.length} sheets</span>
               </div>
               ${dueDate ? '<div class="space-widget-due ' + dueDateClass + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>' + dueDateText + '</span></div>' : ''}
             </div>
@@ -29426,23 +31415,35 @@ function escapeHtml(text) {
 
 // User data helper functions
 function getCurrentUserName() {
-  if (window.LayerDB && typeof window.LayerDB.getCurrentUser === 'function') {
+  // ONLY use saved profile name from database, never Google metadata
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const profile = window.LayerDB.getProfile();
+      if (profile && profile.name) {
+        console.log('getCurrentUserName: Using saved profile name (IGNORING Google):', profile.name);
+        return profile.name;
+      }
+    } catch (error) {
+      console.warn('getCurrentUserName: Failed to get profile, trying fallback');
+    }
+    
+    // If no profile, use email split (NEVER use Google metadata)
     const user = window.LayerDB.getCurrentUser();
-    if (user) {
-      // Try to get name from user metadata (Google login)
-      if (user.user_metadata?.name) {
-        return user.user_metadata.name;
-      }
-      // Try to get name from profile
-      if (user.profile?.name) {
-        return user.profile.name;
-      }
-      // Fallback to email prefix
-      if (user.email) {
-        return user.email.split('@')[0];
-      }
+    if (user && user.email) {
+      const emailName = user.email.split('@')[0];
+      console.log('getCurrentUserName: Using email split (NOT Google name):', emailName);
+      return emailName;
     }
   }
+  
+  // Final fallback - only use localStorage as last resort
+  const savedName = localStorage.getItem('userDisplayName');
+  if (savedName && savedName !== 'User') {
+    console.log('getCurrentUserName: Using localStorage fallback:', savedName);
+    return savedName;
+  }
+  
+  console.log('getCurrentUserName: Using default "User"');
   return 'User';
 }
 
