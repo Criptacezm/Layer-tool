@@ -17713,7 +17713,18 @@ h4.ai-heading {
   padding: 0;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.dashboard-ai-sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  transform: translateX(100%);
+  border-left: none;
+  pointer-events: none;
 }
 
 .dashboard-ai-sidebar::before {
@@ -17726,6 +17737,11 @@ h4.ai-heading {
   background: radial-gradient(circle, hsla(263, 70%, 50%, 0.12) 0%, transparent 70%);
   z-index: 0;
   pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.dashboard-ai-sidebar.collapsed::before {
+  opacity: 0;
 }
 
 .ai-sidebar-header {

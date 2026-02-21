@@ -190,13 +190,6 @@
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Add is_favorite column if it doesn't exist
-    DO $$ BEGIN
-        ALTER TABLE docs ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE;
-    EXCEPTION
-        WHEN duplicate_column THEN null;
-    END $$;
-
     -- Add shared_with JSONB column for document sharing
     DO $$ BEGIN
         ALTER TABLE docs ADD COLUMN shared_with JSONB DEFAULT '[]';
@@ -216,13 +209,6 @@
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-
-    -- Add is_favorite column if it doesn't exist
-    DO $$ BEGIN
-        ALTER TABLE excels ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE;
-    EXCEPTION
-        WHEN duplicate_column THEN null;
-    END $$;
 
     -- Add shared_with JSONB column for spreadsheet sharing
     DO $$ BEGIN
@@ -251,6 +237,29 @@
     END $$;
 
     -- ============================================
+    -- Drafts Table
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS drafts (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL DEFAULT 'Untitled Draft',
+        content TEXT DEFAULT '',
+        type TEXT DEFAULT 'note', -- 'note', 'document', 'spreadsheet', 'whiteboard', etc.
+        space_id UUID REFERENCES spaces(id) ON DELETE SET NULL,
+        tags JSONB DEFAULT '[]',
+        metadata JSONB DEFAULT '{}', -- Additional data like word count, last edited position, etc.
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Add shared_with JSONB column for draft sharing
+    DO $$ BEGIN
+        ALTER TABLE drafts ADD COLUMN shared_with JSONB DEFAULT '[]';
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+
+    -- ============================================
     -- Folders Table
     -- ============================================
     CREATE TABLE IF NOT EXISTS folders (
@@ -261,7 +270,21 @@
         color TEXT DEFAULT '#6366f1',
         icon TEXT DEFAULT 'folder',
         space_id UUID REFERENCES spaces(id) ON DELETE SET NULL,
-        is_favorite BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- ============================================
+    -- Bookmarks Table
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS bookmarks (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        item_id TEXT NOT NULL,
+        item_type TEXT NOT NULL, -- 'doc', 'excel', 'whiteboard', etc.
+        title TEXT NOT NULL,
+        space_id UUID REFERENCES spaces(id) ON DELETE SET NULL,
+        metadata JSONB DEFAULT '{}', -- Additional data like URL, notes, etc.
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
@@ -394,7 +417,6 @@
         reactions JSONB DEFAULT '[]',
         mentions JSONB DEFAULT '[]',
         is_read BOOLEAN DEFAULT FALSE,
-        is_favorite BOOLEAN DEFAULT FALSE, -- For favoriting messages
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
@@ -429,16 +451,13 @@
     CREATE INDEX IF NOT EXISTS idx_calendar_events_user_id ON calendar_events(user_id);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date);
     CREATE INDEX IF NOT EXISTS idx_docs_user_id ON docs(user_id);
-    CREATE INDEX IF NOT EXISTS idx_docs_favorite ON docs(is_favorite);
     CREATE INDEX IF NOT EXISTS idx_excels_user_id ON excels(user_id);
-    CREATE INDEX IF NOT EXISTS idx_excels_favorite ON excels(is_favorite);
     CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_user_id ON team_chat_messages(user_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_id ON team_chat_messages(channel_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_type ON team_chat_messages(channel_type);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_recipient_id ON team_chat_messages(recipient_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_created_at ON team_chat_messages(created_at);
-    CREATE INDEX IF NOT EXISTS idx_team_chat_messages_is_favorite ON team_chat_messages(is_favorite);
     CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_project_id ON project_invitations(project_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitations(inviter_id);
@@ -452,6 +471,14 @@
     CREATE INDEX IF NOT EXISTS idx_team_invitations_invitee_email ON team_invitations(invitee_email);
     CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON team_invitations(status);
     CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_drafts_user_id ON drafts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_drafts_type ON drafts(type);
+    CREATE INDEX IF NOT EXISTS idx_drafts_space_id ON drafts(space_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_item_id ON bookmarks(item_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_item_type ON bookmarks(item_type);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_space_id ON bookmarks(space_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON bookmarks(created_at);
 
     -- ============================================
     -- Row Level Security (RLS) - Safe Enable
@@ -466,6 +493,8 @@
     ALTER TABLE excels ENABLE ROW LEVEL SECURITY;
     ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
     ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE drafts ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
     ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
     ALTER TABLE team_chat_messages ENABLE ROW LEVEL SECURITY;
     ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
@@ -605,6 +634,32 @@
     CREATE POLICY "Users can update own folders" ON folders FOR UPDATE USING (auth.uid() = user_id);
     CREATE POLICY "Users can delete own folders" ON folders FOR DELETE USING (auth.uid() = user_id);
 
+    -- Drafts policies (shared_with uses JSONB containment with jwt email)
+    DROP POLICY IF EXISTS "Users can view own drafts" ON drafts;
+    DROP POLICY IF EXISTS "Users can insert own drafts" ON drafts;
+    DROP POLICY IF EXISTS "Users can update own drafts" ON drafts;
+    DROP POLICY IF EXISTS "Users can delete own drafts" ON drafts;
+    CREATE POLICY "Users can view own drafts" ON drafts FOR SELECT USING (
+        auth.uid() = user_id OR 
+        (shared_with IS NOT NULL AND shared_with::jsonb @> ('[{"email":"' || (auth.jwt() ->> 'email') || '"}]')::jsonb)
+    );
+    CREATE POLICY "Users can insert own drafts" ON drafts FOR INSERT WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users can update own drafts" ON drafts FOR UPDATE USING (
+        auth.uid() = user_id OR 
+        (shared_with IS NOT NULL AND shared_with::jsonb @> ('[{"email":"' || (auth.jwt() ->> 'email') || '"}]')::jsonb)
+    );
+    CREATE POLICY "Users can delete own drafts" ON drafts FOR DELETE USING (auth.uid() = user_id);
+
+    -- Bookmarks policies
+    DROP POLICY IF EXISTS "Users can view own bookmarks" ON bookmarks;
+    DROP POLICY IF EXISTS "Users can insert own bookmarks" ON bookmarks;
+    DROP POLICY IF EXISTS "Users can update own bookmarks" ON bookmarks;
+    DROP POLICY IF EXISTS "Users can delete own bookmarks" ON bookmarks;
+    CREATE POLICY "Users can view own bookmarks" ON bookmarks FOR SELECT USING (auth.uid() = user_id);
+    CREATE POLICY "Users can insert own bookmarks" ON bookmarks FOR INSERT WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users can update own bookmarks" ON bookmarks FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete own bookmarks" ON bookmarks FOR DELETE USING (auth.uid() = user_id);
+
     -- Recurring Tasks policies
     DROP POLICY IF EXISTS "Users can view own recurring_tasks" ON recurring_tasks;
     DROP POLICY IF EXISTS "Users can insert own recurring_tasks" ON recurring_tasks;
@@ -741,6 +796,7 @@
     CREATE TRIGGER update_user_presence_updated_at BEFORE UPDATE ON user_presence FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_followers_updated_at BEFORE UPDATE ON followers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_team_invitations_updated_at BEFORE UPDATE ON team_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    CREATE TRIGGER update_bookmarks_updated_at BEFORE UPDATE ON bookmarks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
     -- ============================================
     -- Trigger for auto-creating profile on signup

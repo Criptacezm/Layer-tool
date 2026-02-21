@@ -16,7 +16,8 @@ const AVAILABLE_THEMES = [
   { id: 'midnight', name: 'Midnight', mode: 'dark' },
   { id: 'dracula', name: 'Dracula', mode: 'dark' },
   { id: 'gruvbox', name: 'Gruvbox', mode: 'dark' },
-  { id: 'rosepine', name: 'Rosé Pine', mode: 'dark' }
+  { id: 'rosepine', name: 'Rosé Pine', mode: 'dark' },
+  { id: 'claude', name: 'Claude', mode: 'dark' }
 ];
 
 // Track if we're in first-time setup
@@ -1068,7 +1069,28 @@ async function updateUserDisplay(user) {
 
   // If user is logged in
   if (user && user.email) {
-    const displayName = user.username || user.email?.split('@')[0] || 'User';
+    // ONLY use the saved profile name from database, never Google name
+    let displayName = 'User'; // default fallback
+    
+    // Try to get profile name from database (this is the ONLY source we want)
+    try {
+      if (window.LayerDB && typeof window.LayerDB.getProfile === 'function') {
+        const profile = await window.LayerDB.getProfile();
+        if (profile && profile.name) {
+          displayName = profile.name;
+          console.log('Using saved profile name from database (IGNORING Google name):', displayName);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to get profile name, using default:', error);
+    }
+    
+    // If no profile name exists, use email split (NEVER use Google metadata name)
+    if (displayName === 'User') {
+      displayName = user.email?.split('@')[0] || 'User';
+      console.log('No saved profile found, using email split (NOT Google name):', displayName);
+    }
+    
     const initials = displayName.slice(0, 2).toUpperCase();
 
     // Try to get user profile for avatar
@@ -1186,6 +1208,7 @@ async function loadUserDataFromDB() {
     localStorage.removeItem('layerDocs');
     localStorage.removeItem('layerExcels');
     localStorage.removeItem('layerSpaces');
+    localStorage.removeItem('layerDrafts');
     // Also clear old favorites arrays (now stored in docs/excels)
     localStorage.removeItem('layerFavorites');
     localStorage.removeItem('layerFavoriteDocs');
@@ -1193,14 +1216,15 @@ async function loadUserDataFromDB() {
     localStorage.removeItem('layerFavoriteExcels');
 
     // Load all user data from Supabase (including calendar events, docs, excels, spaces)
-    const [projects, backlogTasks, issues, calendarEvents, docs, excels, spaces] = await Promise.all([
+    const [projects, backlogTasks, issues, calendarEvents, docs, excels, spaces, drafts] = await Promise.all([
       window.LayerDB.loadProjects(),
       window.LayerDB.loadBacklogTasks(),
       window.LayerDB.loadIssues(),
       window.LayerDB.loadCalendarEvents(),
       window.LayerDB.loadDocs(),
       window.LayerDB.loadExcels(),
-      window.LayerDB.loadSpaces()
+      window.LayerDB.loadSpaces(),
+      window.LayerDB.loadDrafts()
     ]);
 
     // Cache in localStorage for synchronous access by render functions
@@ -1211,6 +1235,10 @@ async function loadUserDataFromDB() {
     localStorage.setItem('layerDocs', JSON.stringify(docs || []));
     localStorage.setItem('layerExcels', JSON.stringify(excels || []));
     localStorage.setItem('layerSpaces', JSON.stringify(spaces || []));
+    localStorage.setItem('layerDrafts', JSON.stringify(drafts || []));
+
+    // Cache drafts in memory for synchronous Drafts rendering
+    window.cachedDrafts = drafts || [];
 
     // Cache checklists from spaces
     const checklists = {};
@@ -1794,6 +1822,12 @@ async function loadProjectDetailProfiles(projectIndex) {
 
 // Render current view with optional scroll preservation
 async function renderCurrentView(preserveScroll = false) {
+  // Check if drafts need refresh and we're on drafts view
+  if (currentView === 'drafts' && window.draftsNeedRefresh) {
+    // Force re-render by resetting the context
+    lastRenderContext = '';
+  }
+
   // Create a context signature for this render
   const renderContext = `${currentView}_${selectedProjectIndex}_${currentProjectTab}`;
 
@@ -1851,12 +1885,17 @@ async function renderCurrentView(preserveScroll = false) {
     stopSharedContentPolling();
   }
 
+  // Cleanup animated backgrounds when switching away from drafts
+  cleanupAnimatedBackgrounds();
+
   switch (currentView) {
     case 'inbox':
       viewsContainer.innerHTML = renderInboxView();
       updateBreadcrumb('Inbox');
       // Apply saved widget order after rendering
       initDashboardWidgetOrder();
+      // Restore dashboard AI sidebar state
+      restoreDashboardAiSidebarState();
       // Start shared content polling for real-time updates
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
@@ -1868,13 +1907,12 @@ async function renderCurrentView(preserveScroll = false) {
       setupIssueFilterListeners();
       break;
     case 'settings':
-      viewsContainer.innerHTML = renderSettingsView();
-      updateBreadcrumb('Settings');
-      initThemeSelector();   // ← ADD THIS LINE
-      break;
-    case 'backlog':
-      viewsContainer.innerHTML = renderBacklogView();
-      updateBreadcrumb('Backlog');
+      // Handle async renderSettingsView
+      (async () => {
+        viewsContainer.innerHTML = await renderSettingsView();
+        updateBreadcrumb('Settings');
+        initThemeSelector();   // ← ADD THIS LINE
+      })();
       break;
     case 'schedule':                          // ← Add this case
       viewsContainer.innerHTML = renderScheduleView();
@@ -1899,6 +1937,16 @@ async function renderCurrentView(preserveScroll = false) {
     case 'ai':
       viewsContainer.innerHTML = renderAIView();
       updateBreadcrumb('AI');
+      break;
+    case 'drafts':
+      viewsContainer.innerHTML = renderDraftsView();
+      updateBreadcrumb('Drafts');
+      window.draftsNeedRefresh = false; // Reset the flag after rendering
+      
+      // Initialize animated backgrounds for draft cards
+      setTimeout(() => {
+        initializeAnimatedBackgrounds();
+      }, 100);
       break;
     default:
       viewsContainer.innerHTML = renderMyIssuesView();
@@ -1976,44 +2024,7 @@ async function handleCreateIssueSubmit(event) {
   }
 }
 
-// ============================================
-// Backlog Handlers
-// ============================================
-async function promptAddBacklogTask() {
-  const title = prompt('New backlog task:', '');
-  if (title?.trim()) {
-    await addBacklogTask(title.trim());
-    renderCurrentView();
-  }
-}
 
-async function handleToggleBacklogTask(index) {
-  await toggleBacklogTask(index);
-  renderCurrentView();
-}
-
-function handleUpdateBacklogTask(index, title) {
-  updateBacklogTask(index, title || 'New task');
-}
-
-async function handleDeleteBacklogTask(index) {
-  if (confirm('Delete this task?')) {
-    await deleteBacklogTask(index);
-    renderCurrentView();
-  }
-}
-
-async function handleQuickAddKeypress(event) {
-  if (event.key === 'Enter') {
-    const input = event.target;
-    const title = input.value.trim();
-    if (title) {
-      input.value = '';
-      await addBacklogTask(title);
-      renderCurrentView();
-    }
-  }
-}
 
 // ============================================
 // Project Handlers
@@ -2129,7 +2140,7 @@ async function handleToggleProjectTask(projectIndex, columnIndex, taskIndex, eve
   }
 }
 
-async function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
+function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   // Prevent event bubbling that could trigger tab switches
   if (event) {
     event.stopPropagation();
@@ -2140,8 +2151,16 @@ async function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, eve
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
 
   if (confirm('Delete this task?')) {
-    await deleteTask(projectIndex, columnIndex, taskIndex);
+    const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
+    const projects = loadProjects();
+    if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
+      projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
+      saveProjects(projects);
+    }
     renderCurrentView();
+    if (scrollPos && restoreKanbanScrollPosition) {
+      restoreKanbanScrollPosition(scrollPos);
+    }
 
     // Restore the active tab if we're in project detail view and timeline was active
     if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
@@ -2190,19 +2209,60 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
 
-  // Prompt user for task title
-  const title = prompt('Enter task title:');
-  if (title && title.trim()) {
-    addTaskToColumn(projectIndex, columnIndex, title.trim());
-    renderCurrentView();
-
-    // Restore the active tab if we're in project detail view and timeline was active
-    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
-      requestAnimationFrame(() => {
-        switchProjectTab('timeline', projectIndex);
-      });
+  // Find the column body where the input should be added
+  const columnElement = event.target.closest('.tl-kanban-column');
+  const taskListContainer = columnElement.querySelector('.tl-kanban-col-tasks');
+  
+  // Clear any existing input fields
+  const existingInputs = taskListContainer.querySelectorAll('.tl-kanban-task-input');
+  existingInputs.forEach(input => input.remove());
+  
+  // Create input field for task title
+  const inputField = document.createElement('input');
+  inputField.type = 'text';
+  inputField.placeholder = 'Enter task title...';
+  inputField.className = 'tl-kanban-task-input';
+  inputField.style.width = 'calc(100% - 20px)';
+  inputField.style.padding = '8px';
+  inputField.style.margin = '10px';
+  inputField.style.border = '1px solid var(--border)';
+  inputField.style.borderRadius = '6px';
+  inputField.style.backgroundColor = 'var(--background)';
+  inputField.style.color = 'var(--foreground)';
+  
+  // Focus the input field
+  inputField.focus();
+  
+  // Handle input submission
+  inputField.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      const title = inputField.value;
+      if (title && title.trim()) {
+        addTaskToColumn(projectIndex, columnIndex, title.trim());
+        renderCurrentView();
+        
+        // Restore the active tab if we're in project detail view and timeline was active
+        if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+          requestAnimationFrame(() => {
+            switchProjectTab('timeline', projectIndex);
+          });
+        }
+      } else {
+        // Remove the input if empty
+        taskListContainer.removeChild(inputField);
+      }
     }
-  }
+  });
+  
+  // Add cancel on blur if empty
+  inputField.addEventListener('blur', function() {
+    if (!inputField.value.trim()) {
+      taskListContainer.removeChild(inputField);
+    }
+  });
+  
+  // Insert input field at the top of the task list
+  taskListContainer.insertBefore(inputField, taskListContainer.firstChild);
 }
 
 // ============================================
@@ -2345,78 +2405,7 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
   `;
 }
 
-function renderBacklogView() {
-  const tasks = loadBacklogTasks();
-  const totalTasks = tasks.length;
-  const doneTasks = tasks.filter(t => t.done).length;
-  const progress = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
 
-  if (tasks.length === 0) {
-    return `
-      <div class="backlog-container">
-        <div class="view-header" style="border: none; padding: 0; margin-bottom: 32px;">
-          <h1 class="view-title">Backlog</h1>
-        </div>
-        <div class="empty-state">
-          <div class="empty-state-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted-foreground);">
-              <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
-              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
-            </svg>
-          </div>
-          <h3 class="empty-state-title">No tasks in backlog yet</h3>
-          <p class="empty-state-text">Tasks added here will wait until you move them to a project.</p>
-          <button class="btn btn-primary" onclick="promptAddBacklogTask()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Add your first task
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="backlog-container">
-      <div class="view-header" style="border: none; padding: 0; margin-bottom: 32px;">
-        <h1 class="view-title">Backlog</h1>
-      </div>
-      
-      <div class="backlog-progress">
-        <div class="backlog-progress-info">
-          <p class="backlog-progress-text">${doneTasks} of ${totalTasks} completed</p>
-          <div class="progress-bar backlog-progress-bar">
-            <div class="progress-bar-fill" style="width: ${progress}%; background-color: ${getProgressColor(progress)};"></div>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="promptAddBacklogTask()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Add task
-        </button>
-      </div>
-      
-      <div class="backlog-tasks">
-        ${tasks.map((task, index) => `
-          <div class="backlog-task ${task.done ? 'done' : ''}">
-            <label class="checkbox-container">
-              <input type="checkbox" ${task.done ? 'checked' : ''} onchange="handleToggleBacklogTask(${index})">
-              <div class="checkbox-custom">
-                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-              </div>
-            </label>
-            <div class="backlog-task-title" contenteditable="true" onblur="handleUpdateBacklogTask(${index}, this.textContent)">${task.title}</div>
-            <button class="backlog-task-delete" onclick="handleDeleteBacklogTask(${index})">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        `).join('')}
-      </div>
-      
-      <div class="quick-add">
-        <input type="text" id="quickAddInput" placeholder="+ Quick add task (press Enter)" onkeypress="handleQuickAddKeypress(event)">
-      </div>
-    </div>
-  `;
-}
 
 function renderActivityView(searchQuery = '') {
   let projects = loadProjects();
@@ -2499,6 +2488,739 @@ function renderActivityView(searchQuery = '') {
     </div>
   `;
 }
+
+function renderDraftsView() {
+  const drafts = loadDrafts();
+  
+  // Group drafts by type for stats
+  const docDrafts = drafts.filter(d => d.type === 'doc');
+  const sheetDrafts = drafts.filter(d => d.type === 'sheet');
+  const whiteboardDrafts = drafts.filter(d => d.type === 'whiteboard');
+  
+  // Type icons
+  const typeIcons = {
+    doc: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>',
+    sheet: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>',
+    whiteboard: '<path d="M2 3h20v14H2z"/><line x1="6" y1="7" x2="12" y2="7"/><line x1="6" y1="11" x2="15" y2="11"/><line x1="6" y1="15" x2="10" y2="15"/><line x1="6" y1="18" x2="5" y2="22"/><line x1="18" y1="18" x2="19" y2="22"/>'
+  };
+  
+  const typeColors = {
+    doc: 'var(--primary)',
+    sheet: 'var(--success)',
+    whiteboard: 'var(--warning)'
+  };
+  
+  const typeLabels = {
+    doc: 'Document',
+    sheet: 'Spreadsheet',
+    whiteboard: 'Whiteboard'
+  };
+  
+  // Render empty state
+  if (drafts.length === 0) {
+    return `
+      <div class="drafts-container">
+        <div class="drafts-header-modern">
+          <div class="drafts-header-left">
+            <div class="drafts-title-group">
+              <div class="drafts-icon-large">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div>
+                <h1 class="drafts-title">Drafts</h1>
+                <p class="drafts-subtitle">Work in progress saved automatically</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="drafts-empty-state">
+          <div class="empty-illustration">
+            <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="40" y="20" width="120" height="140" rx="8" stroke="var(--border)" stroke-width="2" fill="var(--card)"/>
+              <rect x="60" y="45" width="80" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+              <rect x="60" y="60" width="60" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+              <rect x="60" y="75" width="70" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+              <rect x="60" y="100" width="80" height="40" rx="4" stroke="var(--border)" stroke-width="2" fill="var(--background)" stroke-dasharray="4 4"/>
+              <circle cx="140" cy="40" r="12" fill="var(--primary)" opacity="0.1"/>
+              <path d="M134 40L138 44L146 36" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">No drafts yet</h2>
+          <p class="empty-description">Start creating documents, spreadsheets, or whiteboards. Your work-in-progress will be automatically saved here.</p>
+          <div class="empty-actions">
+            <button class="draft-btn draft-btn-primary" onclick="openDocEditor()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              New Document
+            </button>
+            <button class="draft-btn draft-btn-secondary" onclick="openExcelEditor()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              New Sheet
+            </button>
+            <button class="draft-btn draft-btn-secondary" onclick="createWhiteboardDraft().then(index => { if(index !== null) openGripDiagram(index); })">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/><line x1="6" y1="17" x2="5" y2="22"/><line x1="16" y1="17" x2="17" y2="22"/></svg>
+              New Whiteboard
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="drafts-container">
+      <!-- Header -->
+      <div class="drafts-header-modern">
+        <div class="drafts-header-left">
+          <div class="drafts-title-group">
+            <div class="drafts-icon-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <div>
+              <h1 class="drafts-title">Drafts</h1>
+              <p class="drafts-subtitle">${drafts.length} item${drafts.length !== 1 ? 's' : ''} • Work in progress</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="drafts-header-right">
+          <div class="drafts-stats-chips">
+            ${docDrafts.length > 0 ? `<div class="stat-chip stat-chip-docs"><span class="stat-chip-dot" style="background:#6366f1"></span>${docDrafts.length} Doc${docDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+            ${sheetDrafts.length > 0 ? `<div class="stat-chip stat-chip-sheets"><span class="stat-chip-dot" style="background:#22c55e"></span>${sheetDrafts.length} Sheet${sheetDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+            ${whiteboardDrafts.length > 0 ? `<div class="stat-chip stat-chip-boards"><span class="stat-chip-dot" style="background:#f59e0b"></span>${whiteboardDrafts.length} Board${whiteboardDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+          </div>
+          
+          <button class="draft-btn draft-btn-danger-outline" onclick="clearAllDrafts()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear All
+          </button>
+        </div>
+      </div>
+      
+      <!-- Toolbar -->
+      <div class="drafts-toolbar-modern">
+        <div class="drafts-filters-modern">
+          <button class="filter-chip active" data-filter="all" onclick="setDraftFilter(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            All
+          </button>
+          <button class="filter-chip" data-filter="doc" onclick="setDraftFilter(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Docs
+          </button>
+          <button class="filter-chip" data-filter="sheet" onclick="setDraftFilter(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            Sheets
+          </button>
+          <button class="filter-chip" data-filter="whiteboard" onclick="setDraftFilter(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/></svg>
+            Boards
+          </button>
+        </div>
+        
+        <div class="drafts-toolbar-right">
+          <div class="drafts-search-modern">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="drafts-search-input" placeholder="Search drafts..." onkeyup="filterDraftsModern()" />
+          </div>
+          
+          <div class="drafts-sort-modern">
+            <select id="drafts-sort-select" onchange="sortDraftsModern()">
+              <option value="updated-desc">Recently updated</option>
+              <option value="updated-asc">Oldest updated</option>
+              <option value="created-desc">Recently created</option>
+              <option value="created-asc">Oldest created</option>
+              <option value="title-asc">Name A-Z</option>
+              <option value="title-desc">Name Z-A</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Content Grid -->
+      <div class="drafts-content-modern">
+        <div class="drafts-grid-modern" id="drafts-grid">
+          ${drafts.map(draft => {
+            const icon = typeIcons[draft.type] || typeIcons.doc;
+            const color = typeColors[draft.type] || typeColors.doc;
+            const label = typeLabels[draft.type] || 'Draft';
+            const openFn = draft.type === 'doc' ? 'openDocEditorForDraft' : draft.type === 'sheet' ? 'openExcelEditorForDraft' : 'openGripDiagramForDraft';
+
+            // Use the latest title from the underlying content when possible
+            let displayTitle = draft.title || 'Untitled';
+            try {
+              if (draft.type === 'doc') {
+                const docId = draft?.metadata?.docId;
+                const doc = docId ? (loadDocs() || []).find(d => String(d.id) === String(docId)) : null;
+                if (doc?.title) displayTitle = doc.title;
+              } else if (draft.type === 'sheet') {
+                const excelId = draft?.metadata?.excelId;
+                const excel = excelId ? (loadExcels() || []).find(e => String(e.id) === String(excelId)) : null;
+                if (excel?.title) displayTitle = excel.title;
+              }
+            } catch (e) {
+              // Keep fallback title
+            }
+            
+            return `
+              <div class="draft-card" data-draft-id="${draft.id}" data-type="${draft.type}" data-title="${displayTitle}" data-updated="${draft.updatedAt}" data-created="${draft.createdAt}">
+                <div class="draft-card-preview" onclick="${openFn}('${draft.id}')" style="--draft-accent: ${color}">
+                  <div class="animated-background-container" data-draft-type="${draft.type}"></div>
+                  <div class="draft-card-icon" style="background: ${color}20; color: ${color}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
+                  </div>
+                  <div class="draft-card-overlay">
+                    <span class="draft-card-action">Open</span>
+                  </div>
+                </div>
+                
+                <div class="draft-card-info">
+                  <div class="draft-card-header">
+                    <span class="draft-card-type" style="color: ${color}">${label}</span>
+                    <button class="draft-card-delete" onclick="showDeleteConfirm('${draft.id}', '${draft.type}')" title="Delete draft">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                  
+                  <h3 class="draft-card-title" onclick="${openFn}('${draft.id}')">${displayTitle}</h3>
+                  
+                  <div class="draft-card-meta">
+                    <span class="draft-card-date" title="Updated: ${new Date(draft.updatedAt).toLocaleString()}">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      ${formatTimeAgo(draft.updatedAt)}
+                    </span>
+                    
+                    <!-- Save Button with Dropdown -->
+                    <div class="draft-card-save-container">
+                      <button class="draft-card-save-btn" onclick="toggleSaveDropdown('${draft.id}', event)" title="Save to Project or Space">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                          <polyline points="17 21 17 13 7 13 7 21"/>
+                          <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        <span>Save</span>
+                        <svg class="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
+                      
+                      <!-- Save Dropdown Menu -->
+                      <div class="draft-save-dropdown" id="save-dropdown-${draft.id}" style="display: none;">
+                        <div class="save-dropdown-header">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                          </svg>
+                          <span>Move to...</span>
+                        </div>
+                        
+                        <div class="save-dropdown-section">
+                          <div class="save-dropdown-label">Projects</div>
+                          <div class="save-dropdown-projects" id="save-projects-${draft.id}">
+                            <!-- Projects loaded dynamically -->
+                          </div>
+                        </div>
+                        
+                        <div class="save-dropdown-section">
+                          <div class="save-dropdown-label">Spaces</div>
+                          <div class="save-dropdown-spaces" id="save-spaces-${draft.id}">
+                            <!-- Spaces loaded dynamically -->
+                          </div>
+                        </div>
+                        
+                        <div class="save-dropdown-footer">
+                          <button class="save-dropdown-new-btn" onclick="showCreateSpaceFromDraft('${draft.id}', '${draft.type}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <line x1="12" y1="5" x2="12" y2="19"/>
+                              <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Create New Space
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Inline Delete Confirmation -->
+                <div class="draft-delete-confirm" id="delete-confirm-${draft.id}" style="display: none;">
+                  <div class="draft-delete-confirm-text">Delete this draft permanently?</div>
+                  <div class="draft-delete-confirm-actions">
+                    <button class="draft-delete-btn draft-delete-btn-cancel" onclick="hideDeleteConfirm('${draft.id}')">Cancel</button>
+                    <button class="draft-delete-btn draft-delete-btn-confirm" onclick="confirmDeleteDraft('${draft.id}', '${draft.type}')">Delete</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Initialize animated backgrounds for draft cards
+function initializeAnimatedBackgrounds() {
+  const containers = document.querySelectorAll('.animated-background-container');
+  
+  containers.forEach(container => {
+    // Skip if already initialized
+    if (container.dataset.initialized) return;
+    
+    const draftType = container.dataset.draftType;
+    
+    // Define color schemes for different draft types
+    const colorSchemes = {
+      doc: {
+        color1: '#FF9FFC',
+        color2: '#5227FF',
+        color3: '#B19EEF',
+        timeSpeed: 0.4,
+        warpStrength: 0.8,
+        grainAmount: 0.05
+      },
+      sheet: {
+        color1: '#4ECDC4',
+        color2: '#44A08D',
+        color3: '#093637',
+        timeSpeed: 0.3,
+        warpStrength: 0.6,
+        grainAmount: 0.03
+      },
+      whiteboard: {
+        color1: '#f6d365',
+        color2: '#fda085',
+        color3: '#ffecd2',
+        timeSpeed: 0.5,
+        warpStrength: 1.0,
+        grainAmount: 0.08
+      }
+    };
+    
+    const scheme = colorSchemes[draftType] || colorSchemes.doc;
+    
+    try {
+      const animatedBg = new AnimatedBackground(container, scheme);
+      container.dataset.initialized = 'true';
+      
+      // Store reference for cleanup
+      container._animatedBackground = animatedBg;
+      
+      console.log(`🎨 Initialized animated background for ${draftType} draft`);
+    } catch (error) {
+      console.error('Failed to initialize animated background:', error);
+    }
+  });
+}
+
+// Cleanup animated backgrounds when switching views
+function cleanupAnimatedBackgrounds() {
+  const containers = document.querySelectorAll('.animated-background-container');
+  
+  containers.forEach(container => {
+    if (container._animatedBackground) {
+      container._animatedBackground.destroy();
+      delete container._animatedBackground;
+    }
+    delete container.dataset.initialized;
+  });
+}
+
+// Modern filter function
+function setDraftFilter(btn) {
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterDraftsModern();
+}
+
+function filterDraftsModern() {
+  const searchTerm = (document.getElementById('drafts-search-input')?.value || '').toLowerCase();
+  const activeFilter = document.querySelector('.filter-chip.active')?.dataset.filter || 'all';
+  const cards = document.querySelectorAll('#drafts-grid .draft-card');
+  
+  cards.forEach(card => {
+    const title = card.getAttribute('data-title').toLowerCase();
+    const type = card.getAttribute('data-type');
+    
+    const matchesSearch = !searchTerm || title.includes(searchTerm);
+    const matchesFilter = activeFilter === 'all' || type === activeFilter;
+    
+    card.style.display = matchesSearch && matchesFilter ? 'flex' : 'none';
+    card.style.animation = matchesSearch && matchesFilter ? 'draftFadeIn 0.3s ease' : 'none';
+  });
+}
+
+// Inline delete confirmation functions
+function showDeleteConfirm(draftId, draftType) {
+  // Hide any other open confirmations
+  document.querySelectorAll('.draft-delete-confirm').forEach(el => {
+    el.style.display = 'none';
+  });
+  
+  // Show confirmation for this draft
+  const confirmEl = document.getElementById(`delete-confirm-${draftId}`);
+  if (confirmEl) {
+    confirmEl.style.display = 'flex';
+  }
+}
+
+function hideDeleteConfirm(draftId) {
+  const confirmEl = document.getElementById(`delete-confirm-${draftId}`);
+  if (confirmEl) {
+    confirmEl.style.display = 'none';
+  }
+}
+
+async function confirmDeleteDraft(draftId, draftType) {
+  hideDeleteConfirm(draftId);
+  await deleteDraft(draftId, draftType);
+  // Immediately re-render drafts view to show updated list
+  if (typeof renderCurrentView === 'function') {
+    // Reset context to force re-render despite debounce
+    lastRenderContext = '';
+    renderCurrentView();
+  }
+}
+
+function sortDraftsModern() {
+  const sortValue = document.getElementById('drafts-sort-select')?.value || 'updated-desc';
+  const grid = document.getElementById('drafts-grid');
+  if (!grid) return;
+  
+  const cards = Array.from(grid.querySelectorAll('.draft-card'));
+  
+  cards.sort((a, b) => {
+    const titleA = a.getAttribute('data-title').toLowerCase();
+    const titleB = b.getAttribute('data-title').toLowerCase();
+    const dateA = new Date(a.getAttribute('data-updated'));
+    const dateB = new Date(b.getAttribute('data-updated'));
+    const createdA = new Date(a.getAttribute('data-created') || a.getAttribute('data-updated'));
+    const createdB = new Date(b.getAttribute('data-created') || b.getAttribute('data-updated'));
+    
+    switch(sortValue) {
+      case 'updated-desc': return dateB - dateA;
+      case 'updated-asc': return dateA - dateB;
+      case 'created-desc': return createdB - createdA;
+      case 'created-asc': return createdA - createdB;
+      case 'title-asc': return titleA.localeCompare(titleB);
+      case 'title-desc': return titleB.localeCompare(titleA);
+      default: return dateB - dateA;
+    }
+  });
+  
+  cards.forEach(card => grid.appendChild(card));
+}
+
+function showNewDocDialog() {
+  // This would typically show a modal or create a new document
+  // For now, we'll just redirect to the docs view
+  switchView('docs');
+}
+
+function showNewExcelDialog() {
+  // This would typically show a modal or create a new spreadsheet
+  // For now, we'll just redirect to the excel view
+  switchView('excel');
+}
+
+function showNewWhiteboardDialog() {
+  // This would typically show a modal or create a new whiteboard
+  // For now, we'll just redirect to the whiteboard view
+  switchView('whiteboard');
+}
+
+// Save Dropdown Functions
+let currentOpenDropdown = null;
+
+function toggleSaveDropdown(draftId, event) {
+  event.stopPropagation();
+  
+  const dropdown = document.getElementById(`save-dropdown-${draftId}`);
+  const button = event.currentTarget;
+  
+  // Close any open dropdown
+  if (currentOpenDropdown && currentOpenDropdown !== dropdown) {
+    currentOpenDropdown.style.display = 'none';
+    const openBtn = currentOpenDropdown.previousElementSibling;
+    if (openBtn) openBtn.classList.remove('active');
+  }
+  
+  // Toggle current dropdown
+  const isVisible = dropdown.style.display === 'block';
+  dropdown.style.display = isVisible ? 'none' : 'block';
+  button.classList.toggle('active', !isVisible);
+  
+  if (!isVisible) {
+    currentOpenDropdown = dropdown;
+    loadProjectsAndSpaces(draftId);
+  } else {
+    currentOpenDropdown = null;
+  }
+}
+
+function loadProjectsAndSpaces(draftId) {
+  // Load projects
+  const projects = loadProjects();
+  const projectsContainer = document.getElementById(`save-projects-${draftId}`);
+  
+  if (projects.length === 0) {
+    projectsContainer.innerHTML = '<div class="save-dropdown-empty">No projects yet</div>';
+  } else {
+    projectsContainer.innerHTML = projects.map(project => `
+      <div class="save-dropdown-item" onclick="moveDraftToProject('${draftId}', ${project.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>${project.name}</span>
+      </div>
+    `).join('');
+  }
+  
+  // Load spaces
+  const spaces = loadSpaces();
+  const spacesContainer = document.getElementById(`save-spaces-${draftId}`);
+  
+  if (spaces.length === 0) {
+    spacesContainer.innerHTML = '<div class="save-dropdown-empty">No spaces yet</div>';
+  } else {
+    spacesContainer.innerHTML = spaces.map(space => `
+      <div class="save-dropdown-item" onclick="moveDraftToSpace('${draftId}', '${space.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span>${space.name}</span>
+      </div>
+    `).join('');
+  }
+}
+
+async function moveDraftToProject(draftId, projectId) {
+  try {
+    const drafts = loadDrafts();
+    const draft = drafts.find(d => d.id === draftId);
+    
+    if (!draft) {
+      showToast('Draft not found', 'error');
+      return;
+    }
+    
+    // Get project data
+    const projects = loadProjects();
+    const project = projects.find(p => p.id === projectId);
+    
+    if (!project) {
+      showToast('Project not found', 'error');
+      return;
+    }
+    
+    // Move the draft item to the project
+    if (draft.type === 'doc') {
+      // Move document
+      const docs = await window.LayerDB.loadDocs();
+      const doc = docs.find(d => d.id === draftId);
+      if (doc) {
+        await window.LayerDB.updateDoc(draftId, { projectId: projectId, isDraft: false });
+      }
+    } else if (draft.type === 'sheet') {
+      // Move spreadsheet
+      const excels = await window.LayerDB.loadExcels();
+      const excel = excels.find(e => e.id === draftId);
+      if (excel) {
+        await window.LayerDB.updateExcel(draftId, { projectId: projectId, isDraft: false });
+      }
+    } else if (draft.type === 'whiteboard') {
+      // Move whiteboard (project diagram)
+      const whiteboardIndex = project.whiteboards?.findIndex(w => w.id === draftId);
+      if (whiteboardIndex === -1 || whiteboardIndex === undefined) {
+        // Add to project whiteboards
+        if (!project.whiteboards) project.whiteboards = [];
+        project.whiteboards.push({
+          id: draftId,
+          name: draft.title || 'Untitled Whiteboard',
+          createdAt: draft.createdAt,
+          updatedAt: draft.updatedAt
+        });
+        saveProjects(projects);
+      }
+    }
+    
+    // Remove from drafts
+    const updatedDrafts = drafts.filter(d => d.id !== draftId);
+    saveDrafts(updatedDrafts);
+    
+    showToast(`Moved to ${project.name}`, 'success');
+    
+    // Close dropdown and refresh view
+    closeAllDropdowns();
+    renderDraftsView();
+    
+  } catch (error) {
+    console.error('Failed to move draft to project:', error);
+    showToast('Failed to move to project', 'error');
+  }
+}
+
+async function moveDraftToSpace(draftId, spaceId) {
+  try {
+    const drafts = loadDrafts();
+    const draft = drafts.find(d => d.id === draftId);
+    
+    if (!draft) {
+      showToast('Draft not found', 'error');
+      return;
+    }
+    
+    // Get space data
+    const spaces = loadSpaces();
+    const space = spaces.find(s => s.id === spaceId);
+    
+    if (!space) {
+      showToast('Space not found', 'error');
+      return;
+    }
+    
+    // Move the draft item to the space
+    if (draft.type === 'doc') {
+      // Move document
+      const docs = await window.LayerDB.loadDocs();
+      const doc = docs.find(d => d.id === draftId);
+      if (doc) {
+        await window.LayerDB.updateDoc(draftId, { spaceId: spaceId, isDraft: false });
+      }
+    } else if (draft.type === 'sheet') {
+      // Move spreadsheet
+      const excels = await window.LayerDB.loadExcels();
+      const excel = excels.find(e => e.id === draftId);
+      if (excel) {
+        await window.LayerDB.updateExcel(draftId, { spaceId: spaceId, isDraft: false });
+      }
+    } else if (draft.type === 'whiteboard') {
+      // Move whiteboard
+      const whiteboardIndex = space.whiteboards?.findIndex(w => w.id === draftId);
+      if (whiteboardIndex === -1 || whiteboardIndex === undefined) {
+        // Add to space whiteboards
+        if (!space.whiteboards) space.whiteboards = [];
+        space.whiteboards.push({
+          id: draftId,
+          name: draft.title || 'Untitled Whiteboard',
+          createdAt: draft.createdAt,
+          updatedAt: draft.updatedAt
+        });
+        saveSpaces(spaces);
+      }
+    }
+    
+    // Remove from drafts
+    const updatedDrafts = drafts.filter(d => d.id !== draftId);
+    saveDrafts(updatedDrafts);
+    
+    showToast(`Moved to ${space.name}`, 'success');
+    
+    // Close dropdown and refresh view
+    closeAllDropdowns();
+    renderDraftsView();
+    
+  } catch (error) {
+    console.error('Failed to move draft to space:', error);
+    showToast('Failed to move to space', 'error');
+  }
+}
+
+function showCreateSpaceFromDraft(draftId, draftType) {
+  // Close dropdown
+  closeAllDropdowns();
+  
+  // Show create space modal
+  showModal('Create New Space', `
+    <div class="create-space-form">
+      <div class="form-group">
+        <label>Space Name</label>
+        <input type="text" id="new-space-name" placeholder="Enter space name..." />
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea id="new-space-description" rows="3" placeholder="Enter description..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="draft-btn draft-btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="draft-btn draft-btn-primary" onclick="createSpaceAndMoveDraft('${draftId}', '${draftType}')">Create & Move</button>
+      </div>
+    </div>
+  `);
+}
+
+async function createSpaceAndMoveDraft(draftId, draftType) {
+  const name = document.getElementById('new-space-name').value.trim();
+  const description = document.getElementById('new-space-description').value.trim();
+  
+  if (!name) {
+    showToast('Please enter a space name', 'error');
+    return;
+  }
+  
+  try {
+    // Create new space
+    const newSpace = {
+      id: Date.now().toString(),
+      name: name,
+      description: description,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      whiteboards: [],
+      docs: [],
+      sheets: []
+    };
+    
+    const spaces = loadSpaces();
+    spaces.push(newSpace);
+    saveSpaces(spaces);
+    
+    // Move draft to new space
+    await moveDraftToSpace(draftId, newSpace.id);
+    
+    closeModal();
+    showToast(`Created space "${name}" and moved draft`, 'success');
+    
+  } catch (error) {
+    console.error('Failed to create space:', error);
+    showToast('Failed to create space', 'error');
+  }
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.draft-save-dropdown').forEach(dropdown => {
+    dropdown.style.display = 'none';
+  });
+  document.querySelectorAll('.draft-card-save-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  currentOpenDropdown = null;
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+  if (!event.target.closest('.draft-card-save-container')) {
+    closeAllDropdowns();
+  }
+});
+
+// Add event listeners after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Add event listeners to filter buttons
+  document.querySelectorAll('.filter-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      setActiveFilter(this);
+    });
+  });
+});
 
 // renderTeamView() is now defined in functionality.js as a synchronous function
 // This placeholder is removed to use the enhanced version from functionality.js
@@ -2829,23 +3551,79 @@ async function initDashboardWidgetOrder() {
   }
 }
 
+// Track dashboard AI sidebar state across view switches
+let dashboardAiSidebarCollapsed = false;
+
 function toggleDashboardEditMode() {
-  dashboardEditMode = !dashboardEditMode;
-
-  const grid = document.getElementById('dashboardWidgetsGrid');
   const btn = document.getElementById('dashboardEditToggle');
-
+  if (!btn) return;
+  
+  dashboardEditMode = !dashboardEditMode;
+  
+  const grid = document.getElementById('dashboardWidgetsGrid');
   if (grid) {
     grid.classList.toggle('edit-mode', dashboardEditMode);
-
-    if (dashboardEditMode) {
-      initWidgetDragDrop();
-    }
   }
-
-  if (btn) {
-    btn.classList.toggle('active', dashboardEditMode);
+  
+  // Update button appearance
+  btn.classList.toggle('edit-mode', dashboardEditMode);
+  if (btn.querySelector('span')) {
     btn.querySelector('span').textContent = dashboardEditMode ? 'Done' : 'Edit Layout';
+  }
+}
+
+function toggleDashboardAiSidebar() {
+  const sidebar = document.querySelector('.dashboard-ai-sidebar');
+  const btn = document.getElementById('dashboardAiSidebarToggle');
+  const toggleText = btn.querySelector('.toggle-text');
+  const collapseIcon = btn.querySelector('.collapse-icon');
+  const expandIcon = btn.querySelector('.expand-icon');
+  
+  if (!sidebar) return;
+  
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  
+  // Update global state
+  dashboardAiSidebarCollapsed = !isCollapsed;
+  
+  if (isCollapsed) {
+    sidebar.classList.remove('collapsed');
+    btn.classList.remove('sidebar-collapsed');
+    toggleText.textContent = 'Hide AI';
+    collapseIcon.style.display = 'block';
+    expandIcon.style.display = 'none';
+  } else {
+    sidebar.classList.add('collapsed');
+    btn.classList.add('sidebar-collapsed');
+    toggleText.textContent = 'Show AI';
+    collapseIcon.style.display = 'none';
+    expandIcon.style.display = 'block';
+  }
+}
+
+// Restore dashboard AI sidebar state after view rendering
+function restoreDashboardAiSidebarState() {
+  const sidebar = document.querySelector('.dashboard-ai-sidebar');
+  const btn = document.getElementById('dashboardAiSidebarToggle');
+  
+  if (!sidebar || !btn) return;
+  
+  const toggleText = btn.querySelector('.toggle-text');
+  const collapseIcon = btn.querySelector('.collapse-icon');
+  const expandIcon = btn.querySelector('.expand-icon');
+  
+  if (dashboardAiSidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    btn.classList.add('sidebar-collapsed');
+    if (toggleText) toggleText.textContent = 'Show AI';
+    if (collapseIcon) collapseIcon.style.display = 'none';
+    if (expandIcon) expandIcon.style.display = 'block';
+  } else {
+    sidebar.classList.remove('collapsed');
+    btn.classList.remove('sidebar-collapsed');
+    if (toggleText) toggleText.textContent = 'Hide AI';
+    if (collapseIcon) collapseIcon.style.display = 'block';
+    if (expandIcon) expandIcon.style.display = 'none';
   }
 }
 
@@ -3349,6 +4127,7 @@ function openDocFromWhiteboard(docId) {
     if (!document.getElementById('docEditorOverlay')) {
       clearInterval(checkDocClosed);
       if (overlay) overlay.style.display = '';
+      if (typeof openSpaceView === 'function' && currentSpaceId) openSpaceView(currentSpaceId);
     }
   }, 500);
 }
@@ -3634,6 +4413,8 @@ const FocusStateManager = {
 
   // Show subtle welcome back notification
   showSubtleWelcomeBack() {
+    return; // Disabled - user doesn't want to see welcome back message
+    
     if (this.welcomeBackShown) return; // Don't show multiple times
 
     this.welcomeBackShown = true;
@@ -3715,15 +4496,14 @@ const FocusStateManager = {
     document.addEventListener('visibilitychange', async () => {
       if (document.hidden) {
         console.log('🔄 Page becoming hidden - saving state...');
-        this.focusLostTime = Date.now();
         this.saveAppState();
       } else {
-        console.log('🔄 Page becoming visible - restoring state...');
-        if (this.focusLostTime && (Date.now() - this.focusLostTime) > 1000) {
+        // Only restore if it's been more than 1 second since page hidden
+        if (this.pageHiddenTime && (Date.now() - this.pageHiddenTime) > 1000) {
           await this.restoreAppState();
           this.showSubtleWelcomeBack();
         }
-        this.focusLostTime = null;
+        this.pageHiddenTime = null;
       }
     });
 
@@ -3738,3 +4518,376 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Make it globally available
 window.FocusStateManager = FocusStateManager;
+
+// Profile Editing Functions
+window.toggleEditMode = function() {
+  const viewMode = document.getElementById('profileViewMode');
+  const editMode = document.getElementById('profileEditMode');
+  const usernameInput = document.getElementById('usernameInput');
+  const displayName = document.getElementById('displayName');
+  const profileCard = document.getElementById('profileCard');
+  
+  if (viewMode && editMode) {
+    // Add smooth transition
+    viewMode.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    editMode.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    
+    // Fade out view mode
+    viewMode.style.opacity = '0';
+    viewMode.style.transform = 'scale(0.98)';
+    
+    setTimeout(() => {
+      viewMode.style.display = 'none';
+      editMode.style.display = 'block';
+      
+      // Fade in edit mode
+      setTimeout(() => {
+        editMode.style.opacity = '1';
+        editMode.style.transform = 'scale(1)';
+      }, 50);
+      
+      if (usernameInput && displayName) {
+        usernameInput.value = displayName.textContent.trim();
+        usernameInput.focus();
+        usernameInput.select();
+        
+        // Add focus animation
+        profileCard.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          profileCard.style.transform = 'scale(1)';
+        }, 200);
+      }
+      
+      // Reset validation
+      handleUsernameInput(usernameInput.value);
+    }, 200);
+  }
+};
+
+window.handleUsernameInput = function(value) {
+  const validationIcon = document.getElementById('validationIcon');
+  const validationMessage = document.getElementById('validationMessage');
+  const charCounter = document.getElementById('charCounter');
+  const saveBtn = document.getElementById('saveUsernameBtn');
+  
+  if (!validationIcon || !validationMessage || !charCounter || !saveBtn) return;
+  
+  // Update character counter with color coding
+  charCounter.textContent = `${value.length}/30`;
+  charCounter.className = 'char-counter';
+  if (value.length > 25) {
+    charCounter.className = 'char-counter warning';
+  }
+  if (value.length >= 30) {
+    charCounter.className = 'char-counter error';
+  }
+  
+  // Validation rules
+  const isValid = value.length >= 2 && value.length <= 30 && /^[a-zA-Z0-9\s._-]+$/.test(value);
+  const isChanged = value !== document.getElementById('displayName').textContent.trim();
+  
+  if (value.length === 0) {
+    validationIcon.className = 'validation-icon';
+    validationMessage.textContent = '';
+    saveBtn.disabled = true;
+  } else if (value.length < 2) {
+    validationIcon.className = 'validation-icon invalid';
+    validationMessage.textContent = 'Username must be at least 2 characters';
+    saveBtn.disabled = true;
+  } else if (value.length > 30) {
+    validationIcon.className = 'validation-icon invalid';
+    validationMessage.textContent = 'Username must be 30 characters or less';
+    saveBtn.disabled = true;
+  } else if (!/^[a-zA-Z0-9\s._-]+$/.test(value)) {
+    validationIcon.className = 'validation-icon invalid';
+    validationMessage.textContent = 'Only letters, numbers, spaces, dots, hyphens, and underscores allowed';
+    saveBtn.disabled = true;
+  } else if (!isChanged) {
+    validationIcon.className = 'validation-icon';
+    validationMessage.textContent = 'No changes made';
+    saveBtn.disabled = true;
+  } else {
+    validationIcon.className = 'validation-icon valid';
+    validationMessage.textContent = 'Username available';
+    saveBtn.disabled = false;
+    
+    // Add success animation
+    validationIcon.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+      validationIcon.style.transform = 'scale(1)';
+    }, 200);
+  }
+};
+
+window.saveUsernameChanges = async function() {
+  const usernameInput = document.getElementById('usernameInput');
+  const displayName = document.getElementById('displayName');
+  const saveBtn = document.getElementById('saveUsernameBtn');
+  const spinner = saveBtn.querySelector('.btn-spinner');
+  const btnText = saveBtn.querySelector('.btn-text');
+  
+  if (!usernameInput || !displayName || !saveBtn) return;
+  
+  const newName = usernameInput.value.trim();
+  
+  if (newName.length < 2 || newName.length > 30) {
+    return;
+  }
+  
+  // Show loading state with animation
+  saveBtn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Saving...';
+  saveBtn.style.transform = 'scale(0.95)';
+  
+  try {
+    // Save to Supabase database using LayerDB
+    if (window.LayerDB && window.LayerDB.updateProfile) {
+      console.log('Saving to Supabase database:', newName);
+      await window.LayerDB.updateProfile({ name: newName });
+      
+      // Refresh user data from database to ensure we have the latest
+      if (window.LayerDB && window.LayerDB.refreshUser) {
+        await window.LayerDB.refreshUser();
+      }
+      
+      // Update current user metadata with fresh data
+      const refreshedUser = window.LayerDB?.getCurrentUser();
+      if (refreshedUser) {
+        window.currentUser = refreshedUser;
+        console.log('User data refreshed from database:', refreshedUser);
+        
+        // Update sidebar user display immediately
+        await updateUserDisplay(refreshedUser);
+      }
+    }
+    
+    // Update localStorage as backup (but database is primary)
+    localStorage.setItem('userDisplayName', newName);
+    
+    // Update all user-info elements in the UI
+    updateUserInterfaceElements(newName);
+    
+    // Update display name with animation
+    const profileCard = document.getElementById('profileCard');
+    profileCard.style.transform = 'scale(0.98)';
+    
+    setTimeout(() => {
+      displayName.textContent = newName;
+      
+      // Show success feedback
+      showNotification('Profile updated successfully in database!', 'success');
+      
+      // Switch back to view mode
+      cancelUsernameEdit();
+      
+      // Refresh the entire settings view to show updated name
+      setTimeout(async () => {
+        if (typeof renderSettingsView === 'function') {
+          await renderSettingsView();
+        }
+      }, 100);
+      
+      // Reset card scale
+      setTimeout(() => {
+        profileCard.style.transform = 'scale(1)';
+      }, 100);
+    }, 150);
+    
+  } catch (error) {
+    console.error('Error updating profile in Supabase:', error);
+    showNotification('Failed to update profile in database. Please try again.', 'error');
+    
+    // Add error shake animation
+    saveBtn.style.animation = 'shake 0.5s ease-in-out';
+    setTimeout(() => {
+      saveBtn.style.animation = '';
+    }, 500);
+  } finally {
+    // Reset button state
+    spinner.style.display = 'none';
+    btnText.textContent = 'Save Changes';
+    saveBtn.style.transform = 'scale(1)';
+  }
+};
+
+// Function to ensure profile is loaded from database on app start
+window.ensureProfileLoaded = async function() {
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      console.log('Loading user profile from Supabase database...');
+      
+      // Get fresh profile from database
+      const profile = await window.LayerDB.getProfile();
+      if (profile && profile.name) {
+        console.log('Profile loaded from database:', profile.name);
+        
+        // Update current user object with fresh data
+        const currentUser = window.LayerDB.getCurrentUser();
+        if (currentUser) {
+          currentUser.user_metadata = currentUser.user_metadata || {};
+          currentUser.user_metadata.name = profile.name;
+          window.currentUser = currentUser;
+          
+          // Update sidebar user display
+          await updateUserDisplay(currentUser);
+        }
+        
+        // Update localStorage with database value (for backup)
+        localStorage.setItem('userDisplayName', profile.name);
+        
+        // Update UI elements
+        if (window.updateUserInterfaceElements) {
+          window.updateUserInterfaceElements(profile.name);
+        }
+        
+        return profile.name;
+      }
+    } catch (error) {
+      console.error('Error loading profile from database:', error);
+    }
+  }
+  return null;
+};
+
+// Auto-load profile when app starts
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait a bit for LayerDB to initialize
+  setTimeout(async function() {
+    await ensureProfileLoaded();
+  }, 1000);
+});
+
+// Function to update all user-info elements throughout the UI
+window.updateUserInterfaceElements = function(newName) {
+  // Update sidebar user-info elements
+  const sidebarUserNames = document.querySelectorAll('.user-name');
+  sidebarUserNames.forEach(element => {
+    if (element && element.textContent !== newName) {
+      element.textContent = newName;
+    }
+  });
+  
+  // Update settings display name
+  const settingsDisplayName = document.getElementById('displayName');
+  if (settingsDisplayName && settingsDisplayName.textContent !== newName) {
+    settingsDisplayName.textContent = newName;
+  }
+  
+  // Update any other elements that might show user name
+  const userNameElements = document.querySelectorAll('[data-user-name], .current-user-name, .context-menu-user-name');
+  userNameElements.forEach(element => {
+    if (element && element.textContent !== newName) {
+      element.textContent = newName;
+    }
+  });
+  
+  // Update avatar title attributes
+  const avatarElements = document.querySelectorAll('.user-avatar, .avatar');
+  avatarElements.forEach(element => {
+    if (element && element.title !== newName) {
+      element.title = newName;
+    }
+  });
+  
+  // Dispatch custom event for other components to listen to
+  window.dispatchEvent(new CustomEvent('userNameChanged', {
+    detail: { newName: newName }
+  }));
+  
+  console.log('Updated all user interface elements with new name:', newName);
+};
+
+window.cancelUsernameEdit = function() {
+  const viewMode = document.getElementById('profileViewMode');
+  const editMode = document.getElementById('profileEditMode');
+  const profileCard = document.getElementById('profileCard');
+  
+  if (viewMode && editMode) {
+    // Add transition
+    editMode.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    viewMode.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    
+    // Fade out edit mode
+    editMode.style.opacity = '0';
+    editMode.style.transform = 'scale(0.98)';
+    
+    setTimeout(() => {
+      editMode.style.display = 'none';
+      viewMode.style.display = 'block';
+      
+      // Fade in view mode
+      setTimeout(() => {
+        viewMode.style.opacity = '1';
+        viewMode.style.transform = 'scale(1)';
+      }, 50);
+      
+      // Reset card scale
+      profileCard.style.transform = 'scale(1)';
+    }, 200);
+  }
+};
+
+// Add shake animation for errors
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+`;
+document.head.appendChild(style);
+
+// Helper function to show notifications (if not already exists)
+window.showNotification = function(message, type = 'info') {
+  // Create notification element if it doesn't exist
+  let notification = document.querySelector('.notification');
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 10000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    `;
+    document.body.appendChild(notification);
+  }
+  
+  // Set message and style based on type
+  notification.textContent = message;
+  notification.className = `notification ${type}`;
+  
+  switch (type) {
+    case 'success':
+      notification.style.background = '#10b981';
+      break;
+    case 'error':
+      notification.style.background = '#ef4444';
+      break;
+    default:
+      notification.style.background = '#3b82f6';
+  }
+  
+  // Show notification
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Hide after 3 seconds
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+};

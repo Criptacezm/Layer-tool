@@ -1,729 +1,2415 @@
 /* ============================================
+
    Layer - Advanced Whiteboard Styles (User Flow Theme)
+
    ============================================ */
 
+
+
 :root {
-  --wb-bg: #000000;
-  /* Deep black for high contrast */
-  --wb-grid-color: rgba(255, 255, 255, 0.08);
-  /* Slightly more visible grid */
-  --wb-ui-bg: rgba(20, 20, 20, 0.8);
-  --wb-ui-border: rgba(255, 255, 255, 0.15);
-  --wb-accent: #ffd700;
-  /* Gold/Yellow accent */
-  --wb-selection: rgba(255, 215, 0, 0.1);
-  --wb-selection-border: rgba(255, 215, 0, 0.5);
-  --wb-text: #ffffff;
-  --wb-text-secondary: #aaaaaa;
+
+  /* Default whiteboard variables - will be overridden by theme CSS */
+
+  --wb-bg: hsl(0, 0%, 8%);
+
+  --wb-grid-color: rgba(255, 255, 255, 0.06);
+
+  --wb-ui-bg: rgba(20, 20, 20, 0.9);
+
+  --wb-ui-border: rgba(255, 255, 255, 0.18);
+
+  --wb-accent: hsl(220, 80%, 60%);
+
+  --wb-selection: rgba(220, 80%, 60%, 0.1);
+
+  --wb-selection-border: rgba(220, 80%, 60%, 0.5);
+
+  --wb-text: hsl(0, 0%, 95%);
+
+  --wb-text-secondary: hsl(0, 0%, 65%);
+
 }
+
+
 
 body {
+
   margin: 0;
+
   overflow: hidden;
+
 }
+
+
 
 /* Overlay & Layout */
+
 .grip-diagram-overlay {
+
   position: fixed;
+
   inset: 0;
+
   background-color: var(--wb-bg);
+
   background-image:
+
     radial-gradient(var(--wb-grid-color) 1px, transparent 1px);
+
   background-size: 24px 24px;
+
   z-index: 2000;
+
   font-family: 'Kalam', cursive;
+
   /* Excalidraw style */
+
   color: var(--wb-text);
+
   overflow: hidden;
+
   letter-spacing: 0.5px;
+
 }
+
+
 
 .grip-canvas-container {
+
   width: 100%;
+
   height: 100%;
+
   overflow: hidden;
+
   position: relative;
+
   cursor: default;
+
   /* Default tool cursor */
+
 }
+
+
 
 .grip-canvas-container.cursor-grab {
+
   cursor: grab;
+
 }
+
+
 
 .grip-canvas-container.cursor-grabbing {
+
   cursor: grabbing;
+
 }
 
-/* Force grabbing when dragging, overriding everything */
-body.is-dragging-canvas .grip-canvas-container {
-  cursor: grabbing !important;
+
+
+/* Eraser cursor styles */
+.grip-canvas-container.cursor-eraser {
+  cursor: none;
 }
 
-/* ... */
+.grip-eraser-cursor {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.05s ease-out;
+  will-change: transform;
+  /* Improve rendering performance */
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-.grip-transform-layer {
+.grip-eraser-cursor.small {
+  width: 20px;
+  height: 20px;
+}
+
+.grip-eraser-cursor.medium {
+  width: 40px;
+  height: 40px;
+}
+
+.grip-eraser-cursor.large {
+  width: 60px;
+  height: 60px;
+}
+
+.grip-eraser-cursor::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
-  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 50%, #ffd700 100%);
+  border: 2px solid #ffffff;
+  border-radius: 8px;
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: rotate(45deg);
+  /* Improve rendering */
   will-change: transform;
 }
 
-/* ============================================
-   Nodes & Shapes
-   ============================================ */
-.grip-node {
-  position: absolute;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  transition: box-shadow 0.2s, transform 0.1s;
+.grip-eraser-cursor.erasing::before {
+  background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 50%, #ff9f43 100%);
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 2px 12px rgba(255, 71, 87, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: eraserPulse 0.3s ease-in-out;
 }
 
-.grip-node.selected {
-  outline: 2px solid var(--wb-selection-border);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
-  z-index: 100;
+.grip-eraser-cursor::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  /* Improve rendering */
+  will-change: transform;
 }
+
+@keyframes eraserPulse {
+  0% { transform: rotate(45deg) scale(1); }
+  50% { transform: rotate(45deg) scale(1.05); }
+  100% { transform: rotate(45deg) scale(1); }
+}
+
+
+
+/* Force grabbing when dragging, overriding everything */
+
+body.is-dragging-canvas .grip-canvas-container {
+
+  cursor: grabbing !important;
+
+}
+
+
+
+/* ... */
+
+
+
+.grip-transform-layer {
+
+  position: absolute;
+
+  top: 0;
+
+  left: 0;
+
+  transform-origin: 0 0;
+
+  will-change: transform;
+
+}
+
+
+
+/* ============================================
+
+   Nodes & Shapes
+
+   ============================================ */
+
+.grip-node {
+
+  position: absolute;
+
+  box-sizing: border-box;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  user-select: none;
+
+  transition: box-shadow 0.2s, transform 0.1s;
+
+}
+
+
+
+.grip-node.selected {
+
+  outline: 2px solid var(--wb-selection-border);
+
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+
+  z-index: 100;
+
+}
+
+
 
 /* --- Node Types --- */
 
+
+
 /* 1. Pill Node (Start/End/Action) */
+
 .shape-pill {
+
   background: #ffffff;
+
   color: #000000;
+
   border-radius: 999px;
+
   border: none;
+
   font-weight: 600;
+
   font-size: 14px;
+
   padding: 0 24px;
+
   box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+
 }
+
+
 
 .shape-pill .grip-node-content {
+
   text-align: center;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
 }
 
-/* 2. Flow Card (Dark with accent bullets) */
-.shape-flow-card {
-  background: #111111;
-  border: 1px solid #333;
-  border-radius: 12px;
-  padding: 16px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: #cccccc;
-  align-items: flex-start;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
 
-/* Yellow accent for bullet points if user types them specific ways, 
-   or we can just style the whole text nicely */
-.shape-flow-card .grip-node-content {
-  text-align: left;
-}
-
-.shape-flow-card b,
-.shape-flow-card strong {
-  color: var(--wb-accent);
-  font-weight: 600;
-}
 
 /* 3. Header (Large Text) */
+
 .shape-header {
+
   background: transparent;
+
   border: none;
+
   font-size: 48px;
+
   font-weight: 800;
+
   color: #333;
+
   /* Dark gray for "Helpers" style background text */
+
   letter-spacing: -1px;
+
   align-items: flex-start;
+
   justify-content: flex-start;
+
   z-index: 0;
+
   /* Background layer feel */
+
 }
+
+
 
 .shape-header.highlight {
+
   color: #ffffff;
+
   /* White for main titles */
+
 }
+
+
 
 /* 4. Sticky / Simple Card */
+
 .card-default {
+
   background: #1e1e1e;
+
   border: 1px solid #333;
+
   border-radius: 8px;
+
   padding: 12px;
+
   font-size: 14px;
+
   align-items: flex-start;
+
 }
+
+
 
 /* 5. Geometric Shapes */
+
 .shape-rect {
+
   background: transparent;
+
   border: 2px solid #555;
+
   border-radius: 4px;
+
 }
+
+
 
 .shape-diamond {
+
   background: #111;
+
   border: 2px solid #555;
+
   transform: rotate(45deg);
+
   /* Note: content rotation needs handling or avoid text in diamonds for MVP */
+
 }
 
+
+
 .shape-ellipse {
+
   background: transparent;
+
   border: 2px solid #555;
+
   border-radius: 50%;
+
 }
+
+
+
 
 
 /* Node Content Wrapper */
+
 .grip-node-content {
+
   width: 100%;
+
   height: 100%;
+
   overflow: visible;
+
   /* Allow text to be seen if it flows out, or use auto-resize */
+
   outline: none;
+
   white-space: pre-wrap;
+
   cursor: text;
+
   font-family: 'Kalam', cursive;
+
   font-size: inherit;
+
   /* Inherit from parent .grip-node */
+
   /* Larger, more marker-like */
+
   font-weight: 400;
+
   line-height: 1.3;
+
   color: inherit;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   text-align: center;
+
 }
+
+
 
 /* Align text top-left for specifically text-only nodes if desired, 
+
    but usually centering is good for shapes. 
+
    Let's make 'text' tool nodes different */
+
 .grip-node.shape-text .grip-node-content {
+
   justify-content: flex-start;
+
   text-align: left;
+
   align-items: flex-start;
+
 }
+
+
 
 .grip-node.auto-height {
+
   height: auto !important;
+
   min-height: 1em;
+
 }
+
+
 
 .grip-node:not(.selected) .grip-node-content {
+
   pointer-events: none;
+
   /* Allow drag unless selected */
+
 }
 
 
+
+
+
 /* ============================================
+
    Controls (Handles)
+
    ============================================ */
+
+
 
 /* Resize Handles */
+
 .grip-resize-handle {
+
   position: absolute;
+
   width: 8px;
+
   height: 8px;
+
   background: var(--wb-accent);
+
   border: 1px solid #000;
+
   border-radius: 50%;
+
   z-index: 101;
+
   opacity: 0;
+
   transition: opacity 0.2s;
+
 }
+
+
 
 .grip-node.selected .grip-resize-handle {
+
   opacity: 1;
+
 }
+
+
 
 /* Node Action Toolbar (Appears on Selection) */
+
 .grip-node-toolbar {
+
   position: absolute;
+
   top: -36px;
+
   left: 50%;
+
   transform: translateX(-50%);
+
   display: flex;
+
   gap: 4px;
+
   background: var(--wb-surface);
+
   padding: 4px;
+
   border-radius: 8px;
+
   border: 1px solid var(--wb-grid);
+
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
   z-index: 102;
+
   opacity: 0;
+
   pointer-events: none;
+
   transition: opacity 0.2s, top 0.2s;
+
 }
+
+
 
 .grip-node.selected .grip-node-toolbar {
+
   opacity: 1;
+
   pointer-events: auto;
+
   top: -42px;
+
 }
+
+
 
 .grip-action-btn {
+
   width: 28px;
+
   height: 28px;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   border-radius: 4px;
+
   color: #fff;
+
   /* or var(--wb-text) */
+
   background: transparent;
+
   cursor: pointer;
+
   transition: background 0.1s;
+
 }
+
+
 
 .grip-action-btn:hover {
+
   background: rgba(255, 255, 255, 0.1);
+
 }
+
+
 
 .grip-action-btn.delete:hover {
+
   background: rgba(255, 60, 60, 0.2);
+
   color: #ff4d4d;
+
 }
+
+
 
 .grip-action-btn.drag-handle {
+
   cursor: move;
+
   background: var(--wb-accent);
+
   color: #000;
+
 }
+
+
 
 .grip-action-btn.drag-handle:hover {
+
   background: var(--wb-accent);
+
   /* Keep accent */
+
   opacity: 0.9;
+
 }
+
+
 
 .grip-action-btn svg {
+
   width: 16px;
+
   height: 16px;
+
 }
+
+
 
 /* Note Popup styling */
+
 .grip-node-note-popup {
+
   position: absolute;
+
   top: -10px;
+
   /* offset */
+
   left: 100%;
+
   width: 200px;
+
   background: #2e2e2e;
+
   /* Post-it yellow? or Dark theme? Matches user flow aesthetic */
+
   border: 1px solid #444;
+
   padding: 8px;
+
   border-radius: 8px;
+
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
   z-index: 200;
+
   display: flex;
+
   flex-direction: column;
+
   gap: 8px;
+
 }
+
+
 
 .grip-node-note-popup textarea {
+
   width: 100%;
+
   min-height: 80px;
+
   background: #111;
+
   color: #eee;
+
   border: 1px solid #333;
+
   border-radius: 4px;
+
   padding: 6px;
+
   font-family: inherit;
+
   font-size: 14px;
+
   resize: vertical;
+
 }
+
+
 
 /* ... existing logic ... */
+
 .grip-resize-handle.nw {
+
   top: -4px;
+
   left: -4px;
+
   cursor: nwse-resize;
+
 }
+
+
 
 .grip-resize-handle.ne {
+
   top: -4px;
+
   right: -4px;
+
   cursor: nesw-resize;
+
 }
+
+
 
 .grip-resize-handle.se {
+
   bottom: -4px;
+
   right: -4px;
+
   cursor: nwse-resize;
+
 }
+
+
 
 .grip-resize-handle.sw {
+
   bottom: -4px;
+
   left: -4px;
+
   cursor: nesw-resize;
+
 }
+
+
 
 /* Connect Handles */
+
 .grip-handle-connect {
+
   position: absolute;
+
   width: 10px;
+
   height: 10px;
+
   background: var(--wb-grid);
+
   border: 1px solid var(--wb-text);
+
   border-radius: 50%;
+
   z-index: 100;
+
   opacity: 0;
+
   transition: opacity 0.2s, background 0.2s;
+
   cursor: crosshair;
+
 }
+
+
 
 .grip-handle-connect.connected {
+
   background: #ff4d4d !important;
+
   border-color: #ff4d4d !important;
+
 }
+
+
 
 .grip-node:hover .grip-handle-connect,
+
 .grip-node.selected .grip-handle-connect,
+
 .grip-node.connecting .grip-handle-connect {
+
   opacity: 1;
+
 }
+
+
 
 .grip-handle-connect:hover {
+
   background: var(--wb-accent);
+
   transform: scale(1.5);
+
 }
+
+
 
 .grip-handle-connect.top {
+
   top: -4px;
+
   left: 50%;
+
   margin-left: -4px;
+
 }
+
+
 
 .grip-handle-connect.right {
+
   top: 50%;
+
   right: -4px;
+
   margin-top: -4px;
+
 }
+
+
 
 .grip-handle-connect.bottom {
+
   bottom: -4px;
+
   left: 50%;
+
   margin-left: -4px;
+
 }
+
+
 
 .grip-handle-connect.left {
+
   top: 50%;
+
   left: -4px;
+
   margin-top: -4px;
+
 }
 
 
+
+
+
 /* ============================================
+
    UI Toolbars
+
    ============================================ */
+
+
 
 .grip-toolbar-top {
+
   position: absolute;
+
   top: 20px;
+
   left: 20px;
+
   right: 20px;
+
   display: flex;
+
   justify-content: space-between;
+
   pointer-events: none;
+
   z-index: 500;
+
   font-family: 'Inter', sans-serif;
+
 }
+
+
 
 .grip-toolbar-group {
+
   background: rgba(0, 0, 0, 0.6);
+
   backdrop-filter: blur(12px);
+
   border: 1px solid rgba(255, 255, 255, 0.1);
+
   border-radius: 99px;
+
   padding: 6px 12px;
+
   display: flex;
+
   align-items: center;
+
   gap: 8px;
+
   pointer-events: auto;
+
 }
+
+.grip-logo-container {
+  width: 44px;
+  height: 44px;
+  padding: 0 !important;
+  justify-content: center;
+}
+
+
+
+/* Save Status Indicator - Dot Style */
+
+.grip-save-indicator-dot {
+
+  position: absolute;
+
+  top: 0;
+
+  right: 0;
+
+  z-index: 1000;
+
+  pointer-events: none;
+
+}
+
+
+
+.grip-save-dot {
+
+  width: 12px;
+
+  height: 12px;
+
+  border-radius: 50%;
+
+  background: #ffd700; /* Yellow - saving */
+
+  display: block;
+
+  animation: pulse 1.5s infinite;
+
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
+
+  margin: 8px; /* Small margin from corner for visibility */
+
+}
+
+
+
+.grip-save-indicator-dot.saving .grip-save-dot {
+
+  background: #ffd700; /* Yellow - saving */
+
+  animation: pulse 1.5s infinite;
+
+}
+
+
+
+.grip-save-indicator-dot.saved .grip-save-dot {
+
+  background: #4ade80; /* Green - saved */
+
+  animation: none;
+
+}
+
+
+
+.grip-save-indicator-dot.error .grip-save-dot {
+
+  background: #ef4444; /* Red - error */
+
+  animation: none;
+
+}
+
+
+
+@keyframes pulse {
+
+  0% { opacity: 1; transform: scale(1); }
+
+  50% { opacity: 0.6; transform: scale(0.9); }
+
+  100% { opacity: 1; transform: scale(1); }
+
+}
+
+
+
+/* Remote Update Notification */
+
+.remote-update-notification {
+
+  position: absolute;
+
+  top: 0;
+
+  right: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 4px 12px;
+
+  background: rgba(59, 130, 246, 0.1);
+
+  border: 1px solid rgba(59, 130, 246, 0.3);
+
+  border-radius: 99px;
+
+  font-size: 12px;
+
+  color: #3b82f6;
+
+  transition: all 0.3s ease;
+
+  animation: slideInUp 0.3s ease;
+
+  margin-top: 32px; /* Position below the save status dot */
+
+  margin-right: 8px;
+
+}
+
+
+
+.remote-update-indicator {
+
+  width: 8px;
+
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: #3b82f6;
+
+  animation: pulse 1.5s infinite;
+
+}
+
+
+
+@keyframes slideInUp {
+
+  from {
+
+    transform: translateY(20px);
+
+    opacity: 0;
+
+  }
+
+  to {
+
+    transform: translateY(0);
+
+    opacity: 1;
+
+  }
+
+}
+
+
 
 .grip-toolbar-bottom {
+
   position: absolute;
+
   bottom: 30px;
+
   left: 50%;
+
   transform: translateX(-50%);
+
   background: rgba(0, 0, 0, 0.8);
+
   backdrop-filter: blur(12px);
+
   border: 1px solid rgba(255, 255, 255, 0.15);
+
   border-radius: 16px;
+
   padding: 8px;
+
   display: flex;
+
   align-items: center;
+
   gap: 8px;
+
   z-index: 500;
+
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+
   font-family: 'Inter', sans-serif;
+
 }
+
+
 
 /* Tool Buttons */
+
 .grip-tool-btn {
+
   width: 40px;
+
   height: 40px;
+
   background: transparent;
+
   border: none;
+
   color: #888;
+
   border-radius: 8px;
+
   cursor: pointer;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   transition: all 0.2s;
+
   position: relative;
+
 }
+
+
 
 .grip-tool-btn:hover {
+
   background: rgba(255, 255, 255, 0.1);
+
   color: white;
+
 }
+
+
 
 .grip-tool-btn.active,
+
 .grip-tool-btn.context-active {
+
   background: rgba(255, 255, 255, 0.15);
+
   color: #fff;
+
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
 }
+
+
 
 .grip-tool-btn.active::after,
+
 .grip-tool-btn.context-active::after {
+
   content: '';
+
   position: absolute;
+
   bottom: -4px;
+
   left: 50%;
+
   transform: translateX(-50%);
+
   width: 4px;
+
   height: 4px;
+
   background: var(--wb-accent);
+
   border-radius: 50%;
+
 }
+
+
 
 .grip-btn-icon {
+
   width: 32px;
+
   height: 32px;
+
   background: transparent;
+
   border: none;
+
   color: #888;
+
   border-radius: 50%;
+
   cursor: pointer;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   transition: all 0.2s;
+
 }
+
+
 
 .grip-btn-icon:hover {
+
   background: rgba(255, 255, 255, 0.1);
+
   color: white;
+
 }
+
+
 
 .grip-divider-vertical {
+
   width: 1px;
+
   height: 24px;
+
   background: rgba(255, 255, 255, 0.1);
+
   margin: 0 4px;
+
 }
 
+
+
 .grip-filename {
+
   font-size: 14px;
+
   font-weight: 600;
+
   padding: 0 8px;
+
   color: #fff;
+
+  white-space: nowrap;
+
+  max-width: 200px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
 }
+
+
+
+.grip-team-avatars {
+
+  display: flex;
+
+  align-items: center;
+
+  margin-left: 8px;
+
+  gap: -8px; /* Stack avatars slightly */
+
+}
+
+
+
+.grip-team-avatar, .grip-team-avatar-fallback {
+
+  width: 24px;
+
+  height: 24px;
+
+  border-radius: 50%;
+
+  border: 2px solid rgba(0, 0, 0, 0.8);
+
+  object-fit: cover;
+
+  background: #444;
+
+  color: #fff;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 10px;
+
+  font-weight: bold;
+
+  margin-left: -8px; /* Negative margin for stacking */
+
+  transition: transform 0.2s;
+
+  cursor: pointer;
+
+}
+
+
+
+.grip-team-avatar:first-child, .grip-team-avatar-fallback:first-child {
+
+  margin-left: 0;
+
+}
+
+
+
+.grip-team-avatar:hover, .grip-team-avatar-fallback:hover {
+
+  transform: translateY(-2px);
+
+  z-index: 10;
+
+}
+
+
+
 
 
 /* ============================================
+
    Selection Box & Helpers
+
    ============================================ */
+
 .grip-selection-box {
+
   position: fixed;
+
   border: 1px solid var(--wb-accent);
+
   background: var(--wb-selection);
+
   pointer-events: none;
+
   z-index: 1000;
+
 }
 
+
+
 .grip-temp-connection {
+
+  position: fixed;
+
+  top: 0;
+
+  left: 0;
+
+  width: 100%;
+
+  height: 100%;
+
+  pointer-events: none;
+
+  z-index: 900;
+
+}
+
+
+
+/* ============================================
+
+   Properties Panel & Excalidraw Styling
+
+   ============================================ */
+
+
+
+/* Redesigned Properties Panel */
+
+.grip-properties-panel {
+
+  position: absolute;
+
+  top: 80px;
+
+  left: 20px;
+
+  width: 240px;
+
+  background: rgba(30, 30, 33, 0.95);
+
+  backdrop-filter: blur(20px);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  border-radius: 16px;
+
+  padding: 16px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 16px;
+
+  z-index: 500;
+
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  font-family: 'Inter', sans-serif;
+
+  color: #fff;
+
+  transition: opacity 0.2s, transform 0.2s;
+
+}
+
+
+
+@keyframes fadeIn {
+
+  from {
+
+    opacity: 0;
+
+    transform: translateY(-5px);
+
+  }
+
+
+
+  to {
+
+    opacity: 1;
+
+    transform: translateY(0);
+
+  }
+
+}
+
+
+
+.grip-prop-section {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+  /* Divider */
+
+  padding-bottom: 16px;
+
+}
+
+
+
+.grip-prop-section:last-child {
+
+  border-bottom: none;
+
+  padding-bottom: 0;
+
+}
+
+
+
+.grip-prop-header {
+
+  font-size: 11px;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.8px;
+
+  color: #888;
+
+  font-weight: 600;
+
+  margin-bottom: 4px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+}
+
+
+
+/* Color Picker Grid */
+
+.grip-color-picker {
+
+  display: grid;
+
+  grid-template-columns: repeat(5, 1fr);
+
+  gap: 8px;
+
+}
+
+
+
+.grip-color-swatch {
+
+  width: 28px;
+
+  height: 28px;
+
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  transition: transform 0.1s, box-shadow 0.1s;
+
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+}
+
+
+
+.grip-color-swatch:hover {
+
+  transform: scale(1.1);
+
+  z-index: 2;
+
+}
+
+
+
+.grip-color-swatch.active {
+
+  box-shadow: 0 0 0 2px #fff;
+
+  transform: scale(1.05);
+
+}
+
+
+
+/* Range Sliders */
+
+.grip-range-input {
+
+  -webkit-appearance: none;
+
+  appearance: none;
+
+  width: 100%;
+
+  height: 4px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  border-radius: 2px;
+
+  outline: none;
+
+  margin: 10px 0;
+
+}
+
+
+
+.grip-range-input::-webkit-slider-thumb {
+
+  -webkit-appearance: none;
+
+  width: 16px;
+
+  height: 16px;
+
+  border-radius: 50%;
+
+  background: var(--wb-accent);
+
+  cursor: pointer;
+
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+
+  transition: transform 0.1s;
+
+}
+
+
+
+.grip-range-input::-webkit-slider-thumb:hover {
+
+  transform: scale(1.2);
+
+}
+
+
+
+/* Row of Buttons (Layering) */
+
+.grip-row-btns {
+
+  display: flex;
+
+  gap: 8px;
+
+}
+
+
+
+.grip-prop-btn {
+
+  flex: 1;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  color: #ccc;
+
+  padding: 6px 12px;
+
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  font-size: 12px;
+
+  transition: all 0.2s;
+
+}
+
+
+
+.grip-prop-btn:hover {
+
+  background: rgba(255, 255, 255, 0.1);
+
+  color: white;
+
+}
+
+
+
+.grip-prop-btn.danger {
+
+  color: #ff6b6b;
+
+  border-color: rgba(255, 107, 107, 0.3);
+
+}
+
+
+
+.grip-prop-btn.danger:hover {
+
+  background: rgba(255, 107, 107, 0.1);
+
+}
+
+
+
+/* Free Draw Path Styling */
+
+.grip-node-draw {
+  display: block !important; /* Override flex centering */
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+.grip-node-draw svg {
+  overflow: visible;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.grip-node-draw path {
+  transition: stroke 0.2s;
+}
+
+.grip-node-draw.selected {
+  outline: none;
+  box-shadow: none;
+}
+
+.grip-node-draw.selected path {
+  filter: drop-shadow(0 0 4px var(--wb-accent));
+}
+
+
+
+/* Additional Button Styles for Toolbar */
+
+.grip-tool-btn svg {
+
+  pointer-events: none;
+
+}
+
+
+
+/* ============================================
+
+   Realtime Collaboration Styles
+
+   ============================================ */
+
+
+/* ============================================
+   PREMIUM COLLABORATION UI
+   Excalidraw + Figma inspired
+   ============================================ */
+
+/* Collaboration Color Palette */
+:root {
+  --collab-gold: #FFD700;
+  --collab-cyan: #00E0FF;
+  --collab-magenta: #FF2E9A;
+  --collab-lime: #A3FF00;
+  --collab-violet: #C14CFF;
+  --collab-orange: #FF6B00;
+  --collab-turquoise: #00F5D4;
+}
+
+/* ---- Keyframe Animations ---- */
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+@keyframes rippleEffect {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes confettiBurst {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--cx), var(--cy)) scale(0); }
+}
+
+@keyframes labelFadeOut {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(4px); }
+}
+
+@keyframes labelFadeIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 3px transparent; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes toastProgress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* ---- Remote Cursors Container ---- */
+
+.grip-remote-cursors-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 900;
+  z-index: 999;
 }
 
-/* ============================================
-   Properties Panel & Excalidraw Styling
-   ============================================ */
+/* ---- Remote Cursor ---- */
 
-/* Redesigned Properties Panel */
-.grip-properties-panel {
+.grip-remote-cursor {
   position: absolute;
-  top: 80px;
-  left: 20px;
-  width: 240px;
-  background: rgba(30, 30, 33, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  z-index: 500;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  font-family: 'Inter', sans-serif;
-  color: #fff;
-  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+  transition: left 100ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              top 100ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: left, top;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.grip-prop-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  /* Divider */
-  padding-bottom: 16px;
-}
-
-.grip-prop-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.grip-prop-header {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #888;
-  font-weight: 600;
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-}
-
-/* Color Picker Grid */
-.grip-color-picker {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-
-.grip-color-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.grip-color-swatch:hover {
-  transform: scale(1.1);
+/* Glowing orb cursor tip */
+.grip-cursor-pointer {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-7px, -7px);
+  background: var(--cursor-color, var(--collab-cyan));
+  box-shadow:
+    0 0 6px 2px var(--cursor-color, var(--collab-cyan)),
+    0 0 16px 4px color-mix(in srgb, var(--cursor-color, var(--collab-cyan)) 50%, transparent),
+    0 0 30px 8px color-mix(in srgb, var(--cursor-color, var(--collab-cyan)) 20%, transparent);
+  animation: orbPulse 2.5s ease-in-out infinite;
+  will-change: transform, box-shadow;
+  position: relative;
   z-index: 2;
 }
 
-.grip-color-swatch.active {
-  box-shadow: 0 0 0 2px #fff;
-  transform: scale(1.05);
-}
-
-/* Range Sliders */
-.grip-range-input {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  outline: none;
-  margin: 10px 0;
-}
-
-.grip-range-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+/* Comet trail element */
+.grip-cursor-trail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--wb-accent);
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  transition: transform 0.1s;
+  transform: translate(-5px, -5px);
+  background: var(--cursor-color, var(--collab-cyan));
+  opacity: 0.3;
+  filter: blur(4px);
+  transition: left 150ms ease-out, top 150ms ease-out;
+  will-change: left, top, opacity;
+  z-index: 1;
 }
 
-.grip-range-input::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+/* Own cursor enhanced glow */
+.grip-remote-cursor.is-own .grip-cursor-pointer {
+  box-shadow:
+    0 0 0 2px rgba(255, 215, 0, 0.6),
+    0 0 8px 3px var(--cursor-color, var(--collab-gold)),
+    0 0 20px 6px color-mix(in srgb, var(--cursor-color, var(--collab-gold)) 50%, transparent),
+    0 0 40px 12px color-mix(in srgb, var(--cursor-color, var(--collab-gold)) 20%, transparent);
 }
 
-/* Row of Buttons (Layering) */
-.grip-row-btns {
+/* ---- Cursor Label ---- */
+
+.grip-cursor-label {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Inter', -apple-system, sans-serif;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: labelFadeIn 0.2s ease-out;
+  will-change: opacity, transform;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.grip-cursor-label.label-hidden {
+  animation: labelFadeOut 0.5s ease forwards;
+  pointer-events: none;
+}
+
+.grip-cursor-label.label-visible {
+  animation: labelFadeIn 0.2s ease-out forwards;
+}
+
+.grip-cursor-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.grip-cursor-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cursor-color, var(--collab-cyan)) 30%, rgba(30,30,40,1));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 1.5px solid color-mix(in srgb, var(--cursor-color, var(--collab-cyan)) 40%, transparent);
+}
+
+.grip-cursor-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cursor-color, var(--collab-cyan));
+  flex-shrink: 0;
+  box-shadow: 0 0 4px var(--cursor-color, var(--collab-cyan));
+}
+
+/* Click ripple effect */
+.grip-click-ripple {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--ripple-color, var(--collab-cyan));
+  pointer-events: none;
+  z-index: 998;
+  animation: rippleEffect 0.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* ---- Active Users Panel ---- */
+
+.grip-active-users-container {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.grip-active-users {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(10, 10, 18, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 24px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  min-width: unset;
+}
+
+.grip-active-users-title {
+  display: none; /* Replaced by avatar stack */
+}
+
+.grip-active-users-list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+/* Individual user in avatar stack */
+.grip-active-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: -6px;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), z-index 0s;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.grip-active-user:first-child {
+  margin-left: 0;
+}
+
+.grip-active-user:hover {
+  transform: scale(1.15) translateY(-2px);
+  z-index: 10;
+}
+
+.grip-active-user-avatar,
+.grip-active-user-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(20, 20, 30, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.grip-active-user-avatar {
+  object-fit: cover;
+}
+
+.grip-active-user-avatar-fallback {
+  background: color-mix(in srgb, var(--user-color, var(--collab-cyan)) 25%, rgba(30,30,45,1));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Own avatar gold ring */
+.grip-active-user.is-own .grip-active-user-avatar,
+.grip-active-user.is-own .grip-active-user-avatar-fallback {
+  border-color: var(--collab-gold);
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* "You" micro-badge */
+.grip-active-user-you-badge {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--collab-gold);
+  color: #000;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Connection status dot */
+.grip-active-user-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(20, 20, 30, 0.9);
+  z-index: 2;
+}
+
+.grip-active-user-status.status-good { background: #22c55e; color: #22c55e; }
+.grip-active-user-status.status-lag { background: #eab308; color: #eab308; animation: statusPulse 2s infinite; }
+.grip-active-user-status.status-bad { background: #ef4444; color: #ef4444; animation: statusPulse 1s infinite; }
+
+/* +N more pill */
+.grip-active-users-more {
+  margin-left: -4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  padding: 0 10px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, sans-serif;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+
+.grip-active-users-more:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* Hover tooltip */
+.grip-active-user-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  background: rgba(10, 10, 18, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1001;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.grip-active-user:hover .grip-active-user-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  pointer-events: auto;
+}
+
+.grip-active-user-tooltip-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.grip-active-user-tooltip-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 6px;
+}
+
+.grip-active-user-tooltip-status {
+  font-size: 11px;
+  color: var(--user-color, var(--collab-cyan));
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.grip-active-user-tooltip-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Pop-in animation for new users */
+.grip-active-user.pop-in {
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Confetti particle */
+.grip-confetti-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: confettiBurst 0.6s ease-out forwards;
+  z-index: 1002;
+}
+
+.grip-active-user-name {
+  display: none; /* Hidden in avatar stack mode */
+}
+
+/* ---- Live Toasts / Notifications ---- */
+
+.grip-remote-notification {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #fff;
+  padding: 10px 16px 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  z-index: 10000;
+  animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-left: 3px solid var(--toast-color, var(--collab-cyan));
+  max-width: 320px;
+  overflow: hidden;
+}
+
+.grip-remote-notification-content {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.grip-prop-btn {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ccc;
-  padding: 6px 12px;
+.grip-remote-notification .toast-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid color-mix(in srgb, var(--toast-color, var(--collab-cyan)) 40%, transparent);
+}
+
+.grip-remote-notification .toast-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--toast-color, var(--collab-cyan)) 30%, rgba(30,30,40,1));
+  border: 1.5px solid color-mix(in srgb, var(--toast-color, var(--collab-cyan)) 40%, transparent);
+}
+
+.grip-remote-notification .toast-text {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.grip-remote-notification .toast-text strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Toast progress bar */
+.grip-remote-notification .toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--toast-color, var(--collab-cyan));
+  opacity: 0.4;
+  animation: toastProgress 3s linear forwards;
+}
+
+/* ---- Remote Update Notification (bottom) ---- */
+
+.grip-remote-update {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(10, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  z-index: 10000;
+  animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-left: 3px solid var(--collab-violet);
+}
+
+.grip-remote-update-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================
+   Pencil / Free Draw Options Menu
+   ============================================ */
+.pencil-options-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--wb-ui-bg, rgba(20, 20, 20, 0.92));
+  border: 1px solid var(--wb-ui-border, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  padding: 8px 14px;
+  z-index: 3100;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  white-space: nowrap;
+  animation: pencilMenuIn 0.15s ease-out;
+}
+
+@keyframes pencilMenuIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.pencil-options-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pencil-options-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--wb-text-secondary, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pencil-options-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--wb-ui-border, rgba(255, 255, 255, 0.12));
+}
+
+.pencil-thickness-options {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pencil-thickness-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
+  transition: background 0.12s;
 }
 
-.grip-prop-btn:hover {
+.pencil-thickness-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: white;
 }
 
-.grip-prop-btn.danger {
-  color: #ff6b6b;
-  border-color: rgba(255, 107, 107, 0.3);
+.pencil-thickness-btn.active {
+  background: var(--wb-accent, #ffd700);
 }
 
-.grip-prop-btn.danger:hover {
-  background: rgba(255, 107, 107, 0.1);
+.pencil-thickness-btn.active .thickness-preview {
+  background: var(--wb-bg, #000);
 }
 
-/* Free Draw Path Styling */
-.grip-node-draw polyline {
-  transition: stroke 0.2s;
+.thickness-preview {
+  display: block;
+  background: var(--wb-text, #fff);
+  border-radius: 2px;
 }
 
-.grip-node-draw.selected polyline {
-  filter: drop-shadow(0 0 4px var(--wb-accent));
+.pencil-color-options {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-/* Additional Button Styles for Toolbar */
-.grip-tool-btn svg {
-  pointer-events: none;
+.pencil-color-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+  padding: 0;
+}
+
+.pencil-color-btn:hover {
+  transform: scale(1.15);
+}
+
+.pencil-color-btn.active {
+  border-color: var(--wb-accent, #ffd700);
+  transform: scale(1.15);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
 }

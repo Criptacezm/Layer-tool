@@ -1435,15 +1435,16 @@ async function saveDocToDB(docData) {
     userId: currentUser.id 
   });
 
+  const insertData = {
+    user_id: currentUser.id,
+    title: docData.title || 'Untitled',
+    content: docData.content || '',
+    space_id: docData.spaceId || null
+  };
+
   const { data, error } = await supabaseClient
     .from('docs')
-    .insert({
-      user_id: currentUser.id,
-      title: docData.title || 'Untitled',
-      content: docData.content || '',
-      space_id: docData.spaceId || null,
-      is_favorite: docData.isFavorite || false
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -1515,21 +1516,6 @@ async function deleteDocFromDB(docId) {
   return await loadDocsFromDB();
 }
 
-async function toggleDocFavoriteInDB(docId, isFavorite) {
-  if (!currentUser) {
-    return null;
-  }
-
-  const { error } = await supabaseClient
-    .from('docs')
-    .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
-    .eq('id', docId)
-    .eq('user_id', currentUser.id);
-
-  if (error) throw error;
-  return await loadDocsFromDB();
-}
-
 // ============================================
 // Excels/Spreadsheets Functions
 // ============================================
@@ -1564,15 +1550,16 @@ async function saveExcelToDB(excelData) {
     return null;
   }
 
+  const insertData = {
+    user_id: currentUser.id,
+    title: excelData.title || 'Untitled Spreadsheet',
+    data: excelData.data || [],
+    space_id: excelData.spaceId || null
+  };
+
   const { data, error } = await supabaseClient
     .from('excels')
-    .insert({
-      user_id: currentUser.id,
-      title: excelData.title || 'Untitled Spreadsheet',
-      data: excelData.data || [],
-      space_id: excelData.spaceId || null,
-      is_favorite: excelData.isFavorite || false
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -1634,19 +1621,142 @@ async function deleteExcelFromDB(excelId) {
   return await loadExcelsFromDB();
 }
 
-async function toggleExcelFavoriteInDB(excelId, isFavorite) {
+// ============================================
+// Drafts Functions
+// ============================================
+
+async function loadDraftsFromDB() {
+  if (!currentUser) {
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from('drafts')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw error;
+  
+  return data.map(d => ({
+    id: d.id,
+    title: d.title,
+    content: d.content,
+    type: d.type || 'note',
+    spaceId: d.space_id,
+    tags: d.tags || [],
+    metadata: d.metadata || {},
+    sharedWith: d.shared_with || [],
+    createdAt: d.created_at,
+    updatedAt: d.updated_at
+  }));
+}
+
+async function saveDraftToDB(draftData) {
+  if (!currentUser) {
+    console.error('❌ saveDraftToDB: No current user');
+    return null;
+  }
+
+  console.log('💾 saveDraftToDB: Saving draft:', { 
+    title: draftData.title, 
+    type: draftData.type || 'note',
+    contentLength: draftData.content?.length || 0,
+    spaceId: draftData.spaceId,
+    userId: currentUser.id 
+  });
+
+  const { data, error } = await supabaseClient
+    .from('drafts')
+    .insert({
+      user_id: currentUser.id,
+      title: draftData.title || 'Untitled Draft',
+      content: draftData.content || '',
+      type: draftData.type || 'note',
+      space_id: draftData.spaceId || null,
+      tags: draftData.tags || [],
+      metadata: draftData.metadata || {},
+      shared_with: draftData.sharedWith || []
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ saveDraftToDB: Database error:', error);
+    throw error;
+  }
+
+  console.log('✅ saveDraftToDB: Draft saved successfully:', data.id);
+  return {
+    id: data.id,
+    title: data.title,
+    content: data.content,
+    type: data.type || 'note',
+    spaceId: data.space_id,
+    isFavorite: data.is_favorite || false,
+    tags: data.tags || [],
+    metadata: data.metadata || {},
+    sharedWith: data.shared_with || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+async function updateDraftInDB(draftId, updates) {
   if (!currentUser) {
     return null;
   }
 
+  const updateData = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.content !== undefined) updateData.content = updates.content;
+  if (updates.type !== undefined) updateData.type = updates.type;
+  if (updates.spaceId !== undefined) updateData.space_id = updates.spaceId;
+  if (updates.tags !== undefined) updateData.tags = updates.tags;
+  if (updates.metadata !== undefined) updateData.metadata = updates.metadata;
+  if (updates.sharedWith !== undefined) updateData.shared_with = updates.sharedWith;
+
+  const { data, error } = await supabaseClient
+    .from('drafts')
+    .update(updateData)
+    .eq('id', draftId)
+    .eq('user_id', currentUser.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    title: data.title,
+    content: data.content,
+    type: data.type || 'note',
+    spaceId: data.space_id,
+    isFavorite: data.is_favorite || false,
+    tags: data.tags || [],
+    metadata: data.metadata || {},
+    sharedWith: data.shared_with || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+async function deleteDraftFromDB(draftId) {
+  if (!currentUser) {
+    return false;
+  }
+
   const { error } = await supabaseClient
-    .from('excels')
-    .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
-    .eq('id', excelId)
+    .from('drafts')
+    .delete()
+    .eq('id', draftId)
     .eq('user_id', currentUser.id);
 
   if (error) throw error;
-  return await loadExcelsFromDB();
+  return true;
 }
 
 // ============================================
@@ -1922,6 +2032,12 @@ async function migrateLocalDataToSupabase() {
       await saveExcelToDB(excel);
     }
 
+    // Migrate drafts
+    const localDrafts = JSON.parse(localStorage.getItem('layerDrafts') || '[]');
+    for (const draft of localDrafts) {
+      await saveDraftToDB(draft);
+    }
+
     // Migrate spaces
     const localSpaces = JSON.parse(localStorage.getItem('layerSpaces') || '[]');
     for (const space of localSpaces) {
@@ -2014,14 +2130,18 @@ window.LayerDB = {
   saveDoc: saveDocToDB,
   updateDoc: updateDocInDB,
   deleteDoc: deleteDocFromDB,
-  toggleDocFavorite: toggleDocFavoriteInDB,
 
   // Excels/Spreadsheets
   loadExcels: loadExcelsFromDB,
   saveExcel: saveExcelToDB,
   updateExcel: updateExcelInDB,
   deleteExcel: deleteExcelFromDB,
-  toggleExcelFavorite: toggleExcelFavoriteInDB,
+
+  // Drafts
+  loadDrafts: loadDraftsFromDB,
+  saveDraft: saveDraftToDB,
+  updateDraft: updateDraftInDB,
+  deleteDraft: deleteDraftFromDB,
 
   // Shared Content
   loadSharedDocs: loadSharedDocsFromDB,
@@ -2702,45 +2822,6 @@ window.LayerDB = {
     return true;
   },
 
-  // Toggle favorite status of a team chat message
-  toggleMessageFavorite: async (messageId) => {
-    if (!currentUser) throw new Error('Not authenticated');
-
-    // First, get the current message to check if it belongs to the current user or if it's a DM
-    const { data: message, error: fetchError } = await supabaseClient
-      .from('team_chat_messages')
-      .select('id, user_id, recipient_id, channel_id, channel_type')
-      .match({ id: messageId })
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!message) throw new Error('Message not found');
-
-    // Check if the current user can modify this message
-    // For DMs, both sender and recipient can favorite/unfavorite
-    // For channels, only the sender can favorite/unfavorite
-    const canModify = message.user_id === currentUser.id || 
-                     (message.channel_type === 'dm' && message.recipient_id === currentUser.id);
-
-    if (!canModify) {
-      throw new Error('Not authorized to modify this message');
-    }
-
-    // Toggle the favorite status
-    const { data, error } = await supabaseClient
-      .from('team_chat_messages')
-      .update({ 
-        is_favorite: !message.is_favorite,
-        updated_at: new Date().toISOString()
-      })
-      .match({ id: messageId })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
   // Clear all messages in a DM chat
   clearDMChat: async (channelId) => {
     if (!currentUser) throw new Error('Not authenticated');
@@ -3328,3 +3409,119 @@ function deleteFolderFromLocalStorage(folderId) {
 window.saveFolderToDB = saveFolderToDB;
 window.loadFoldersFromDB = loadFoldersFromDB;
 window.deleteFolderFromDB = deleteFolderFromDB;
+
+// ============================================
+// Bookmark Functions (Database Storage)
+// ============================================
+
+// Save bookmark to database
+async function saveBookmarkToDB(bookmarkData) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for bookmark save');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('bookmarks')
+      .insert({
+        ...bookmarkData,
+        user_id: currentUser.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Bookmark saved to DB:', data.id);
+    return data;
+  } catch (error) {
+    console.error('Error saving bookmark to DB:', error);
+    return null;
+  }
+}
+
+// Load bookmarks from database
+async function loadBookmarksFromDB() {
+  if (!currentUser || !currentUser.id) {
+    console.log('User not authenticated for bookmark load');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('bookmarks')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log('Bookmarks loaded from DB:', data.length, 'items');
+    return data || [];
+  } catch (error) {
+    console.error('Error loading bookmarks from DB:', error);
+    return [];
+  }
+}
+
+// Update bookmark in database
+async function updateBookmarkInDB(bookmarkId, updates) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for bookmark update');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('bookmarks')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookmarkId)
+      .eq('user_id', currentUser.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Bookmark updated in DB:', bookmarkId);
+    return data;
+  } catch (error) {
+    console.error('Error updating bookmark in DB:', error);
+    return null;
+  }
+}
+
+// Delete bookmark from database
+async function deleteBookmarkFromDB(bookmarkId) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for bookmark deletion');
+    return false;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('bookmarks')
+      .delete()
+      .eq('id', bookmarkId)
+      .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+    
+    console.log('Bookmark deleted from DB:', bookmarkId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting bookmark from DB:', error);
+    return false;
+  }
+}
+
+// Export bookmark functions for use in other files
+window.saveBookmarkToDB = saveBookmarkToDB;
+window.loadBookmarksFromDB = loadBookmarksFromDB;
+window.updateBookmarkInDB = updateBookmarkInDB;
+window.deleteBookmarkFromDB = deleteBookmarkFromDB;

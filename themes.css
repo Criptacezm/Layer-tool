@@ -2456,6 +2456,164 @@
   box-shadow: 0 4px 20px hsla(220, 60%, 60%, 0.2);
 }
 
+/* ============================================
+   Claude Theme (Dark) - Warm earthy tones inspired by Claude AI
+   ============================================ */
+[data-theme="claude"] {
+  --background: hsl(40, 12%, 10%);
+  --foreground: hsl(35, 25%, 88%);
+  --card: hsl(40, 10%, 13%);
+  --card-foreground: hsl(35, 25%, 88%);
+  --popover: hsl(40, 10%, 13%);
+  --popover-foreground: hsl(35, 25%, 88%);
+
+  --primary: hsl(17, 64%, 56%);
+  --primary-foreground: hsl(0, 0%, 100%);
+
+  --secondary: hsl(40, 8%, 18%);
+  --secondary-foreground: hsl(35, 25%, 88%);
+
+  --muted: hsl(40, 6%, 25%);
+  --muted-foreground: hsl(35, 15%, 58%);
+
+  --accent: hsl(17, 64%, 56%);
+  --accent-foreground: hsl(0, 0%, 100%);
+
+  --destructive: hsl(0, 60%, 50%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+
+  --GanttRows: hsl(40, 10%, 12%);
+  --border: hsl(40, 8%, 20%);
+  --border-strong: hsl(17, 64%, 56%);
+  --input: hsl(40, 10%, 15%);
+  --ring: hsl(17, 64%, 56%);
+
+  --surface: hsl(40, 10%, 13%);
+  --surface-hover: hsl(40, 8%, 18%);
+
+  --glass-bg: hsla(40, 10%, 13%, 0.7);
+  --glass-border: hsla(17, 64%, 56%, 0.2);
+  --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.35);
+}
+
+[data-theme="claude"] body {
+  background: linear-gradient(135deg, hsl(40, 12%, 10%) 0%, hsl(40, 10%, 7%) 50%, hsl(40, 12%, 10%) 100%);
+  background-attachment: fixed;
+}
+
+[data-theme="claude"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, hsla(17, 64%, 56%, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, hsla(30, 40%, 40%, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   Claude Light Theme - Warm cream/beige inspired by Claude AI
+   ============================================ */
+[data-theme="claude"][data-mode="light"] {
+  --background: hsl(36, 33%, 95%);
+  --foreground: hsl(30, 15%, 15%);
+  --card: hsl(36, 30%, 97%);
+  --card-foreground: hsl(30, 15%, 15%);
+  --popover: hsl(36, 30%, 97%);
+  --popover-foreground: hsl(30, 15%, 15%);
+
+  --primary: hsl(17, 64%, 52%);
+  --primary-foreground: hsl(0, 0%, 100%);
+
+  --secondary: hsl(36, 25%, 90%);
+  --secondary-foreground: hsl(30, 15%, 15%);
+
+  --muted: hsl(36, 20%, 88%);
+  --muted-foreground: hsl(30, 10%, 45%);
+
+  --accent: hsl(17, 64%, 52%);
+  --accent-foreground: hsl(0, 0%, 100%);
+
+  --destructive: hsl(0, 60%, 50%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+
+  --GanttRows: hsl(36, 28%, 94%);
+  --border: hsl(36, 18%, 85%);
+  --border-strong: hsl(17, 64%, 52%);
+  --input: hsl(36, 30%, 97%);
+  --ring: hsl(17, 64%, 52%);
+
+  --surface: hsl(36, 30%, 97%);
+  --surface-hover: hsl(36, 25%, 93%);
+
+  --glass-bg: hsla(36, 30%, 97%, 0.8);
+  --glass-border: hsla(17, 64%, 52%, 0.15);
+  --glass-shadow: 0 8px 32px hsla(30, 15%, 15%, 0.08);
+}
+
+[data-theme="claude"][data-mode="light"] body {
+  background: linear-gradient(135deg, hsl(36, 33%, 95%) 0%, hsl(36, 28%, 92%) 50%, hsl(36, 33%, 95%) 100%);
+  background-attachment: fixed;
+}
+
+[data-theme="claude"][data-mode="light"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 30% 20%, hsla(17, 64%, 52%, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, hsla(36, 33%, 80%, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Claude Light mode overrides for list/table views */
+[data-theme="claude"][data-mode="light"] .tl-column-row:hover,
+[data-theme="claude"][data-mode="light"] .tl-task-row:hover {
+  background: hsla(30, 15%, 15%, 0.02);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-task-connector {
+  border-color: hsla(30, 15%, 15%, 0.06);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-task-check {
+  border-color: hsla(30, 15%, 15%, 0.15);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-gantt-row {
+  border-bottom: 1px solid hsla(30, 15%, 15%, 0.05);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-gantt-row:hover {
+  background: hsla(30, 15%, 15%, 0.015);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-gantt-cell {
+  border-right: 1px solid hsla(30, 15%, 15%, 0.04);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-gantt-cell.weekend {
+  background: hsla(30, 15%, 15%, 0.02);
+}
+
+[data-theme="claude"][data-mode="light"] .tl-kanban-column:hover {
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+[data-theme="claude"][data-mode="light"] .tl-kanban-task:hover {
+  transform: translateY(-1px);
+  transition: all 0.15s ease;
+}
+
 /* === LIGHT MODE OVERRIDES === */
 .light .tl-column-row:hover,
 .light .tl-task-row:hover {
@@ -2514,4 +2672,584 @@
 [data-theme="pink"] .tl-adv-btn:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* ============================================
+   Whiteboard (Grid Diagram) Theme Overrides
+   ============================================ */
+
+/* Light mode */
+.light {
+  --wb-bg: hsl(0, 0%, 98%);
+  --wb-grid-color: hsla(0, 0%, 0%, 0.06);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.85);
+  --wb-ui-border: hsla(0, 0%, 0%, 0.1);
+  --wb-accent: hsl(222, 47%, 11%);
+  --wb-selection: hsla(222, 47%, 11%, 0.08);
+  --wb-selection-border: hsla(222, 47%, 11%, 0.4);
+  --wb-text: hsl(0, 0%, 10%);
+  --wb-text-secondary: hsl(0, 0%, 45%);
+}
+
+/* Pink */
+[data-theme="pink"] {
+  --wb-bg: hsl(345, 80%, 97%);
+  --wb-grid-color: hsla(340, 82%, 76%, 0.1);
+  --wb-ui-bg: hsla(345, 100%, 98%, 0.85);
+  --wb-ui-border: hsla(340, 82%, 76%, 0.2);
+  --wb-accent: hsl(340, 82%, 66%);
+  --wb-selection: hsla(340, 82%, 66%, 0.1);
+  --wb-selection-border: hsla(340, 82%, 66%, 0.5);
+  --wb-text: hsl(335, 30%, 24%);
+  --wb-text-secondary: hsl(335, 20%, 50%);
+}
+
+/* Purple */
+[data-theme="purple"] {
+  --wb-bg: hsl(260, 45%, 10%);
+  --wb-grid-color: hsla(256, 60%, 61%, 0.08);
+  --wb-ui-bg: hsla(260, 40%, 15%, 0.85);
+  --wb-ui-border: hsla(256, 60%, 61%, 0.2);
+  --wb-accent: hsl(260, 70%, 77%);
+  --wb-selection: hsla(260, 70%, 77%, 0.1);
+  --wb-selection-border: hsla(260, 70%, 77%, 0.5);
+  --wb-text: hsl(265, 35%, 95%);
+  --wb-text-secondary: hsl(265, 20%, 65%);
+}
+
+/* Ocean */
+[data-theme="ocean"] {
+  --wb-bg: hsl(210, 50%, 10%);
+  --wb-grid-color: hsla(200, 80%, 50%, 0.08);
+  --wb-ui-bg: hsla(210, 50%, 12%, 0.85);
+  --wb-ui-border: hsla(200, 80%, 50%, 0.2);
+  --wb-accent: hsl(200, 80%, 55%);
+  --wb-selection: hsla(200, 80%, 55%, 0.1);
+  --wb-selection-border: hsla(200, 80%, 55%, 0.5);
+  --wb-text: hsl(200, 30%, 95%);
+  --wb-text-secondary: hsl(200, 20%, 65%);
+}
+
+/* Forest */
+[data-theme="forest"] {
+  --wb-bg: hsl(150, 30%, 8%);
+  --wb-grid-color: hsla(140, 50%, 45%, 0.08);
+  --wb-ui-bg: hsla(150, 30%, 10%, 0.85);
+  --wb-ui-border: hsla(140, 50%, 45%, 0.2);
+  --wb-accent: hsl(140, 50%, 50%);
+  --wb-selection: hsla(140, 50%, 50%, 0.1);
+  --wb-selection-border: hsla(140, 50%, 50%, 0.5);
+  --wb-text: hsl(140, 20%, 92%);
+  --wb-text-secondary: hsl(140, 15%, 60%);
+}
+
+/* Dark Lime */
+[data-theme="darklime"] {
+  --wb-bg: hsl(80, 10%, 8%);
+  --wb-grid-color: hsla(80, 80%, 50%, 0.06);
+  --wb-ui-bg: hsla(80, 10%, 10%, 0.85);
+  --wb-ui-border: hsla(80, 80%, 50%, 0.15);
+  --wb-accent: hsl(80, 80%, 55%);
+  --wb-selection: hsla(80, 80%, 55%, 0.1);
+  --wb-selection-border: hsla(80, 80%, 55%, 0.5);
+  --wb-text: hsl(80, 10%, 92%);
+  --wb-text-secondary: hsl(80, 10%, 60%);
+}
+
+/* Midnight Blue */
+[data-theme="midnight"] {
+  --wb-bg: hsl(230, 50%, 8%);
+  --wb-grid-color: hsla(220, 80%, 55%, 0.06);
+  --wb-ui-bg: hsla(230, 50%, 10%, 0.85);
+  --wb-ui-border: hsla(220, 80%, 55%, 0.15);
+  --wb-accent: hsl(220, 80%, 60%);
+  --wb-selection: hsla(220, 80%, 60%, 0.1);
+  --wb-selection-border: hsla(220, 80%, 60%, 0.5);
+  --wb-text: hsl(220, 30%, 95%);
+  --wb-text-secondary: hsl(220, 20%, 65%);
+}
+
+/* Dracula */
+[data-theme="dracula"] {
+  --wb-bg: hsl(231, 15%, 12%);
+  --wb-grid-color: hsla(265, 89%, 78%, 0.06);
+  --wb-ui-bg: hsla(231, 15%, 15%, 0.85);
+  --wb-ui-border: hsla(265, 89%, 78%, 0.15);
+  --wb-accent: hsl(265, 89%, 78%);
+  --wb-selection: hsla(265, 89%, 78%, 0.1);
+  --wb-selection-border: hsla(265, 89%, 78%, 0.5);
+  --wb-text: hsl(60, 30%, 96%);
+  --wb-text-secondary: hsl(225, 27%, 60%);
+}
+
+/* Gruvbox */
+[data-theme="gruvbox"] {
+  --wb-bg: hsl(0, 0%, 16%);
+  --wb-grid-color: hsla(40, 73%, 49%, 0.06);
+  --wb-ui-bg: hsla(0, 0%, 18%, 0.85);
+  --wb-ui-border: hsla(40, 73%, 49%, 0.15);
+  --wb-accent: hsl(40, 73%, 49%);
+  --wb-selection: hsla(40, 73%, 49%, 0.1);
+  --wb-selection-border: hsla(40, 73%, 49%, 0.5);
+  --wb-text: hsl(49, 100%, 88%);
+  --wb-text-secondary: hsl(40, 15%, 60%);
+}
+
+/* Rosé Pine */
+[data-theme="rosepine"] {
+  --wb-bg: hsl(249, 22%, 12%);
+  --wb-grid-color: hsla(280, 36%, 65%, 0.06);
+  --wb-ui-bg: hsla(249, 22%, 15%, 0.85);
+  --wb-ui-border: hsla(280, 36%, 65%, 0.15);
+  --wb-accent: hsl(280, 36%, 65%);
+  --wb-selection: hsla(280, 36%, 65%, 0.1);
+  --wb-selection-border: hsla(280, 36%, 65%, 0.5);
+  --wb-text: hsl(245, 50%, 91%);
+  --wb-text-secondary: hsl(249, 12%, 55%);
+}
+
+/* Claude (dark) */
+[data-theme="claude"] {
+  --wb-bg: hsl(40, 12%, 8%);
+  --wb-grid-color: hsla(17, 64%, 56%, 0.06);
+  --wb-ui-bg: hsla(40, 12%, 12%, 0.85);
+  --wb-ui-border: hsla(17, 64%, 56%, 0.15);
+  --wb-accent: hsl(17, 64%, 56%);
+  --wb-selection: hsla(17, 64%, 56%, 0.1);
+  --wb-selection-border: hsla(17, 64%, 56%, 0.5);
+  --wb-text: hsl(36, 33%, 92%);
+  --wb-text-secondary: hsl(36, 10%, 55%);
+}
+
+/* Claude (light mode) */
+[data-theme="claude"][data-mode="light"] {
+  --wb-bg: hsl(36, 33%, 95%);
+  --wb-grid-color: hsla(17, 64%, 52%, 0.08);
+  --wb-ui-bg: hsla(36, 30%, 97%, 0.85);
+  --wb-ui-border: hsla(17, 64%, 52%, 0.15);
+  --wb-accent: hsl(17, 64%, 52%);
+  --wb-selection: hsla(17, 64%, 52%, 0.1);
+  --wb-selection-border: hsla(17, 64%, 52%, 0.5);
+  --wb-text: hsl(30, 15%, 15%);
+  --wb-text-secondary: hsl(30, 10%, 45%);
+}
+
+/* Whiteboard component overrides for themed shapes */
+[data-theme] .shape-pill {
+  background: var(--wb-text);
+  color: var(--wb-bg);
+  box-shadow: 0 2px 10px hsla(0, 0%, 0%, 0.2);
+}
+
+[data-theme] .shape-flow-card {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+  color: var(--wb-text-secondary);
+  box-shadow: 0 4px 20px hsla(0, 0%, 0%, 0.3);
+}
+
+[data-theme] .shape-header {
+  color: var(--wb-text-secondary);
+}
+
+[data-theme] .shape-header.highlight {
+  color: var(--wb-text);
+}
+
+[data-theme] .card-default {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+}
+
+[data-theme] .shape-rect {
+  border-color: var(--wb-text-secondary);
+}
+
+[data-theme] .shape-diamond {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-text-secondary);
+}
+
+[data-theme] .shape-ellipse {
+  border-color: var(--wb-text-secondary);
+}
+
+[data-theme] .grip-toolbar-group {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+}
+
+[data-theme] .grip-toolbar-bottom {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+  box-shadow: 0 10px 40px hsla(0, 0%, 0%, 0.3);
+}
+
+[data-theme] .grip-tool-btn {
+  color: var(--wb-text-secondary);
+}
+
+[data-theme] .grip-tool-btn:hover {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-tool-btn.active,
+[data-theme] .grip-tool-btn.context-active {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-btn-icon {
+  color: var(--wb-text-secondary);
+}
+
+[data-theme] .grip-btn-icon:hover {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-filename {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-properties-panel {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-node-note-popup {
+  background: var(--wb-ui-bg);
+  border-color: var(--wb-ui-border);
+}
+
+[data-theme] .grip-node-note-popup textarea {
+  background: var(--wb-bg);
+  color: var(--wb-text);
+  border-color: var(--wb-ui-border);
+}
+
+[data-theme] .grip-prop-btn {
+  color: var(--wb-text-secondary);
+  border-color: var(--wb-ui-border);
+}
+
+[data-theme] .grip-prop-btn:hover {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-prop-header {
+  color: var(--wb-text-secondary);
+}
+
+[data-theme] .grip-action-btn {
+  color: var(--wb-text);
+}
+
+[data-theme] .grip-action-btn.drag-handle {
+  background: var(--wb-accent);
+  color: var(--wb-bg);
+}
+
+[data-theme] .grip-divider-vertical {
+  background: var(--wb-ui-border);
+}
+
+/* Light themes: also override for .light class */
+.light {
+  --wb-bg: hsl(0, 0%, 98%);
+  --wb-grid-color: hsla(0, 0%, 0%, 0.06);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.85);
+  --wb-ui-border: hsla(0, 0%, 0%, 0.1);
+  --wb-accent: hsl(222, 47%, 11%);
+  --wb-selection: hsla(222, 47%, 11%, 0.08);
+  --wb-selection-border: hsla(222, 47%, 11%, 0.4);
+  --wb-text: hsl(0, 0%, 10%);
+  --wb-text-secondary: hsl(0, 0%, 45%);
+}
+
+.light .shape-pill {
+  background: hsl(0, 0%, 15%);
+  color: hsl(0, 0%, 98%);
+}
+
+.light .shape-flow-card {
+  background: hsla(0, 0%, 100%, 0.9);
+  border-color: hsla(0, 0%, 0%, 0.1);
+  color: hsl(0, 0%, 35%);
+  box-shadow: 0 4px 20px hsla(0, 0%, 0%, 0.08);
+}
+
+.light .grip-toolbar-group,
+.light .grip-toolbar-bottom {
+  background: hsla(0, 0%, 100%, 0.9);
+  border-color: hsla(0, 0%, 0%, 0.08);
+}
+
+.light .grip-tool-btn {
+  color: hsl(0, 0%, 45%);
+}
+
+.light .grip-tool-btn:hover,
+.light .grip-tool-btn.active {
+  color: hsl(0, 0%, 10%);
+}
+
+.light .grip-properties-panel {
+  background: hsla(0, 0%, 100%, 0.95);
+  border-color: hsla(0, 0%, 0%, 0.08);
+  color: hsl(0, 0%, 10%);
+}
+
+.light .grip-node-note-popup {
+  background: hsla(0, 0%, 100%, 0.95);
+  border-color: hsla(0, 0%, 0%, 0.1);
+}
+
+.light .grip-node-note-popup textarea {
+  background: hsl(0, 0%, 97%);
+  color: hsl(0, 0%, 10%);
+  border-color: hsla(0, 0%, 0%, 0.1);
+}
+
+/* ============================================
+   ADVANCED WHITEBOARD LIGHT MODE VARIANTS
+   Premium theming for all themes in light mode
+   ============================================ */
+
+/* Pink Theme - Light Mode Whiteboard */
+[data-theme="pink"][data-mode="light"] {
+  --wb-bg: hsl(350, 100%, 99%);
+  --wb-grid-color: hsla(340, 75%, 55%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(340, 75%, 55%, 0.15);
+  --wb-accent: hsl(340, 75%, 55%);
+  --wb-selection: hsla(340, 75%, 55%, 0.08);
+  --wb-selection-border: hsla(340, 75%, 55%, 0.4);
+  --wb-text: hsl(335, 45%, 18%);
+  --wb-text-secondary: hsl(335, 25%, 45%);
+}
+
+/* Purple Theme - Light Mode Whiteboard */
+[data-theme="purple"][data-mode="light"] {
+  --wb-bg: hsl(265, 60%, 99%);
+  --wb-grid-color: hsla(256, 65%, 55%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(256, 65%, 55%, 0.15);
+  --wb-accent: hsl(256, 65%, 55%);
+  --wb-selection: hsla(256, 65%, 55%, 0.08);
+  --wb-selection-border: hsla(256, 65%, 55%, 0.4);
+  --wb-text: hsl(260, 40%, 16%);
+  --wb-text-secondary: hsl(260, 25%, 45%);
+}
+
+/* Ocean Theme - Light Mode Whiteboard */
+[data-theme="ocean"][data-mode="light"] {
+  --wb-bg: hsl(175, 45%, 98%);
+  --wb-grid-color: hsla(174, 50%, 42%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(174, 50%, 42%, 0.15);
+  --wb-accent: hsl(174, 50%, 42%);
+  --wb-selection: hsla(174, 50%, 42%, 0.08);
+  --wb-selection-border: hsla(174, 50%, 42%, 0.4);
+  --wb-text: hsl(195, 50%, 16%);
+  --wb-text-secondary: hsl(195, 30%, 40%);
+}
+
+/* Forest Theme - Light Mode Whiteboard */
+[data-theme="forest"][data-mode="light"] {
+  --wb-bg: hsl(145, 45%, 98%);
+  --wb-grid-color: hsla(150, 65%, 38%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(150, 65%, 38%, 0.15);
+  --wb-accent: hsl(150, 65%, 38%);
+  --wb-selection: hsla(150, 65%, 38%, 0.08);
+  --wb-selection-border: hsla(150, 65%, 38%, 0.4);
+  --wb-text: hsl(150, 45%, 14%);
+  --wb-text-secondary: hsl(150, 25%, 38%);
+}
+
+/* Midnight Theme - Light Mode Whiteboard */
+[data-theme="midnight"][data-mode="light"] {
+  --wb-bg: hsl(220, 60%, 99%);
+  --wb-grid-color: hsla(220, 85%, 52%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(220, 85%, 52%, 0.15);
+  --wb-accent: hsl(220, 85%, 52%);
+  --wb-selection: hsla(220, 85%, 52%, 0.08);
+  --wb-selection-border: hsla(220, 85%, 52%, 0.4);
+  --wb-text: hsl(220, 50%, 14%);
+  --wb-text-secondary: hsl(220, 28%, 42%);
+}
+
+/* Dracula Theme - Light Mode Whiteboard */
+[data-theme="dracula"][data-mode="light"] {
+  --wb-bg: hsl(340, 55%, 99%);
+  --wb-grid-color: hsla(330, 75%, 52%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(330, 75%, 52%, 0.15);
+  --wb-accent: hsl(330, 75%, 52%);
+  --wb-selection: hsla(330, 75%, 52%, 0.08);
+  --wb-selection-border: hsla(330, 75%, 52%, 0.4);
+  --wb-text: hsl(250, 30%, 18%);
+  --wb-text-secondary: hsl(250, 20%, 45%);
+}
+
+/* Gruvbox Theme - Light Mode Whiteboard */
+[data-theme="gruvbox"][data-mode="light"] {
+  --wb-bg: hsl(50, 87%, 95%);
+  --wb-grid-color: hsla(42, 90%, 38%, 0.08);
+  --wb-ui-bg: hsla(50, 100%, 97%, 0.92);
+  --wb-ui-border: hsla(42, 90%, 38%, 0.15);
+  --wb-accent: hsl(42, 90%, 38%);
+  --wb-selection: hsla(42, 90%, 38%, 0.08);
+  --wb-selection-border: hsla(42, 90%, 38%, 0.4);
+  --wb-text: hsl(30, 12%, 20%);
+  --wb-text-secondary: hsl(30, 8%, 38%);
+}
+
+/* Rosé Pine Theme - Light Mode Whiteboard */
+[data-theme="rosepine"][data-mode="light"] {
+  --wb-bg: hsl(245, 65%, 97%);
+  --wb-grid-color: hsla(267, 57%, 78%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(267, 57%, 78%, 0.15);
+  --wb-accent: hsl(267, 57%, 78%);
+  --wb-selection: hsla(267, 57%, 78%, 0.08);
+  --wb-selection-border: hsla(267, 57%, 78%, 0.4);
+  --wb-text: hsl(245, 50%, 20%);
+  --wb-text-secondary: hsl(245, 30%, 45%);
+}
+
+/* Dark Lime Theme - Light Mode Whiteboard */
+[data-theme="darklime"][data-mode="light"] {
+  --wb-bg: hsl(120, 30%, 97%);
+  --wb-grid-color: hsla(150, 85%, 55%, 0.08);
+  --wb-ui-bg: hsla(0, 0%, 100%, 0.92);
+  --wb-ui-border: hsla(150, 85%, 55%, 0.15);
+  --wb-accent: hsl(150, 85%, 55%);
+  --wb-selection: hsla(150, 85%, 55%, 0.08);
+  --wb-selection-border: hsla(150, 85%, 55%, 0.4);
+  --wb-text: hsl(0, 0%, 15%);
+  --wb-text-secondary: hsl(0, 0%, 40%);
+}
+
+/* ============================================
+   ADVANCED WHITEBOARD DARK MODE VARIANTS
+   Enhanced dark mode theming for consistency
+   ============================================ */
+
+/* Pink Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="pink"][data-mode="dark"] {
+  --wb-bg: hsl(345, 25%, 12%);
+  --wb-grid-color: hsla(340, 82%, 70%, 0.06);
+  --wb-ui-bg: hsla(345, 22%, 16%, 0.88);
+  --wb-ui-border: hsla(340, 82%, 70%, 0.18);
+  --wb-accent: hsl(340, 82%, 70%);
+  --wb-selection: hsla(340, 82%, 70%, 0.1);
+  --wb-selection-border: hsla(340, 82%, 70%, 0.5);
+  --wb-text: hsl(340, 30%, 95%);
+  --wb-text-secondary: hsl(340, 25%, 68%);
+}
+
+/* Purple Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="purple"][data-mode="dark"] {
+  --wb-bg: hsl(260, 45%, 8%);
+  --wb-grid-color: hsla(256, 60%, 61%, 0.06);
+  --wb-ui-bg: hsla(260, 40%, 12%, 0.88);
+  --wb-ui-border: hsla(256, 60%, 61%, 0.18);
+  --wb-accent: hsl(256, 60%, 61%);
+  --wb-selection: hsla(256, 60%, 61%, 0.1);
+  --wb-selection-border: hsla(256, 60%, 61%, 0.5);
+  --wb-text: hsl(265, 35%, 95%);
+  --wb-text-secondary: hsl(265, 25%, 65%);
+}
+
+/* Ocean Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="ocean"][data-mode="dark"] {
+  --wb-bg: hsl(195, 35%, 12%);
+  --wb-grid-color: hsla(174, 30%, 60%, 0.06);
+  --wb-ui-bg: hsla(197, 35%, 18%, 0.88);
+  --wb-ui-border: hsla(174, 30%, 60%, 0.18);
+  --wb-accent: hsl(174, 30%, 60%);
+  --wb-selection: hsla(174, 30%, 60%, 0.1);
+  --wb-selection-border: hsla(174, 30%, 60%, 0.5);
+  --wb-text: hsl(165, 30%, 91%);
+  --wb-text-secondary: hsl(165, 25%, 60%);
+}
+
+/* Forest Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="forest"][data-mode="dark"] {
+  --wb-bg: hsl(150, 30%, 6%);
+  --wb-grid-color: hsla(150, 70%, 50%, 0.06);
+  --wb-ui-bg: hsla(150, 30%, 10%, 0.88);
+  --wb-ui-border: hsla(150, 70%, 50%, 0.18);
+  --wb-accent: hsl(150, 70%, 50%);
+  --wb-selection: hsla(150, 70%, 50%, 0.1);
+  --wb-selection-border: hsla(150, 70%, 50%, 0.5);
+  --wb-text: hsl(150, 20%, 90%);
+  --wb-text-secondary: hsl(150, 20%, 60%);
+}
+
+/* Midnight Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="midnight"][data-mode="dark"] {
+  --wb-bg: hsl(220, 40%, 6%);
+  --wb-grid-color: hsla(220, 90%, 60%, 0.06);
+  --wb-ui-bg: hsla(220, 40%, 10%, 0.88);
+  --wb-ui-border: hsla(220, 90%, 60%, 0.18);
+  --wb-accent: hsl(220, 90%, 60%);
+  --wb-selection: hsla(220, 90%, 60%, 0.1);
+  --wb-selection-border: hsla(220, 90%, 60%, 0.5);
+  --wb-text: hsl(220, 20%, 94%);
+  --wb-text-secondary: hsl(220, 20%, 65%);
+}
+
+/* Dracula Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="dracula"][data-mode="dark"] {
+  --wb-bg: hsl(231, 15%, 15%);
+  --wb-grid-color: hsla(330, 81%, 60%, 0.06);
+  --wb-ui-bg: hsla(231, 15%, 18%, 0.88);
+  --wb-ui-border: hsla(330, 81%, 60%, 0.18);
+  --wb-accent: hsl(330, 81%, 60%);
+  --wb-selection: hsla(330, 81%, 60%, 0.1);
+  --wb-selection-border: hsla(330, 81%, 60%, 0.5);
+  --wb-text: hsl(60, 30%, 96%);
+  --wb-text-secondary: hsl(210, 20%, 65%);
+}
+
+/* Gruvbox Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="gruvbox"][data-mode="dark"] {
+  --wb-bg: hsl(0, 0%, 12%);
+  --wb-grid-color: hsla(42, 75%, 49%, 0.06);
+  --wb-ui-bg: hsla(30, 5%, 20%, 0.88);
+  --wb-ui-border: hsla(42, 75%, 49%, 0.18);
+  --wb-accent: hsl(42, 75%, 49%);
+  --wb-selection: hsla(42, 75%, 49%, 0.1);
+  --wb-selection-border: hsla(42, 75%, 49%, 0.5);
+  --wb-text: hsl(48, 45%, 82%);
+  --wb-text-secondary: hsl(42, 25%, 60%);
+}
+
+/* Rosé Pine Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="rosepine"][data-mode="dark"] {
+  --wb-bg: hsl(249, 22%, 10%);
+  --wb-grid-color: hsla(267, 57%, 78%, 0.06);
+  --wb-ui-bg: hsla(249, 17%, 14%, 0.88);
+  --wb-ui-border: hsla(267, 57%, 78%, 0.18);
+  --wb-accent: hsl(267, 57%, 78%);
+  --wb-selection: hsla(267, 57%, 78%, 0.1);
+  --wb-selection-border: hsla(267, 57%, 78%, 0.5);
+  --wb-text: hsl(245, 50%, 91%);
+  --wb-text-secondary: hsl(250, 12%, 60%);
+}
+
+/* Dark Lime Theme - Enhanced Dark Mode Whiteboard */
+[data-theme="darklime"][data-mode="dark"] {
+  --wb-bg: hsl(0, 0%, 6%);
+  --wb-grid-color: hsla(150, 85%, 55%, 0.06);
+  --wb-ui-bg: hsla(0, 0%, 10%, 0.88);
+  --wb-ui-border: hsla(150, 85%, 55%, 0.18);
+  --wb-accent: hsl(150, 85%, 55%);
+  --wb-selection: hsla(150, 85%, 55%, 0.1);
+  --wb-selection-border: hsla(150, 85%, 55%, 0.5);
+  --wb-text: hsl(0, 0%, 92%);
+  --wb-text-secondary: hsl(0, 0%, 60%);
 }

@@ -228,6 +228,21 @@ async function updateProject(index, updates) {
       await window.LayerDB.updateProject(projects[index].id, updates);
       const updatedProjects = await window.LayerDB.loadProjects();
       saveProjects(updatedProjects);
+
+      // Sync draft title if this is a whiteboard and name was updated
+      if (updates.name !== undefined && projects[index].isWhiteboard) {
+        const drafts = loadDrafts();
+        const draftIndex = drafts.findIndex(d => d.id === projects[index].id && d.type === 'whiteboard');
+        if (draftIndex !== -1) {
+          drafts[draftIndex].title = updates.name;
+          drafts[draftIndex].updatedAt = new Date().toISOString();
+          saveDrafts(drafts);
+          console.log('🎨 Whiteboard draft title synced:', updates.name);
+          // Mark drafts view for refresh so title shows updated
+          window.draftsNeedRefresh = true;
+        }
+      }
+
       return updatedProjects;
     } catch (error) {
       console.error('Failed to update project in database:', error);

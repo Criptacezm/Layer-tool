@@ -19,6 +19,12 @@ const GripState = {
   isDraggingNodes: false,
   isSelecting: false,
   selectionStart: { x: 0, y: 0 },
+
+  // Eraser State
+  eraserSize: 20,
+  isErasing: false,
+  eraserPreview: null,
+  hoveredElements: new Set(),
   selectionEnd: { x: 0, y: 0 },
   dragStart: { x: 0, y: 0 }, // World coordinates
 
@@ -47,12 +53,21 @@ const GripState = {
 
   // Project Context
   projectIndex: null,
+  projectName: '',
+  teamMembers: [], // { name, avatarUrl, email }
+
+  // Realtime Collaboration
+  activeUsers: new Map(), // userId -> { name, avatar, cursor, selection, lastSeen }
+  currentProjectId: null,
+  realtimeSubscription: null,
+  lastCursorBroadcast: 0,
+  cursorThrottleDelay: 100, // ms
 
   // Config
   GRID_SIZE: 20,
   SNAP_TO_GRID: true,
   MIN_SCALE: 0.1,
-  MAX_SCALE: 5,
+  MAX_SCALE: 5
 };
 
 // ============================================
@@ -90,9 +105,49 @@ function generateEdgeId() {
 // Initialization & Lifecycle
 // ============================================
 
-function openGripDiagram(projectIndex) {
+async function openGripDiagram(projectIndex) {
   GripState.projectIndex = projectIndex;
-  loadGripData(projectIndex);
+
+  // Load project details
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+  if (project) {
+    GripState.projectName = project.name || 'Untitled Project';
+    GripState.teamMembers = []; // Reset
+
+    // Initial team members from local project data (names only usually)
+    if (project.teamMembers) {
+      const currentUser = window.LayerDB?.getCurrentUser();
+      GripState.teamMembers = project.teamMembers.map(m => {
+        const isYou = m === 'You' || (currentUser && m === currentUser.email);
+        return {
+          name: isYou ? (currentUser?.user_metadata?.name || 'You') : m,
+          email: m,
+          avatarUrl: isYou ? currentUser?.user_metadata?.avatar_url : null
+        };
+      });
+    }
+
+    // Try to fetch detailed member info from Supabase if available
+    if (window.LayerDB && project.id) {
+      try {
+        const members = await window.LayerDB.getProjectMembers(project.id);
+        if (members && members.length > 0) {
+          GripState.teamMembers = members.map(m => ({
+            name: m.name || m.email?.split('@')[0] || 'Member',
+            email: m.email,
+            avatarUrl: m.avatarUrl
+          }));
+          // Re-render header if overlay is already shown
+          updateGripHeader();
+        }
+      } catch (err) {
+        console.warn('Failed to fetch project members for whiteboard:', err);
+      }
+    }
+  }
+
+  await loadGripData(projectIndex);
 
   // Reset View for good UX if it's the first open or empty
   if (GripState.nodes.length === 0) {
@@ -103,24 +158,83 @@ function openGripDiagram(projectIndex) {
 
   renderGripOverlay();
   requestAnimationFrame(gripGameLoop);
+
+  // Setup real-time subscription for whiteboard changes
+  subscribeToGripDiagramChanges(projectIndex);
 }
 
-function loadGripData(index) {
+function updateGripHeader() {
+  const filenameEl = document.querySelector('.grip-filename');
+  if (filenameEl) {
+    filenameEl.textContent = GripState.projectName;
+  }
+
+  const avatarListEl = document.getElementById('gripTeamAvatars');
+  if (avatarListEl) {
+    avatarListEl.innerHTML = renderGripTeamAvatars();
+  }
+}
+
+function renderGripTeamAvatars() {
+  return GripState.teamMembers.map(member => {
+    const name = member.name || 'User';
+    if (member.avatarUrl) {
+      return `<img src="${member.avatarUrl}" class="grip-team-avatar" title="${name}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+              <div class="grip-team-avatar-fallback" title="${name}">${name.charAt(0).toUpperCase()}</div>`;
+    }
+    return `<div class="grip-team-avatar-fallback" title="${name}">${name.charAt(0).toUpperCase()}</div>`;
+  }).join('');
+}
+
+async function loadGripData(index) {
+  console.log('📂 loadGripData called for index:', index);
+
+  // First try to load from localStorage
   const projects = loadProjects();
   const project = projects[index];
 
-  if (project?.gripDiagram) {
+  // CRITICAL: Refresh from Supabase to ensure we have latest data
+  if (project?.id && window.LayerDB?.getCurrentUser?.()) {
+    try {
+      console.log('🔄 Refreshing project data from Supabase...');
+      const freshProject = await window.LayerDB.getProject(project.id);
+      console.log('Fresh project data:', {
+        hasGripDiagram: !!freshProject.grip_diagram,
+        nodes: freshProject.grip_diagram?.nodes?.length || 0,
+        edges: freshProject.grip_diagram?.edges?.length || 0
+      });
+
+      // Update local storage with fresh data
+      if (freshProject) {
+        projects[index] = freshProject;
+        localStorage.setItem('layer_projects', JSON.stringify(projects));
+        console.log('✅ Local storage updated with fresh Supabase data');
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh from Supabase, using local data:', error);
+    }
+  }
+
+  // Now load the data (either fresh from Supabase or local)
+  if (project?.gripDiagram || project?.grip_diagram) {
+    const gripData = project.gripDiagram || project.grip_diagram;
+    console.log('Loading grip data:', {
+      nodes: gripData.nodes?.length || 0,
+      edges: gripData.edges?.length || 0
+    });
+
     // Migration check: if old format (gripCells), convert them
-    if (project.gripDiagram.cells) {
-      migrateOldData(project.gripDiagram);
+    if (gripData.cells) {
+      migrateOldData(gripData);
     } else {
-      GripState.nodes = project.gripDiagram.nodes || [];
-      GripState.edges = project.gripDiagram.edges || [];
-      GripState.offsetX = project.gripDiagram.offsetX || 0;
-      GripState.offsetY = project.gripDiagram.offsetY || 0;
-      GripState.scale = project.gripDiagram.scale || 1;
+      GripState.nodes = gripData.nodes || [];
+      GripState.edges = gripData.edges || [];
+      GripState.offsetX = gripData.offsetX || 0;
+      GripState.offsetY = gripData.offsetY || 0;
+      GripState.scale = gripData.scale || 1;
     }
   } else {
+    console.log('No grip data found, initializing empty');
     GripState.nodes = [];
     GripState.edges = [];
   }
@@ -131,6 +245,11 @@ function loadGripData(index) {
     edges: JSON.parse(JSON.stringify(GripState.edges))
   }];
   GripState.historyIndex = 0;
+
+  console.log('📋 Final loaded state:', {
+    nodes: GripState.nodes.length,
+    edges: GripState.edges.length
+  });
 }
 
 function migrateOldData(oldData) {
@@ -165,8 +284,12 @@ function migrateOldData(oldData) {
 }
 
 function saveGripData() {
+  console.log('💾 saveGripData called');
   const projects = loadProjects();
+  console.log('Projects loaded:', projects.length, 'Current index:', GripState.projectIndex);
+
   if (projects[GripState.projectIndex]) {
+    console.log('Saving grip data to project:', projects[GripState.projectIndex].name);
     projects[GripState.projectIndex].gripDiagram = {
       nodes: GripState.nodes,
       edges: GripState.edges,
@@ -175,14 +298,316 @@ function saveGripData() {
       scale: GripState.scale
     };
     saveProjects(projects);
+    console.log('✅ Grip data saved to localStorage');
+
+    // Save to Supabase continuously
+    saveGripDataToSupabase();
+  } else {
+    console.warn('❌ No project found at index', GripState.projectIndex);
   }
 }
 
-function closeGripDiagram() {
-  saveGripData();
-  const overlay = document.getElementById('gripDiagramOverlay');
-  if (overlay) overlay.remove();
+// Auto-save to Supabase with debouncing
+let gripSaveTimeout = null;
+let lastGripData = null;
+let gripSaveStatusTimeout = null;
+let remoteUpdateNotificationTimeout = null;
+let gripThrottleTimeout = null;
+let lastThrottleTime = 0;
+let instantSaveInProgress = false;
+
+// Throttle function for frequent operations like dragging - OPTIMIZED FOR INSTANT SAVES
+function throttleSaveGripData() {
+  console.log('⚡ throttleSaveGripData called');
+  const now = Date.now();
+  const throttleDelay = 100; // Reduced from 500ms to 100ms for faster saves
+
+  if (now - lastThrottleTime >= throttleDelay) {
+    console.log('✅ Throttle condition met, saving immediately');
+    saveGripData();
+    lastThrottleTime = now;
+  } else {
+    console.log('⏱️ Throttled, scheduling save for later');
+    // Schedule a save after the throttle delay
+    if (gripThrottleTimeout) clearTimeout(gripThrottleTimeout);
+    gripThrottleTimeout = setTimeout(() => {
+      console.log('⏰ Scheduled save triggered');
+      saveGripData();
+      lastThrottleTime = Date.now();
+    }, throttleDelay - (now - lastThrottleTime));
+  }
 }
+
+function saveGripDataToLocalStorage() {
+  console.log('💾 saveGripDataToLocalStorage called - bypassing data change check');
+
+  if (!GripState.projectIndex === undefined || GripState.projectIndex === null) {
+    console.log('No project selected, skipping localStorage save');
+    return;
+  }
+
+  const currentGripData = {
+    nodes: GripState.nodes,
+    edges: GripState.edges,
+    offsetX: GripState.offsetX,
+    offsetY: GripState.offsetY,
+    scale: GripState.scale
+  };
+
+  console.log('Saving to localStorage immediately:', {
+    nodes: currentGripData.nodes?.length || 0,
+    edges: currentGripData.edges?.length || 0,
+    projectIndex: GripState.projectIndex
+  });
+
+  try {
+    // Save to localStorage
+    const projects = loadProjects();
+    if (projects[GripState.projectIndex]) {
+      projects[GripState.projectIndex].gripDiagram = currentGripData;
+      localStorage.setItem('layer_projects', JSON.stringify(projects));
+      console.log('✅ localStorage updated successfully');
+    }
+  } catch (error) {
+    console.error('❌ localStorage save failed:', error);
+  }
+}
+
+function saveGripDataToSupabase() {
+  console.log('🔄 saveGripDataToSupabase called');
+  console.log('GripState at save:', {
+    nodes: GripState.nodes?.length || 0,
+    edges: GripState.edges?.length || 0,
+    projectIndex: GripState.projectIndex
+  });
+
+  if (!window.LayerDB?.getCurrentUser?.()) {
+    console.log('User not authenticated, skipping Supabase save');
+    return;
+  }
+
+  const currentGripData = {
+    nodes: GripState.nodes,
+    edges: GripState.edges,
+    offsetX: GripState.offsetX,
+    offsetY: GripState.offsetY,
+    scale: GripState.scale
+  };
+
+  console.log('Current grip data:', currentGripData);
+  console.log('Last grip data:', lastGripData);
+
+  // Check if data actually changed
+  const dataChanged = !lastGripData || JSON.stringify(currentGripData) !== JSON.stringify(lastGripData);
+  console.log('Data changed:', dataChanged);
+  if (!dataChanged) {
+    console.log('⏭️ No data change detected, skipping save');
+    return;
+  }
+
+  lastGripData = currentGripData;
+
+  // Clear existing timeout
+  if (gripSaveTimeout) {
+    clearTimeout(gripSaveTimeout);
+  }
+
+  // Show saving status immediately
+  showGripSaveStatus('saving');
+
+  // Debounce saves - wait 100ms after last change (INSTANT auto-save - reduced from 300ms)
+  gripSaveTimeout = setTimeout(async () => {
+    try {
+      const projects = loadProjects();
+      const project = projects[GripState.projectIndex];
+
+      if (!project) {
+        console.warn('Project not found for saving grip diagram');
+        showGripSaveStatus('error');
+        return;
+      }
+
+      console.log('💾 Auto-saving whiteboard to Supabase...');
+      console.log('Project ID:', project.id);
+      console.log('Current user:', window.LayerDB?.getCurrentUser?.());
+      console.log('Grip data size:', JSON.stringify(currentGripData).length, 'characters');
+
+      showGripSaveStatus('saving'); // Show saving status
+
+      // Update the project in Supabase
+      const result = await window.LayerDB.updateProject(project.id, {
+        grip_diagram: currentGripData,
+        updated_at: new Date().toISOString()
+      });
+
+      console.log('✅ Whiteboard auto-saved to Supabase:', result);
+      showGripSaveStatus('saved');
+    } catch (error) {
+      console.error('❌ Failed to auto-save whiteboard to Supabase:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      showGripSaveStatus('error');
+    }
+  }, 100); // 100ms debounce for INSTANT auto-save (reduced from 300ms)
+}
+
+// INSTANT SAVE FUNCTION - No debouncing for immediate saves
+function saveGripDataInstant() {
+  console.log('⚡ INSTANT SAVE triggered');
+  console.log('Current GripState:', {
+    nodes: GripState.nodes?.length || 0,
+    edges: GripState.edges?.length || 0,
+    projectIndex: GripState.projectIndex,
+    hasUser: !!window.LayerDB?.getCurrentUser?.(),
+    saveInProgress: instantSaveInProgress
+  });
+
+  if (!window.LayerDB?.getCurrentUser?.()) {
+    console.log('User not authenticated, skipping instant Supabase save');
+    return;
+  }
+
+  if (instantSaveInProgress) {
+    console.log('⚠️ Instant save already in progress, skipping');
+    return;
+  }
+
+  const currentGripData = {
+    nodes: GripState.nodes,
+    edges: GripState.edges,
+    offsetX: GripState.offsetX,
+    offsetY: GripState.offsetY,
+    scale: GripState.scale
+  };
+
+  console.log('📋 Grip data prepared for instant save:', {
+    nodesCount: currentGripData.nodes?.length || 0,
+    edgesCount: currentGripData.edges?.length || 0,
+    timestamp: new Date().toISOString()
+  });
+
+  // Save to localStorage first (but skip the data change check for instant save)
+  saveGripDataToLocalStorage();
+
+  // Then save to Supabase immediately (no debounce)
+  (async () => {
+    try {
+      const projects = loadProjects();
+      console.log('📁 Loaded projects:', projects?.length || 0);
+      const project = projects[GripState.projectIndex];
+
+      if (!project) {
+        console.warn('❌ Project not found for instant grip diagram save');
+        console.warn('Available projects:', projects?.map(p => ({ id: p.id, name: p.name })) || []);
+        console.warn('Requested projectIndex:', GripState.projectIndex);
+        return;
+      }
+
+      console.log('🚀 INSTANT save to Supabase starting...');
+      console.log('Project details:', { id: project.id, name: project.name });
+
+      instantSaveInProgress = true;
+      console.log('🔒 Instant save locked - in progress');
+      showGripSaveStatus('saving'); // Show saving status
+
+      const updateResult = await window.LayerDB.updateProject(project.id, {
+        grip_diagram: currentGripData,
+        updated_at: new Date().toISOString()
+      });
+
+      console.log('✅ INSTANT whiteboard saved to Supabase successfully');
+      console.log('Update result:', updateResult);
+
+      // Update lastGripData to ensure subsequent saves work correctly
+      lastGripData = currentGripData;
+      console.log('Updated lastGripData for next comparison');
+
+      instantSaveInProgress = false;
+      console.log('🔓 Instant save unlocked - completed');
+
+      showGripSaveStatus('saved');
+
+      // Verify the save actually worked
+      setTimeout(async () => {
+        try {
+          const verification = await window.LayerDB.getProject(project.id);
+          console.log('🔍 Verification check - saved data:', {
+            savedNodes: verification.grip_diagram?.nodes?.length || 0,
+            savedEdges: verification.grip_diagram?.edges?.length || 0,
+            matchesCurrent: verification.grip_diagram?.nodes?.length === currentGripData.nodes?.length
+          });
+        } catch (verifyError) {
+          console.error('❌ Verification failed:', verifyError);
+        }
+      }, 500);
+
+    } catch (error) {
+      console.error('❌ INSTANT save failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details
+      });
+      instantSaveInProgress = false;
+      console.log('🔓 Instant save unlocked - failed');
+      showGripSaveStatus('error');
+    }
+  })();
+}
+
+function showGripSaveStatus(status) {
+  const saveStatus = document.getElementById('gripSaveStatus');
+  if (!saveStatus) return;
+
+  // Clear existing timeout
+  if (gripSaveStatusTimeout) {
+    clearTimeout(gripSaveStatusTimeout);
+  }
+
+  saveStatus.style.display = 'block';
+  saveStatus.className = `grip-save-indicator-dot ${status}`;
+
+  // Enhanced status messages for better user feedback
+  if (status === 'saving') {
+    saveStatus.title = 'Saving to database...';
+  } else if (status === 'saved') {
+    saveStatus.title = 'Saved to database ✅';
+  } else if (status === 'error') {
+    saveStatus.title = 'Save failed ❌';
+  }
+
+  if (status === 'saved') {
+    // Auto-hide after 1.5 seconds for saved status (faster than before)
+    gripSaveStatusTimeout = setTimeout(() => {
+      saveStatus.style.display = 'none';
+    }, 1500);
+  }
+}
+
+function showRemoteUpdateNotification() {
+  const notification = document.getElementById('remoteUpdateNotification');
+  if (!notification) return;
+
+  // Clear existing timeout
+  if (remoteUpdateNotificationTimeout) {
+    clearTimeout(remoteUpdateNotificationTimeout);
+  }
+
+  notification.style.display = 'flex';
+  notification.className = 'remote-update-notification';
+  notification.querySelector('.remote-update-text').textContent = 'Updated by team member';
+
+  // Auto-hide after 3 seconds
+  remoteUpdateNotificationTimeout = setTimeout(() => {
+    notification.style.display = 'none';
+  }, 3000);
+}
+
+
 
 
 // ============================================
@@ -216,7 +641,7 @@ function undo() {
     GripState.nodes = JSON.parse(JSON.stringify(state.nodes));
     GripState.edges = JSON.parse(JSON.stringify(state.edges));
     renderCanvas();
-    saveGripData();
+    saveGripDataInstant(); // INSTANT SAVE for text changes
   }
 }
 
@@ -242,12 +667,31 @@ function renderGripOverlay() {
 
   overlay.innerHTML = `
     <div class="grip-toolbar-top">
-      <div class="grip-toolbar-group">
-        <button class="grip-btn-icon" onclick="closeGripDiagram()" title="Back">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
-        <div class="grip-divider-vertical"></div>
-        <div class="grip-filename">User Flow</div>
+      <div style="display: flex; align-items: center; gap: 12px; pointer-events: auto;">
+        <div class="grip-toolbar-group grip-logo-container">
+           <svg width="32" height="32" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logoGradientGrip" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7c3aed" />
+                  <stop offset="100%" stop-color="#5b21b6" />
+                </linearGradient>
+              </defs>
+              <rect x="38" y="38" width="52" height="52" rx="16" fill="url(#logoGradientGrip)" opacity="0.28" />
+              <rect x="38" y="54" width="52" height="36" rx="14" fill="url(#logoGradientGrip)" opacity="0.55" />
+              <rect x="38" y="70" width="52" height="20" rx="10" fill="url(#logoGradientGrip)" />
+              <rect x="38" y="38" width="20" height="52" rx="10" fill="url(#logoGradientGrip)" />
+            </svg>
+        </div>
+        <div class="grip-toolbar-group">
+          <button class="grip-btn-icon" onclick="closeGripDiagram()" title="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="grip-divider-vertical"></div>
+          <div class="grip-filename">${GripState.projectName}</div>
+          <div class="grip-team-avatars" id="gripTeamAvatars">
+            ${renderGripTeamAvatars()}
+          </div>
+        </div>
       </div>
       
       <div class="grip-toolbar-group">
@@ -268,6 +712,14 @@ function renderGripOverlay() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
+      
+      <div class="grip-save-indicator-dot" id="gripSaveStatus" style="display: none;">
+        <span class="grip-save-dot"></span>
+      </div>
+      <div id="remoteUpdateNotification" class="remote-update-notification" style="display: none;">
+        <span class="remote-update-indicator"></span>
+        <span class="remote-update-text">Updated by team member</span>
+      </div>
     </div>
     
     <div class="grip-toolbar-bottom">
@@ -287,21 +739,49 @@ function renderGripOverlay() {
       <button class="grip-tool-btn" data-tool="pill" title="Pill Node (P)" onclick="setTool('pill')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="6"/></svg>
       </button>
-      <button class="grip-tool-btn" data-tool="flow-card" title="Flow Card (C)" onclick="setTool('flow-card')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M7 13h.01"/><path d="M7 17h.01"/><path d="M11 13h6"/><path d="M11 17h6"/></svg>
-      </button>
+
       <button class="grip-tool-btn" data-tool="header" title="Large Header (T)" onclick="setTool('header')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+      </button>
+
+      <button class="grip-tool-btn" data-tool="calculator" title="Scientific Calculator" onclick="window.layerCalculator.toggle()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="4" y="2" width="16" height="20" rx="2" />
+          <line x1="8" y1="6" x2="16" y2="6" />
+          <line x1="16" y1="14" x2="16" y2="18" />
+          <path d="M16 10h.01" />
+          <path d="M12 10h.01" />
+          <path d="M8 10h.01" />
+          <path d="M12 14h.01" />
+          <path d="M8 14h.01" />
+          <path d="M12 18h.01" />
+          <path d="M8 18h.01" />
+        </svg>
       </button>
       
       <div class="grip-divider-vertical"></div>
       
-      <button class="grip-tool-btn" data-tool="connect" title="Connect (L)" onclick="setTool('connect')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-      </button>
       <button class="grip-tool-btn" data-tool="eraser" title="Eraser (E)" onclick="setTool('eraser')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <defs>
+            <linearGradient id="eraserGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff6b6b" />
+              <stop offset="50%" stop-color="#ffa500" />
+              <stop offset="100%" stop-color="#ffd700" />
+            </linearGradient>
+          </defs>
+          <path d="M18 4l-5 5-7 7-3 3 3 3 3-3 7-7 5-5z" fill="url(#eraserGradient)" stroke="none"/>
+          <path d="M18 4l-5 5-7 7-3 3" stroke="currentColor" fill="none" stroke-width="1.5"/>
+          <path d="M6 18l3 3" stroke="rgba(0,0,0,0.3)" stroke-width="1" fill="none"/>
+        </svg>
       </button>
+      
+      <!-- Eraser Size Options -->
+      <div id="eraserSizeOptions" class="eraser-size-options" style="display: none;">
+        <button class="eraser-size-btn small" data-size="small" title="Small Eraser" onclick="setEraserSize('small')">S</button>
+        <button class="eraser-size-btn medium active" data-size="medium" title="Medium Eraser" onclick="setEraserSize('medium')">M</button>
+        <button class="eraser-size-btn large" data-size="large" title="Large Eraser" onclick="setEraserSize('large')">L</button>
+      </div>
     </div>
     
     <div id="gripPropertiesPanel" class="grip-properties-panel" style="display:none;"></div>
@@ -312,6 +792,10 @@ function renderGripOverlay() {
       </div>
       <div id="gripSelectionBox" class="grip-selection-box" style="display:none;"></div>
       <svg id="gripTempConnection" class="grip-temp-connection"></svg>
+      
+      <!-- Realtime Collaboration Elements -->
+      <div id="gripActiveUsers" class="grip-active-users-container"></div>
+      <div id="gripRemoteCursors" class="grip-remote-cursors-container"></div>
     </div>
   `;
 
@@ -364,17 +848,24 @@ function updateCursor() {
 
   if (GripState.isDraggingCanvas) {
     container.className = 'grip-canvas-container cursor-grabbing';
+    hideEraserCursor();
     return;
   }
 
   if (GripState.activeTool === 'hand' || GripState.isSpacePressed) {
     container.className = 'grip-canvas-container cursor-grab';
-  } else if (['pill', 'flow-card', 'card', 'shape:rectangle', 'shape:diamond', 'shape:ellipse', 'text', 'header', 'sticky', 'pencil', 'connect'].includes(GripState.activeTool)) {
-    container.className = 'grip-canvas-container'; // Default arrow or crosshair if we add CSS
+    hideEraserCursor();
+  } else if (GripState.activeTool === 'eraser') {
+    container.className = 'grip-canvas-container cursor-eraser';
+    showEraserCursor();
+  } else if (['pill', 'card', 'shape:rectangle', 'shape:diamond', 'shape:ellipse', 'text', 'header', 'sticky', 'pencil', 'connect'].includes(GripState.activeTool)) {
+    container.className = 'grip-canvas-container';
     container.style.cursor = 'crosshair';
+    hideEraserCursor();
   } else {
     container.className = 'grip-canvas-container';
     container.style.cursor = 'default';
+    hideEraserCursor();
   }
 }
 
@@ -382,6 +873,285 @@ function setTool(tool) {
   GripState.activeTool = tool;
   updateCursor();
   renderToolbar();
+
+  // Show/hide eraser size options
+  const eraserSizeOptions = document.getElementById('eraserSizeOptions');
+  if (eraserSizeOptions) {
+    eraserSizeOptions.style.display = tool === 'eraser' ? 'flex' : 'none';
+  }
+}
+
+function setEraserSize(size) {
+  GripState.eraserSize = size === 'small' ? 20 : size === 'medium' ? 40 : 60;
+
+  // Update button states
+  document.querySelectorAll('.eraser-size-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.size === size);
+  });
+
+  // Update cursor size
+  updateEraserCursor();
+}
+
+function showEraserCursor() {
+  if (!GripState.eraserPreview) {
+    GripState.eraserPreview = document.createElement('div');
+    GripState.eraserPreview.className = 'grip-eraser-cursor medium';
+    GripState.eraserPreview.id = 'gripEraserCursor';
+    // Prevent pointer events on the cursor itself
+    GripState.eraserPreview.style.pointerEvents = 'none';
+    document.body.appendChild(GripState.eraserPreview);
+  }
+  updateEraserCursor();
+}
+
+function hideEraserCursor() {
+  if (GripState.eraserPreview) {
+    GripState.eraserPreview.remove();
+    GripState.eraserPreview = null;
+  }
+  clearEraserHover();
+}
+
+function updateEraserCursor() {
+  if (!GripState.eraserPreview) return;
+
+  const size = GripState.eraserSize <= 20 ? 'small' : GripState.eraserSize <= 40 ? 'medium' : 'large';
+  const erasingClass = GripState.isErasing ? 'erasing' : '';
+  GripState.eraserPreview.className = `grip-eraser-cursor ${size} ${erasingClass}`;
+}
+
+function updateEraserHover(mouseX, mouseY) {
+  const worldPos = screenToWorld(mouseX, mouseY);
+  const newHoveredElements = new Set();
+
+  // Check nodes
+  GripState.nodes.forEach(node => {
+    let isHovered = false;
+
+    if (node.type === 'draw' && node.points && node.points.length > 0) {
+      // For free drawing, check if any point is within eraser radius
+      const eraserRadius = GripState.eraserSize / GripState.scale / 2;
+
+      // Check each point in the drawing
+      for (const point of node.points) {
+        const absX = node.x + point.x;
+        const absY = node.y + point.y;
+        const distance = Math.sqrt((worldPos.x - absX) ** 2 + (worldPos.y - absY) ** 2);
+        if (distance <= eraserRadius) {
+          isHovered = true;
+          break;
+        }
+      }
+
+      // Also check if eraser is near the path segments between points
+      if (!isHovered && node.points.length > 1) {
+        for (let i = 0; i < node.points.length - 1; i++) {
+          const p1 = { x: node.x + node.points[i].x, y: node.y + node.points[i].y };
+          const p2 = { x: node.x + node.points[i + 1].x, y: node.y + node.points[i + 1].y };
+
+          // Distance from point to line segment
+          const dist = pointToLineSegmentDistance(worldPos, p1, p2);
+          if (dist <= eraserRadius) {
+            isHovered = true;
+            break;
+          }
+        }
+      }
+    } else {
+      // For regular nodes, check bounding box
+      isHovered = worldPos.x >= node.x && worldPos.x <= node.x + node.width &&
+        worldPos.y >= node.y && worldPos.y <= node.y + node.height;
+    }
+
+    if (isHovered) {
+      newHoveredElements.add(`node-${node.id}`);
+    }
+  });
+
+  // Check edges (simplified - just check proximity to edge path)
+  GripState.edges.forEach(edge => {
+    const fromNode = GripState.nodes.find(n => n.id === edge.from);
+    const toNode = GripState.nodes.find(n => n.id === edge.to);
+    if (fromNode && toNode) {
+      const fromCenter = { x: fromNode.x + fromNode.width / 2, y: fromNode.y + fromNode.height / 2 };
+      const toCenter = { x: toNode.x + toNode.width / 2, y: toNode.y + toNode.height / 2 };
+
+      // Simple distance check to edge line
+      const dist = pointToLineDistance(worldPos, fromCenter, toCenter);
+      if (dist < GripState.eraserSize / GripState.scale / 2) {
+        newHoveredElements.add(`edge-${edge.id}`);
+      }
+    }
+  });
+
+  // Update DOM classes for hover effect
+  GripState.hoveredElements.forEach(elementId => {
+    if (!newHoveredElements.has(elementId)) {
+      const element = document.querySelector(`[data-element-id="${elementId}"]`);
+      if (element) element.classList.remove('eraser-hover');
+    }
+  });
+
+  newHoveredElements.forEach(elementId => {
+    if (!GripState.hoveredElements.has(elementId)) {
+      const element = document.querySelector(`[data-element-id="${elementId}"]`);
+      if (element) element.classList.add('eraser-hover');
+    }
+  });
+
+  GripState.hoveredElements = newHoveredElements;
+}
+
+function clearEraserHover() {
+  GripState.hoveredElements.forEach(elementId => {
+    const element = document.querySelector(`[data-element-id="${elementId}"]`);
+    if (element) element.classList.remove('eraser-hover');
+  });
+  GripState.hoveredElements.clear();
+}
+
+function pointToLineDistance(point, lineStart, lineEnd) {
+  const A = point.x - lineStart.x;
+  const B = point.y - lineStart.y;
+  const C = lineEnd.x - lineStart.x;
+  const D = lineEnd.y - lineStart.y;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+
+  if (lenSq !== 0) param = dot / lenSq;
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = lineStart.x;
+    yy = lineStart.y;
+  } else if (param > 1) {
+    xx = lineEnd.x;
+    yy = lineEnd.y;
+  } else {
+    xx = lineStart.x + param * C;
+    yy = lineStart.y + param * D;
+  }
+
+  const dx = point.x - xx;
+  const dy = point.y - yy;
+
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Distance from point to line segment (bounded line)
+function pointToLineSegmentDistance(point, lineStart, lineEnd) {
+  const A = point.x - lineStart.x;
+  const B = point.y - lineStart.y;
+  const C = lineEnd.x - lineStart.x;
+  const D = lineEnd.y - lineStart.y;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+
+  if (lenSq === 0) {
+    // Line segment is actually a point
+    const dx = point.x - lineStart.x;
+    const dy = point.y - lineStart.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  let param = dot / lenSq;
+  param = Math.max(0, Math.min(1, param)); // Clamp to [0,1]
+
+  const xx = lineStart.x + param * C;
+  const yy = lineStart.y + param * D;
+
+  const dx = point.x - xx;
+  const dy = point.y - yy;
+
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function eraseAtPosition(mouseX, mouseY) {
+  const worldPos = screenToWorld(mouseX, mouseY);
+  let deletedSomething = false;
+
+  // Check and delete nodes
+  const nodesToDelete = [];
+  GripState.nodes.forEach(node => {
+    let isHit = false;
+
+    if (node.type === 'draw' && node.points && node.points.length > 0) {
+      // For free drawing, check if any point is within eraser radius
+      const eraserRadius = GripState.eraserSize / GripState.scale / 2;
+
+      // Check each point in the drawing
+      for (const point of node.points) {
+        const absX = node.x + point.x;
+        const absY = node.y + point.y;
+        const distance = Math.sqrt((worldPos.x - absX) ** 2 + (worldPos.y - absY) ** 2);
+        if (distance <= eraserRadius) {
+          isHit = true;
+          break;
+        }
+      }
+
+      // Also check if eraser is near the path segments between points
+      if (!isHit && node.points.length > 1) {
+        for (let i = 0; i < node.points.length - 1; i++) {
+          const p1 = { x: node.x + node.points[i].x, y: node.y + node.points[i].y };
+          const p2 = { x: node.x + node.points[i + 1].x, y: node.y + node.points[i + 1].y };
+
+          // Distance from point to line segment
+          const dist = pointToLineSegmentDistance(worldPos, p1, p2);
+          if (dist <= eraserRadius) {
+            isHit = true;
+            break;
+          }
+        }
+      }
+    } else {
+      // For regular nodes, check bounding box
+      isHit = worldPos.x >= node.x && worldPos.x <= node.x + node.width &&
+        worldPos.y >= node.y && worldPos.y <= node.y + node.height;
+    }
+
+    if (isHit) {
+      nodesToDelete.push(node.id);
+    }
+  });
+
+  // Delete nodes and their connected edges
+  nodesToDelete.forEach(nodeId => {
+    deleteNode(nodeId);
+    deletedSomething = true;
+  });
+
+  // Check and delete edges
+  const edgesToDelete = [];
+  GripState.edges.forEach(edge => {
+    const fromNode = GripState.nodes.find(n => n.id === edge.from);
+    const toNode = GripState.nodes.find(n => n.id === edge.to);
+
+    if (fromNode && toNode) {
+      const fromCenter = { x: fromNode.x + fromNode.width / 2, y: fromNode.y + fromNode.height / 2 };
+      const toCenter = { x: toNode.x + toNode.width / 2, y: toNode.y + toNode.height / 2 };
+
+      const dist = pointToLineDistance(worldPos, fromCenter, toCenter);
+      if (dist < GripState.eraserSize / GripState.scale / 2) {
+        edgesToDelete.push(edge.id);
+      }
+    }
+  });
+
+  edgesToDelete.forEach(edgeId => {
+    GripState.edges = GripState.edges.filter(e => e.id !== edgeId);
+    deletedSomething = true;
+  });
+
+  if (deletedSomething) {
+    renderCanvas();
+    saveGripData();
+  }
 }
 
 function renderToolbar() {
@@ -452,12 +1222,71 @@ function handleMouseDown(e) {
   const isMiddleClick = e.button === 1;
   const isSpaceBar = GripState.isSpacePressed;
 
-  // Hit Testing
+  // Hit Testing - Use proper bounding box calculation
+  // Prioritize non-draw nodes (visual top) over draw nodes (visual bottom)
   const worldPos = screenToWorld(e.clientX, e.clientY);
-  const hitNode = GripState.nodes.slice().reverse().find(node =>
-    worldPos.x >= node.x && worldPos.x <= node.x + node.width &&
-    worldPos.y >= node.y && worldPos.y <= node.y + node.height
-  );
+  const nodesToCheck = [
+    ...GripState.nodes.filter(n => n.type !== 'draw').reverse(),
+    ...GripState.nodes.filter(n => n.type === 'draw').reverse()
+  ];
+
+  const hitNode = nodesToCheck.find(node => {
+    const bounds = getNodeBoundingBox(node);
+
+    // Check bounding box first for all nodes (fast fail)
+    const inBounds = worldPos.x >= bounds.x && worldPos.x <= bounds.x + bounds.width &&
+      worldPos.y >= bounds.y && worldPos.y <= bounds.y + bounds.height;
+
+    if (!inBounds) return false;
+
+    // For draw nodes, check precise path hit
+    if (node.type === 'draw' && node.points && node.points.length > 1) {
+      // Threshold for selection (e.g., 10px or stroke width based)
+      const threshold = (node.style?.strokeWidth || 3) + 10;
+
+      for (let i = 0; i < node.points.length - 1; i++) {
+        const p1 = { x: node.x + node.points[i].x, y: node.y + node.points[i].y };
+        const p2 = { x: node.x + node.points[i + 1].x, y: node.y + node.points[i + 1].y };
+
+        // Use existing helper
+        const dist = pointToLineSegmentDistance(worldPos, p1, p2); // Assuming this function exists in scope
+
+        // Or simpler implementation if helper not available or to be safe:
+        // const dist = Math.abs((p2.y - p1.y) * worldPos.x - (p2.x - p1.x) * worldPos.y + p2.x * p1.y - p2.y * p1.x) / Math.sqrt(Math.pow(p2.y - p1.y, 2) + Math.pow(p2.x - p1.x, 2));
+
+        // Actually pointToLineSegmentDistance is better.
+        // Let's implement inline logic if needed or rely on helper. 
+        // Based on previous read, pointToLineSegmentDistance IS available.
+
+        // But wait, pointToLineSegmentDistance implementation:
+        // It calculates distance from point to segment.
+
+        const A = worldPos.x - p1.x;
+        const B = worldPos.y - p1.y;
+        const C = p2.x - p1.x;
+        const D = p2.y - p1.y;
+
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        if (lenSq !== 0) param = dot / lenSq;
+
+        let xx, yy;
+        if (param < 0) { xx = p1.x; yy = p1.y; }
+        else if (param > 1) { xx = p2.x; yy = p2.y; }
+        else { xx = p1.x + param * C; yy = p1.y + param * D; }
+
+        const dx = worldPos.x - xx;
+        const dy = worldPos.y - yy;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= threshold) return true;
+      }
+      return false;
+    }
+
+    return true;
+  });
 
   GripState.lastMouseX = e.clientX;
   GripState.lastMouseY = e.clientY;
@@ -516,7 +1345,11 @@ function handleMouseDown(e) {
 
   // Node Body Click (Select Only, No Drag)
   if (hitNode) {
-    if (GripState.activeTool === 'eraser') { deleteNode(hitNode.id); return; }
+    if (GripState.activeTool === 'eraser') {
+      GripState.isErasing = true;
+      deleteNode(hitNode.id);
+      return;
+    }
     if (GripState.activeTool === 'connect') { startConnection(hitNode.id, 'center', worldPos); return; }
 
     if (!e.shiftKey && !GripState.selectedNodeIds.has(hitNode.id)) {
@@ -536,6 +1369,10 @@ function handleMouseDown(e) {
     GripState.selectionStart = { x: e.clientX, y: e.clientY };
     GripState.selectionEnd = { x: e.clientX, y: e.clientY };
     renderCanvas();
+  } else if (GripState.activeTool === 'eraser') {
+    // Eraser on empty space - start continuous erasing
+    GripState.isErasing = true;
+    eraseAtPosition(e.clientX, e.clientY);
   } else {
     createNodeAt(worldPos.x, worldPos.y, GripState.activeTool);
     // Optional: Don't switch back to select if holding shift? Excalidraw style
@@ -548,6 +1385,27 @@ function handleMouseMove(e) {
   const dy = e.clientY - GripState.lastMouseY;
   GripState.lastMouseX = e.clientX;
   GripState.lastMouseY = e.clientY;
+
+  // Update eraser cursor position
+  if (GripState.activeTool === 'eraser' && GripState.eraserPreview) {
+    // Use requestAnimationFrame for smoother updates
+    requestAnimationFrame(() => {
+      if (GripState.eraserPreview) {
+        GripState.eraserPreview.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+
+        // Check for hover preview
+        updateEraserHover(e.clientX, e.clientY);
+
+        // Handle drag-to-erase
+        if (GripState.isErasing) {
+          eraseAtPosition(e.clientX, e.clientY);
+        }
+      }
+    });
+  }
+
+  // Broadcast cursor position for real-time collaboration
+  broadcastCursorPosition(e.clientX, e.clientY);
 
   // Panning
   if (GripState.isDraggingCanvas) {
@@ -574,9 +1432,22 @@ function handleMouseMove(e) {
     const worldDy = dy / GripState.scale;
     GripState.selectedNodeIds.forEach(id => {
       const node = GripState.nodes.find(n => n.id === id);
-      if (node) { node.x += worldDx; node.y += worldDy; }
+      if (node) {
+        node.x += worldDx;
+        node.y += worldDy;
+      }
     });
     renderCanvas();
+    // Throttled save during dragging
+    throttleSaveGripData();
+
+    // Broadcast node movement to other users
+    GripState.selectedNodeIds.forEach(id => {
+      const node = GripState.nodes.find(n => n.id === id);
+      if (node) {
+        broadcastNodeOperation('move', id, { x: node.x, y: node.y });
+      }
+    });
     return;
   }
 
@@ -598,13 +1469,21 @@ function handleMouseUp(e) {
   if (GripState.isDrawing) finishFreeDraw();
   if (GripState.isDraggingNodes) pushToHistory();
 
+  const wasPanning = GripState.isDraggingCanvas;
+
   GripState.isDraggingCanvas = false;
   GripState.isDraggingNodes = false;
   GripState.isResizing = false;
   GripState.isDrawing = false;
+  GripState.isErasing = false; // Reset eraser state
 
   // Reset cursor from grabbing to grab (if hand tool) or default
   updateCursor();
+
+  // Save viewport position when panning stops
+  if (wasPanning) {
+    saveGripData();
+  }
 
   if (GripState.isSelecting) {
     commitSelectionBox();
@@ -615,10 +1494,11 @@ function handleMouseUp(e) {
 
   if (GripState.isConnecting) {
     const worldPos = screenToWorld(e.clientX, e.clientY);
-    const hitNode = GripState.nodes.slice().reverse().find(node =>
-      worldPos.x >= node.x && worldPos.x <= node.x + node.width &&
-      worldPos.y >= node.y && worldPos.y <= node.y + node.height
-    );
+    const hitNode = GripState.nodes.slice().reverse().find(node => {
+      const bounds = getNodeBoundingBox(node);
+      return worldPos.x >= bounds.x && worldPos.x <= bounds.x + bounds.width &&
+        worldPos.y >= bounds.y && worldPos.y <= bounds.y + bounds.height;
+    });
     if (hitNode && hitNode.id !== GripState.connectionStartNodeId) {
       createEdge(GripState.connectionStartNodeId, GripState.connectionStartHandle, hitNode.id, 'auto');
     }
@@ -644,9 +1524,10 @@ function handleKeyDown(e) {
   if (e.key === 'v') setTool('select');
   if (e.key === 'h') setTool('hand');
   if (e.key === 'p') setTool('pill');
-  if (e.key === 'c') setTool('flow-card');
+
   if (e.key === 't') setTool('header');
   if (e.key === 'x') setTool('pencil');
+  if (e.key === 'e') setTool('eraser');
   if (e.key === 'l') setTool('connect');
 }
 
@@ -666,7 +1547,6 @@ window.addEventListener('keyup', (e) => {
 function createNodeAt(x, y, toolType) {
   const typeMap = {
     'pill': { w: 140, h: 50, style: 'shape-pill', text: 'Type here...' },
-    'flow-card': { w: 220, h: 140, style: 'shape-flow-card', text: 'Details\n• Point 1\n• Point 2' },
     'header': { w: 400, h: 80, style: 'shape-header', text: 'Section Header' },
     // Legacy mapping
     'card': { w: 200, h: 100, style: 'card-default', text: 'Card' },
@@ -694,7 +1574,13 @@ function createNodeAt(x, y, toolType) {
   GripState.selectedNodeIds.clear();
   GripState.selectedNodeIds.add(newNode.id);
   pushToHistory();
+
+  // INSTANT SAVE for node creation
+  saveGripDataInstant();
   renderCanvas();
+
+  // Broadcast node creation to other users
+  broadcastNodeOperation('add', newNode.id, newNode);
 }
 
 function createEdge(fromId, fromHandle, toId, toHandle) {
@@ -709,6 +1595,9 @@ function createEdge(fromId, fromHandle, toId, toHandle) {
   GripState.edges.push(newEdge);
   pushToHistory();
   renderCanvas();
+
+  // Broadcast edge creation to other users
+  broadcastEdgeOperation('add', newEdge.id, newEdge);
 }
 
 function startConnection(nodeId, handle, pos) {
@@ -739,6 +1628,8 @@ function handleResizeMove(dx, dy) {
   // Add other directions...
 
   renderCanvas();
+  // Throttled save during resizing
+  throttleSaveGripData();
 }
 // ============================================
 // Free Draw Logic (Smoothed)
@@ -755,7 +1646,7 @@ function startFreeDraw(pos) {
     width: 0,
     height: 0,
     points: [{ x: 0, y: 0 }], // Relative
-    style: { stroke: '#ffffff', strokeWidth: 3, opacity: 1 }
+    style: { stroke: 'var(--foreground)', strokeWidth: 3, opacity: 1 }
   };
   GripState.nodes.push(newNode);
   GripState.activeDrawNodeId = id;
@@ -774,16 +1665,44 @@ function continueFreeDraw(pos) {
   if (Math.hypot(relX - last.x, relY - last.y) > 2) {
     node.points.push({ x: relX, y: relY });
     renderCanvas();
+    // Throttled save during drawing
+    throttleSaveGripData();
   }
 }
 
 function finishFreeDraw() {
   if (GripState.activeDrawNodeId) {
     const node = GripState.nodes.find(n => n.id === GripState.activeDrawNodeId);
-    if (node && node.points.length > 2) {
-      // Smooth the points significantly
-      node.points = smoothPoints(node.points);
-      node.points = smoothPoints(node.points); // Double pass for extra smoothness
+    if (node && node.points.length > 0) {
+      // Smooth the points significantly (only if enough points)
+      if (node.points.length > 2) {
+        node.points = smoothPoints(node.points);
+        node.points = smoothPoints(node.points); // Double pass for extra smoothness
+      }
+
+      // Normalize Coordinates: Calculate bounding box and shift points
+      let minX = Infinity, minY = Infinity;
+      let maxX = -Infinity, maxY = -Infinity;
+
+      node.points.forEach(p => {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+
+      // Shift node position
+      node.x += minX;
+      node.y += minY;
+      node.width = maxX - minX;
+      node.height = maxY - minY;
+
+      // Shift points relative to new origin
+      node.points = node.points.map(p => ({
+        x: p.x - minX,
+        y: p.y - minY
+      }));
+
       renderCanvas();
     }
   }
@@ -878,7 +1797,7 @@ function updatePropertiesPanel() {
       <div class="grip-prop-section">
          <div class="grip-prop-header">Stroke Color</div>
          <div class="grip-color-picker">
-            ${renderColors(['#ffffff', '#ff6b6b', '#51cf66', '#339af0', '#fcc419', '#845ef7', '#000000', 'transparent'], 'stroke')}
+            ${renderColors(['var(--foreground)', '#ff6b6b', '#51cf66', '#339af0', '#fcc419', '#845ef7', '#000000', 'transparent'], 'stroke')}
          </div>
       </div>
       
@@ -952,7 +1871,7 @@ function updateNodeStyle(id, prop, value) {
       node.style.opacity = parseFloat(value);
     }
 
-    saveGripData();
+    saveGripDataInstant(); // INSTANT SAVE for style changes
     renderCanvas();
   }
 }
@@ -999,12 +1918,21 @@ function deleteSelectedNodes() {
   GripState.selectedNodeIds.clear();
   pushToHistory();
   renderCanvas();
+
+  // INSTANT SAVE for node deletion
+  saveGripDataInstant();
 }
 
 function deleteNode(id) {
   GripState.nodes = GripState.nodes.filter(n => n.id !== id);
   GripState.edges = GripState.edges.filter(e => e.from !== id && e.to !== id);
   renderCanvas();
+
+  // Broadcast node deletion to other users
+  broadcastNodeOperation('delete', id);
+
+  // INSTANT SAVE for single node deletion
+  saveGripDataInstant();
 }
 
 function setTool(tool) {
@@ -1018,12 +1946,14 @@ function zoomIn() {
   GripState.scale = Math.min(GripState.scale * 1.2, GripState.MAX_SCALE);
   updateZoomDisplay();
   renderCanvasTransform();
+  saveGripData(); // Save zoom changes
 }
 
 function zoomOut() {
   GripState.scale = Math.max(GripState.scale / 1.2, GripState.MIN_SCALE);
   updateZoomDisplay();
   renderCanvasTransform();
+  saveGripData(); // Save zoom changes
 }
 
 function updateZoomDisplay() {
@@ -1101,8 +2031,16 @@ function renderCanvas() {
   });
   html += `</svg>`;
 
-  // Render Nodes
-  GripState.nodes.forEach(node => {
+  // Render Nodes (Drawings first so they are behind, then other nodes)
+  const drawNodes = GripState.nodes.filter(n => n.type === 'draw');
+  const otherNodes = GripState.nodes.filter(n => n.type !== 'draw');
+
+  drawNodes.forEach(node => {
+    const isSelected = GripState.selectedNodeIds.has(node.id);
+    html += renderNodeHTML(node, isSelected);
+  });
+
+  otherNodes.forEach(node => {
     const isSelected = GripState.selectedNodeIds.has(node.id);
     html += renderNodeHTML(node, isSelected);
   });
@@ -1164,20 +2102,62 @@ function getSmartPath(x1, y1, x2, y2, startDir, endDir) {
   return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
 }
 
+// Calculate the actual bounding box for a node (especially important for free drawing)
+function getNodeBoundingBox(node) {
+  if (node.type === 'draw' && node.points && node.points.length > 0) {
+    // For free drawing, calculate bounds from all points
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    node.points.forEach(point => {
+      const absX = node.x + point.x;
+      const absY = node.y + point.y;
+      minX = Math.min(minX, absX);
+      minY = Math.min(minY, absY);
+      maxX = Math.max(maxX, absX);
+      maxY = Math.max(maxY, absY);
+    });
+
+    // Add some padding for stroke width
+    const padding = (node.style?.strokeWidth || 3) / 2;
+    return {
+      x: minX - padding,
+      y: minY - padding,
+      width: maxX - minX + padding * 2,
+      height: maxY - minY + padding * 2
+    };
+  } else {
+    // For regular nodes, use the stored dimensions
+    return {
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height
+    };
+  }
+}
+
 function renderNodeHTML(node, isSelected) {
   const style = node.style || {};
   const opacity = style.opacity !== undefined ? style.opacity : 1;
 
   if (node.type === 'draw') {
-    const stroke = style.stroke || '#fff';
+    const stroke = style.stroke || 'var(--foreground)';
     const width = style.strokeWidth || 3;
     // Use smoothed path
     const pathD = getSvgPathFromStroke(node.points);
 
+    // Fix for visibility during drawing: if width/height are 0, use overflow visible and don't constrain
+    const w = node.width || 1;
+    const h = node.height || 1;
+    const isDrawing = !node.width && !node.height;
+
     return `
        <div class="grip-node grip-node-draw ${isSelected ? 'selected' : ''}"
-          style="transform: translate(${node.x}px, ${node.y}px); pointer-events: none; opacity: ${opacity};" data-id="${node.id}">
-          <svg style="overflow:visible;"><path d="${pathD}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          style="transform: translate(${node.x}px, ${node.y}px); width: ${w}px; height: ${h}px; pointer-events: none; opacity: ${opacity}; overflow: visible;" data-id="${node.id}">
+          <svg style="overflow:visible; width:100%; height:100%;"><path d="${pathD}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/></svg>
        </div>
      `;
   }
@@ -1233,7 +2213,6 @@ function renderNodeHTML(node, isSelected) {
 
 function getNodeClass(type) {
   if (type === 'pill') return 'shape-pill';
-  if (type === 'flow-card') return 'shape-flow-card';
   if (type === 'header') return 'shape-header';
   if (type === 'card') return 'card-default';
   if (type === 'shape:rectangle') return 'shape-rect';
@@ -1322,7 +2301,9 @@ function updateNodeText(id, text) {
   const node = GripState.nodes.find(n => n.id === id);
   if (node) {
     node.text = text;
-    saveGripData(); // Save on blur
+    saveGripDataInstant(); // INSTANT SAVE for text changes
+    // Broadcast node update to other users
+    broadcastNodeOperation('update', id, { text });
   }
 }
 
@@ -1394,9 +2375,15 @@ function commitSelectionBox() {
   const y2 = Math.max(p1.y, p2.y);
 
   GripState.nodes.forEach(node => {
-    // Check intersection (simple containment for now)
-    const center = { x: node.x + node.width / 2, y: node.y + node.height / 2 };
-    if (center.x >= x1 && center.x <= x2 && center.y >= y1 && center.y <= y2) {
+    // Get the actual bounding box for the node
+    const bounds = getNodeBoundingBox(node);
+
+    // Check if the selection rectangle intersects with the node's bounding box
+    // A node is selected if any part of its bounding box is within the selection
+    const intersects = !(bounds.x > x2 || bounds.x + bounds.width < x1 ||
+      bounds.y > y2 || bounds.y + bounds.height < y1);
+
+    if (intersects) {
       GripState.selectedNodeIds.add(node.id);
     }
   });
@@ -1406,4 +2393,573 @@ function commitSelectionBox() {
 
 /* Export Helpers */
 window.openGripDiagram = openGripDiagram;
-window.closeGripDiagram = closeGripDiagram;
+
+// ============================================
+// Enhanced Realtime Collaboration Functions
+// ============================================
+
+let gripRealtimeSubscription = null;
+let isApplyingRemoteChange = false;
+
+function subscribeToGripDiagramChanges(projectIndex) {
+  const projects = loadProjects();
+  const project = projects[projectIndex];
+
+  if (!project || !window.LayerDB?.getCurrentUser?.()) {
+    console.log('Cannot subscribe to whiteboard changes: project or user not available');
+    return;
+  }
+
+  // Unsubscribe from existing subscription
+  unsubscribeFromGripDiagramChanges();
+
+  const projectId = project.id;
+  GripState.currentProjectId = projectId;
+  console.log('🔄 Subscribing to whiteboard collaboration for project:', projectId);
+
+  // Use the enhanced realtime system
+  if (window.LayerRealtime) {
+    GripState.realtimeSubscription = window.LayerRealtime.subscribeToWhiteboard(projectId, {
+      onWhiteboardUpdate: (data) => {
+        console.log('📡 Received whiteboard update:', data);
+        handleRemoteGripDiagramChange(data.gripDiagram);
+      },
+      onUserPresenceChange: (data) => {
+        console.log('👥 User presence change:', data);
+        handleUserPresenceChange(data);
+      },
+      onCursorUpdate: (data) => {
+        handleRemoteCursorUpdate(data);
+      },
+      onNodeUpdate: (data) => {
+        handleRemoteNodeUpdate(data);
+      },
+      onEdgeUpdate: (data) => {
+        handleRemoteEdgeUpdate(data);
+      }
+    });
+  } else {
+    // Fallback to basic subscription
+    console.warn('LayerRealtime not available, using basic subscription');
+    gripRealtimeSubscription = window.supabaseClient
+      .channel(`grip_diagram_${projectId}`)
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${projectId}`
+        },
+        (payload) => {
+          if (isApplyingRemoteChange) {
+            console.log('Ignoring self-triggered change');
+            return;
+          }
+          console.log('📡 Received whiteboard update from other user:', payload);
+          handleRemoteGripDiagramChange(payload.new.grip_diagram);
+        }
+      )
+      .subscribe((status) => {
+        console.log('Whiteboard subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscribed to whiteboard realtime updates');
+        }
+      });
+  }
+}
+
+function unsubscribeFromGripDiagramChanges() {
+  if (gripRealtimeSubscription) {
+    console.log('Unsubscribing from whiteboard changes');
+    window.supabaseClient.removeChannel(gripRealtimeSubscription);
+    gripRealtimeSubscription = null;
+  }
+}
+
+function handleRemoteGripDiagramChange(updatedProject) {
+  if (!updatedProject?.grip_diagram) {
+    console.log('No grip diagram data in update');
+    return;
+  }
+
+  const remoteData = updatedProject.grip_diagram;
+  const currentData = {
+    nodes: GripState.nodes,
+    edges: GripState.edges,
+    offsetX: GripState.offsetX,
+    offsetY: GripState.offsetY,
+    scale: GripState.scale
+  };
+
+  // Check if remote data is different from current data
+  if (JSON.stringify(remoteData) === JSON.stringify(currentData)) {
+    console.log('Remote data is identical to current data, ignoring');
+    return;
+  }
+
+  console.log('🔄 Applying remote whiteboard changes...');
+
+  // Show remote update notification
+  showRemoteUpdateNotification();
+
+  // Prevent feedback loop
+  isApplyingRemoteChange = true;
+
+  try {
+    // Apply the remote changes
+    GripState.nodes = remoteData.nodes || [];
+    GripState.edges = remoteData.edges || [];
+    GripState.offsetX = remoteData.offsetX || 0;
+    GripState.offsetY = remoteData.offsetY || 0;
+    GripState.scale = remoteData.scale || 1;
+
+    // Update the local storage
+    saveGripData();
+
+    // Re-render the canvas
+    renderCanvas();
+
+    console.log('✅ Remote whiteboard changes applied successfully');
+  } catch (error) {
+    console.error('❌ Failed to apply remote whiteboard changes:', error);
+  } finally {
+    isApplyingRemoteChange = false;
+  }
+}
+
+// Clean up subscription when closing the diagram
+function closeGripDiagramWithCleanup() {
+  unsubscribeFromGripDiagramChanges();
+
+  // Hide calculator if open
+  if (window.layerCalculator) {
+    const calc = document.getElementById('layerCalculator');
+    if (calc) calc.classList.remove('visible');
+  }
+
+  // Original closeGripDiagram logic
+  saveGripData();
+  const overlay = document.getElementById('gripDiagramOverlay');
+  if (overlay) overlay.remove();
+}
+
+// Override the closeGripDiagram function
+window.closeGripDiagram = closeGripDiagramWithCleanup;
+
+// ============================================
+// Realtime Collaboration Handlers
+// ============================================
+
+function handleUserPresenceChange(data) {
+  const { presence, eventType } = data;
+  const currentUser = window.LayerDB?.getCurrentUser();
+
+  if (!currentUser || presence.user_id === currentUser.id) {
+    return; // Ignore own presence changes
+  }
+
+  if (eventType === 'INSERT' || eventType === 'UPDATE') {
+    // Add or update active user
+    GripState.activeUsers.set(presence.user_id, {
+      name: presence.profiles?.name || presence.profiles?.email?.split('@')[0] || 'User',
+      avatar: presence.profiles?.avatar_url,
+      lastSeen: new Date(presence.last_seen)
+    });
+  } else if (eventType === 'DELETE') {
+    // Remove active user
+    GripState.activeUsers.delete(presence.user_id);
+  }
+
+  // Update active users display
+  renderActiveUsers();
+}
+
+function handleRemoteCursorUpdate(data) {
+  const currentUser = window.LayerDB?.getCurrentUser();
+
+  if (!currentUser || data.userId === currentUser.id) {
+    return; // Ignore own cursor updates
+  }
+
+  // Update cursor position for this user
+  const userData = GripState.activeUsers.get(data.userId) || {};
+  userData.cursor = data.cursor;
+  userData.selection = data.selection;
+  userData.lastSeen = data.timestamp;
+
+  GripState.activeUsers.set(data.userId, userData);
+
+  // Render remote cursors
+  renderRemoteCursors();
+}
+
+function handleRemoteNodeUpdate(data) {
+  const currentUser = window.LayerDB?.getCurrentUser();
+
+  if (!currentUser || data.userId === currentUser.id) {
+    return; // Ignore own updates
+  }
+
+  console.log('🔄 Remote node update:', data.operation, data.nodeId);
+
+  isApplyingRemoteChange = true;
+
+  try {
+    switch (data.operation) {
+      case 'add':
+        // Add new node
+        if (data.nodeData) {
+          GripState.nodes.push(data.nodeData);
+        }
+        break;
+
+      case 'update':
+        // Update existing node
+        const nodeIndex = GripState.nodes.findIndex(n => n.id === data.nodeId);
+        if (nodeIndex !== -1 && data.nodeData) {
+          GripState.nodes[nodeIndex] = { ...GripState.nodes[nodeIndex], ...data.nodeData };
+        }
+        break;
+
+      case 'delete':
+        // Delete node
+        GripState.nodes = GripState.nodes.filter(n => n.id !== data.nodeId);
+        break;
+
+      case 'move':
+        // Move node
+        const moveNode = GripState.nodes.find(n => n.id === data.nodeId);
+        if (moveNode && data.nodeData) {
+          moveNode.x = data.nodeData.x;
+          moveNode.y = data.nodeData.y;
+        }
+        break;
+    }
+
+    // Update local storage and render
+    saveGripData();
+    renderCanvas();
+
+    // Show notification for non-move operations
+    if (data.operation !== 'move') {
+      showRemoteActionNotification(`${data.userName} ${data.operation}ed a node`);
+    }
+  } catch (error) {
+    console.error('Error handling remote node update:', error);
+  } finally {
+    isApplyingRemoteChange = false;
+  }
+}
+
+function handleRemoteEdgeUpdate(data) {
+  const currentUser = window.LayerDB?.getCurrentUser();
+
+  if (!currentUser || data.userId === currentUser.id) {
+    return; // Ignore own updates
+  }
+
+  console.log('🔄 Remote edge update:', data.operation, data.edgeId);
+
+  isApplyingRemoteChange = true;
+
+  try {
+    switch (data.operation) {
+      case 'add':
+        // Add new edge
+        if (data.edgeData) {
+          GripState.edges.push(data.edgeData);
+        }
+        break;
+
+      case 'update':
+        // Update existing edge
+        const edgeIndex = GripState.edges.findIndex(e => e.id === data.edgeId);
+        if (edgeIndex !== -1 && data.edgeData) {
+          GripState.edges[edgeIndex] = { ...GripState.edges[edgeIndex], ...data.edgeData };
+        }
+        break;
+
+      case 'delete':
+        // Delete edge
+        GripState.edges = GripState.edges.filter(e => e.id !== data.edgeId);
+        break;
+    }
+
+    // Update local storage and render
+    saveGripData();
+    renderCanvas();
+
+    // Show notification
+    showRemoteActionNotification(`${data.userName} ${data.operation}ed a connection`);
+  } catch (error) {
+    console.error('Error handling remote edge update:', error);
+  } finally {
+    isApplyingRemoteChange = false;
+  }
+}
+
+// ============================================
+// Realtime Broadcasting Functions
+// ============================================
+
+function broadcastCursorPosition(mouseX, mouseY) {
+  if (!GripState.currentProjectId || !window.LayerRealtime) return;
+
+  const now = Date.now();
+  if (now - GripState.lastCursorBroadcast < GripState.cursorThrottleDelay) {
+    return; // Throttle cursor updates
+  }
+
+  GripState.lastCursorBroadcast = now;
+
+  const worldPos = screenToWorld(mouseX, mouseY);
+  const selection = Array.from(GripState.selectedNodeIds);
+
+  window.LayerRealtime.broadcastCursorUpdate(
+    GripState.currentProjectId,
+    worldPos,
+    selection.length > 0 ? selection : null
+  );
+}
+
+function broadcastNodeOperation(operation, nodeId, nodeData = null) {
+  if (!GripState.currentProjectId || !window.LayerRealtime) return;
+
+  window.LayerRealtime.broadcastNodeUpdate(
+    GripState.currentProjectId,
+    operation,
+    nodeId,
+    nodeData
+  );
+}
+
+function broadcastEdgeOperation(operation, edgeId, edgeData = null) {
+  if (!GripState.currentProjectId || !window.LayerRealtime) return;
+
+  window.LayerRealtime.broadcastEdgeUpdate(
+    GripState.currentProjectId,
+    operation,
+    edgeId,
+    edgeData
+  );
+}
+
+// ============================================
+// UI Rendering for Collaboration (Premium)
+// ============================================
+
+const COLLAB_COLORS = ['#FFD700', '#00E0FF', '#FF2E9A', '#A3FF00', '#C14CFF', '#FF6B00', '#00F5D4'];
+const MAX_VISIBLE_CURSORS = 12;
+const LABEL_HIDE_DELAY = 4000;
+const cursorLastMoveTime = new Map();
+const knownUserIds = new Set();
+
+function getUserColor(userId) {
+  if (!userId) return COLLAB_COLORS[1];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return COLLAB_COLORS[Math.abs(hash) % COLLAB_COLORS.length];
+}
+
+function triggerClickRipple(x, y, color) {
+  const el = document.createElement('div');
+  el.className = 'grip-click-ripple';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.setProperty('--ripple-color', color);
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function spawnConfetti(targetEl, color) {
+  const rect = targetEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('div');
+    p.className = 'grip-confetti-particle';
+    const angle = (Math.PI * 2 * i) / 6;
+    const dist = 15 + Math.random() * 10;
+    p.style.setProperty('--cx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--cy', Math.sin(angle) * dist + 'px');
+    p.style.background = COLLAB_COLORS[(i + 1) % COLLAB_COLORS.length];
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+    p.style.position = 'fixed';
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+function renderActiveUsers() {
+  const container = document.getElementById('gripActiveUsers');
+  if (!container) return;
+
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const activeUsersArray = Array.from(GripState.activeUsers.values())
+    .filter(user => user.name && (Date.now() - user.lastSeen < 30000));
+
+  if (activeUsersArray.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const MAX_SHOW = 5;
+  const visible = activeUsersArray.slice(0, MAX_SHOW);
+  const overflow = activeUsersArray.length - MAX_SHOW;
+
+  container.innerHTML = `
+    <div class="grip-active-users">
+      <div class="grip-active-users-list">
+        ${visible.map(user => {
+    const isOwn = currentUser && user.id === currentUser.id;
+    const color = getUserColor(user.id);
+    const isNew = !knownUserIds.has(user.id);
+    const status = user.cursor ? 'Drawing' : 'Idle';
+    return `
+            <div class="grip-active-user ${isOwn ? 'is-own' : ''} ${isNew ? 'pop-in' : ''}"
+                 style="--user-color: ${color};" data-user-id="${user.id}">
+              ${user.avatar
+        ? `<img src="${user.avatar}" class="grip-active-user-avatar" alt="${user.name}" />`
+        : `<div class="grip-active-user-avatar-fallback" style="--user-color: ${color};">${user.name.charAt(0).toUpperCase()}</div>`
+      }
+              <div class="grip-active-user-status status-good"></div>
+              ${isOwn ? '<div class="grip-active-user-you-badge">You</div>' : ''}
+              <div class="grip-active-user-tooltip">
+                <div class="grip-active-user-tooltip-name">${user.name}</div>
+                <div class="grip-active-user-tooltip-email">${user.email || ''}</div>
+                <div class="grip-active-user-tooltip-status" style="--user-color: ${color};">${status}</div>
+              </div>
+            </div>
+          `;
+  }).join('')}
+        ${overflow > 0 ? `<div class="grip-active-users-more">+${overflow}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  // Track new users for confetti
+  activeUsersArray.forEach(user => {
+    if (!knownUserIds.has(user.id)) {
+      knownUserIds.add(user.id);
+      const el = container.querySelector(`[data-user-id="${user.id}"]`);
+      if (el) setTimeout(() => spawnConfetti(el, getUserColor(user.id)), 200);
+    }
+  });
+}
+
+function renderRemoteCursors() {
+  const container = document.getElementById('gripRemoteCursors');
+  if (!container) return;
+
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const now = Date.now();
+  const cursors = Array.from(GripState.activeUsers.entries())
+    .filter(([userId, user]) => user.cursor && userId !== currentUser?.id)
+    .slice(0, MAX_VISIBLE_CURSORS)
+    .map(([userId, user]) => {
+      const screenPos = worldToScreen(user.cursor.x, user.cursor.y);
+      const lastMove = cursorLastMoveTime.get(userId) || now;
+      return {
+        userId, name: user.name, avatar: user.avatar,
+        x: screenPos.x, y: screenPos.y, selection: user.selection,
+        color: getUserColor(userId),
+        labelHidden: (now - lastMove) > LABEL_HIDE_DELAY
+      };
+    });
+
+  // Update last move times
+  cursors.forEach(c => {
+    const prev = container.querySelector(`[data-cursor-id="${c.userId}"]`);
+    if (prev) {
+      const prevX = parseFloat(prev.style.left);
+      const prevY = parseFloat(prev.style.top);
+      if (Math.abs(prevX - c.x) > 1 || Math.abs(prevY - c.y) > 1) {
+        cursorLastMoveTime.set(c.userId, now);
+        c.labelHidden = false;
+      }
+    } else {
+      cursorLastMoveTime.set(c.userId, now);
+      c.labelHidden = false;
+    }
+  });
+
+  if (cursors.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = cursors.map(cursor => `
+    <div class="grip-remote-cursor" data-cursor-id="${cursor.userId}"
+         style="left: ${cursor.x}px; top: ${cursor.y}px; --cursor-color: ${cursor.color};">
+      <div class="grip-cursor-trail"></div>
+      <div class="grip-cursor-pointer"></div>
+      <div class="grip-cursor-label ${cursor.labelHidden ? 'label-hidden' : 'label-visible'}">
+        ${cursor.avatar
+      ? `<img src="${cursor.avatar}" class="grip-cursor-avatar" alt="${cursor.name}" />`
+      : `<div class="grip-cursor-avatar-fallback" style="--cursor-color: ${cursor.color};">${(cursor.name || 'G').charAt(0).toUpperCase()}</div>`
+    }
+        <span>${cursor.name || 'Guest'}</span>
+        <span class="grip-cursor-status-dot" style="--cursor-color: ${cursor.color};"></span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showRemoteActionNotification(message, userId) {
+  const color = getUserColor(userId);
+  const user = userId ? GripState.activeUsers.get(userId) : null;
+  const name = user?.name || 'Someone';
+  const initial = name.charAt(0).toUpperCase();
+
+  const notification = document.createElement('div');
+  notification.className = 'grip-remote-notification';
+  notification.style.setProperty('--toast-color', color);
+  notification.innerHTML = `
+    <div class="grip-remote-notification-content">
+      ${user?.avatar
+      ? `<img src="${user.avatar}" class="toast-avatar" alt="${name}" />`
+      : `<div class="toast-avatar-fallback" style="--toast-color: ${color};">${initial}</div>`
+    }
+      <span class="toast-text">${message}</span>
+    </div>
+    <div class="toast-progress"></div>
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease forwards';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+function showRemoteUpdateNotification() {
+  if (remoteUpdateNotificationTimeout) {
+    clearTimeout(remoteUpdateNotificationTimeout);
+  }
+
+  const notification = document.createElement('div');
+  notification.className = 'grip-remote-update';
+  notification.innerHTML = `
+    <div class="grip-remote-update-content">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+      <span>Whiteboard updated by teammate</span>
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  remoteUpdateNotificationTimeout = setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease forwards';
+    setTimeout(() => notification.remove(), 300);
+  }, 4000);
+}
+
+// Override existing closeGripDiagram function
+window.closeGripDiagram = closeGripDiagramWithCleanup;
