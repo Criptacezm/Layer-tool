@@ -2150,25 +2150,24 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   const activeTab = document.querySelector('.pd-tab.active');
   const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
 
-  if (confirm('Delete this task?')) {
-    const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
-    const projects = loadProjects();
-    if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
-      projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
-      saveProjects(projects);
-    }
-    renderCurrentView();
-    if (scrollPos && restoreKanbanScrollPosition) {
-      restoreKanbanScrollPosition(scrollPos);
-    }
+  // Direct deletion without confirmation
+  const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
+  const projects = loadProjects();
+  if (projects[projectIndex]?.columns[columnIndex]?.tasks[taskIndex]) {
+    projects[projectIndex].columns[columnIndex].tasks.splice(taskIndex, 1);
+    saveProjects(projects);
+  }
+  renderCurrentView();
+  if (scrollPos && restoreKanbanScrollPosition) {
+    restoreKanbanScrollPosition(scrollPos);
+  }
 
-    // Restore the active tab if we're in project detail view and timeline was active
-    if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
-      requestAnimationFrame(() => {
+  // Restore the active tab if we're in project detail view and timeline was active
+  if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
+    requestAnimationFrame(() => {
         switchProjectTab('timeline', projectIndex);
       });
     }
-  }
 }
 
 function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {

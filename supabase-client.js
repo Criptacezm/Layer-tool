@@ -13,6 +13,114 @@ let currentUser = null;
 let currentSession = null;
 
 // ============================================
+// UI State Preservation
+// ============================================
+
+let uiState = {
+  currentView: null,
+  projectIndex: null,
+  activeTab: null,
+  scrollPosition: null,
+  isPreserving: false
+};
+
+// Save current UI state
+function saveUIState() {
+  try {
+    // Get current view information
+    const activeTab = document.querySelector('.pd-tab.active');
+    const projectDetail = document.querySelector('.project-detail');
+    
+    uiState.currentView = projectDetail ? 'project-detail' : 'main';
+    uiState.activeTab = activeTab ? activeTab.dataset.tab : 'overview';
+    
+    // Get project index if in project detail
+    if (projectDetail) {
+      const projectCards = document.querySelectorAll('.project-card');
+      projectCards.forEach((card, index) => {
+        if (card.classList.contains('active')) {
+          uiState.projectIndex = index;
+        }
+      });
+    }
+    
+    // Save scroll positions
+    const mainContent = document.querySelector('.main-content');
+    const pdContent = document.querySelector('.pd-content-scroll');
+    const ganttWrapper = document.getElementById('tlGanttWrapper');
+    
+    uiState.scrollPosition = {
+      main: mainContent ? mainContent.scrollTop : 0,
+      projectDetail: pdContent ? pdContent.scrollTop : 0,
+      gantt: ganttWrapper ? { left: ganttWrapper.scrollLeft, top: ganttWrapper.scrollTop } : null
+    };
+    
+    console.log('UI State saved:', uiState);
+  } catch (error) {
+    console.warn('Failed to save UI state:', error);
+  }
+}
+
+// Restore UI state
+function restoreUIState() {
+  if (uiState.isPreserving || !uiState.currentView) return;
+  
+  uiState.isPreserving = true;
+  
+  try {
+    console.log('Restoring UI state:', uiState);
+    
+    // Wait for DOM to be ready
+    requestAnimationFrame(() => {
+      // Restore project detail view if needed
+      if (uiState.currentView === 'project-detail' && uiState.projectIndex !== null) {
+        const projectCards = document.querySelectorAll('.project-card');
+        if (projectCards[uiState.projectIndex]) {
+          // Trigger project detail view
+          if (typeof openProjectDetail === 'function') {
+            openProjectDetail(uiState.projectIndex);
+          }
+        }
+      }
+      
+      // Restore active tab after a delay to ensure DOM is ready
+      setTimeout(() => {
+        if (uiState.activeTab && typeof switchProjectTab === 'function') {
+          switchProjectTab(uiState.activeTab, uiState.projectIndex);
+        }
+        
+        // Restore scroll positions after another delay
+        setTimeout(() => {
+          if (uiState.scrollPosition) {
+            const mainContent = document.querySelector('.main-content');
+            const pdContent = document.querySelector('.pd-content-scroll');
+            const ganttWrapper = document.getElementById('tlGanttWrapper');
+            
+            if (mainContent && uiState.scrollPosition.main) {
+              mainContent.scrollTop = uiState.scrollPosition.main;
+            }
+            
+            if (pdContent && uiState.scrollPosition.projectDetail) {
+              pdContent.scrollTop = uiState.scrollPosition.projectDetail;
+            }
+            
+            if (ganttWrapper && uiState.scrollPosition.gantt) {
+              ganttWrapper.scrollLeft = uiState.scrollPosition.gantt.left;
+              ganttWrapper.scrollTop = uiState.scrollPosition.gantt.top;
+            }
+          }
+          
+          uiState.isPreserving = false;
+        }, 300);
+      }, 200);
+    });
+  } catch (error) {
+    console.warn('Failed to restore UI state:', error);
+    uiState.isPreserving = false;
+  }
+}
+
+// ============================================
 // Authentication Functions
 // ============================================
 
@@ -35,6 +143,12 @@ async function initAuth() {
   // Set up auth state listener AFTER checking initial session
   supabaseClient.auth.onAuthStateChange((event, session) => {
     console.log('Auth state changed:', event, session?.user?.email);
+    
+    // Save UI state before any potential re-render
+    if (event === 'TOKEN_REFRESHED' || (event === 'SIGNED_IN' && currentUser)) {
+      saveUIState();
+    }
+    
     currentSession = session;
     currentUser = session?.user ?? null;
 
@@ -42,6 +156,26 @@ async function initAuth() {
     window.dispatchEvent(new CustomEvent('authStateChanged', {
       detail: { user: currentUser, session: currentSession, event }
     }));
+    
+    // Restore UI state after auth change if it was just a token refresh
+    if (event === 'TOKEN_REFRESHED' || (event === 'SIGNED_IN' && uiState.currentView)) {
+      setTimeout(() => {
+        restoreUIState();
+      }, 100);
+    }
+  });
+
+  // Set up visibility change listener to preserve UI state
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      // Save state when tab is hidden
+      saveUIState();
+    } else if (document.visibilityState === 'visible') {
+      // Restore state when tab becomes visible (with delay to allow auth validation)
+      setTimeout(() => {
+        restoreUIState();
+      }, 200);
+    }
   });
 
   return { user: currentUser, session: currentSession };
@@ -1038,7 +1172,8 @@ async function getProfileById(userId) {
 
 async function loadBacklogTasksFromDB() {
   if (!currentUser) {
-    return loadBacklogTasks();
+    // Return empty array for unauthenticated users - UI should handle this
+    return [];
   }
 
   const { data, error } = await supabaseClient
@@ -1059,7 +1194,8 @@ async function loadBacklogTasksFromDB() {
 
 async function addBacklogTaskToDB(title) {
   if (!currentUser) {
-    return addBacklogTask(title);
+    // Return empty array for unauthenticated users - UI should handle this
+    return [];
   }
 
   const { data, error } = await supabaseClient
@@ -1077,10 +1213,8 @@ async function addBacklogTaskToDB(title) {
 
 async function toggleBacklogTaskInDB(taskId) {
   if (!currentUser) {
-    const tasks = loadBacklogTasks();
-    const index = tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) return toggleBacklogTask(index);
-    return tasks;
+    // Return empty array for unauthenticated users - UI should handle this
+    return [];
   }
 
   // Get current state
@@ -1102,10 +1236,8 @@ async function toggleBacklogTaskInDB(taskId) {
 
 async function updateBacklogTaskInDB(taskId, title) {
   if (!currentUser) {
-    const tasks = loadBacklogTasks();
-    const index = tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) return updateBacklogTask(index, title);
-    return tasks;
+    // Return empty array for unauthenticated users - UI should handle this
+    return [];
   }
 
   const { error } = await supabaseClient
@@ -1120,10 +1252,8 @@ async function updateBacklogTaskInDB(taskId, title) {
 
 async function deleteBacklogTaskFromDB(taskId) {
   if (!currentUser) {
-    const tasks = loadBacklogTasks();
-    const index = tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) return deleteBacklogTask(index);
-    return tasks;
+    // Return empty array for unauthenticated users - UI should handle this
+    return [];
   }
 
   const { error } = await supabaseClient
@@ -2064,6 +2194,11 @@ async function migrateLocalDataToSupabase() {
 
 // Export for use in other files
 window.LayerDB = {
+  // UI State Preservation
+  uiState,
+  saveUIState,
+  restoreUIState,
+
   // Auth
   initAuth,
   signUp,

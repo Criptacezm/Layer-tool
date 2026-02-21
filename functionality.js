@@ -6727,7 +6727,23 @@ function toggleProjectBacklogTaskStatus(projectIndex, columnIndex, taskIndex, is
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
     task.done = isDone;
+    
+    // Optimistic update to cache
     saveProjects(projects);
+    
+    // Sync to database
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+      window.LayerDB.updateProject(project.id, {
+        columns: project.columns
+      }).catch(error => {
+        console.error('Failed to sync task toggle to database:', error);
+        // Revert on error
+        task.done = !isDone;
+        saveProjects(projects);
+        renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+      });
+    }
+    
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
   }
 }
@@ -6782,15 +6798,31 @@ function saveProjectBacklogTaskEdit(event, projectIndex, columnIndex, taskIndex)
   
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
+    const originalTask = { ...task };
+    
     task.title = formData.get('title');
     task.description = formData.get('description');
     task.priority = formData.get('priority');
     task.dueDate = formData.get('dueDate');
     task.updatedAt = new Date().toISOString();
     
+    // Optimistic update to cache
     saveProjects(projects);
     closeModal();
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+    
+    // Sync to database
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+      window.LayerDB.updateProject(project.id, {
+        columns: project.columns
+      }).catch(error => {
+        console.error('Failed to sync task edit to database:', error);
+        // Revert on error
+        Object.assign(task, originalTask);
+        saveProjects(projects);
+        renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+      });
+    }
   }
 }
 
@@ -6833,6 +6865,9 @@ function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskInd
   const project = projects[projectIndex];
   if (!project) return;
   
+  // Store original state for potential revert
+  const originalColumns = JSON.parse(JSON.stringify(project.columns));
+  
   // Remove task from current column
   const task = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
   
@@ -6841,9 +6876,23 @@ function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskInd
     project.columns[targetColumnIndex].tasks.push(task);
   }
   
+  // Optimistic update to cache
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  
+  // Sync to database
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    window.LayerDB.updateProject(project.id, {
+      columns: project.columns
+    }).catch(error => {
+      console.error('Failed to sync task move to database:', error);
+      // Revert on error
+      project.columns = originalColumns;
+      saveProjects(projects);
+      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+    });
+  }
 }
 
 function deleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
@@ -6866,10 +6915,24 @@ function confirmDeleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
   
-  project.columns[columnIndex].tasks.splice(taskIndex, 1);
+  // Optimistic update
+  const deletedTask = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  
+  // Sync to database
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    window.LayerDB.updateProject(project.id, {
+      columns: project.columns
+    }).catch(error => {
+      console.error('Failed to sync task deletion to database:', error);
+      // Revert on error
+      project.columns[columnIndex].tasks.splice(taskIndex, 0, deletedTask);
+      saveProjects(projects);
+      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+    });
+  }
 }
 
 function openAddProjectBacklogTaskModal(projectIndex) {
@@ -6918,6 +6981,7 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
   );
   
+  let columnWasCreated = false;
   if (!backlogColumn) {
     // Create a new backlog column
     backlogColumn = {
@@ -6926,6 +6990,7 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
       color: '#6b7280'
     };
     project.columns.push(backlogColumn);
+    columnWasCreated = true;
   }
   
   const newTask = {
@@ -6939,10 +7004,28 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     updatedAt: new Date().toISOString()
   };
   
+  // Optimistic update to cache
   backlogColumn.tasks.push(newTask);
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+  
+  // Sync to database
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    window.LayerDB.updateProject(project.id, {
+      columns: project.columns
+    }).catch(error => {
+      console.error('Failed to sync task addition to database:', error);
+      // Revert on error
+      if (columnWasCreated) {
+        project.columns.pop();
+      } else {
+        backlogColumn.tasks.pop();
+      }
+      saveProjects(projects);
+      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
+    });
+  }
 }
 
 function filterProjectBacklogTasks(projectIndex, value, type) {

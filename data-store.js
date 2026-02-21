@@ -482,6 +482,41 @@ function saveBacklogTasks(tasks) {
   }
 }
 
+// Refresh backlog tasks from DB and update localStorage cache
+async function refreshBacklogTasks() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return loadBacklogTasks();
+  }
+
+  try {
+    const tasks = await window.LayerDB.loadBacklogTasks();
+    saveBacklogTasks(tasks);
+    return tasks;
+  } catch (error) {
+    console.error('Failed to refresh backlog tasks from DB:', error);
+    return loadBacklogTasks();
+  }
+}
+
+// Make refreshBacklogTasks globally available
+window.refreshBacklogTasks = refreshBacklogTasks;
+
+// Listen for authentication state changes to refresh backlog tasks
+window.addEventListener('authStateChanged', async (event) => {
+  const { user, event: authEvent } = event.detail;
+  
+  // Only refresh backlog on initial sign in, not on token refresh
+  if (authEvent === 'SIGNED_IN' && user && !window.LayerDB.uiState?.currentView) {
+    console.log('User signed in, refreshing backlog tasks from database...');
+    try {
+      await refreshBacklogTasks();
+      console.log('Backlog tasks refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh backlog tasks after sign in:', error);
+    }
+  }
+});
+
 async function addBacklogTask(title) {
   // Require authentication - no localStorage fallback
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
@@ -491,6 +526,12 @@ async function addBacklogTask(title) {
 
   try {
     const tasks = await window.LayerDB.addBacklogTask(title);
+    // If DB returns empty array (unauthenticated), fall back to localStorage
+    if (tasks.length === 0 && window.LayerDB.isAuthenticated()) {
+      // User is authenticated but no tasks returned, this might be an error
+      console.warn('DB returned empty tasks for authenticated user');
+      return loadBacklogTasks();
+    }
     saveBacklogTasks(tasks);
     return tasks;
   } catch (error) {
@@ -516,15 +557,23 @@ async function toggleBacklogTask(index) {
       saveBacklogTasks(tasks);
 
       // Sync to DB in background
-      window.LayerDB.toggleBacklogTask(tasks[index].id)
-        .catch(error => {
-          console.error('Failed to toggle backlog task in database:', error);
-          showToast('Failed to sync task update', 'error');
-        });
+      const updatedTasks = await window.LayerDB.toggleBacklogTask(tasks[index].id);
+      // If DB returns empty array (unauthenticated), keep the optimistic update
+      if (updatedTasks.length === 0 && window.LayerDB.isAuthenticated()) {
+        console.warn('DB returned empty tasks for authenticated user during toggle');
+      } else if (updatedTasks.length > 0) {
+        // Update with DB response
+        saveBacklogTasks(updatedTasks);
+        return updatedTasks;
+      }
 
       return tasks;
     } catch (error) {
       console.error('Failed to toggle backlog task:', error);
+      showToast('Failed to sync task update', 'error');
+      // Revert optimistic update on error
+      tasks[index].done = !tasks[index].done;
+      saveBacklogTasks(tasks);
     }
   }
 
@@ -543,6 +592,14 @@ async function updateBacklogTask(index, title) {
   if (tasks[index]?.id) {
     try {
       const updatedTasks = await window.LayerDB.updateBacklogTask(tasks[index].id, title);
+      // If DB returns empty array (unauthenticated), keep optimistic update
+      if (updatedTasks.length === 0 && window.LayerDB.isAuthenticated()) {
+        console.warn('DB returned empty tasks for authenticated user during update');
+        // Optimistic update to localStorage
+        tasks[index].title = title;
+        saveBacklogTasks(tasks);
+        return tasks;
+      }
       saveBacklogTasks(updatedTasks);
       return updatedTasks;
     } catch (error) {
@@ -564,13 +621,26 @@ async function deleteBacklogTask(index) {
   const tasks = loadBacklogTasks();
 
   if (tasks[index]?.id) {
+    const deletedTask = tasks[index];
+    // Optimistic update
+    tasks.splice(index, 1);
+    saveBacklogTasks(tasks);
+
     try {
-      const updatedTasks = await window.LayerDB.deleteBacklogTask(tasks[index].id);
+      const updatedTasks = await window.LayerDB.deleteBacklogTask(deletedTask.id);
+      // If DB returns empty array (unauthenticated), keep optimistic update
+      if (updatedTasks.length === 0 && window.LayerDB.isAuthenticated()) {
+        console.warn('DB returned empty tasks for authenticated user during delete');
+        return tasks;
+      }
       saveBacklogTasks(updatedTasks);
       return updatedTasks;
     } catch (error) {
       console.error('Failed to delete backlog task from database:', error);
       showToast('Failed to delete task', 'error');
+      // Revert optimistic update on error
+      tasks.splice(index, 0, deletedTask);
+      saveBacklogTasks(tasks);
     }
   }
 
