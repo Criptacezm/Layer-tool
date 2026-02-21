@@ -21178,7 +21178,7 @@ function openDocEditor(docId = null) {
     let doc = null;
     if (docId) {
       const docs = loadDocs();
-      doc = docs.find(d => d.id === docId);
+      doc = docs.find(d => String(d.id) === String(docId));
     }
 
     // 🔄 UPDATE STATE: Mark editor as opening
@@ -21856,7 +21856,7 @@ async function autoSaveDoc() {
       try {
         // Check if this is a new document (temporary ID) or existing document
         const docs = await window.LayerDB.loadDocs();
-        const existingDoc = docs.find(d => d.id === currentDocId);
+        const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
 
         if (existingDoc) {
           // Document exists, update it
