@@ -1527,7 +1527,319 @@
   flex: 1;
   overflow-y: auto;
   display: flex;
+  min-height: 0;
+}
+
+.team-list-tab-placeholder {
+  width: 100%;
+  padding: 24px;
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.team-list-tab-placeholder-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.team-list-tab-placeholder-subtitle {
+  font-size: 13px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.team-dm-checklist {
+  width: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-dm-checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+}
+
+.team-dm-checklist-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.team-dm-checklist-subtitle {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+
+.team-dm-checklist-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.team-dm-checklist-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.team-dm-checklist-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 13px;
+  outline: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.team-dm-checklist-search input:focus {
+  border-color: hsla(239, 84%, 67%, 0.6);
+  box-shadow: 0 0 0 4px hsla(239, 84%, 67%, 0.16);
+}
+
+.team-dm-checklist-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.team-dm-checklist-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.team-dm-checklist-progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, hsla(239, 84%, 67%, 0.95), hsla(217, 91%, 60%, 0.9));
+}
+
+.team-dm-checklist-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--foreground);
+  min-width: 38px;
+  text-align: right;
+}
+
+.team-dm-checklist-body {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.team-dm-checklist-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-dm-checklist-item {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s;
+}
+
+.team-dm-checklist-item:last-child {
+  border-bottom: none;
+}
+
+.team-dm-checklist-item:hover {
+  background: var(--surface-hover);
+}
+
+.team-dm-checklist-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.team-dm-checklist-checkbox svg {
+  width: 14px;
+  height: 14px;
+}
+
+.team-dm-checklist-item.completed .team-dm-checklist-checkbox {
+  background: hsla(142, 71%, 45%, 0.15);
+  border-color: hsla(142, 71%, 45%, 0.4);
+  color: hsla(142, 71%, 45%, 1);
+}
+
+.team-dm-checklist-item-text {
+  font-size: 13px;
+  color: var(--foreground);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.team-dm-checklist-item.completed .team-dm-checklist-item-text {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+.team-dm-checklist-checked-by {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.team-dm-checklist-checked-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.team-dm-checklist-checked-avatar-fallback {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(239 84% 67%), hsl(217 91% 60%));
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.team-dm-checklist-delete {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.team-dm-checklist-delete svg {
+  width: 16px;
+  height: 16px;
+}
+
+.team-dm-checklist-delete:hover {
+  background: hsla(0, 84%, 60%, 0.12);
+  color: hsla(0, 84%, 60%, 0.95);
+}
+
+.team-dm-checklist-empty {
+  padding: 28px 18px;
+  text-align: center;
+}
+
+.team-dm-checklist-empty-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.team-dm-checklist-empty-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.team-dm-checklist-footer {
+  padding: 0 2px;
+}
+
+.team-dm-checklist-add {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 13px;
+  outline: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.team-dm-checklist-add:focus {
+  border-color: hsla(239, 84%, 67%, 0.6);
+  box-shadow: 0 0 0 4px hsla(239, 84%, 67%, 0.16);
+}
+
+.team-dm-checklist-skeleton {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-dm-checklist-skeleton-header,
+.team-dm-checklist-skeleton-row {
+  height: 14px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--surface-hover), var(--surface), var(--surface-hover));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
+.team-dm-checklist-skeleton-header {
+  height: 22px;
+  width: 48%;
+}
+
+.team-dm-checklist-skeleton-row {
+  height: 16px;
+  width: 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* Welcome Screen */

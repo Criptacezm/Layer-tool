@@ -1056,6 +1056,346 @@ function renderInlineCreateIssueForm() {
       </form>
     </div>
   `;
+
+  if (window.LayerDB?.getDmChecklist) {
+    (async () => {
+      try {
+        const record = await window.LayerDB.getDmChecklist(dmChecklistId);
+        if (record && Array.isArray(record.items)) {
+          const all = loadDmChecklists();
+          all[String(dmChecklistId)] = record.items;
+          try {
+            localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+          } catch (e) { }
+          const latestQuery = document.getElementById('teamDmChecklistSearch')?.value || query || '';
+          renderDmChecklistTab(dmChecklistId, latestQuery);
+        }
+      } catch (e) {
+        console.error('Failed to load DM checklist from DB:', e);
+      }
+    })();
+  }
+}
+
+window.renderDmChecklistTab = renderDmChecklistTab;
+window.addDmChecklistItem = addDmChecklistItem;
+window.toggleDmChecklistItem = toggleDmChecklistItem;
+window.deleteDmChecklistItem = deleteDmChecklistItem;
+
+const DM_CHECKLISTS_KEY = 'layerDmChecklists';
+let currentDmChecklistSubscription = null;
+let currentDmChecklistSubscriptionId = null;
+
+function ensureDmChecklistDbSync(dmChecklistId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+
+  // Subscribe once per checklist id
+  if (currentDmChecklistSubscriptionId !== dmChecklistId) {
+    if (currentDmChecklistSubscription && window.LayerDB?.unsubscribeFromDmChecklist) {
+      try {
+        window.LayerDB.unsubscribeFromDmChecklist(currentDmChecklistSubscription);
+      } catch (e) { }
+      currentDmChecklistSubscription = null;
+    }
+    currentDmChecklistSubscriptionId = dmChecklistId;
+
+    if (window.LayerDB?.subscribeToDmChecklist) {
+      currentDmChecklistSubscription = window.LayerDB.subscribeToDmChecklist(dmChecklistId, (payload) => {
+        const { new: newRecord } = payload || {};
+        if (newRecord && Array.isArray(newRecord.items)) {
+          try {
+            const all = loadDmChecklists();
+            all[String(dmChecklistId)] = newRecord.items;
+            localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+          } catch (e) { }
+          renderDmChecklistTab(dmChecklistId, document.getElementById('teamDmChecklistSearch')?.value || '');
+        }
+      });
+    }
+  }
+
+  // Load latest items from DB once (will update cache + re-render)
+  if (window.LayerDB?.getDmChecklist) {
+    window.LayerDB.getDmChecklist(dmChecklistId).then((record) => {
+      if (record && Array.isArray(record.items)) {
+        const all = loadDmChecklists();
+        all[String(dmChecklistId)] = record.items;
+        try {
+          localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+        } catch (e) { }
+        renderDmChecklistTab(dmChecklistId, document.getElementById('teamDmChecklistSearch')?.value || '');
+      }
+    }).catch((e) => {
+      console.error('Failed to load DM checklist from DB:', e);
+    });
+  }
+}
+
+function isDMChannelId(channelId) {
+  return !!channelId && channelId.toLowerCase().startsWith('dm-');
+}
+
+function getDmParticipantIdsFromChannelId(channelId) {
+  if (!isDMChannelId(channelId)) return [];
+  const channelWithoutPrefix = channelId.substring('dm-'.length);
+  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const uuidMatches = channelWithoutPrefix.match(uuidRegex);
+  return uuidMatches ? uuidMatches.map(id => id.toLowerCase()) : [];
+}
+
+function getDmChecklistId(channelId) {
+  const ids = getDmParticipantIdsFromChannelId(channelId);
+  if (ids.length < 1) return null;
+  const sorted = [...new Set(ids)].sort();
+  return `dm:${sorted.join(':')}`;
+}
+
+function getDmChecklistParticipantUUIDs(channelId) {
+  const ids = getDmParticipantIdsFromChannelId(channelId);
+  const uniqueSorted = [...new Set(ids)].sort();
+  return uniqueSorted;
+}
+
+function loadDmChecklists() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return {};
+  }
+  try {
+    return JSON.parse(localStorage.getItem(DM_CHECKLISTS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function getDmChecklistItems(dmChecklistId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  const all = loadDmChecklists();
+  return all[String(dmChecklistId)] || [];
+}
+
+async function saveDmChecklistItems(dmChecklistId, items) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save checklists', 'error');
+    return;
+  }
+  const all = loadDmChecklists();
+  all[String(dmChecklistId)] = items;
+  try {
+    localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error('Failed to save DM checklists:', e);
+    showToast('Failed to save checklist', 'error');
+  }
+
+  try {
+    if (window.LayerDB?.upsertDmChecklist) {
+      const participantUUIDs = getDmChecklistParticipantUUIDs(teamCurrentChannel);
+      if (participantUUIDs.length > 0) {
+        await window.LayerDB.upsertDmChecklist(dmChecklistId, participantUUIDs, items);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to sync DM checklist to database:', error);
+  }
+}
+
+async function addDmChecklistItem(dmChecklistId, text) {
+  if (!text || !text.trim()) return;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to add checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId);
+  items.push({
+    id: Date.now(),
+    text: text.trim(),
+    completed: false,
+    createdAt: new Date().toISOString()
+  });
+
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+async function toggleDmChecklistItem(dmChecklistId, itemId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId);
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  item.completed = !item.completed;
+
+  if (item.completed) {
+    const currentUser = window.LayerDB.getCurrentUser();
+    item.checked_by = {
+      id: currentUser?.id,
+      name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You',
+      avatar_url: currentUser?.user_metadata?.avatar_url,
+      checked_at: new Date().toISOString()
+    };
+  } else {
+    delete item.checked_by;
+  }
+
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+async function deleteDmChecklistItem(dmChecklistId, itemId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId).filter(i => i.id !== itemId);
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+function renderTeamListTabContent() {
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const isDM = channel?.type === 'dm' || isDMChannelId(teamCurrentChannel);
+
+  if (!isDM) {
+    return `
+      <div class="team-chat-content">
+        <div class="team-list-tab-placeholder">
+          <div class="team-list-tab-placeholder-title">Lists</div>
+          <div class="team-list-tab-placeholder-subtitle">Select a direct message to manage a shared checklist.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const dmChecklistId = getDmChecklistId(teamCurrentChannel);
+  if (!dmChecklistId) {
+    return `
+      <div class="team-chat-content">
+        <div class="team-list-tab-placeholder">
+          <div class="team-list-tab-placeholder-title">Checklist</div>
+          <div class="team-list-tab-placeholder-subtitle">Unable to determine DM participants for this conversation.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  setTimeout(() => {
+    renderDmChecklistTab(dmChecklistId);
+    ensureDmChecklistDbSync(dmChecklistId);
+  }, 0);
+
+  return `
+    <div class="team-chat-content">
+      <div class="team-dm-checklist" id="teamDmChecklistRoot" data-dm-checklist-id="${dmChecklistId}">
+        <div class="team-dm-checklist-skeleton">
+          <div class="team-dm-checklist-skeleton-header"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDmChecklistTab(dmChecklistId, query = '') {
+  const root = document.getElementById('teamDmChecklistRoot');
+  if (!root) return;
+
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const channelName = channel ? channel.name : 'Direct Message';
+  const items = getDmChecklistItems(dmChecklistId);
+
+  // Note: DB subscription + initial load are handled by ensureDmChecklistDbSync(dmChecklistId)
+
+  const normalizedQuery = (query || '').trim().toLowerCase();
+  const filteredItems = normalizedQuery
+    ? items.filter(i => (i.text || '').toLowerCase().includes(normalizedQuery))
+    : items;
+
+  const completedCount = items.filter(i => i.completed).length;
+  const totalCount = items.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const dmChecklistIdEscaped = String(dmChecklistId).replace(/'/g, "\\'");
+
+  root.innerHTML = `
+    <div class="team-dm-checklist-header">
+      <div class="team-dm-checklist-header-left">
+        <div class="team-dm-checklist-title">Checklist</div>
+        <div class="team-dm-checklist-subtitle">Shared with ${channelName}</div>
+      </div>
+      <div class="team-dm-checklist-header-right">
+        <div class="team-dm-checklist-chip">${completedCount}/${totalCount} done</div>
+      </div>
+    </div>
+
+    <div class="team-dm-checklist-toolbar">
+      <div class="team-dm-checklist-search">
+        <input type="text" id="teamDmChecklistSearch" placeholder="Search tasks..." value="${(query || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" oninput="renderDmChecklistTab('${dmChecklistIdEscaped}', this.value)" />
+      </div>
+      <div class="team-dm-checklist-progress" aria-label="Progress">
+        <div class="team-dm-checklist-progress-bar">
+          <div class="team-dm-checklist-progress-fill" style="width:${progressPercent}%;"></div>
+        </div>
+        <div class="team-dm-checklist-progress-text">${progressPercent}%</div>
+      </div>
+    </div>
+
+    <div class="team-dm-checklist-body">
+      ${filteredItems.length > 0 ? `
+        <div>
+          ${filteredItems.map(item => {
+    const itemId = item.id;
+    const completed = item.completed;
+    const checked_by = item.checked_by;
+    const checkedByAvatar = checked_by?.avatar_url;
+    const checkedByName = checked_by?.name || 'Someone';
+    const checkedByInitial = checkedByName.charAt(0).toUpperCase();
+
+    return `
+      <div class="team-dm-checklist-item ${completed ? 'completed' : ''}" data-item-id="${itemId}">
+        <div class="team-dm-checklist-checkbox" onclick="toggleDmChecklistItem('${dmChecklistIdEscaped}', ${itemId})">
+          ${completed ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>` : ''}
+        </div>
+        <div class="team-dm-checklist-item-text">${item.text}</div>
+        ${completed && checked_by ? `
+          <div class="team-dm-checklist-checked-by" title="Checked by ${checkedByName}">
+            ${checkedByAvatar
+              ? `<img src="${checkedByAvatar}" alt="${checkedByName}" class="team-dm-checklist-checked-avatar" />`
+              : `<div class="team-dm-checklist-checked-avatar-fallback">${checkedByInitial}</div>`
+            }
+          </div>
+        ` : ''}
+        <div class="team-dm-checklist-delete" onclick="deleteDmChecklistItem('${dmChecklistIdEscaped}', ${itemId})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('')}
+        </div>
+      ` : `
+        <div class="team-dm-checklist-empty">
+          <div class="team-dm-checklist-empty-title">No tasks</div>
+          <div class="team-dm-checklist-empty-subtitle">Add a task to start tracking work with ${channelName}.</div>
+        </div>
+      `}
+    </div>
+
+    <div class="team-dm-checklist-footer">
+      <input type="text" class="team-dm-checklist-add" placeholder="Add a task and press Enter" onkeypress="if(event.key==='Enter'){addDmChecklistItem('${dmChecklistIdEscaped}', this.value); this.value='';}" />
+    </div>
+  `;
 }
 
 function toggleCreateIssueForm() {
@@ -6727,23 +7067,7 @@ function toggleProjectBacklogTaskStatus(projectIndex, columnIndex, taskIndex, is
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
     task.done = isDone;
-    
-    // Optimistic update to cache
     saveProjects(projects);
-    
-    // Sync to database
-    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-      window.LayerDB.updateProject(project.id, {
-        columns: project.columns
-      }).catch(error => {
-        console.error('Failed to sync task toggle to database:', error);
-        // Revert on error
-        task.done = !isDone;
-        saveProjects(projects);
-        renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-      });
-    }
-    
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
   }
 }
@@ -6798,31 +7122,15 @@ function saveProjectBacklogTaskEdit(event, projectIndex, columnIndex, taskIndex)
   
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
-    const originalTask = { ...task };
-    
     task.title = formData.get('title');
     task.description = formData.get('description');
     task.priority = formData.get('priority');
     task.dueDate = formData.get('dueDate');
     task.updatedAt = new Date().toISOString();
     
-    // Optimistic update to cache
     saveProjects(projects);
     closeModal();
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-    
-    // Sync to database
-    if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-      window.LayerDB.updateProject(project.id, {
-        columns: project.columns
-      }).catch(error => {
-        console.error('Failed to sync task edit to database:', error);
-        // Revert on error
-        Object.assign(task, originalTask);
-        saveProjects(projects);
-        renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-      });
-    }
   }
 }
 
@@ -6865,9 +7173,6 @@ function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskInd
   const project = projects[projectIndex];
   if (!project) return;
   
-  // Store original state for potential revert
-  const originalColumns = JSON.parse(JSON.stringify(project.columns));
-  
   // Remove task from current column
   const task = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
   
@@ -6876,23 +7181,9 @@ function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskInd
     project.columns[targetColumnIndex].tasks.push(task);
   }
   
-  // Optimistic update to cache
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-  
-  // Sync to database
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-    window.LayerDB.updateProject(project.id, {
-      columns: project.columns
-    }).catch(error => {
-      console.error('Failed to sync task move to database:', error);
-      // Revert on error
-      project.columns = originalColumns;
-      saveProjects(projects);
-      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-    });
-  }
 }
 
 function deleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
@@ -6915,24 +7206,10 @@ function confirmDeleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
   
-  // Optimistic update
-  const deletedTask = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
+  project.columns[columnIndex].tasks.splice(taskIndex, 1);
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-  
-  // Sync to database
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-    window.LayerDB.updateProject(project.id, {
-      columns: project.columns
-    }).catch(error => {
-      console.error('Failed to sync task deletion to database:', error);
-      // Revert on error
-      project.columns[columnIndex].tasks.splice(taskIndex, 0, deletedTask);
-      saveProjects(projects);
-      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-    });
-  }
 }
 
 function openAddProjectBacklogTaskModal(projectIndex) {
@@ -6981,7 +7258,6 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
   );
   
-  let columnWasCreated = false;
   if (!backlogColumn) {
     // Create a new backlog column
     backlogColumn = {
@@ -6990,7 +7266,6 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
       color: '#6b7280'
     };
     project.columns.push(backlogColumn);
-    columnWasCreated = true;
   }
   
   const newTask = {
@@ -7004,28 +7279,10 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     updatedAt: new Date().toISOString()
   };
   
-  // Optimistic update to cache
   backlogColumn.tasks.push(newTask);
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-  
-  // Sync to database
-  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
-    window.LayerDB.updateProject(project.id, {
-      columns: project.columns
-    }).catch(error => {
-      console.error('Failed to sync task addition to database:', error);
-      // Revert on error
-      if (columnWasCreated) {
-        project.columns.pop();
-      } else {
-        backlogColumn.tasks.pop();
-      }
-      saveProjects(projects);
-      renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
-    });
-  }
 }
 
 function filterProjectBacklogTasks(projectIndex, value, type) {
@@ -15588,6 +15845,10 @@ function renderTeamChatHeader() {
 }
 
 function renderTeamChatContent() {
+  if (teamCurrentTab === 'list') {
+    return renderTeamListTabContent();
+  }
+
   const messages = teamMessages[teamCurrentChannel] || [];
   const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
     teamDirectMessages.find(d => d.id === teamCurrentChannel);
@@ -17054,7 +17315,7 @@ function searchTeamMembers(query) {
 function updateTeamChatArea() {
   const chatMain = document.querySelector('.team-chat-main');
   if (chatMain) {
-    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + renderTeamMessageInput();
+    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' ? renderTeamMessageInput() : '');
   }
 
   // Update sidebar active states
@@ -17115,15 +17376,17 @@ async function selectTeamChannel(channelId) {
   // Setup realtime subscription
   await setupTeamChatRealtime(channelId);
 
-  // Update chat content only (smoother) - this ensures the latest messages are shown
-  updateChatContentOnly();
-  
-  // Always scroll to bottom when switching to a channel to show latest messages
-  setTimeout(() => {
-    if (chatScrollManager) {
-      chatScrollManager.scrollToBottom(false); // Use immediate scroll (non-smooth) for better UX when switching tabs
-    }
-  }, 100); // Small delay to ensure content is rendered
+  if (teamCurrentTab === 'chat') {
+    // Update chat content only (smoother) - this ensures the latest messages are shown
+    updateChatContentOnly();
+
+    // Always scroll to bottom when switching to a channel to show latest messages
+    setTimeout(() => {
+      if (chatScrollManager) {
+        chatScrollManager.scrollToBottom(false); // Use immediate scroll (non-smooth) for better UX when switching tabs
+      }
+    }, 100); // Small delay to ensure content is rendered
+  }
 
   // START POLLING (Enhanced Real-time Updates)
   // Clear any existing poll
@@ -19429,7 +19692,7 @@ async function rejectFollowRequest(requestId, followerId) {
 
 async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'dark';
-  const appVersion = '0.1.0';
+  const appVersion = '0.3.0';
   const lastSync = new Date().toLocaleString();
 
   // Get current user info - ONLY use saved profile name, never Google metadata
@@ -19599,7 +19862,6 @@ async function renderSettingsView() {
         <div class="settings-item">
           <div class="settings-label">
             <span>Theme</span>
-            <p class="settings-description">Choose your preferred color scheme</p>
           </div>
           <select id="themeSelect" class="form-select">
             ${themes.map(theme => `
@@ -19743,6 +20005,19 @@ async function renderSettingsView() {
             <p class="settings-description">Help us improve Layer</p>
           </div>
           <a href="mailto:feedback@layer.app" class="btn btn-ghost">Send Feedback</a>
+        </div>
+      </div>
+
+      <div class="settings-section card">
+        <h3 class="section-title">Danger Zone</h3>
+        <div class="settings-item danger-zone">
+          <div class="settings-label">
+            <span>Delete Account</span>
+            <p class="settings-description">Permanently delete your account and all associated data. This cannot be undone.</p>
+          </div>
+          <button class="btn btn-destructive" onclick="requestAccountDeletion()">
+            Delete Account
+          </button>
         </div>
       </div>
     </div>
@@ -19920,6 +20195,95 @@ function confirmResetAllData() {
   localStorage.clear();
   closeModal();
   location.reload();
+}
+
+async function requestAccountDeletion() {
+  const user = window.LayerDB?.getCurrentUser?.();
+  if (!user) {
+    showNotification('You must be signed in to delete your account.', 'error');
+    return;
+  }
+
+  const confirmHTML = `
+    <div style="padding: 24px;">
+      <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: var(--foreground); text-align: center;">Delete your account?</h3>
+      <p style="margin: 0 0 18px; color: var(--muted-foreground); font-size: 14px; line-height: 1.5; text-align: center;">
+        This will permanently delete your account and all data associated with it (projects, issues, docs, spaces, drafts, preferences, etc.).
+        <br><br>
+        Type <strong>DELETE</strong> to confirm.
+      </p>
+
+      <div style="display: flex; justify-content: center; margin-bottom: 18px;">
+        <input
+          id="deleteAccountConfirmInput"
+          class="form-input"
+          style="width: 100%; max-width: 320px;"
+          placeholder="Type DELETE"
+          oninput="handleDeleteAccountConfirmInput(this.value)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-destructive" id="confirmDeleteAccountBtn" onclick="confirmDeleteAccount()" disabled>
+          Yes, Delete Account
+        </button>
+      </div>
+    </div>
+  `;
+
+  openModal('Delete Account', confirmHTML);
+}
+
+function handleDeleteAccountConfirmInput(value) {
+  const btn = document.getElementById('confirmDeleteAccountBtn');
+  if (!btn) return;
+  btn.disabled = String(value || '').trim().toUpperCase() !== 'DELETE';
+}
+
+async function confirmDeleteAccount() {
+  const btn = document.getElementById('confirmDeleteAccountBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    if (!window.LayerDB?.supabase) {
+      throw new Error('Supabase client not available');
+    }
+
+    const { data: { session }, error: sessionError } = await window.LayerDB.supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('No active session found');
+    }
+
+    const token = session.access_token;
+
+    const { data, error } = await window.LayerDB.supabase.functions.invoke('delete-account', {
+      body: { confirm: 'DELETE' },
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    closeModal();
+    showNotification('Account deleted successfully.', 'success');
+
+    try {
+      await window.LayerDB.signOut();
+    } catch (e) {
+      // ignore
+    }
+
+    localStorage.clear();
+    location.reload();
+  } catch (error) {
+    console.error('Account deletion failed:', error);
+    showNotification('Failed to delete account. Please try again.', 'error');
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ========================
@@ -20749,70 +21113,6 @@ function openGripDiagramForDraft(draftId) {
   }
 }
 
-async function openDocEditorForDraft(draftId) {
-  try {
-    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
-      showToast('Please sign in to open drafts', 'error');
-      return;
-    }
-
-    if (!window.cachedDrafts) {
-      await initDraftsFromDB();
-    }
-
-    const draft = (window.cachedDrafts || []).find(d => String(d.id) === String(draftId));
-    const docId = draft?.metadata?.docId;
-    if (!docId) {
-      console.error('Doc draft missing metadata.docId:', draftId, draft);
-      showToast('Draft is missing document reference', 'error');
-      return;
-    }
-
-    // Ensure docs cache is populated so openDocEditor treats this as existing
-    let docs = loadDocs();
-    if (!docs || docs.length === 0 || !docs.find(d => String(d.id) === String(docId))) {
-      await initDocsFromDB();
-    }
-
-    openDocEditor(docId);
-  } catch (error) {
-    console.error('Failed to open document draft:', error);
-    showToast('Failed to open draft', 'error');
-  }
-}
-
-async function openExcelEditorForDraft(draftId) {
-  try {
-    if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
-      showToast('Please sign in to open drafts', 'error');
-      return;
-    }
-
-    if (!window.cachedDrafts) {
-      await initDraftsFromDB();
-    }
-
-    const draft = (window.cachedDrafts || []).find(d => String(d.id) === String(draftId));
-    const excelId = draft?.metadata?.excelId;
-    if (!excelId) {
-      console.error('Sheet draft missing metadata.excelId:', draftId, draft);
-      showToast('Draft is missing spreadsheet reference', 'error');
-      return;
-    }
-
-    // Ensure excels cache is populated so openExcelEditor treats this as existing
-    let excels = loadExcels();
-    if (!excels || excels.length === 0 || !excels.find(e => String(e.id) === String(excelId))) {
-      await initExcelsFromDB();
-    }
-
-    openExcelEditor(excelId);
-  } catch (error) {
-    console.error('Failed to open spreadsheet draft:', error);
-    showToast('Failed to open draft', 'error');
-  }
-}
-
 // Function to delete a draft
 async function deleteDraft(draftId, draftType) {
   try {
@@ -21261,7 +21561,7 @@ function openDocEditor(docId = null) {
     let doc = null;
     if (docId) {
       const docs = loadDocs();
-      doc = docs.find(d => String(d.id) === String(docId));
+      doc = docs.find(d => d.id === docId);
     }
 
     // 🔄 UPDATE STATE: Mark editor as opening
@@ -21939,7 +22239,7 @@ async function autoSaveDoc() {
       try {
         // Check if this is a new document (temporary ID) or existing document
         const docs = await window.LayerDB.loadDocs();
-        const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
+        const existingDoc = docs.find(d => d.id === currentDocId);
 
         if (existingDoc) {
           // Document exists, update it
@@ -22068,19 +22368,10 @@ function closeDocEditor() {
   // 🔄 REFRESH DASHBOARD: Update the inbox view to reflect any changes
   // Use a small delay to ensure DOM is fully cleaned up
   setTimeout(() => {
-    (async () => {
-      if (currentView === 'drafts') {
-        window.draftsNeedRefresh = true;
-        if (typeof initDraftsFromDB === 'function') {
-          try { await initDraftsFromDB(); } catch (e) {}
-        }
-      }
-
-      if (currentView === 'inbox' || currentView === 'drafts') {
-        console.log('🔄 Refreshing view after document close...');
-        renderCurrentView();
-      }
-    })();
+    if (currentView === 'inbox') {
+      console.log('🔄 Refreshing dashboard after document close...');
+      renderCurrentView();
+    }
   }, 100);
 }
 
@@ -22608,10 +22899,9 @@ function openExcelEditor(excelId = null) {
             console.log('✅ Spreadsheet draft saved to DB:', savedDraft.id);
             
             // Update cache
-            if (!window.cachedDrafts) {
-              window.cachedDrafts = [];
+            if (window.cachedDrafts) {
+              window.cachedDrafts.unshift(savedDraft);
             }
-            window.cachedDrafts.unshift(savedDraft);
           } catch (error) {
             console.error('❌ Failed to save spreadsheet draft to DB:', error);
           }
@@ -22663,7 +22953,6 @@ function openExcelEditor(excelId = null) {
         excelTitleInput.addEventListener('input', function() {
           const newTitle = this.value.trim() || 'Untitled Spreadsheet';
           syncDraftCardTitle(currentExcelId, newTitle);
-          scheduleExcelTitleAutosave();
         });
       }
     }, 100);
@@ -22704,18 +22993,6 @@ function openExcelEditor(excelId = null) {
         }, 100);
       }
     }
-    
-    // Always autosave when editing the title of an existing spreadsheet
-    setTimeout(() => {
-      const titleInput = document.getElementById('excelTitleInput');
-      if (titleInput) {
-        titleInput.addEventListener('input', function() {
-          const newTitle = this.value.trim() || 'Untitled Spreadsheet';
-          syncDraftCardTitle(currentExcelId, newTitle);
-          scheduleExcelTitleAutosave();
-        });
-      }
-    }, 100);
   }
 }
 
@@ -22749,7 +23026,7 @@ function renderExcelGrid(data) {
     row.forEach((cell, colIndex) => {
       html += `<div class="excel-cell">
         <input type="text" value="${cell}" data-row="${rowIndex}" data-col="${colIndex}" 
-               oninput="updateExcelCell(${rowIndex}, ${colIndex}, this.value)" />
+               onchange="updateExcelCell(${rowIndex}, ${colIndex}, this.value)" />
       </div>`;
     });
   });
@@ -22778,15 +23055,6 @@ function updateExcelCell(row, col, value) {
   }, 1000);
 }
 
-let excelTitleSaveTimeout = null;
-function scheduleExcelTitleAutosave() {
-  clearTimeout(excelTitleSaveTimeout);
-  excelTitleSaveTimeout = setTimeout(() => {
-    autoSaveExcel();
-    showAutoSaveIndicator();
-  }, 800);
-}
-
 async function autoSaveExcel() {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) return;
@@ -22811,52 +23079,7 @@ async function autoSaveExcel() {
   }
 
   try {
-    // If the sheet was just created, currentExcelId may still be a temporary local ID
-    // (e.g. Date.now()) while the initial insert is still in-flight.
-    // In that case, do an insert first and create the draft reference.
-    const isTempId = (typeof currentExcelId === 'number') || (typeof currentExcelId === 'string' && !String(currentExcelId).includes('-'));
-    if (isTempId) {
-      const newExcel = {
-        id: currentExcelId,
-        title,
-        data,
-        spaceId: currentSpaceId || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDraft: true
-      };
-
-      const savedExcel = await window.LayerDB.saveExcel(newExcel);
-      currentExcelId = savedExcel.id;
-
-      // Ensure a draft row exists pointing at this excel
-      try {
-        if (!window.cachedDrafts) {
-          await initDraftsFromDB();
-        }
-        const existingDraft = (window.cachedDrafts || []).find(d => d.type === 'sheet' && String(d?.metadata?.excelId) === String(savedExcel.id));
-        if (!existingDraft) {
-          const draftEntry = {
-            title: savedExcel.title,
-            content: JSON.stringify(savedExcel.data || []),
-            type: 'sheet',
-            metadata: { excelId: savedExcel.id },
-            createdAt: savedExcel.createdAt || new Date().toISOString(),
-            updatedAt: savedExcel.updatedAt || savedExcel.createdAt || new Date().toISOString()
-          };
-          const savedDraft = await window.LayerDB.saveDraft(draftEntry);
-          if (!window.cachedDrafts) {
-            window.cachedDrafts = [];
-          }
-          window.cachedDrafts.unshift(savedDraft);
-        }
-      } catch (e) {
-        console.error('Failed to ensure sheet draft exists:', e);
-      }
-    } else {
-      await window.LayerDB.updateExcel(currentExcelId, { title, data });
-    }
-
+    await window.LayerDB.updateExcel(currentExcelId, { title, data });
     const excels = await window.LayerDB.loadExcels();
     saveExcels(excels);
 
@@ -23008,21 +23231,6 @@ function closeExcelEditor() {
     document.body.style.overflow = '';
   }
   currentExcelId = null;
-
-  setTimeout(() => {
-    (async () => {
-      if (currentView === 'drafts') {
-        window.draftsNeedRefresh = true;
-        if (typeof initDraftsFromDB === 'function') {
-          try { await initDraftsFromDB(); } catch (e) {}
-        }
-      }
-
-      if (currentView === 'drafts' && typeof renderCurrentView === 'function') {
-        renderCurrentView();
-      }
-    })();
-  }, 100);
 }
 
 function saveCurrentExcel() {
@@ -23852,12 +24060,8 @@ function renderSpaceDetailView(space) {
   const excelFavorites = loadExcelFavorites();
 
   // Filter docs and excels by space - use string comparison for UUID/number compatibility
-  const rawDocs = allDocs.filter(d => String(d.spaceId) === String(space.id));
-  const rawExcels = allExcels.filter(e => String(e.spaceId) === String(space.id));
-
-  // Deduplicate docs and excels to prevent data corruption issues
-  const docs = Array.from(new Map(rawDocs.map(item => [item.id, item])).values());
-  const excels = Array.from(new Map(rawExcels.map(item => [item.id, item])).values());
+  const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
+  const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
 
   // Recent items (last 5 docs + excels combined)
   const allItems = [
@@ -23867,10 +24071,6 @@ function renderSpaceDetailView(space) {
   const recentItems = [...allItems]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 5);
-
-  // Filter out recent items from the main lists to prevent duplication in the UI
-  const recentDocIds = new Set(recentItems.filter(i => i.type === 'doc').map(i => i.id));
-  const displayDocs = docs.filter(d => !recentDocIds.has(d.id));
 
   // Bookmarked items
   const bookmarkedItems = allItems.filter(item =>

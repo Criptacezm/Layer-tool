@@ -40,6 +40,14 @@
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS dm_checklists (
+        checklist_id TEXT PRIMARY KEY,
+        participants UUID[] NOT NULL,
+        items JSONB DEFAULT '[]',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- ============================================
     -- User Preferences Table
     -- ============================================
@@ -458,6 +466,7 @@
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_channel_type ON team_chat_messages(channel_type);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_recipient_id ON team_chat_messages(recipient_id);
     CREATE INDEX IF NOT EXISTS idx_team_chat_messages_created_at ON team_chat_messages(created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_checklists_participants ON dm_checklists USING GIN (participants);
     CREATE INDEX IF NOT EXISTS idx_recurring_tasks_user_id ON recurring_tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_project_id ON project_invitations(project_id);
     CREATE INDEX IF NOT EXISTS idx_project_invitations_inviter_id ON project_invitations(inviter_id);
@@ -497,6 +506,7 @@
     ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
     ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
     ALTER TABLE team_chat_messages ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE dm_checklists ENABLE ROW LEVEL SECURITY;
     ALTER TABLE project_invitations ENABLE ROW LEVEL SECURITY;
     ALTER TABLE user_presence ENABLE ROW LEVEL SECURITY;
 
@@ -704,6 +714,19 @@
     CREATE POLICY "Users can update own team chat messages" ON team_chat_messages FOR UPDATE USING (auth.uid() = user_id);
     CREATE POLICY "Users can delete own team chat messages" ON team_chat_messages FOR DELETE USING (auth.uid() = user_id);
 
+    DROP POLICY IF EXISTS "Users can view dm checklists" ON dm_checklists;
+    DROP POLICY IF EXISTS "Users can insert dm checklists" ON dm_checklists;
+    DROP POLICY IF EXISTS "Users can update dm checklists" ON dm_checklists;
+    CREATE POLICY "Users can view dm checklists" ON dm_checklists FOR SELECT USING (
+        auth.uid() = ANY(participants)
+    );
+    CREATE POLICY "Users can insert dm checklists" ON dm_checklists FOR INSERT WITH CHECK (
+        auth.uid() = ANY(participants)
+    );
+    CREATE POLICY "Users can update dm checklists" ON dm_checklists FOR UPDATE USING (
+        auth.uid() = ANY(participants)
+    );
+
     -- User Presence policies
     DROP POLICY IF EXISTS "Users can view own presence" ON user_presence;
     DROP POLICY IF EXISTS "Users can insert own presence" ON user_presence;
@@ -775,10 +798,12 @@
     DROP TRIGGER IF EXISTS update_folders_updated_at ON folders;
     DROP TRIGGER IF EXISTS update_recurring_tasks_updated_at ON recurring_tasks;
     DROP TRIGGER IF EXISTS update_team_chat_messages_updated_at ON team_chat_messages;
+    DROP TRIGGER IF EXISTS update_dm_checklists_updated_at ON dm_checklists;
     DROP TRIGGER IF EXISTS update_project_invitations_updated_at ON project_invitations;
     DROP TRIGGER IF EXISTS update_user_presence_updated_at ON user_presence;
     DROP TRIGGER IF EXISTS update_followers_updated_at ON followers;
     DROP TRIGGER IF EXISTS update_team_invitations_updated_at ON team_invitations;
+    DROP TRIGGER IF EXISTS update_bookmarks_updated_at ON bookmarks;
 
     CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -792,6 +817,7 @@
     CREATE TRIGGER update_folders_updated_at BEFORE UPDATE ON folders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_recurring_tasks_updated_at BEFORE UPDATE ON recurring_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_team_chat_messages_updated_at BEFORE UPDATE ON team_chat_messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    CREATE TRIGGER update_dm_checklists_updated_at BEFORE UPDATE ON dm_checklists FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_project_invitations_updated_at BEFORE UPDATE ON project_invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_user_presence_updated_at BEFORE UPDATE ON user_presence FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_followers_updated_at BEFORE UPDATE ON followers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -827,12 +853,23 @@
     -- ============================================
     
     -- Enable realtime for docs and excels so shared content updates are pushed live
-    ALTER PUBLICATION supabase_realtime ADD TABLE docs;
-    ALTER PUBLICATION supabase_realtime ADD TABLE excels;
+    DO $$ BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE docs;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+    DO $$ BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE excels;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+    DO $$ BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE dm_checklists;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
 
     -- Set replica identity to FULL so realtime sends old + new record data
     ALTER TABLE docs REPLICA IDENTITY FULL;
     ALTER TABLE excels REPLICA IDENTITY FULL;
+    ALTER TABLE dm_checklists REPLICA IDENTITY FULL;
 
     -- ============================================
     -- SAFE SCHEMA COMPLETE!

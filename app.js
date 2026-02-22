@@ -324,7 +324,9 @@ function init() {
 
     // Remove loading screen from DOM after fade
     setTimeout(() => {
-      loadingScreen.remove();
+      if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+      }
     }, 1200);
 
     // Show beta notification popup after short delay
@@ -373,6 +375,23 @@ function init() {
 
   // Initialize AI icon morphing animation
   initAIIconMorph();
+}
+
+function showLoadingScreen() {
+  const loadingScreen = document.getElementById('loadingScreen');
+  if (!loadingScreen) return;
+  loadingScreen.style.display = 'flex';
+  loadingScreen.classList.remove('fade-out');
+}
+
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById('loadingScreen');
+  if (!loadingScreen) return;
+  loadingScreen.classList.add('fade-out');
+  setTimeout(() => {
+    const el = document.getElementById('loadingScreen');
+    if (el) el.style.display = 'none';
+  }, 1000);
 }
 
 // ============================================
@@ -763,13 +782,282 @@ function closeModal() {
 }
 
 // ============================================
+// Login Page Management
+// ============================================
+let loginPageAnimatedBg = null;
+
+function showLoginPage() {
+  const loginOverlay = document.getElementById('loginPageOverlay');
+  const loginBgContainer = document.getElementById('loginPageBg');
+  const appContainer = document.getElementById('app');
+  
+  if (loginOverlay) {
+    loginOverlay.style.display = 'flex';
+  }
+
+  if (loginBgContainer && window.ColorBendsBackground) {
+    try {
+      if (!loginPageAnimatedBg) {
+        loginPageAnimatedBg = new window.ColorBendsBackground(loginBgContainer, {
+          rotation: 0,
+          speed: 0.2,
+          colors: ["#d54444","#ff9500","#742afe"],
+          transparent: true,
+          autoRotate: 0,
+          scale: 1,
+          frequency: 1,
+          warpStrength: 1,
+          mouseInfluence: 1,
+          parallax: 0.5,
+          noise: 0.1
+        });
+      }
+    } catch (e) {
+      console.error('Failed to initialize login background:', e);
+    }
+  }
+  
+  if (appContainer) {
+    appContainer.style.display = 'none';
+  }
+}
+
+function hideLoginPage() {
+  const loginOverlay = document.getElementById('loginPageOverlay');
+  const loginBgContainer = document.getElementById('loginPageBg');
+  const appContainer = document.getElementById('app');
+  
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+  }
+
+  if (loginPageAnimatedBg) {
+    try {
+      loginPageAnimatedBg.destroy();
+    } catch (e) {
+      console.error('Failed to cleanup login background:', e);
+    }
+    loginPageAnimatedBg = null;
+  }
+
+  if (loginBgContainer) {
+    loginBgContainer.innerHTML = '';
+  }
+  
+  if (appContainer) {
+    appContainer.style.display = 'block';
+  }
+}
+
+// Login page mode switching
+let loginMode = 'signin'; // 'signin' or 'signup'
+
+function switchLoginMode(mode) {
+  loginMode = mode;
+  
+  const loginTabBtn = document.getElementById('loginTabBtn');
+  const signupTabBtn = document.getElementById('signupTabBtn');
+  const loginFormTitle = document.getElementById('loginFormTitle');
+  const loginFormSubtitle = document.getElementById('loginFormSubtitle');
+  const usernameGroup = document.getElementById('usernameGroup');
+  const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+  const loginSubmitText = document.getElementById('loginSubmitText');
+  
+  if (mode === 'signin') {
+    // Sign In mode
+    loginTabBtn.classList.add('active');
+    signupTabBtn.classList.remove('active');
+    loginFormTitle.textContent = 'Welcome Back';
+    loginFormSubtitle.textContent = 'Sign in to your workspace to continue';
+    usernameGroup.style.display = 'none';
+    confirmPasswordGroup.style.display = 'none';
+    loginSubmitText.textContent = 'Sign In';
+    
+    // Remove required attribute from signup-only fields
+    document.getElementById('loginUsername').removeAttribute('required');
+    document.getElementById('loginConfirmPassword').removeAttribute('required');
+  } else {
+    // Sign Up mode
+    loginTabBtn.classList.remove('active');
+    signupTabBtn.classList.add('active');
+    loginFormTitle.textContent = 'Join Layer';
+    loginFormSubtitle.textContent = 'Create your professional workspace today';
+    usernameGroup.style.display = 'block';
+    confirmPasswordGroup.style.display = 'block';
+    loginSubmitText.textContent = 'Create Account';
+    
+    // Add required attribute to signup fields
+    document.getElementById('loginUsername').setAttribute('required', '');
+    document.getElementById('loginConfirmPassword').setAttribute('required', '');
+  }
+  
+  // Clear any existing errors
+  hideLoginError();
+}
+
+function showLoginError(message) {
+  const loginError = document.getElementById('loginError');
+  if (loginError) {
+    loginError.textContent = message;
+    loginError.style.display = 'block';
+  }
+}
+
+function hideLoginError() {
+  const loginError = document.getElementById('loginError');
+  if (loginError) {
+    loginError.style.display = 'none';
+  }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const username = document.getElementById('loginUsername').value.trim();
+  const confirmPassword = document.getElementById('loginConfirmPassword').value;
+  const loginOverlay = document.getElementById('loginPageOverlay');
+  
+  hideLoginError();
+
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+  }
+  showLoadingScreen();
+  
+  try {
+    if (loginMode === 'signup') {
+      // Sign up validation
+      if (!username) {
+        showLoginError('Username is required');
+        hideLoadingScreen();
+        showLoginPage();
+        return;
+      }
+      
+      if (password.length < 6) {
+        showLoginError('Password must be at least 6 characters');
+        hideLoadingScreen();
+        showLoginPage();
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showLoginError('Passwords do not match');
+        hideLoadingScreen();
+        showLoginPage();
+        return;
+      }
+      
+      // Show loading state
+      const submitBtn = document.querySelector('.login-submit-btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+        </svg>
+        <span>Creating Account...</span>
+      `;
+      
+      // Sign up
+      await window.LayerDB.signUp(email, password, username);
+      
+      // Get current session after signup
+      const { data: sessionData } = await window.LayerDB.supabase.auth.getSession();
+      
+      // Save session data for persistence
+      if (sessionData.session && sessionData.user) {
+        saveSessionData(sessionData.user, sessionData.session);
+        startSessionHeartbeat();
+      }
+      
+      // Successfully signed up and logged in
+      hideLoadingScreen();
+      hideLoginPage();
+      await loadUserDataFromDB();
+      updateUserDisplay({ username: username, email: email });
+      showNotification('Account created successfully!', 'success');
+      renderCurrentView();
+      
+    } else {
+      // Sign in
+      // Show loading state
+      const submitBtn = document.querySelector('.login-submit-btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+        </svg>
+        <span>Signing In...</span>
+      `;
+      
+      // Sign in
+      const data = await window.LayerDB.signIn(email, password);
+      
+      // Save session data for persistence
+      if (data.user && data.session) {
+        saveSessionData(data.user, data.session);
+        startSessionHeartbeat();
+      }
+      
+      // Restore button state
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+      
+      if (data.user) {
+        await loadUserDataFromDB();
+        const displayName = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
+        await updateUserDisplay({ username: displayName, email: data.user.email });
+        showNotification('Signed in successfully!', 'success');
+        
+        // Hide login page and show app
+        hideLoadingScreen();
+        hideLoginPage();
+        renderCurrentView();
+      }
+    }
+  } catch (error) {
+    console.error('Login/Signup error:', error);
+    hideLoadingScreen();
+    showLoginPage();
+    
+    // Restore button state
+    const submitBtn = document.querySelector('.login-submit-btn');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<span>${loginMode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>`;
+    
+    // Show user-friendly error
+    let errorMessage = 'Authentication failed';
+    if (error.message?.includes('Invalid login credentials')) {
+      errorMessage = 'Invalid email or password';
+    } else if (error.message?.includes('User already registered')) {
+      errorMessage = 'An account with this email already exists';
+    } else if (error.message?.includes('Password should be at least')) {
+      errorMessage = 'Password must be at least 6 characters';
+    } else if (error.message?.includes('Email not confirmed')) {
+      errorMessage = 'Please check your email to confirm your account';
+    }
+    
+    showLoginError(errorMessage);
+  }
+}
+
+// ============================================
 // Authentication Modal
 // ============================================
 let authMode = 'signin'; // 'signin' or 'signup'
 
 function openAuthModal() {
-  authMode = 'signin';
-  renderAuthModal();
+  // Show the login page instead of the modal
+  showLoginPage();
 }
 
 function renderAuthModal() {
@@ -1141,6 +1429,10 @@ async function updateUserDisplay(user) {
 
 async function signOutUser() {
   try {
+    // Stop session monitoring and remove activity listeners
+    stopSessionHeartbeat();
+    removeActivityListeners();
+    
     await window.LayerDB.supabase.auth.signOut();
 
     // CRITICAL: Clear ALL user-specific localStorage data to ensure data privacy
@@ -1159,6 +1451,9 @@ async function signOutUser() {
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
 
+    // Clear session persistence data
+    clearSessionData();
+
     const userInfo = document.getElementById('userInfo');
     if (userInfo) {
       userInfo.outerHTML = `
@@ -1174,6 +1469,10 @@ async function signOutUser() {
     }
 
     showNotification('Signed out successfully', 'info');
+    
+    // Show login page after signing out
+    showLoginPage();
+    
     // Clear spaces and favorites from sidebar immediately
     if (typeof renderSpacesInSidebar === 'function') {
       renderSpacesInSidebar();
@@ -1181,7 +1480,6 @@ async function signOutUser() {
     if (typeof renderFavoritesInSidebar === 'function') {
       renderFavoritesInSidebar();
     }
-    renderCurrentView();
   } catch (error) {
     console.error('Sign out error:', error);
     showNotification('Failed to sign out', 'error');
@@ -1314,17 +1612,267 @@ async function loadUserDataFromDB() {
   }
 }
 
+// ============================================
+// Advanced Session Management
+// ============================================
+
+// Session persistence configuration
+const SESSION_CONFIG = {
+  STORAGE_KEY: 'layer_session_data',
+  REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
+  SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes of inactivity
+  HEARTBEAT_INTERVAL: 60 * 1000, // Check every minute
+};
+
+// Session state tracking
+let sessionHeartbeat = null;
+let lastActivity = Date.now();
+let sessionData = null;
+
+// Save session data to localStorage for persistence
+function saveSessionData(user, session) {
+  try {
+    const sessionInfo = {
+      user: {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata,
+        created_at: user.created_at
+      },
+      session: {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_at: session.expires_at,
+        expires_in: session.expires_in,
+        token_type: session.token_type
+      },
+      timestamp: Date.now(),
+      lastActivity: Date.now()
+    };
+    
+    localStorage.setItem(SESSION_CONFIG.STORAGE_KEY, JSON.stringify(sessionInfo));
+    sessionData = sessionInfo;
+    console.log('✅ Session data saved to localStorage');
+  } catch (error) {
+    console.error('❌ Failed to save session data:', error);
+  }
+}
+
+// Load session data from localStorage
+function loadSessionData() {
+  try {
+    const stored = localStorage.getItem(SESSION_CONFIG.STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      sessionData = data;
+      return data;
+    }
+  } catch (error) {
+    console.error('❌ Failed to load session data:', error);
+    localStorage.removeItem(SESSION_CONFIG.STORAGE_KEY);
+  }
+  return null;
+}
+
+// Clear session data from localStorage
+function clearSessionData() {
+  try {
+    localStorage.removeItem(SESSION_CONFIG.STORAGE_KEY);
+    sessionData = null;
+    console.log('✅ Session data cleared from localStorage');
+  } catch (error) {
+    console.error('❌ Failed to clear session data:', error);
+  }
+}
+
+// Check if stored session is still valid
+function isSessionValid(sessionInfo) {
+  if (!sessionInfo || !sessionInfo.session) return false;
+  
+  const now = Date.now();
+  const sessionAge = now - sessionInfo.timestamp;
+  const timeSinceActivity = now - sessionInfo.lastActivity;
+  
+  // Check if session is too old (24 hours max)
+  if (sessionAge > 24 * 60 * 60 * 1000) {
+    console.log('⏰ Session too old, requiring re-authentication');
+    return false;
+  }
+  
+  // Check for inactivity timeout
+  if (timeSinceActivity > SESSION_CONFIG.SESSION_TIMEOUT) {
+    console.log('⏰ Session timed out due to inactivity');
+    return false;
+  }
+  
+  // Check if token is about to expire
+  const expiresAt = sessionInfo.session.expires_at * 1000;
+  const timeUntilExpiry = expiresAt - now;
+  
+  if (timeUntilExpiry < SESSION_CONFIG.REFRESH_THRESHOLD) {
+    console.log('⏰ Token about to expire, refresh needed');
+    return false; // Let Supabase handle refresh
+  }
+  
+  return true;
+}
+
+// Update last activity timestamp
+function updateActivity() {
+  lastActivity = Date.now();
+  if (sessionData) {
+    sessionData.lastActivity = lastActivity;
+    try {
+      localStorage.setItem(SESSION_CONFIG.STORAGE_KEY, JSON.stringify(sessionData));
+    } catch (error) {
+      console.error('❌ Failed to update activity timestamp:', error);
+    }
+  }
+}
+
+// Start session heartbeat monitoring
+function startSessionHeartbeat() {
+  if (sessionHeartbeat) {
+    clearInterval(sessionHeartbeat);
+  }
+  
+  sessionHeartbeat = setInterval(() => {
+    updateActivity();
+    
+    // Check session validity
+    if (sessionData && !isSessionValid(sessionData)) {
+      console.log('❌ Session invalid, signing out');
+      signOutUser();
+    }
+  }, SESSION_CONFIG.HEARTBEAT_INTERVAL);
+  
+  console.log('✅ Session heartbeat started');
+}
+
+// Stop session heartbeat
+function stopSessionHeartbeat() {
+  if (sessionHeartbeat) {
+    clearInterval(sessionHeartbeat);
+    sessionHeartbeat = null;
+    console.log('⏹️ Session heartbeat stopped');
+  }
+}
+
+// Add activity listeners for session tracking
+function addActivityListeners() {
+  // Remove existing listeners to prevent duplicates
+  removeActivityListeners();
+  
+  // Track user activity to prevent session timeout
+  const activityEvents = [
+    'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click',
+    'keydown', 'keyup', 'focus', 'blur', 'change', 'input', 'submit'
+  ];
+  
+  const throttledUpdate = throttle(updateActivity, 1000); // Throttle to once per second
+  
+  activityEvents.forEach(event => {
+    document.addEventListener(event, throttledUpdate, { passive: true });
+  });
+  
+  // Track page visibility changes
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      updateActivity();
+    }
+  });
+  
+  console.log('✅ Activity listeners added for session tracking');
+}
+
+// Remove activity listeners
+function removeActivityListeners() {
+  const activityEvents = [
+    'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click',
+    'keydown', 'keyup', 'focus', 'blur', 'change', 'input', 'submit'
+  ];
+  
+  activityEvents.forEach(event => {
+    document.removeEventListener(event, updateActivity);
+  });
+  
+  document.removeEventListener('visibilitychange', updateActivity);
+  console.log('✅ Activity listeners removed');
+}
+
+// Throttle function to limit function calls
+function throttle(func, limit) {
+  let inThrottle;
+  return function() {
+    const args = arguments;
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  }
+}
+
+// Restore session from localStorage if valid
+async function restoreSessionFromStorage() {
+  const storedSession = loadSessionData();
+  
+  if (!storedSession) {
+    console.log('📦 No stored session found');
+    return null;
+  }
+  
+  if (!isSessionValid(storedSession)) {
+    console.log('❌ Stored session invalid, clearing');
+    clearSessionData();
+    return null;
+  }
+  
+  try {
+    // Try to restore session with Supabase
+    const { data, error } = await window.LayerDB.supabase.auth.setSession({
+      access_token: storedSession.session.access_token,
+      refresh_token: storedSession.session.refresh_token
+    });
+    
+    if (error) {
+      console.error('❌ Failed to restore session:', error);
+      clearSessionData();
+      return null;
+    }
+    
+    console.log('✅ Session restored from localStorage');
+    return data;
+  } catch (error) {
+    console.error('❌ Error restoring session:', error);
+    clearSessionData();
+    return null;
+  }
+}
+
+// Enhanced checkExistingSession with advanced persistence
 async function checkExistingSession() {
   try {
-    // Initialize Supabase auth and check for existing session
+    console.log('🔍 Checking for existing session...');
+    
+    // First, try to restore from localStorage
+    const restoredSession = await restoreSessionFromStorage();
+    
+    // Initialize Supabase auth (this will also check for existing session)
     const { user, session } = await window.LayerDB.initAuth();
 
     // Always check for URL parameters (invitations) even if not logged in yet
-    // handleUrlParameters will redirect to login if needed
     await handleUrlParameters();
 
     if (user && session) {
-      console.log('User session found:', user.email);
+      console.log('✅ User session found:', user.email);
+
+      // Save session data for persistence
+      saveSessionData(user, session);
+      
+      // Hide login page if it's showing
+      hideLoginPage();
 
       // Ensure profile exists for existing sessions too
       try {
@@ -1342,7 +1890,18 @@ async function checkExistingSession() {
       // Update UI with user info
       await updateUserDisplay({ username: username, email: user.email });
 
+      // Start session monitoring
+      startSessionHeartbeat();
+
+      // Add activity listeners for session tracking
+      addActivityListeners();
+
       renderCurrentView();
+    } else {
+      // No user session - show login page
+      console.log('❌ No user session found, showing login page');
+      showLoginPage();
+      stopSessionHeartbeat();
     }
 
     // Listen for auth state changes

@@ -75,6 +75,112 @@
     </div>
   </div>
 
+  <!-- Login/Signup Page Overlay -->
+  <div class="login-page-overlay" id="loginPageOverlay" style="display: none;">
+    <div class="login-page-bg" id="loginPageBg"></div>
+    <div class="login-page-container">
+      <div class="login-page-left">
+        <div class="login-branding">
+          <div class="login-logo">
+            <svg width="60" height="60" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="loginLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7c3aed" />
+                  <stop offset="100%" stop-color="#5b21b6" />
+                </linearGradient>
+              </defs>
+              <rect x="38" y="38" width="52" height="52" rx="16" fill="url(#loginLogoGradient)" opacity="0.28" />
+              <rect x="38" y="54" width="52" height="36" rx="14" fill="url(#loginLogoGradient)" opacity="0.55" />
+              <rect x="38" y="70" width="52" height="20" rx="10" fill="url(#loginLogoGradient)" />
+              <rect x="38" y="38" width="20" height="52" rx="10" fill="url(#loginLogoGradient)" />
+            </svg>
+          </div>
+          <h1 class="login-title">Layer</h1>
+          <p class="login-subtitle">Welcome back</p>
+        </div>
+      </div>
+      
+      <div class="login-page-right">
+        <div class="login-form-container">
+          <div class="login-form-header">
+            <h2 id="loginFormTitle">Welcome Back</h2>
+            <p id="loginFormSubtitle">Sign in to your workspace to continue</p>
+          </div>
+
+          <div class="login-tabs">
+            <button class="login-tab active" id="loginTabBtn" onclick="switchLoginMode('signin')">Sign In</button>
+            <button class="login-tab" id="signupTabBtn" onclick="switchLoginMode('signup')">Sign Up</button>
+          </div>
+          
+          <form id="loginForm" class="login-form" onsubmit="handleLoginSubmit(event)">
+            <div class="login-form-group">
+              <label class="login-form-label">Email Address</label>
+              <div class="login-input-wrapper">
+                <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <input type="email" class="login-form-input" id="loginEmail" placeholder="name@company.com" required />
+              </div>
+            </div>
+            
+            <div class="login-form-group" id="usernameGroup" style="display: none;">
+              <label class="login-form-label">Username</label>
+              <div class="login-input-wrapper">
+                <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                <input type="text" class="login-form-input" id="loginUsername" placeholder="Your name" />
+              </div>
+            </div>
+            
+            <div class="login-form-group">
+              <label class="login-form-label">Password</label>
+              <div class="login-input-wrapper">
+                <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input type="password" class="login-form-input" id="loginPassword" placeholder="••••••••" required minlength="6" />
+              </div>
+            </div>
+            
+            <div class="login-form-group" id="confirmPasswordGroup" style="display: none;">
+              <label class="login-form-label">Confirm Password</label>
+              <div class="login-input-wrapper">
+                <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input type="password" class="login-form-input" id="loginConfirmPassword" placeholder="••••••••" minlength="6" />
+              </div>
+            </div>
+            
+            <div id="loginError" class="login-error" style="display: none;"></div>
+            
+            <button type="submit" class="login-submit-btn">
+              <span id="loginSubmitText">Sign In</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </form>
+
+          <div class="login-divider">
+            <span>or continue with</span>
+          </div>
+
+          <button type="button" class="google-login-btn" onclick="handleGoogleSignIn()">
+            <svg viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"></path>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+            </svg>
+            <span>Google</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="app" style="opacity: 0;">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -1087,6 +1193,8 @@
   <script src="app.js?v=5"></script>
   <script src="functionality.js?v=5"></script>
   <script src="animated-background.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="color-bends.js"></script>
   <script src="grid-diagram.js"></script>
   <script src="calculator.js"></script>
   <script src="test-leave-project.js"></script>

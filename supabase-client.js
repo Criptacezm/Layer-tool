@@ -2979,6 +2979,65 @@ window.LayerDB = {
     }
   },
 
+  getDmChecklist: async (checklistId) => {
+    if (!currentUser) return null;
+    try {
+      const { data, error } = await supabaseClient
+        .from('dm_checklists')
+        .select('checklist_id, participants, items, updated_at')
+        .eq('checklist_id', checklistId)
+        .maybeSingle();
+      if (error) throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error fetching dm checklist:', error);
+      return null;
+    }
+  },
+
+  upsertDmChecklist: async (checklistId, participants, items) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const safeParticipants = Array.isArray(participants) ? participants : [];
+    const safeItems = Array.isArray(items) ? items : [];
+    const { data, error } = await supabaseClient
+      .from('dm_checklists')
+      .upsert({
+        checklist_id: checklistId,
+        participants: safeParticipants,
+        items: safeItems,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'checklist_id' })
+      .select('checklist_id, participants, items, updated_at')
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  subscribeToDmChecklist: (checklistId, callback) => {
+    if (!currentUser) return null;
+    const channel = supabaseClient
+      .channel(`dm_checklist_${checklistId}`)
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dm_checklists',
+          filter: `checklist_id=eq.${checklistId}`
+        },
+        payload => {
+          if (callback) callback(payload);
+        }
+      )
+      .subscribe();
+    return channel;
+  },
+
+  unsubscribeFromDmChecklist: (channel) => {
+    if (channel) {
+      supabaseClient.removeChannel(channel);
+    }
+  },
+
   // ============================================
   // Realtime Subscriptions for other tables
   // ============================================
