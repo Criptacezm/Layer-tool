@@ -758,6 +758,17 @@ function renderGripOverlay() {
           <path d="M8 18h.01" />
         </svg>
       </button>
+
+      <button class="grip-tool-btn" data-tool="circuit" title="Circuit Designer (C)" onclick="toggleCircuitPanel()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="6" cy="6" r="2"/>
+          <circle cx="18" cy="6" r="2"/>
+          <circle cx="6" cy="18" r="2"/>
+          <circle cx="18" cy="18" r="2"/>
+          <path d="M8 6h8M6 8v8M18 8v8M8 18h8"/>
+          <circle cx="12" cy="12" r="3" fill="none" stroke-dasharray="2 2"/>
+        </svg>
+      </button>
       
       <div class="grip-divider-vertical"></div>
       
@@ -804,10 +815,46 @@ function renderGripOverlay() {
   // Attach Event Listeners
   const container = document.getElementById('gripCanvasContainer');
   container.addEventListener('mousedown', handleMouseDown);
+  container.addEventListener('dblclick', handleDoubleClick);
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', handleMouseUp);
   container.addEventListener('wheel', handleWheel, { passive: false });
   document.addEventListener('keydown', handleKeyDown);
+  
+  // Drag-and-drop from circuit panel
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  container.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const componentId = e.dataTransfer.getData('text/plain');
+    if (componentId && typeof CircuitComponents !== 'undefined' && CircuitComponents[componentId]) {
+      const comp = CircuitComponents[componentId];
+      const worldPos = screenToWorld(e.clientX, e.clientY);
+      const node = {
+        id: generateUUID(),
+        type: 'circuit',
+        circuitType: componentId,
+        x: snapToGrid(worldPos.x - comp.width / 2),
+        y: snapToGrid(worldPos.y - comp.height / 2),
+        width: comp.width,
+        height: comp.height,
+        text: comp.name,
+        style: {},
+        pins: comp.pins.map(p => ({ ...p })),
+        labelText: '',
+        circuitState: {}
+      };
+      GripState.nodes.push(node);
+      GripState.selectedNodeIds.clear();
+      GripState.selectedNodeIds.add(node.id);
+      pushToHistory();
+      saveGripDataInstant();
+      renderCanvas();
+      if (typeof broadcastNodeOperation === 'function') broadcastNodeOperation('add', node.id, node);
+    }
+  });
 
   // Initial Render
   renderCanvas();
@@ -858,7 +905,7 @@ function updateCursor() {
   } else if (GripState.activeTool === 'eraser') {
     container.className = 'grip-canvas-container cursor-eraser';
     showEraserCursor();
-  } else if (['pill', 'card', 'shape:rectangle', 'shape:diamond', 'shape:ellipse', 'text', 'header', 'sticky', 'pencil', 'connect'].includes(GripState.activeTool)) {
+  } else if (['pill', 'card', 'shape:rectangle', 'shape:diamond', 'shape:ellipse', 'text', 'header', 'sticky', 'pencil', 'connect', 'circuit'].includes(GripState.activeTool)) {
     container.className = 'grip-canvas-container';
     container.style.cursor = 'crosshair';
     hideEraserCursor();
@@ -1494,19 +1541,54 @@ function handleMouseUp(e) {
 
   if (GripState.isConnecting) {
     const worldPos = screenToWorld(e.clientX, e.clientY);
-    const hitNode = GripState.nodes.slice().reverse().find(node => {
-      const bounds = getNodeBoundingBox(node);
-      return worldPos.x >= bounds.x && worldPos.x <= bounds.x + bounds.width &&
-        worldPos.y >= bounds.y && worldPos.y <= bounds.y + bounds.height;
-    });
-    if (hitNode && hitNode.id !== GripState.connectionStartNodeId) {
-      createEdge(GripState.connectionStartNodeId, GripState.connectionStartHandle, hitNode.id, 'auto');
+    
+    // First check if we're directly over a circuit pin
+    const pinEl = document.elementFromPoint(e.clientX, e.clientY);
+    const circuitPin = pinEl ? (pinEl.closest('.circuit-pin') || null) : null;
+    
+    if (circuitPin) {
+      const targetNodeId = circuitPin.dataset.nodeId;
+      const targetPinId = circuitPin.dataset.pinId;
+      if (targetNodeId && targetNodeId !== GripState.connectionStartNodeId) {
+        createEdge(GripState.connectionStartNodeId, GripState.connectionStartHandle, targetNodeId, targetPinId);
+      }
+    } else {
+      const hitNode = GripState.nodes.slice().reverse().find(node => {
+        const bounds = getNodeBoundingBox(node);
+        return worldPos.x >= bounds.x && worldPos.x <= bounds.x + bounds.width &&
+          worldPos.y >= bounds.y && worldPos.y <= bounds.y + bounds.height;
+      });
+      if (hitNode && hitNode.id !== GripState.connectionStartNodeId) {
+        // For circuit nodes, find the nearest pin
+        if (hitNode.type === 'circuit') {
+          const nearestPin = findNearestCircuitPin(hitNode, worldPos);
+          createEdge(GripState.connectionStartNodeId, GripState.connectionStartHandle, hitNode.id, nearestPin || 'auto');
+        } else {
+          createEdge(GripState.connectionStartNodeId, GripState.connectionStartHandle, hitNode.id, 'auto');
+        }
+      }
     }
     GripState.isConnecting = false;
     document.getElementById('gripTempConnection').innerHTML = '';
   }
 
   saveGripData();
+}
+
+// Double-click handler for switch toggling and component interaction
+function handleDoubleClick(e) {
+  const worldPos = screenToWorld(e.clientX, e.clientY);
+  const hitNode = GripState.nodes.slice().reverse().find(node => {
+    const bounds = getNodeBoundingBox(node);
+    return worldPos.x >= bounds.x && worldPos.x <= bounds.x + bounds.width &&
+      worldPos.y >= bounds.y && worldPos.y <= bounds.y + bounds.height;
+  });
+  
+  if (hitNode && hitNode.type === 'circuit') {
+    if (typeof handleCircuitDoubleClick === 'function') {
+      handleCircuitDoubleClick(hitNode, e);
+    }
+  }
 }
 
 function handleKeyDown(e) {
@@ -1529,6 +1611,7 @@ function handleKeyDown(e) {
   if (e.key === 'x') setTool('pencil');
   if (e.key === 'e') setTool('eraser');
   if (e.key === 'l') setTool('connect');
+  if (e.key === 'c' && !e.ctrlKey && !e.metaKey) { if (typeof toggleCircuitPanel === 'function') toggleCircuitPanel(); }
 }
 
 // Add KeyUp listener to global or container
@@ -1594,6 +1677,12 @@ function createEdge(fromId, fromHandle, toId, toHandle) {
   };
   GripState.edges.push(newEdge);
   pushToHistory();
+  
+  // Update circuit pin signals when connections change
+  if (typeof updateAllPinSignals === 'function') {
+    updateAllPinSignals();
+  }
+  
   renderCanvas();
 
   // Broadcast edge creation to other users
@@ -1778,6 +1867,128 @@ function updatePropertiesPanel() {
   const node = GripState.nodes.find(n => n.id === [...GripState.selectedNodeIds][0]);
   if (!node) return;
 
+  // CIRCUIT-SPECIFIC PROPERTIES PANEL
+  if (node.type === 'circuit') {
+    const comp = window.CircuitComponents ? window.CircuitComponents[node.circuitType] : null;
+    const compName = comp ? comp.name : node.circuitType;
+    const ct = node.circuitType;
+    const cs = node.circuitState || {};
+    const rotation = node.rotation || 0;
+
+    let controlsHTML = '';
+
+    // Voltage control for batteries/sources
+    if (ct === 'battery' || ct === 'dc_source') {
+      const voltage = cs.voltage || 5;
+      const presets = [1.5, 3.3, 5, 9, 12, 24, 48, 120, 240];
+      controlsHTML += `
+        <div class="grip-prop-section">
+          <div class="grip-prop-header"><span>⚡ Voltage</span><span style="color:var(--circuit-accent)">${voltage}V</span></div>
+          <input type="range" class="grip-range-input" min="0.1" max="240" step="0.1" value="${voltage}"
+                 oninput="updateCircuitValue('${node.id}', 'voltage', this.value); this.parentElement.querySelector('.grip-prop-header span:last-child').textContent = parseFloat(this.value) + 'V'; renderCanvas();">
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+            ${presets.map(p => `<button class="grip-prop-btn ${p === voltage ? 'active' : ''}" style="font-size:10px;padding:2px 8px;" 
+                onclick="updateCircuitValue('${node.id}', 'voltage', ${p}); updatePropertiesPanel();">${p}V</button>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // Resistance control for resistors/potentiometers
+    if (ct === 'resistor' || ct === 'potentiometer') {
+      const resistance = cs.resistance || 1000;
+      const formatR = (r) => r >= 1000000 ? (r/1000000).toFixed(1) + 'MΩ' : r >= 1000 ? (r/1000).toFixed(1) + 'kΩ' : r + 'Ω';
+      const presets = [100, 220, 470, 1000, 2200, 4700, 10000, 47000, 100000, 1000000];
+      controlsHTML += `
+        <div class="grip-prop-section">
+          <div class="grip-prop-header"><span>🔧 Resistance</span><span style="color:var(--circuit-accent)">${formatR(resistance)}</span></div>
+          <input type="range" class="grip-range-input" min="1" max="1000000" step="1" value="${resistance}"
+                 oninput="updateCircuitValue('${node.id}', 'resistance', this.value); updatePropertiesPanel();">
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+            ${presets.map(p => `<button class="grip-prop-btn ${p === resistance ? 'active' : ''}" style="font-size:10px;padding:2px 8px;" 
+                onclick="updateCircuitValue('${node.id}', 'resistance', ${p}); updatePropertiesPanel();">${formatR(p)}</button>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // Switch toggle
+    if (['switch_spst', 'switch_spdt', 'pushbutton'].includes(ct)) {
+      const isOn = ct === 'switch_spdt' ? cs.switchPosition === 'nc' : !!cs.switchClosed;
+      controlsHTML += `
+        <div class="grip-prop-section">
+          <div class="grip-prop-header"><span>🔀 Switch</span><span style="color:${isOn ? 'var(--circuit-accent)' : 'var(--circuit-label)'}">${isOn ? 'ON' : 'OFF'}</span></div>
+          <button class="grip-prop-btn ${isOn ? 'active' : ''}" style="width:100%" onclick="toggleCircuitSwitch('${node.id}'); updatePropertiesPanel();">
+            Toggle ${isOn ? 'OFF' : 'ON'}
+          </button>
+        </div>`;
+    }
+
+    // Logic input toggle
+    if (ct === 'logic_input') {
+      const val = cs.logicValue ? 1 : 0;
+      controlsHTML += `
+        <div class="grip-prop-section">
+          <div class="grip-prop-header"><span>🔲 Logic Value</span><span style="color:var(--circuit-accent);font-family:monospace;font-weight:800;">${val}</span></div>
+          <button class="grip-prop-btn ${val ? 'active' : ''}" style="width:100%" onclick="toggleCircuitSwitch('${node.id}'); updatePropertiesPanel();">
+            Set to ${val ? '0' : '1'}
+          </button>
+        </div>`;
+    }
+
+    // Rotation control
+    controlsHTML += `
+      <div class="grip-prop-section">
+        <div class="grip-prop-header"><span>🔄 Rotation</span><span style="color:#fff">${rotation}°</span></div>
+        <div class="grip-row-btns">
+          <button class="grip-prop-btn ${rotation === 0 ? 'active' : ''}" onclick="setCircuitRotation('${node.id}', 0)">0°</button>
+          <button class="grip-prop-btn ${rotation === 90 ? 'active' : ''}" onclick="setCircuitRotation('${node.id}', 90)">90°</button>
+          <button class="grip-prop-btn ${rotation === 180 ? 'active' : ''}" onclick="setCircuitRotation('${node.id}', 180)">180°</button>
+          <button class="grip-prop-btn ${rotation === 270 ? 'active' : ''}" onclick="setCircuitRotation('${node.id}', 270)">270°</button>
+        </div>
+      </div>`;
+
+    // Label editor
+    controlsHTML += `
+      <div class="grip-prop-section">
+        <div class="grip-prop-header"><span>🏷️ Label</span></div>
+        <input type="text" class="grip-label-input" value="${node.labelText || ''}" placeholder="Component label..."
+               oninput="updateCircuitLabel('${node.id}', this.value)"
+               style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:var(--circuit-accent);font-size:12px;outline:none;font-family:inherit;">
+      </div>`;
+
+    // Pin connection summary
+    const pins = node.pins || (comp ? comp.pins : []);
+    if (pins.length > 0) {
+      const pinSummaries = pins.map(pin => {
+        const summary = window.getCircuitPinConnectionSummary ? window.getCircuitPinConnectionSummary(node.id, pin.id) : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:10px;">
+          <span style="color:var(--circuit-label);opacity:0.7;">${pin.label || pin.id}</span>
+          <span style="color:${summary ? 'var(--circuit-accent)' : 'rgba(255,255,255,0.3)'};font-size:9px;">${summary || 'not connected'}</span>
+        </div>`;
+      }).join('');
+      controlsHTML += `
+        <div class="grip-prop-section">
+          <div class="grip-prop-header"><span>📌 Connections</span></div>
+          ${pinSummaries}
+        </div>`;
+    }
+
+    panel.innerHTML = `
+      <div class="grip-prop-section" style="border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:18px;">${ct.includes('gate') ? '🔲' : ct.includes('switch') || ct.includes('push') ? '🔀' : ct.includes('battery') || ct.includes('source') ? '🔋' : ct.includes('resistor') || ct.includes('pot') ? '⚡' : ct === 'bulb' ? '💡' : '🔌'}</span>
+          <div>
+            <div style="color:var(--circuit-accent);font-weight:600;font-size:13px;">${compName}</div>
+            <div style="color:var(--circuit-label);opacity:0.5;font-size:10px;">${ct}</div>
+          </div>
+        </div>
+      </div>
+      ${controlsHTML}
+      <button class="grip-prop-btn danger" style="width:100%; margin-top:8px;" onclick="deleteNode('${node.id}')">Delete Component</button>
+    `;
+    return;
+  }
+
+  // DEFAULT PROPERTIES PANEL (non-circuit nodes)
   const s = node.style || {};
   const strokeWidth = s.strokeWidth || 2;
   const opacity = s.opacity !== undefined ? s.opacity : 1;
@@ -1845,6 +2056,45 @@ function updatePropertiesPanel() {
       
       <button class="grip-prop-btn danger" style="width:100%; margin-top:8px;" onclick="deleteNode('${node.id}')">Delete Node</button>
   `;
+}
+
+// Helper functions for circuit properties panel
+function setCircuitRotation(nodeId, degrees) {
+  const node = GripState.nodes.find(n => n.id === nodeId);
+  if (!node || node.type !== 'circuit') return;
+  
+  node.rotation = degrees;
+  
+  // Recalculate pin positions
+  const comp = window.CircuitComponents ? window.CircuitComponents[node.circuitType] : null;
+  if (comp && node.pins) {
+    const cx = node.width / 2;
+    const cy = node.height / 2;
+    node.pins = node.pins.map((pin, i) => {
+      const origPin = comp.pins[i];
+      const rad = (degrees * Math.PI) / 180;
+      const dx = origPin.x - cx;
+      const dy = origPin.y - cy;
+      return {
+        ...pin,
+        x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+        y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
+      };
+    });
+  }
+  
+  pushToHistory();
+  saveGripDataInstant();
+  renderCanvas();
+  updatePropertiesPanel();
+}
+
+function updateCircuitLabel(nodeId, label) {
+  const node = GripState.nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  node.labelText = label;
+  saveGripDataInstant();
+  renderCanvas();
 }
 
 function updateNodeStyle(id, prop, value) {
@@ -1926,6 +2176,12 @@ function deleteSelectedNodes() {
 function deleteNode(id) {
   GripState.nodes = GripState.nodes.filter(n => n.id !== id);
   GripState.edges = GripState.edges.filter(e => e.from !== id && e.to !== id);
+  
+  // Update circuit pin signals when nodes/connections change
+  if (typeof updateAllPinSignals === 'function') {
+    updateAllPinSignals();
+  }
+  
   renderCanvas();
 
   // Broadcast node deletion to other users
@@ -1994,6 +2250,27 @@ function renderCanvas() {
     const toNode = GripState.nodes.find(n => n.id === edge.to);
     if (!fromNode || !toNode) return;
 
+    const isCircuitWire = fromNode.type === 'circuit' || toNode.type === 'circuit';
+
+    // Offset for the SVG coordination system
+    const ox = 5000;
+    const oy = 5000;
+
+    if (isCircuitWire) {
+      const startHandleId = edge.fromHandle || 'right';
+      const endHandleId = edge.toHandle || 'left';
+
+      const p1 = getNodeHandlePos(fromNode, startHandleId);
+      const p2 = getNodeHandlePos(toNode, endHandleId);
+
+      const startDir = getConnectionDirection(fromNode, startHandleId, p1);
+      const endDir = getConnectionDirection(toNode, endHandleId, p2);
+
+      const wirePath = getOrthogonalWirePath(p1.x + ox, p1.y + oy, p2.x + ox, p2.y + oy, startDir, endDir);
+      html += `<path d="${wirePath}" stroke="var(--circuit-wire)" stroke-opacity="1" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />`;
+      return;
+    }
+
     // Resolve Handles (Fully Dynamic "Closest" Behavior)
     const { startHandle, endHandle } = getDynamicConnectionHandles(fromNode, toNode);
 
@@ -2018,12 +2295,7 @@ function renderCanvas() {
     if (endHandle === 'left') p2.x -= gap;
     if (endHandle === 'right') p2.x += gap;
 
-    // Offset for the SVG coordination system
-    const ox = 5000;
-    const oy = 5000;
-
     const pathD = getSmartPath(p1.x + ox, p1.y + oy, p2.x + ox, p2.y + oy, startHandle, endHandle);
-
     const strokeColor = 'var(--wb-text)';
 
     // Increased opacity for better look
@@ -2031,13 +2303,19 @@ function renderCanvas() {
   });
   html += `</svg>`;
 
-  // Render Nodes (Drawings first so they are behind, then other nodes)
+  // Render Nodes (Drawings first, then circuit, then other nodes)
   const drawNodes = GripState.nodes.filter(n => n.type === 'draw');
-  const otherNodes = GripState.nodes.filter(n => n.type !== 'draw');
+  const circuitNodes = GripState.nodes.filter(n => n.type === 'circuit');
+  const otherNodes = GripState.nodes.filter(n => n.type !== 'draw' && n.type !== 'circuit');
 
   drawNodes.forEach(node => {
     const isSelected = GripState.selectedNodeIds.has(node.id);
     html += renderNodeHTML(node, isSelected);
+  });
+
+  circuitNodes.forEach(node => {
+    const isSelected = GripState.selectedNodeIds.has(node.id);
+    html += (typeof renderCircuitNodeHTML === 'function') ? renderCircuitNodeHTML(node, isSelected) : renderNodeHTML(node, isSelected);
   });
 
   otherNodes.forEach(node => {
@@ -2046,6 +2324,34 @@ function renderCanvas() {
   });
 
   layer.innerHTML = html;
+
+  // Attach circuit pin event listeners
+  if (circuitNodes.length > 0) {
+    document.querySelectorAll('.circuit-pin').forEach(pin => {
+      pin.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        const nodeId = pin.dataset.nodeId;
+        const pinId = pin.dataset.pinId;
+        if (typeof handleCircuitPinClick === 'function') {
+          handleCircuitPinClick(nodeId, pinId, e);
+        }
+      });
+
+      pin.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const nodeId = pin.dataset.nodeId;
+        const pinId = pin.dataset.pinId;
+        if (typeof disconnectCircuitPin === 'function') {
+          disconnectCircuitPin(nodeId, pinId);
+        }
+      });
+    });
+    
+    // Update pin signals after DOM is ready
+    if (typeof updateAllPinSignals === 'function') {
+      updateAllPinSignals();
+    }
+  }
 }
 
 /** 
@@ -2100,6 +2406,148 @@ function getSmartPath(x1, y1, x2, y2, startDir, endDir) {
   }
 
   return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+}
+
+function getConnectionDirection(node, handleId, handlePos) {
+  if (handleId === 'top' || handleId === 'right' || handleId === 'bottom' || handleId === 'left') {
+    return handleId;
+  }
+
+  // For circuit pins (or unknown handle ids), infer direction from position relative to node bounds.
+  const cx = node.x + node.width / 2;
+  const cy = node.y + node.height / 2;
+  const dx = handlePos.x - cx;
+  const dy = handlePos.y - cy;
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? 'right' : 'left';
+  }
+  return dy >= 0 ? 'bottom' : 'top';
+}
+
+function getOrthogonalWirePath(x1, y1, x2, y2, startDir, endDir) {
+  const stub = 30; // Increased stub for cleaner routing away from components
+
+  const s1 = offsetPoint(x1, y1, startDir, stub);
+  const e1 = offsetPoint(x2, y2, endDir, stub);
+
+  // Collect all circuit node bounding boxes (for obstacle avoidance)
+  const obstacles = [];
+  const padding = 15;
+  GripState.nodes.forEach(n => {
+    if (n.type !== 'circuit') return;
+    obstacles.push({
+      left: n.x - padding + 5000, // offset for SVG coordinate system
+      top: n.y - padding + 5000,
+      right: n.x + n.width + padding + 5000,
+      bottom: n.y + n.height + padding + 5000
+    });
+  });
+
+  const dx = e1.x - s1.x;
+  const dy = e1.y - s1.y;
+
+  // Check if the simple Manhattan path would intersect any obstacle
+  let m1, m2;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const midX = s1.x + dx / 2;
+    m1 = { x: midX, y: s1.y };
+    m2 = { x: midX, y: e1.y };
+  } else {
+    const midY = s1.y + dy / 2;
+    m1 = { x: s1.x, y: midY };
+    m2 = { x: e1.x, y: midY };
+  }
+
+  // Check if any segment intersects an obstacle
+  const segments = [
+    [s1, m1], [m1, m2], [m2, e1]
+  ];
+
+  let hasCollision = false;
+  for (const obs of obstacles) {
+    for (const [segStart, segEnd] of segments) {
+      if (segmentIntersectsRect(segStart, segEnd, obs)) {
+        hasCollision = true;
+        break;
+      }
+    }
+    if (hasCollision) break;
+  }
+
+  if (!hasCollision) {
+    return `M ${x1} ${y1} L ${s1.x} ${s1.y} L ${m1.x} ${m1.y} L ${m2.x} ${m2.y} L ${e1.x} ${e1.y} L ${x2} ${y2}`;
+  }
+
+  // Route around obstacles: use a wider detour
+  const detourPadding = 40;
+  
+  // Find the bounding box of all obstacles between start and end
+  const minX = Math.min(s1.x, e1.x);
+  const maxX = Math.max(s1.x, e1.x);
+  const minY = Math.min(s1.y, e1.y);
+  const maxY = Math.max(s1.y, e1.y);
+  
+  // Find obstacles in the path region
+  let routeTop = Infinity, routeBottom = -Infinity;
+  let routeLeft = Infinity, routeRight = -Infinity;
+  for (const obs of obstacles) {
+    if (obs.right >= minX && obs.left <= maxX && obs.bottom >= minY && obs.top <= maxY) {
+      routeTop = Math.min(routeTop, obs.top);
+      routeBottom = Math.max(routeBottom, obs.bottom);
+      routeLeft = Math.min(routeLeft, obs.left);
+      routeRight = Math.max(routeRight, obs.right);
+    }
+  }
+
+  if (routeTop === Infinity) {
+    // No obstacles in path region, use simple path
+    return `M ${x1} ${y1} L ${s1.x} ${s1.y} L ${m1.x} ${m1.y} L ${m2.x} ${m2.y} L ${e1.x} ${e1.y} L ${x2} ${y2}`;
+  }
+
+  // Decide whether to route above or below (pick shorter detour)
+  const distTop = Math.abs(s1.y - (routeTop - detourPadding)) + Math.abs(e1.y - (routeTop - detourPadding));
+  const distBottom = Math.abs(s1.y - (routeBottom + detourPadding)) + Math.abs(e1.y - (routeBottom + detourPadding));
+  
+  const detourY = distTop <= distBottom ? routeTop - detourPadding : routeBottom + detourPadding;
+  
+  // Create a 5-segment detour path
+  const w1 = { x: s1.x, y: detourY };
+  const w2 = { x: e1.x, y: detourY };
+  
+  return `M ${x1} ${y1} L ${s1.x} ${s1.y} L ${w1.x} ${w1.y} L ${w2.x} ${w2.y} L ${e1.x} ${e1.y} L ${x2} ${y2}`;
+}
+
+// Check if a line segment intersects a rectangle
+function segmentIntersectsRect(p1, p2, rect) {
+  // Check if a horizontal or vertical segment passes through the rect
+  const minX = Math.min(p1.x, p2.x);
+  const maxX = Math.max(p1.x, p2.x);
+  const minY = Math.min(p1.y, p2.y);
+  const maxY = Math.max(p1.y, p2.y);
+  
+  // No overlap at all
+  if (maxX < rect.left || minX > rect.right || maxY < rect.top || minY > rect.bottom) return false;
+  
+  // Horizontal segment
+  if (Math.abs(p1.y - p2.y) < 1) {
+    return p1.y >= rect.top && p1.y <= rect.bottom && maxX >= rect.left && minX <= rect.right;
+  }
+  // Vertical segment
+  if (Math.abs(p1.x - p2.x) < 1) {
+    return p1.x >= rect.left && p1.x <= rect.right && maxY >= rect.top && minY <= rect.bottom;
+  }
+  
+  // Diagonal (shouldn't happen in orthogonal routing but check anyway)
+  return true;
+}
+
+function offsetPoint(x, y, dir, amount) {
+  if (dir === 'left') return { x: x - amount, y };
+  if (dir === 'right') return { x: x + amount, y };
+  if (dir === 'top') return { x, y: y - amount };
+  if (dir === 'bottom') return { x, y: y + amount };
+  return { x, y };
 }
 
 // Calculate the actual bounding box for a node (especially important for free drawing)
@@ -2219,7 +2667,8 @@ function getNodeClass(type) {
   if (type === 'shape:diamond') return 'shape-diamond';
   if (type === 'shape:ellipse') return 'shape-ellipse';
   if (type === 'text') return 'shape-text';
-  if (type === 'sticky') return 'shape-sticky'; // Added for consistency
+  if (type === 'sticky') return 'shape-sticky';
+  if (type === 'circuit') return 'circuit-node';
   return 'card-default'; // Fallback
 }
 
@@ -2307,7 +2756,44 @@ function updateNodeText(id, text) {
   }
 }
 
+function findNearestCircuitPin(node, worldPos) {
+  if (node.type !== 'circuit') return null;
+  const comp = CircuitComponents[node.circuitType];
+  const pins = node.pins || (comp ? comp.pins : []);
+  if (!pins || pins.length === 0) return null;
+  
+  let nearestId = pins[0].id;
+  let nearestDist = Infinity;
+  pins.forEach(pin => {
+    const px = node.x + pin.x;
+    const py = node.y + pin.y;
+    const dist = Math.hypot(worldPos.x - px, worldPos.y - py);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestId = pin.id;
+    }
+  });
+  return nearestId;
+}
+
 function getNodeHandlePos(node, handle) {
+  // Circuit pin handling
+  if (node.type === 'circuit' && typeof getCircuitPinPos === 'function') {
+    const pos = getCircuitPinPos(node, handle);
+    if (pos) return pos;
+    
+    // If handle is 'auto' or unknown, find the nearest output pin
+    if (handle === 'auto' || handle === 'center') {
+      const comp = CircuitComponents[node.circuitType];
+      const pins = node.pins || (comp ? comp.pins : []);
+      // Default to first pin
+      if (pins && pins.length > 0) {
+        const defaultPin = pins.find(p => p.id === 'out') || pins[0];
+        return { x: node.x + defaultPin.x, y: node.y + defaultPin.y };
+      }
+    }
+  }
+
   const x = node.x;
   const y = node.y;
   const w = node.width;
