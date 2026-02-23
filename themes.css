@@ -3253,3 +3253,89 @@
   --wb-text: hsl(0, 0%, 92%);
   --wb-text-secondary: hsl(0, 0%, 60%);
 }
+
+/* ============================================
+   CLAUDE THEME - Special Inter Font Styling
+   ============================================ */
+
+/* Import Inter font for Claude theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Apply Inter font to all elements when Claude theme is active */
+[data-theme="claude"] {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Ensure all text elements use Inter font in Claude theme */
+[data-theme="claude"] body,
+[data-theme="claude"] h1,
+[data-theme="claude"] h2,
+[data-theme="claude"] h3,
+[data-theme="claude"] h4,
+[data-theme="claude"] h5,
+[data-theme="claude"] h6,
+[data-theme="claude"] p,
+[data-theme="claude"] span,
+[data-theme="claude"] div,
+[data-theme="claude"] button,
+[data-theme="claude"] input,
+[data-theme="claude"] textarea,
+[data-theme="claude"] select,
+[data-theme="claude"] label,
+[data-theme="claude"] .nav-item,
+[data-theme="claude"] .sidebar,
+[data-theme="claude"] .main-content,
+[data-theme="claude"] .card,
+[data-theme="claude"] .widget,
+[data-theme="claude"] .modal,
+[data-theme="claude"] .dropdown,
+[data-theme="claude"] .tooltip,
+[data-theme="claude"] .notification,
+[data-theme="claude"] .toast,
+[data-theme="claude"] .schedule-main-content,
+[data-theme="claude"] .schedule-left-sidebar,
+[data-theme="claude"] .calendar-day,
+[data-theme="claude"] .weekday-header,
+[data-theme="claude"] .dashboard-ai-sidebar,
+[data-theme="claude"] .ai-message,
+[data-theme="claude"] .ai-response,
+[data-theme="claude"] .ai-input,
+[data-theme="claude"] .ai-header,
+[data-theme="claude"] .ai-title,
+[data-theme="claude"] .ai-subtitle,
+[data-theme="claude"] .ai-description,
+[data-theme="claude"] .ai-chat-message,
+[data-theme="claude"] .ai-chat-bubble,
+[data-theme="claude"] .ai-chat-input,
+[data-theme="claude"] .ai-chat-header,
+[data-theme="claude"] .ai-chat-title,
+[data-theme="claude"] .ai-chat-subtitle,
+[data-theme="claude"] .ai-chat-description,
+[data-theme="claude"] .ai-chat-message-text,
+[data-theme="claude"] .ai-chat-message-content,
+[data-theme="claude"] .ai-chat-message-wrapper,
+[data-theme="claude"] .ai-chat-message-container,
+[data-theme="claude"] .ai-chat-message-body,
+[data-theme="claude"] .ai-chat-message-footer,
+[data-theme="claude"] .ai-chat-message-header,
+[data-theme="claude"] .ai-chat-message-title,
+[data-theme="claude"] .ai-chat-message-subtitle,
+[data-theme="claude"] .ai-chat-message-description,
+[data-theme="claude"] .ai-chat-message-text-wrapper,
+[data-theme="claude"] .ai-chat-message-content-wrapper,
+[data-theme="claude"] .ai-chat-message-body-wrapper,
+[data-theme="claude"] .ai-chat-message-footer-wrapper,
+[data-theme="claude"] .ai-chat-message-header-wrapper,
+[data-theme="claude"] .ai-chat-message-title-wrapper,
+[data-theme="claude"] .ai-chat-message-subtitle-wrapper,
+[data-theme="claude"] .ai-chat-message-description-wrapper,
+[data-theme="claude"] .ai-chat-message-text-container,
+[data-theme="claude"] .ai-chat-message-content-container,
+[data-theme="claude"] .ai-chat-message-body-container,
+[data-theme="claude"] .ai-chat-message-footer-container,
+[data-theme="claude"] .ai-chat-message-header-container,
+[data-theme="claude"] .ai-chat-message-title-container,
+[data-theme="claude"] .ai-chat-message-subtitle-container,
+[data-theme="claude"] .ai-chat-message-description-container {
+  font-family: 'Inter', sans-serif !important;
+}
