@@ -13347,9 +13347,10 @@ function openFolderDropdown(button) {
       autocomplete="off"
       maxlength="100"
     >
+    <div class="folder-dropdown-error" id="folder-dropdown-error" style="display:none;"></div>
     <div class="folder-dropdown-actions">
       <button type="button" class="folder-dropdown-btn cancel" onclick="closeFolderDropdown()">Cancel</button>
-      <button type="button" class="folder-dropdown-btn create" onclick="createFolder()">Create</button>
+      <button type="button" class="folder-dropdown-btn create" id="folder-dropdown-create-btn" onclick="createFolder()" disabled>Create</button>
     </div>
   `;
   
@@ -13358,6 +13359,8 @@ function openFolderDropdown(button) {
   
   // Focus the input
   const input = dropdown.querySelector('#folder-name-input');
+  const createBtn = dropdown.querySelector('#folder-dropdown-create-btn');
+  const errorEl = dropdown.querySelector('#folder-dropdown-error');
   setTimeout(() => {
     input.focus();
     input.select();
@@ -13366,6 +13369,15 @@ function openFolderDropdown(button) {
   // Add event listeners
   document.addEventListener('click', handleFolderDropdownOutsideClick);
   input.addEventListener('keydown', handleFolderInputKeydown);
+
+  input.addEventListener('input', () => {
+    const name = input.value.trim();
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+    if (createBtn) createBtn.disabled = name.length === 0;
+  });
   
   // Prevent form submission on Enter in input
   input.addEventListener('keypress', (e) => {
@@ -13410,15 +13422,24 @@ async function createFolder() {
   if (!currentFolderDropdown) return;
   
   const input = currentFolderDropdown.querySelector('#folder-name-input');
+  const errorEl = currentFolderDropdown.querySelector('#folder-dropdown-error');
+  const createBtn = currentFolderDropdown.querySelector('#folder-dropdown-create-btn');
   const folderName = input.value.trim();
   
   if (!folderName) {
-    showToast('Please enter a folder name');
+    if (errorEl) {
+      errorEl.textContent = 'Folder name is required.';
+      errorEl.style.display = 'block';
+    } else {
+      showToast('Please enter a folder name');
+    }
     input.focus();
     return;
   }
   
   try {
+    if (createBtn) createBtn.disabled = true;
+
     // Create folder data
     const folderData = {
       id: 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -13426,7 +13447,7 @@ async function createFolder() {
       description: '',
       color: '#6366f1',
       icon: 'folder',
-      space_id: null,
+      space_id: currentSpaceId || null,
       is_favorite: false,
       created_at: new Date().toISOString()
     };
@@ -13439,8 +13460,6 @@ async function createFolder() {
     console.log('Saved folder result:', savedFolder);
     
     if (savedFolder) {
-      showToast(`Folder "${folderName}" created successfully!`);
-      
       // Close the dropdown
       closeFolderDropdown();
       
@@ -13451,7 +13470,14 @@ async function createFolder() {
     }
   } catch (error) {
     console.error('Error creating folder:', error);
-    showToast('Failed to create folder. Please try again.');
+    if (errorEl) {
+      errorEl.textContent = 'Failed to create folder. Please try again.';
+      errorEl.style.display = 'block';
+    } else {
+      showToast('Failed to create folder. Please try again.');
+    }
+  } finally {
+    if (createBtn) createBtn.disabled = input.value.trim().length === 0;
   }
 }
 
@@ -13484,10 +13510,15 @@ async function renderFoldersInPlaceholder() {
   try {
     // Load folders from database
     const folders = await loadFoldersFromDB();
+    const activeSpaceId = currentSpaceId;
+    const filteredFolders = (folders || []).filter(f => {
+      if (!activeSpaceId) return false;
+      return String(f.space_id) === String(activeSpaceId);
+    });
     
     console.log('Folders loaded for rendering:', folders);
     
-    if (folders && folders.length > 0) {
+    if (filteredFolders && filteredFolders.length > 0) {
       // Clear the placeholder content
       placeholder.innerHTML = '';
       
@@ -13496,7 +13527,7 @@ async function renderFoldersInPlaceholder() {
       foldersContainer.className = 'folders-grid';
       
       // Add each folder
-      folders.forEach(folder => {
+      filteredFolders.forEach(folder => {
         const folderElement = document.createElement('div');
         folderElement.className = 'folder-item';
         folderElement.innerHTML = `
@@ -24047,7 +24078,10 @@ function openSpaceView(spaceId) {
 
   // Render space view
   const viewsContainer = document.getElementById('viewsContainer');
-  if (viewsContainer) {
+  const viewsContent = document.getElementById('viewsContent');
+  if (viewsContent) {
+    viewsContent.innerHTML = renderSpaceDetailView(space);
+  } else if (viewsContainer) {
     viewsContainer.innerHTML = renderSpaceDetailView(space);
   }
 

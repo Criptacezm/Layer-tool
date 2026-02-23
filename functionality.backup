@@ -23593,20 +23593,23 @@ function openSpaceView(spaceId) {
 
   document.querySelectorAll('.custom-space-item').forEach(item => {
     item.classList.remove('active');
-  });
 
   const spaceBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
   if (spaceBtn) spaceBtn.classList.add('active');
 
   // Render space view
+  const viewsContent = document.getElementById('viewsContent');
   const viewsContainer = document.getElementById('viewsContainer');
-  if (viewsContainer) {
+  if (viewsContent) {
+    viewsContent.innerHTML = renderSpaceDetailView(space);
+  } else if (viewsContainer) {
     viewsContainer.innerHTML = renderSpaceDetailView(space);
   }
 
   updateBreadcrumb(space.name);
 }
 
+// ...
 function renderSpaceDetailView(space) {
   const allDocs = loadDocs();
   const allExcels = loadExcels();

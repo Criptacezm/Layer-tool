@@ -109,8 +109,10 @@
    Cards
    ============================================ */
 .card {
-  background-color: var(--card);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -390,7 +392,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -574,6 +576,7 @@
   margin-bottom: 16px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1038,7 +1041,9 @@
 .team-chat-layout {
   display: flex;
   height: calc(100vh - 0px);
-  background: var(--background);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
@@ -1046,8 +1051,10 @@
 .team-chat-sidebar {
   width: 220px;
   min-width: 220px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1364,7 +1371,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--background);
+  background: transparent;
   overflow: hidden;
 }
 
@@ -1640,7 +1647,7 @@
 .team-dm-checklist-progress-fill {
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, hsla(239, 84%, 67%, 0.95), hsla(217, 91%, 60%, 0.9));
+  background: linear-gradient(90deg, hsla(239, 84%, 67%, 0.95), hsla(217, 91% 60%, 0.9));
 }
 
 .team-dm-checklist-progress-text {
@@ -1711,6 +1718,9 @@
   color: var(--foreground);
   line-height: 1.35;
   word-break: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .team-dm-checklist-item.completed .team-dm-checklist-item-text {
@@ -2011,6 +2021,8 @@
   overflow-x: hidden;
   height: 100%;
   max-height: calc(100vh - 200px);
+  max-width: 800px;
+  margin: 0 auto;
   scroll-behavior: smooth;
   /* Custom scrollbar for professional look */
   scrollbar-width: thin;
@@ -2370,7 +2382,7 @@
 
 /* Message Input */
 .team-message-input-container {
-  border-top: 1px solid var(--border);
+
   padding: 12px 16px;
 }
 
@@ -2458,21 +2470,22 @@
 }
 
 .team-send-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(217 91% 60%);
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  color: white;
+  border-radius: 6px;
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .team-send-btn:hover {
-  background: hsl(217 91% 55%);
+  background: var(--surface-hover);
+  color: var(--foreground);
 }
 
 .team-send-btn svg {
@@ -2486,8 +2499,10 @@
 .team-members-panel {
   width: 280px;
   min-width: 280px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
@@ -3472,7 +3487,9 @@
 /* ============================================
    Issues View
    ============================================ */
-.issues-container {}
+.issues-container {
+  padding: 24px;
+}
 
 .issue-id {
   font-size: 12px;
@@ -3492,6 +3509,7 @@
   margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -14895,6 +14913,7 @@ h4.ai-heading {
   margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -18017,8 +18036,8 @@ h4.ai-heading {
 .dashboard-ai-sidebar {
   width: 320px;
   background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(35px);
+  -webkit-backdrop-filter: blur(35px);
   border-left: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
@@ -18526,8 +18545,10 @@ h4.ai-heading {
   gap: 16px;
   padding: 16px;
   min-height: 110px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   cursor: pointer;
   text-align: left;
@@ -18536,6 +18557,11 @@ h4.ai-heading {
   line-height: 1.5;
   font-weight: 400;
   transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Dark mode: 60% opacity for glass background */
+[data-mode="dark"] .ai-clean-card {
+  background: color-mix(in hsl, var(--glass-bg) 60%, transparent);
 }
 
 .ai-clean-card:hover {
@@ -18578,10 +18604,17 @@ h4.ai-heading {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
   border-radius: 14px;
   transition: border-color 0.2s ease;
+}
+
+/* Dark mode: 60% opacity for glass background */
+[data-mode="dark"] .ai-clean-input-box {
+  background: color-mix(in hsl, var(--glass-bg) 60%, transparent);
 }
 
 .ai-clean-input-box:focus-within {

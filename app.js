@@ -93,6 +93,7 @@ function showNotification(message, type = 'info') {
 // DOM Elements
 // ============================================
 const viewsContainer = document.getElementById('viewsContainer');
+const viewsContent = document.getElementById('viewsContent');
 const breadcrumbText = document.getElementById('breadcrumbText');
 const searchInput = document.getElementById('searchInput');
 const modalOverlay = document.getElementById('modalOverlay');
@@ -2406,7 +2407,11 @@ async function renderCurrentView(preserveScroll = false) {
 
   // Only render project detail view if current view is not project-specific
   if (selectedProjectIndex !== null && currentView !== 'schedule') {
-    viewsContainer.innerHTML = renderProjectDetailView(selectedProjectIndex);
+    if (viewsContent) {
+      viewsContent.innerHTML = renderProjectDetailView(selectedProjectIndex);
+    } else {
+      viewsContainer.innerHTML = renderProjectDetailView(selectedProjectIndex);
+    }
     updateBreadcrumb('Project Details');
 
     // Setup project-specific realtime subscription for live updates
@@ -2449,7 +2454,11 @@ async function renderCurrentView(preserveScroll = false) {
 
   switch (currentView) {
     case 'inbox':
-      viewsContainer.innerHTML = renderInboxView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderInboxView();
+      } else {
+        viewsContainer.innerHTML = renderInboxView();
+      }
       updateBreadcrumb('Inbox');
       // Apply saved widget order after rendering
       initDashboardWidgetOrder();
@@ -2461,20 +2470,32 @@ async function renderCurrentView(preserveScroll = false) {
       }
       break;
     case 'my-issues':
-      viewsContainer.innerHTML = renderMyIssuesView(currentFilter, searchQuery);
+      if (viewsContent) {
+        viewsContent.innerHTML = renderMyIssuesView(currentFilter, searchQuery);
+      } else {
+        viewsContainer.innerHTML = renderMyIssuesView(currentFilter, searchQuery);
+      }
       updateBreadcrumb('My issues');
       setupIssueFilterListeners();
       break;
     case 'settings':
       // Handle async renderSettingsView
       (async () => {
-        viewsContainer.innerHTML = await renderSettingsView();
+        if (viewsContent) {
+          viewsContent.innerHTML = await renderSettingsView();
+        } else {
+          viewsContainer.innerHTML = await renderSettingsView();
+        }
         updateBreadcrumb('Settings');
         initThemeSelector();   // ← ADD THIS LINE
       })();
       break;
     case 'schedule':                          // ← Add this case
-      viewsContainer.innerHTML = renderScheduleView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderScheduleView();
+      } else {
+        viewsContainer.innerHTML = renderScheduleView();
+      }
       updateBreadcrumb('Schedule');
       // Initialize current time indicator
       if (typeof initCurrentTimeIndicator === 'function') {
@@ -2486,19 +2507,35 @@ async function renderCurrentView(preserveScroll = false) {
       }
       break;
     case 'activity':
-      viewsContainer.innerHTML = renderActivityView(searchQuery);
+      if (viewsContent) {
+        viewsContent.innerHTML = renderActivityView(searchQuery);
+      } else {
+        viewsContainer.innerHTML = renderActivityView(searchQuery);
+      }
       updateBreadcrumb('Projects');
       break;
     case 'team':
-      viewsContainer.innerHTML = renderTeamView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderTeamView();
+      } else {
+        viewsContainer.innerHTML = renderTeamView();
+      }
       updateBreadcrumb('Team');
       break;
     case 'ai':
-      viewsContainer.innerHTML = renderAIView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderAIView();
+      } else {
+        viewsContainer.innerHTML = renderAIView();
+      }
       updateBreadcrumb('AI');
       break;
     case 'drafts':
-      viewsContainer.innerHTML = renderDraftsView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderDraftsView();
+      } else {
+        viewsContainer.innerHTML = renderDraftsView();
+      }
       updateBreadcrumb('Drafts');
       window.draftsNeedRefresh = false; // Reset the flag after rendering
       
@@ -2508,7 +2545,11 @@ async function renderCurrentView(preserveScroll = false) {
       }, 100);
       break;
     default:
-      viewsContainer.innerHTML = renderMyIssuesView();
+      if (viewsContent) {
+        viewsContent.innerHTML = renderMyIssuesView();
+      } else {
+        viewsContainer.innerHTML = renderMyIssuesView();
+      }
       updateBreadcrumb('My issues');
   }
 
