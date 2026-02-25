@@ -17329,6 +17329,133 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
+// ============================================
+// Message Popup Notification (Bottom Right)
+// ============================================
+let activeMessageNotifications = [];
+
+function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
+  // Don't show notification if user is already in the chat view with this sender
+  if (document.visibilityState === 'hidden') {
+    // Page is hidden, show notification
+  }
+  
+  // Create notification container if it doesn't exist
+  let container = document.getElementById('message-popup-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'message-popup-container';
+    Object.assign(container.style, {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      zIndex: '10001',
+      maxWidth: '350px'
+    });
+    document.body.appendChild(container);
+  }
+  
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = 'message-popup-notification';
+  const notificationId = 'msg-notif-' + Date.now();
+  notification.id = notificationId;
+  
+  // Truncate message if too long
+  const truncatedMessage = message.length > 60 ? message.substring(0, 60) + '...' : message;
+  
+  // Avatar HTML
+  const avatarHtml = avatarUrl 
+    ? `<img src="${avatarUrl}" alt="${senderName}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
+    : `<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;">${senderName.charAt(0).toUpperCase()}</div>`;
+  
+  notification.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);cursor:pointer;transition:all 0.2s ease;">
+      ${avatarHtml}
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;color:var(--foreground);margin-bottom:4px;">${senderName}</div>
+        <div style="font-size:13px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${truncatedMessage}</div>
+      </div>
+      <button class="close-msg-notif" style="background:none;border:none;color:var(--muted-foreground);cursor:pointer;padding:4px;margin:-4px -4px 0 0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  
+  // Add hover effect
+  notification.addEventListener('mouseenter', () => {
+    notification.querySelector('div').style.transform = 'translateY(-2px)';
+    notification.querySelector('div').style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
+  });
+  notification.addEventListener('mouseleave', () => {
+    notification.querySelector('div').style.transform = 'translateY(0)';
+    notification.querySelector('div').style.boxShadow = '0 8px 32px rgba(0,0,0,0.2)';
+  });
+  
+  // Click handler - open the chat
+  notification.addEventListener('click', (e) => {
+    if (e.target.closest('.close-msg-notif')) {
+      e.stopPropagation();
+      removeNotification(notificationId);
+    } else {
+      removeNotification(notificationId);
+      if (onClick) onClick();
+    }
+  });
+  
+  // Close button handler
+  const closeBtn = notification.querySelector('.close-msg-notif');
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    removeNotification(notificationId);
+  });
+  
+  // Add to container
+  container.appendChild(notification);
+  activeMessageNotifications.push(notificationId);
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(100%)';
+    notification.style.transition = 'all 0.3s ease';
+    requestAnimationFrame(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(0)';
+    });
+  });
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    removeNotification(notificationId);
+  }, 5000);
+  
+  // Keep max 3 notifications
+  while (activeMessageNotifications.length > 3) {
+    const oldestId = activeMessageNotifications.shift();
+    removeNotification(oldestId);
+  }
+}
+
+function removeNotification(notificationId) {
+  const notification = document.getElementById(notificationId);
+  if (notification) {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }
+  activeMessageNotifications = activeMessageNotifications.filter(id => id !== notificationId);
+}
+
 function searchTeamMembers(query) {
   const items = document.querySelectorAll('.team-follower-item');
   const searchTerm = query.toLowerCase();
@@ -17398,6 +17525,9 @@ async function selectTeamChannel(channelId) {
     window.LayerDB.markChatAsRead(channelId).catch(err => console.error('Failed to mark read:', err));
   }
 
+  // IMMEDIATELY update sidebar to remove unread badge
+  updateTeamSidebar();
+
   // Load messages from database FIRST before updating UI
   await loadTeamMessages(channelId, channelType);
 
@@ -17436,30 +17566,47 @@ async function selectTeamChannel(channelId) {
         const newLength = teamMessages[channelId]?.length || 0;
 
         if (newLength !== prevLength) {
-          console.log(`🔄 Active channel poll detected ${newLength - prevLength} new messages, updating UI`);
+          console.log(`🔄 Active channel poll detected ${newLength - prevLength} new messages`);
 
-          // Force update of the message list
+          // Get the messages list
           const messagesList = document.querySelector('.team-messages-list');
-          if (messagesList) {
-            // Update only the messages list to preserve focus and scroll
-            updateChatContentOnly();
+          if (!messagesList) return;
+
+          // Get new messages only
+          const messages = teamMessages[channelId] || [];
+          const newMessages = messages.slice(prevLength);
+
+          // Append only new messages instead of replacing all content
+          newMessages.forEach(msg => {
+            const msgHTML = createMessageHTML(msg);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = msgHTML;
+            const msgElement = tempDiv.firstElementChild;
+            messagesList.appendChild(msgElement);
+          });
+
+          // Only auto-scroll if user is already at the bottom
+          // NEVER interrupt user scrolling
+          const isAtBottom = messagesList.scrollHeight - messagesList.scrollTop - messagesList.clientHeight < 50;
+          if (isAtBottom) {
+            messagesList.scrollTop = messagesList.scrollHeight;
           } else {
-            // Fallback if messages list doesn't exist
-            updateTeamChatArea();
+            // Show new message indicator
+            if (chatScrollManager) {
+              chatScrollManager.newMessageCount += (newLength - prevLength);
+              chatScrollManager.updateScrollButton();
+            }
           }
         }
       } catch (error) {
         console.error('❌ Error in active channel polling:', error);
-
-        // Don't stop polling on error, just log it
-        // The polling will continue and hopefully recover
       }
     } else {
       // Stop polling when we leave the channel
       clearInterval(window.teamChatPollInterval);
       console.log('🛑 Stopped active channel polling for:', channelId);
     }
-  }, 500); // Reduced to 500ms for faster updates
+  }, 500);
 }
 
 // Advanced Chat Scroll Manager
@@ -17838,7 +17985,11 @@ function updateChatContentOnly() {
 
     // Store current scroll position and whether we're at bottom
     const wasAtBottom = chatScrollManager ? chatScrollManager.isAtBottom : true;
+    // Store the current scroll position relative to the bottom
     const scrollHeight = messagesList.scrollHeight;
+    const scrollTop = messagesList.scrollTop;
+    const clientHeight = messagesList.clientHeight;
+    const scrollFromBottom = scrollHeight - scrollTop - clientHeight;
 
     // Generate only the messages HTML
     const messagesHTML = messages.map(msg => `
@@ -17909,10 +18060,13 @@ function updateChatContentOnly() {
         // If we were at bottom, scroll to bottom to show new messages
         chatScrollManager.scrollToBottom(true);
       } else {
-        // If we weren't at bottom, maintain scroll position but show new message indicator
+        // If we weren't at bottom, preserve scroll position relative to content
         const newScrollHeight = messagesList.scrollHeight;
         if (newScrollHeight > scrollHeight) {
-          // New content was added, show scroll-to-bottom button
+          // New content was added, restore scroll position from bottom
+          const newScrollTop = newScrollHeight - clientHeight - scrollFromBottom;
+          messagesList.scrollTop = Math.max(0, newScrollTop);
+          // Show scroll-to-bottom button
           chatScrollManager.updateScrollButton && chatScrollManager.updateScrollButton();
         }
       }
@@ -17924,6 +18078,61 @@ function updateChatContentOnly() {
     // Fallback if content container doesn't exist yet
     updateTeamChatArea();
   }
+}
+
+// Helper function to create HTML for a single message
+function createMessageHTML(msg) {
+  return `
+    <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}">
+      <div class="team-message-avatar">
+        ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
+      `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+      `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
+    }
+      </div>
+      <div class="team-message-body">
+        <div class="team-message-header">
+          <span class="team-message-user">${msg.user}</span>
+          <span class="team-message-time">${msg.time}</span>
+        </div>
+        <div class="team-message-content">
+          ${msg.content}
+          ${!msg.isSystem ? `
+            <button class="team-message-reaction-trigger" onclick="toggleReactionPicker('${msg.id}')" title="Add reaction">
+              😊
+            </button>
+            <div class="team-reaction-picker" id="reaction-picker-${msg.id}">
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '👍')">👍</button>
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '❤️')">❤️</button>
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😂')">😂</button>
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😮')">😮</button>
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😢')">😢</button>
+              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😡')">😡</button>
+            </div>
+          ` : ''}
+          ${msg.reactions && Object.keys(msg.reactions).length > 0 ? `
+            <div class="team-message-reactions">
+              ${Object.entries(msg.reactions).map(([emoji, users]) => `
+                <span class="team-reaction" onclick="toggleReaction('${msg.id}', '${emoji}')">
+                  ${emoji} ${users.length}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+        ${!msg.isSystem ? `
+          <div class="team-message-status">
+            ${msg.userId === window.currentUser?.id ? `
+              ${msg.isRead ? 
+                `<span class="message-status seen" title="Seen">✓✓</span>` : 
+                `<span class="message-status received" title="Received">✓</span>`
+              }
+            ` : ''}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
 }
 
 // Load reactions for all messages in current channel
@@ -18353,6 +18562,11 @@ async function setupGlobalDMListener() {
           updateTeamSidebar(); // Update sidebar specificially for better UX
 
           showNotification(`New message from ${profile.name}`, 'info');
+          
+          // Show popup notification for new DM
+          showMessagePopupNotification(profile.name, newRecord.message, profile.avatar_url, () => {
+            selectTeamChannel(newDM.id);
+          });
 
           // Play notification sound if we had one
         }
@@ -18375,6 +18589,11 @@ async function setupGlobalDMListener() {
         existingDM.unread = (existingDM.unread || 0) + 1;
         updateTeamChatArea(); // Update badges
         updateTeamSidebar(); // Update sidebar badges
+        
+        // Show popup notification for new message
+        showMessagePopupNotification(existingDM.name, newRecord.message, existingDM.avatarUrl, () => {
+          selectTeamChannel(existingDM.id);
+        });
       } else {
         // We ARE in this channel.
         // Ensure the message is in our local state for the ACTIVE channel
@@ -19723,7 +19942,7 @@ async function rejectFollowRequest(requestId, followerId) {
 
 async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'dark';
-  const appVersion = '0.3.0';
+  const appVersion = '0.3.1';
   const lastSync = new Date().toLocaleString();
 
   // Get current user info - ONLY use saved profile name, never Google metadata
@@ -22270,17 +22489,19 @@ async function autoSaveDoc() {
       try {
         // Check if this is a new document (temporary ID) or existing document
         const docs = await window.LayerDB.loadDocs();
-        const existingDoc = docs.find(d => d.id === currentDocId);
+        // Use String comparison to handle both string and number IDs
+        const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
 
         if (existingDoc) {
           // Document exists, update it
           console.log('📝 Updating existing doc:', currentDocId);
-          await window.LayerDB.updateDoc(currentDocId, { title, content });
+          await window.LayerDB.updateDoc(existingDoc.id, { title, content });
+          // Ensure currentDocId matches the database ID format
+          currentDocId = existingDoc.id;
         } else {
           // Document doesn't exist in DB yet (likely new doc), create it first
           console.log('📝 Creating new doc in DB:', currentDocId);
           const newDoc = {
-            id: currentDocId,
             title,
             content,
             spaceId: currentSpaceId || null,
@@ -22321,20 +22542,27 @@ async function autoSaveDoc() {
     // Fallback to localStorage
     console.log('📝 Saving to localStorage fallback');
     const docs = loadDocs();
-    const existingIndex = docs.findIndex(d => d.id === currentDocId);
+    // Use String comparison to handle both string and number IDs
+    const existingIndex = docs.findIndex(d => String(d.id) === String(currentDocId));
 
     if (existingIndex !== -1) {
+      // Update existing document - preserve the original ID and spaceId
+      const originalDoc = docs[existingIndex];
       docs[existingIndex] = {
-        ...docs[existingIndex],
+        ...originalDoc,
         title,
         content,
         updatedAt: new Date().toISOString()
       };
       saveDocs(docs);
+      // Ensure currentDocId matches the stored ID format
+      currentDocId = originalDoc.id;
     } else {
-      // Save new document
+      // Save new document - generate a new unique ID
+      const newId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      currentDocId = newId;
       docs.unshift({
-        id: currentDocId,
+        id: newId,
         title,
         content,
         spaceId: currentSpaceId || null,
@@ -22346,7 +22574,7 @@ async function autoSaveDoc() {
 
     // Sync draft title in localStorage
     const drafts = loadDrafts();
-    const draftIndex = drafts.findIndex(d => d.id === currentDocId);
+    const draftIndex = drafts.findIndex(d => String(d.id) === String(currentDocId));
     if (draftIndex !== -1) {
       drafts[draftIndex].title = title;
       drafts[draftIndex].updatedAt = new Date().toISOString();
@@ -24188,33 +24416,31 @@ function renderSpaceDetailView(space) {
       <div class="space-main-content">
         <!-- Top Cards Row -->
         <div class="space-cards-row">
-          <!-- Recent Card -->
-          <div class="space-card">
+          <!-- Sheets Card (replaced Recent) -->
+          <div class="space-card sheets-card-hover">
             <div class="card-header">
-              <h3 class="card-title">Recent</h3>
+              <h3 class="card-title">Sheets</h3>
+              <button class="card-add-doc-btn" onclick="openExcelEditor()" title="Create new Sheet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
             </div>
             <div class="card-content">
-              ${recentItems.length > 0 ? recentItems.map(item => `
-                <div class="card-item" data-item-id="${item.id}" data-item-type="${item.type}" onclick="${item.type === 'doc' ? `openDocEditor('${item.id}')` : `openExcelEditor('${item.id}')`}">
-                  <div class="item-icon">
-                    ${item.type === 'doc' ? `
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                      </svg>
-                    ` : `
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <line x1="3" y1="9" x2="21" y2="9"/>
-                        <line x1="9" y1="3" x2="9" y2="21"/>
-                      </svg>
-                    `}
+              ${excels.length > 0 ? excels.slice(0, 3).map(excel => `
+                <div class="card-item" data-item-id="${excel.id}" data-item-type="excel" onclick="openExcelEditor('${excel.id}')">
+                  <div class="item-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: white;">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <line x1="3" y1="9" x2="21" y2="9"/>
+                      <line x1="9" y1="3" x2="9" y2="21"/>
+                    </svg>
                   </div>
                   <div class="item-info">
-                    <div class="item-title">${item.title}</div>
+                    <div class="item-title">${excel.title}</div>
                     <div class="item-meta">in ${space.name}</div>
                   </div>
-                  <button class="card-item-delete" onclick="event.stopPropagation(); deleteCardItem('${item.id}', '${item.type}', '${space.id}')" title="Delete ${item.type}">
+                  <button class="card-item-delete" onclick="event.stopPropagation(); deleteCardItem('${excel.id}', 'excel', '${space.id}')" title="Delete sheet">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
@@ -24222,13 +24448,14 @@ function renderSpaceDetailView(space) {
                 </div>
               `).join('') : `
                 <div class="empty-state-small">
-                  <div class="empty-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
+                  <div class="empty-icon" style="background: linear-gradient(135deg, #10b98120 0%, #05966920 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #10b981;">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <line x1="3" y1="9" x2="21" y2="9"/>
+                      <line x1="9" y1="3" x2="9" y2="21"/>
                     </svg>
                   </div>
-                  <div class="empty-text">No recent items</div>
+                  <div class="empty-text">No spreadsheets</div>
                 </div>
               `}
             </div>

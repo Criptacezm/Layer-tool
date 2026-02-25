@@ -543,6 +543,7 @@ window.LayerRealtime = {
   subscribeToProjectDetail,
   unsubscribeFromProjectDetail,
   registerRealtimeCallbacks,
+  subscribeToUserPresence,
 
   // Legacy API (still works)
   subscribeToProjectChanges,

@@ -1056,6 +1056,346 @@ function renderInlineCreateIssueForm() {
       </form>
     </div>
   `;
+
+  if (window.LayerDB?.getDmChecklist) {
+    (async () => {
+      try {
+        const record = await window.LayerDB.getDmChecklist(dmChecklistId);
+        if (record && Array.isArray(record.items)) {
+          const all = loadDmChecklists();
+          all[String(dmChecklistId)] = record.items;
+          try {
+            localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+          } catch (e) { }
+          const latestQuery = document.getElementById('teamDmChecklistSearch')?.value || query || '';
+          renderDmChecklistTab(dmChecklistId, latestQuery);
+        }
+      } catch (e) {
+        console.error('Failed to load DM checklist from DB:', e);
+      }
+    })();
+  }
+}
+
+window.renderDmChecklistTab = renderDmChecklistTab;
+window.addDmChecklistItem = addDmChecklistItem;
+window.toggleDmChecklistItem = toggleDmChecklistItem;
+window.deleteDmChecklistItem = deleteDmChecklistItem;
+
+const DM_CHECKLISTS_KEY = 'layerDmChecklists';
+let currentDmChecklistSubscription = null;
+let currentDmChecklistSubscriptionId = null;
+
+function ensureDmChecklistDbSync(dmChecklistId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+
+  // Subscribe once per checklist id
+  if (currentDmChecklistSubscriptionId !== dmChecklistId) {
+    if (currentDmChecklistSubscription && window.LayerDB?.unsubscribeFromDmChecklist) {
+      try {
+        window.LayerDB.unsubscribeFromDmChecklist(currentDmChecklistSubscription);
+      } catch (e) { }
+      currentDmChecklistSubscription = null;
+    }
+    currentDmChecklistSubscriptionId = dmChecklistId;
+
+    if (window.LayerDB?.subscribeToDmChecklist) {
+      currentDmChecklistSubscription = window.LayerDB.subscribeToDmChecklist(dmChecklistId, (payload) => {
+        const { new: newRecord } = payload || {};
+        if (newRecord && Array.isArray(newRecord.items)) {
+          try {
+            const all = loadDmChecklists();
+            all[String(dmChecklistId)] = newRecord.items;
+            localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+          } catch (e) { }
+          renderDmChecklistTab(dmChecklistId, document.getElementById('teamDmChecklistSearch')?.value || '');
+        }
+      });
+    }
+  }
+
+  // Load latest items from DB once (will update cache + re-render)
+  if (window.LayerDB?.getDmChecklist) {
+    window.LayerDB.getDmChecklist(dmChecklistId).then((record) => {
+      if (record && Array.isArray(record.items)) {
+        const all = loadDmChecklists();
+        all[String(dmChecklistId)] = record.items;
+        try {
+          localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+        } catch (e) { }
+        renderDmChecklistTab(dmChecklistId, document.getElementById('teamDmChecklistSearch')?.value || '');
+      }
+    }).catch((e) => {
+      console.error('Failed to load DM checklist from DB:', e);
+    });
+  }
+}
+
+function isDMChannelId(channelId) {
+  return !!channelId && channelId.toLowerCase().startsWith('dm-');
+}
+
+function getDmParticipantIdsFromChannelId(channelId) {
+  if (!isDMChannelId(channelId)) return [];
+  const channelWithoutPrefix = channelId.substring('dm-'.length);
+  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const uuidMatches = channelWithoutPrefix.match(uuidRegex);
+  return uuidMatches ? uuidMatches.map(id => id.toLowerCase()) : [];
+}
+
+function getDmChecklistId(channelId) {
+  const ids = getDmParticipantIdsFromChannelId(channelId);
+  if (ids.length < 1) return null;
+  const sorted = [...new Set(ids)].sort();
+  return `dm:${sorted.join(':')}`;
+}
+
+function getDmChecklistParticipantUUIDs(channelId) {
+  const ids = getDmParticipantIdsFromChannelId(channelId);
+  const uniqueSorted = [...new Set(ids)].sort();
+  return uniqueSorted;
+}
+
+function loadDmChecklists() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return {};
+  }
+  try {
+    return JSON.parse(localStorage.getItem(DM_CHECKLISTS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function getDmChecklistItems(dmChecklistId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return [];
+  }
+  const all = loadDmChecklists();
+  return all[String(dmChecklistId)] || [];
+}
+
+async function saveDmChecklistItems(dmChecklistId, items) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to save checklists', 'error');
+    return;
+  }
+  const all = loadDmChecklists();
+  all[String(dmChecklistId)] = items;
+  try {
+    localStorage.setItem(DM_CHECKLISTS_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error('Failed to save DM checklists:', e);
+    showToast('Failed to save checklist', 'error');
+  }
+
+  try {
+    if (window.LayerDB?.upsertDmChecklist) {
+      const participantUUIDs = getDmChecklistParticipantUUIDs(teamCurrentChannel);
+      if (participantUUIDs.length > 0) {
+        await window.LayerDB.upsertDmChecklist(dmChecklistId, participantUUIDs, items);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to sync DM checklist to database:', error);
+  }
+}
+
+async function addDmChecklistItem(dmChecklistId, text) {
+  if (!text || !text.trim()) return;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to add checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId);
+  items.push({
+    id: Date.now(),
+    text: text.trim(),
+    completed: false,
+    createdAt: new Date().toISOString()
+  });
+
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+async function toggleDmChecklistItem(dmChecklistId, itemId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId);
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  item.completed = !item.completed;
+
+  if (item.completed) {
+    const currentUser = window.LayerDB.getCurrentUser();
+    item.checked_by = {
+      id: currentUser?.id,
+      name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You',
+      avatar_url: currentUser?.user_metadata?.avatar_url,
+      checked_at: new Date().toISOString()
+    };
+  } else {
+    delete item.checked_by;
+  }
+
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+async function deleteDmChecklistItem(dmChecklistId, itemId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to update checklist items', 'error');
+    return;
+  }
+
+  const items = getDmChecklistItems(dmChecklistId).filter(i => i.id !== itemId);
+  await saveDmChecklistItems(dmChecklistId, items);
+  renderDmChecklistTab(dmChecklistId);
+}
+
+function renderTeamListTabContent() {
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const isDM = channel?.type === 'dm' || isDMChannelId(teamCurrentChannel);
+
+  if (!isDM) {
+    return `
+      <div class="team-chat-content">
+        <div class="team-list-tab-placeholder">
+          <div class="team-list-tab-placeholder-title">Lists</div>
+          <div class="team-list-tab-placeholder-subtitle">Select a direct message to manage a shared checklist.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const dmChecklistId = getDmChecklistId(teamCurrentChannel);
+  if (!dmChecklistId) {
+    return `
+      <div class="team-chat-content">
+        <div class="team-list-tab-placeholder">
+          <div class="team-list-tab-placeholder-title">Checklist</div>
+          <div class="team-list-tab-placeholder-subtitle">Unable to determine DM participants for this conversation.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  setTimeout(() => {
+    renderDmChecklistTab(dmChecklistId);
+    ensureDmChecklistDbSync(dmChecklistId);
+  }, 0);
+
+  return `
+    <div class="team-chat-content">
+      <div class="team-dm-checklist" id="teamDmChecklistRoot" data-dm-checklist-id="${dmChecklistId}">
+        <div class="team-dm-checklist-skeleton">
+          <div class="team-dm-checklist-skeleton-header"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+          <div class="team-dm-checklist-skeleton-row"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDmChecklistTab(dmChecklistId, query = '') {
+  const root = document.getElementById('teamDmChecklistRoot');
+  if (!root) return;
+
+  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
+    teamDirectMessages.find(d => d.id === teamCurrentChannel);
+  const channelName = channel ? channel.name : 'Direct Message';
+  const items = getDmChecklistItems(dmChecklistId);
+
+  // Note: DB subscription + initial load are handled by ensureDmChecklistDbSync(dmChecklistId)
+
+  const normalizedQuery = (query || '').trim().toLowerCase();
+  const filteredItems = normalizedQuery
+    ? items.filter(i => (i.text || '').toLowerCase().includes(normalizedQuery))
+    : items;
+
+  const completedCount = items.filter(i => i.completed).length;
+  const totalCount = items.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const dmChecklistIdEscaped = String(dmChecklistId).replace(/'/g, "\\'");
+
+  root.innerHTML = `
+    <div class="team-dm-checklist-header">
+      <div class="team-dm-checklist-header-left">
+        <div class="team-dm-checklist-title">Checklist</div>
+        <div class="team-dm-checklist-subtitle">Shared with ${channelName}</div>
+      </div>
+      <div class="team-dm-checklist-header-right">
+        <div class="team-dm-checklist-chip">${completedCount}/${totalCount} done</div>
+      </div>
+    </div>
+
+    <div class="team-dm-checklist-toolbar">
+      <div class="team-dm-checklist-search">
+        <input type="text" id="teamDmChecklistSearch" placeholder="Search tasks..." value="${(query || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" oninput="renderDmChecklistTab('${dmChecklistIdEscaped}', this.value)" />
+      </div>
+      <div class="team-dm-checklist-progress" aria-label="Progress">
+        <div class="team-dm-checklist-progress-bar">
+          <div class="team-dm-checklist-progress-fill" style="width:${progressPercent}%;"></div>
+        </div>
+        <div class="team-dm-checklist-progress-text">${progressPercent}%</div>
+      </div>
+    </div>
+
+    <div class="team-dm-checklist-body">
+      ${filteredItems.length > 0 ? `
+        <div>
+          ${filteredItems.map(item => {
+    const itemId = item.id;
+    const completed = item.completed;
+    const checked_by = item.checked_by;
+    const checkedByAvatar = checked_by?.avatar_url;
+    const checkedByName = checked_by?.name || 'Someone';
+    const checkedByInitial = checkedByName.charAt(0).toUpperCase();
+
+    return `
+      <div class="team-dm-checklist-item ${completed ? 'completed' : ''}" data-item-id="${itemId}">
+        <div class="team-dm-checklist-checkbox" onclick="toggleDmChecklistItem('${dmChecklistIdEscaped}', ${itemId})">
+          ${completed ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>` : ''}
+        </div>
+        <div class="team-dm-checklist-item-text">${item.text}</div>
+        ${completed && checked_by ? `
+          <div class="team-dm-checklist-checked-by" title="Checked by ${checkedByName}">
+            ${checkedByAvatar
+              ? `<img src="${checkedByAvatar}" alt="${checkedByName}" class="team-dm-checklist-checked-avatar" />`
+              : `<div class="team-dm-checklist-checked-avatar-fallback">${checkedByInitial}</div>`
+            }
+          </div>
+        ` : ''}
+        <div class="team-dm-checklist-delete" onclick="deleteDmChecklistItem('${dmChecklistIdEscaped}', ${itemId})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('')}
+        </div>
+      ` : `
+        <div class="team-dm-checklist-empty">
+          <div class="team-dm-checklist-empty-title">No tasks</div>
+          <div class="team-dm-checklist-empty-subtitle">Add a task to start tracking work with ${channelName}.</div>
+        </div>
+      `}
+    </div>
+
+    <div class="team-dm-checklist-footer">
+      <input type="text" class="team-dm-checklist-add" placeholder="Add a task and press Enter" onkeypress="if(event.key==='Enter'){addDmChecklistItem('${dmChecklistIdEscaped}', this.value); this.value='';}" />
+    </div>
+  `;
 }
 
 function toggleCreateIssueForm() {
@@ -13007,9 +13347,10 @@ function openFolderDropdown(button) {
       autocomplete="off"
       maxlength="100"
     >
+    <div class="folder-dropdown-error" id="folder-dropdown-error" style="display:none;"></div>
     <div class="folder-dropdown-actions">
       <button type="button" class="folder-dropdown-btn cancel" onclick="closeFolderDropdown()">Cancel</button>
-      <button type="button" class="folder-dropdown-btn create" onclick="createFolder()">Create</button>
+      <button type="button" class="folder-dropdown-btn create" id="folder-dropdown-create-btn" onclick="createFolder()" disabled>Create</button>
     </div>
   `;
   
@@ -13018,6 +13359,8 @@ function openFolderDropdown(button) {
   
   // Focus the input
   const input = dropdown.querySelector('#folder-name-input');
+  const createBtn = dropdown.querySelector('#folder-dropdown-create-btn');
+  const errorEl = dropdown.querySelector('#folder-dropdown-error');
   setTimeout(() => {
     input.focus();
     input.select();
@@ -13026,6 +13369,15 @@ function openFolderDropdown(button) {
   // Add event listeners
   document.addEventListener('click', handleFolderDropdownOutsideClick);
   input.addEventListener('keydown', handleFolderInputKeydown);
+
+  input.addEventListener('input', () => {
+    const name = input.value.trim();
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+    if (createBtn) createBtn.disabled = name.length === 0;
+  });
   
   // Prevent form submission on Enter in input
   input.addEventListener('keypress', (e) => {
@@ -13070,15 +13422,24 @@ async function createFolder() {
   if (!currentFolderDropdown) return;
   
   const input = currentFolderDropdown.querySelector('#folder-name-input');
+  const errorEl = currentFolderDropdown.querySelector('#folder-dropdown-error');
+  const createBtn = currentFolderDropdown.querySelector('#folder-dropdown-create-btn');
   const folderName = input.value.trim();
   
   if (!folderName) {
-    showToast('Please enter a folder name');
+    if (errorEl) {
+      errorEl.textContent = 'Folder name is required.';
+      errorEl.style.display = 'block';
+    } else {
+      showToast('Please enter a folder name');
+    }
     input.focus();
     return;
   }
   
   try {
+    if (createBtn) createBtn.disabled = true;
+
     // Create folder data
     const folderData = {
       id: 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -13086,7 +13447,7 @@ async function createFolder() {
       description: '',
       color: '#6366f1',
       icon: 'folder',
-      space_id: null,
+      space_id: currentSpaceId || null,
       is_favorite: false,
       created_at: new Date().toISOString()
     };
@@ -13099,8 +13460,6 @@ async function createFolder() {
     console.log('Saved folder result:', savedFolder);
     
     if (savedFolder) {
-      showToast(`Folder "${folderName}" created successfully!`);
-      
       // Close the dropdown
       closeFolderDropdown();
       
@@ -13111,7 +13470,14 @@ async function createFolder() {
     }
   } catch (error) {
     console.error('Error creating folder:', error);
-    showToast('Failed to create folder. Please try again.');
+    if (errorEl) {
+      errorEl.textContent = 'Failed to create folder. Please try again.';
+      errorEl.style.display = 'block';
+    } else {
+      showToast('Failed to create folder. Please try again.');
+    }
+  } finally {
+    if (createBtn) createBtn.disabled = input.value.trim().length === 0;
   }
 }
 
@@ -13144,10 +13510,15 @@ async function renderFoldersInPlaceholder() {
   try {
     // Load folders from database
     const folders = await loadFoldersFromDB();
+    const activeSpaceId = currentSpaceId;
+    const filteredFolders = (folders || []).filter(f => {
+      if (!activeSpaceId) return false;
+      return String(f.space_id) === String(activeSpaceId);
+    });
     
     console.log('Folders loaded for rendering:', folders);
     
-    if (folders && folders.length > 0) {
+    if (filteredFolders && filteredFolders.length > 0) {
       // Clear the placeholder content
       placeholder.innerHTML = '';
       
@@ -13156,7 +13527,7 @@ async function renderFoldersInPlaceholder() {
       foldersContainer.className = 'folders-grid';
       
       // Add each folder
-      folders.forEach(folder => {
+      filteredFolders.forEach(folder => {
         const folderElement = document.createElement('div');
         folderElement.className = 'folder-item';
         folderElement.innerHTML = `
@@ -15505,6 +15876,10 @@ function renderTeamChatHeader() {
 }
 
 function renderTeamChatContent() {
+  if (teamCurrentTab === 'list') {
+    return renderTeamListTabContent();
+  }
+
   const messages = teamMessages[teamCurrentChannel] || [];
   const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
     teamDirectMessages.find(d => d.id === teamCurrentChannel);
@@ -16971,7 +17346,7 @@ function searchTeamMembers(query) {
 function updateTeamChatArea() {
   const chatMain = document.querySelector('.team-chat-main');
   if (chatMain) {
-    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + renderTeamMessageInput();
+    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' ? renderTeamMessageInput() : '');
   }
 
   // Update sidebar active states
@@ -17032,15 +17407,17 @@ async function selectTeamChannel(channelId) {
   // Setup realtime subscription
   await setupTeamChatRealtime(channelId);
 
-  // Update chat content only (smoother) - this ensures the latest messages are shown
-  updateChatContentOnly();
-  
-  // Always scroll to bottom when switching to a channel to show latest messages
-  setTimeout(() => {
-    if (chatScrollManager) {
-      chatScrollManager.scrollToBottom(false); // Use immediate scroll (non-smooth) for better UX when switching tabs
-    }
-  }, 100); // Small delay to ensure content is rendered
+  if (teamCurrentTab === 'chat') {
+    // Update chat content only (smoother) - this ensures the latest messages are shown
+    updateChatContentOnly();
+
+    // Always scroll to bottom when switching to a channel to show latest messages
+    setTimeout(() => {
+      if (chatScrollManager) {
+        chatScrollManager.scrollToBottom(false); // Use immediate scroll (non-smooth) for better UX when switching tabs
+      }
+    }, 100); // Small delay to ensure content is rendered
+  }
 
   // START POLLING (Enhanced Real-time Updates)
   // Clear any existing poll
@@ -19346,7 +19723,7 @@ async function rejectFollowRequest(requestId, followerId) {
 
 async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'dark';
-  const appVersion = '0.1.0';
+  const appVersion = '0.3.1';
   const lastSync = new Date().toLocaleString();
 
   // Get current user info - ONLY use saved profile name, never Google metadata
@@ -19516,7 +19893,6 @@ async function renderSettingsView() {
         <div class="settings-item">
           <div class="settings-label">
             <span>Theme</span>
-            <p class="settings-description">Choose your preferred color scheme</p>
           </div>
           <select id="themeSelect" class="form-select">
             ${themes.map(theme => `
@@ -19660,6 +20036,19 @@ async function renderSettingsView() {
             <p class="settings-description">Help us improve Layer</p>
           </div>
           <a href="mailto:feedback@layer.app" class="btn btn-ghost">Send Feedback</a>
+        </div>
+      </div>
+
+      <div class="settings-section card">
+        <h3 class="section-title">Danger Zone</h3>
+        <div class="settings-item danger-zone">
+          <div class="settings-label">
+            <span>Delete Account</span>
+            <p class="settings-description">Permanently delete your account and all associated data. This cannot be undone.</p>
+          </div>
+          <button class="btn btn-destructive" onclick="requestAccountDeletion()">
+            Delete Account
+          </button>
         </div>
       </div>
     </div>
@@ -19837,6 +20226,95 @@ function confirmResetAllData() {
   localStorage.clear();
   closeModal();
   location.reload();
+}
+
+async function requestAccountDeletion() {
+  const user = window.LayerDB?.getCurrentUser?.();
+  if (!user) {
+    showNotification('You must be signed in to delete your account.', 'error');
+    return;
+  }
+
+  const confirmHTML = `
+    <div style="padding: 24px;">
+      <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: var(--foreground); text-align: center;">Delete your account?</h3>
+      <p style="margin: 0 0 18px; color: var(--muted-foreground); font-size: 14px; line-height: 1.5; text-align: center;">
+        This will permanently delete your account and all data associated with it (projects, issues, docs, spaces, drafts, preferences, etc.).
+        <br><br>
+        Type <strong>DELETE</strong> to confirm.
+      </p>
+
+      <div style="display: flex; justify-content: center; margin-bottom: 18px;">
+        <input
+          id="deleteAccountConfirmInput"
+          class="form-input"
+          style="width: 100%; max-width: 320px;"
+          placeholder="Type DELETE"
+          oninput="handleDeleteAccountConfirmInput(this.value)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-destructive" id="confirmDeleteAccountBtn" onclick="confirmDeleteAccount()" disabled>
+          Yes, Delete Account
+        </button>
+      </div>
+    </div>
+  `;
+
+  openModal('Delete Account', confirmHTML);
+}
+
+function handleDeleteAccountConfirmInput(value) {
+  const btn = document.getElementById('confirmDeleteAccountBtn');
+  if (!btn) return;
+  btn.disabled = String(value || '').trim().toUpperCase() !== 'DELETE';
+}
+
+async function confirmDeleteAccount() {
+  const btn = document.getElementById('confirmDeleteAccountBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    if (!window.LayerDB?.supabase) {
+      throw new Error('Supabase client not available');
+    }
+
+    const { data: { session }, error: sessionError } = await window.LayerDB.supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('No active session found');
+    }
+
+    const token = session.access_token;
+
+    const { data, error } = await window.LayerDB.supabase.functions.invoke('delete-account', {
+      body: { confirm: 'DELETE' },
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    closeModal();
+    showNotification('Account deleted successfully.', 'success');
+
+    try {
+      await window.LayerDB.signOut();
+    } catch (e) {
+      // ignore
+    }
+
+    localStorage.clear();
+    location.reload();
+  } catch (error) {
+    console.error('Account deletion failed:', error);
+    showNotification('Failed to delete account. Please try again.', 'error');
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ========================
@@ -23593,13 +24071,14 @@ function openSpaceView(spaceId) {
 
   document.querySelectorAll('.custom-space-item').forEach(item => {
     item.classList.remove('active');
+  });
 
   const spaceBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
   if (spaceBtn) spaceBtn.classList.add('active');
 
   // Render space view
-  const viewsContent = document.getElementById('viewsContent');
   const viewsContainer = document.getElementById('viewsContainer');
+  const viewsContent = document.getElementById('viewsContent');
   if (viewsContent) {
     viewsContent.innerHTML = renderSpaceDetailView(space);
   } else if (viewsContainer) {
@@ -23609,7 +24088,6 @@ function openSpaceView(spaceId) {
   updateBreadcrumb(space.name);
 }
 
-// ...
 function renderSpaceDetailView(space) {
   const allDocs = loadDocs();
   const allExcels = loadExcels();
