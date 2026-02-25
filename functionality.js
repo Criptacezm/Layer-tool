@@ -21787,6 +21787,11 @@ function openDocEditor(docId = null) {
     return;
   }
 
+  // Handle string IDs that might be passed (e.g., from custom spaces)
+  if (docId) {
+    docId = isNaN(docId) ? docId : Number(docId);
+  }
+
   // 🛡️ DEBOUNCE: Clear any pending timeout
   if (docEditorOpenTimeout) {
     clearTimeout(docEditorOpenTimeout);
@@ -22509,6 +22514,11 @@ async function autoSaveDoc() {
 
   if (!titleInput || !contentDiv) return;
 
+  // 🛡️ CRITICAL FIX: Always normalize currentDocId to Number if it's numeric
+  if (currentDocId && !isNaN(currentDocId)) {
+    currentDocId = Number(currentDocId);
+  }
+
   let title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
   
@@ -22540,6 +22550,19 @@ async function autoSaveDoc() {
           await window.LayerDB.updateDoc(existingDoc.id, { title, content });
           // Ensure currentDocId matches the database ID format
           currentDocId = existingDoc.id;
+        } else if (currentDocId && (!isNaN(currentDocId) || (typeof currentDocId === 'string' && currentDocId.includes('-')))) {
+          // If currentDocId looks like a database ID (number or UUID) but wasn't found in current loadDocs(),
+          // it's still likely an existing doc that just needs updating.
+          console.log('📝 Attempting update for suspected existing ID:', currentDocId);
+          try {
+            await window.LayerDB.updateDoc(currentDocId, { title, content });
+            console.log('✅ Update successful for suspected existing ID:', currentDocId);
+          } catch (updateErr) {
+            console.error('📝 Update failed for suspected ID:', currentDocId, updateErr);
+            // If it's a 404/not found, only then should we consider creating a new one
+            // However, to be safe and prevent duplicates, we'll stop here if it's a numeric/UUID ID
+            return;
+          }
         } else {
           // Document doesn't exist in DB yet (likely new doc), create it first
           console.log('📝 Creating new doc in DB:', currentDocId);
@@ -22986,6 +23009,11 @@ const COLUMN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function openExcelEditor(excelId = null) {
   toggleCreateDropdown();
 
+  // Handle string IDs that might be passed
+  if (excelId) {
+    excelId = isNaN(excelId) ? excelId : Number(excelId);
+  }
+
   // Require authentication for creating new spreadsheets
   if (!excelId && (!window.LayerDB || !window.LayerDB.isAuthenticated())) {
     showToast('Please sign in to create spreadsheets', 'error');
@@ -23360,6 +23388,11 @@ async function autoSaveExcel() {
   const titleInput = document.getElementById('excelTitleInput');
   if (!titleInput) return;
 
+  // 🛡️ CRITICAL FIX: Always normalize currentExcelId to Number if it's numeric
+  if (currentExcelId && !isNaN(currentExcelId)) {
+    currentExcelId = Number(currentExcelId);
+  }
+
   // Require authentication - no localStorage fallback
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
     return; // Silently fail - user was warned on open
@@ -23380,9 +23413,36 @@ async function autoSaveExcel() {
   }
 
   try {
-    await window.LayerDB.updateExcel(currentExcelId, { title, data });
+    // 🛡️ PREVENT DUPLICATION: Check if ID exists before trying to update/create
     const excels = await window.LayerDB.loadExcels();
-    saveExcels(excels);
+    const existingExcel = excels.find(e => String(e.id) === String(currentExcelId));
+
+    if (existingExcel) {
+      await window.LayerDB.updateExcel(existingExcel.id, { title, data });
+      currentExcelId = existingExcel.id;
+    } else if (currentExcelId && (!isNaN(currentExcelId) || (typeof currentExcelId === 'string' && currentExcelId.includes('-')))) {
+      // Suspected existing ID (Numeric or UUID)
+      try {
+        await window.LayerDB.updateExcel(currentExcelId, { title, data });
+      } catch (err) {
+        console.error('📊 Update failed for suspected spreadsheet ID:', currentExcelId, err);
+        return; // Stop to prevent duplication
+      }
+    } else {
+      // Actually new spreadsheet
+      const newExcel = {
+        title,
+        data,
+        spaceId: currentSpaceId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      const savedExcel = await window.LayerDB.saveExcel(newExcel);
+      currentExcelId = savedExcel.id;
+    }
+
+    const updatedExcels = await window.LayerDB.loadExcels();
+    saveExcels(updatedExcels);
 
     // Sync draft title
     const drafts = loadDrafts();
@@ -27936,6 +27996,19 @@ function renderAIView() {
 
   return `
     <div class="ai-clean-landing">
+      <!-- Top Action Bar -->
+      <div class="ai-top-bar">
+        <div class="ai-top-left"></div>
+        <div class="ai-top-right">
+          <button class="ai-history-btn" onclick="toggleChatHistorySidebar()" title="View Chat History">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>History</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Clean Landing Content -->
       <div class="ai-clean-center">
         <h1 class="ai-clean-greeting">

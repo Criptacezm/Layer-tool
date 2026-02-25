@@ -1,21 +1,16 @@
 /* ============================================
-   Layer - Gemini AI API Integration
+   Layer - Qwen AI API Integration (NVIDIA)
    Enhanced with concise responses, professional code blocks,
    and theme-aware styling
    ============================================ */
 
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+// API CONFIGURATION
+const NVIDIA_API_KEY = "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";
+const INVOKE_URL = "/api/ai";
+const MODEL_NAME = "qwen/qwen3.5-397b-a17b";
 
-// API KEY
-const GEMINI_API_KEY = "AIzaSyBRhlJuyVjlX9gb-gN475JmyDi-kkU6BTM";
-
-// Initialize the API
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-
-// Universal AI Model with broad knowledge - CONCISE responses
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
+// System instructions
+const GENERAL_SYSTEM_PROMPT = `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
 
 RESPONSE RULES:
 - Keep responses under 150 words unless specifically asked for detail
@@ -34,13 +29,9 @@ Format code blocks like:
 // code here
 \`\`\`
 
-Be helpful, precise, and brief.`
-});
+Be helpful, precise, and brief.`;
 
-// Code-specific model for error analysis
-const codeModel = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: `You are an expert code analyzer. When given code, analyze it thoroughly for:
+const CODE_ANALYSIS_SYSTEM_PROMPT = `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
 2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
 3. Runtime errors - null references, type errors, division by zero
@@ -59,43 +50,78 @@ For each error found, respond in this exact JSON format:
 }
 
 If no errors are found, return: {"errors": []}
-Only return valid JSON, no other text or explanation.`
-});
+Only return valid JSON, no other text or explanation.`;
 
 /**
- * Core API Call to Gemini with enhanced context
+ * Core API Call to NVIDIA Qwen API
  */
-async function callGeminiAPI(userPrompt, context = '') {
+async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
         const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
         
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        const text = response.text();
+        // Always use absolute URL for the proxy to support Live Server (port 5500)
+        const response = await fetch("http://localhost:3001/api/ai", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": systemPrompt},
+                    {"role": "user", "content": fullPrompt}
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.60,
+                "top_p": 0.95,
+                "top_k": 20,
+                "presence_penalty": 0,
+                "repetition_penalty": 1,
+                "stream": false
+            })
+        });
+
+        console.log('Proxy response status:', response.status);
+        const contentType = response.headers.get('content-type');
+        console.log('Proxy response content-type:', contentType);
+
+        if (!contentType || !contentType.includes('application/json')) {
+            const errorText = await response.text();
+            console.error('Server returned non-JSON:', errorText);
+            throw new Error(`Server returned non-JSON response. Check console for details.`);
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data.choices[0]?.message?.content;
         
         if (text) return text;
         throw new Error('AI returned an empty response.');
     } catch (error) {
-        console.error('Gemini SDK Error:', error);
+        console.error('NVIDIA API Error:', error);
         const errorMsg = error.message || String(error);
         
-        // Check for various rate limit / quota errors
-        if (errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
+        if (errorMsg.includes('429') || errorMsg.includes('Rate limit')) {
             return "⚠️ Rate limit reached. Please wait 60 seconds and try again.";
         }
         
-        // Check for API key issues
-        if (errorMsg.includes('API_KEY') || errorMsg.includes('401') || errorMsg.includes('403')) {
-            return "⚠️ API key issue. Please check your Gemini API key is valid.";
-        }
-        
-        // Check for model not found
-        if (errorMsg.includes('404') || errorMsg.includes('not found')) {
-            return "⚠️ Model not available. Please try again later.";
+        if (errorMsg.includes('401') || errorMsg.includes('403')) {
+            return "⚠️ API key issue. Please check your NVIDIA API key is valid.";
         }
         
         return `❌ Error: ${errorMsg}`;
     }
+}
+
+/**
+ * Compatibility wrapper for the original callGeminiAPI
+ */
+async function callGeminiAPI(userPrompt, context = '') {
+    return await callQwenAPI(userPrompt, GENERAL_SYSTEM_PROMPT, context);
 }
 
 /**
@@ -104,10 +130,7 @@ async function callGeminiAPI(userPrompt, context = '') {
 async function analyzeCodeErrors(code, language = 'javascript') {
     try {
         const prompt = `Analyze this ${language} code for errors:\n\`\`\`${language}\n${code}\n\`\`\``;
-        
-        const result = await codeModel.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const text = await callQwenAPI(prompt, CODE_ANALYSIS_SYSTEM_PROMPT);
         
         // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -275,11 +298,63 @@ function removeLoadingIndicator() {
 }
 
 /**
+ * Save a message to chat history
+ */
+function saveMessageToHistory(containerId, role, text) {
+    try {
+        const historyKey = `ai_history_${containerId}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        history.push({ role, text, timestamp: new Date().toISOString() });
+        // Keep only last 50 messages to prevent storage bloat
+        if (history.length > 50) history.shift();
+        localStorage.setItem(historyKey, JSON.stringify(history));
+    } catch (e) {
+        console.error('Failed to save chat history:', e);
+    }
+}
+
+/**
+ * Load chat history for a specific container
+ */
+async function loadChatHistory(containerId) {
+    try {
+        const historyKey = `ai_history_${containerId}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        if (history.length > 0) {
+            for (const msg of history) {
+                await appendAiMessageEnhanced(containerId, msg.role, msg.text, false);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load chat history:', e);
+    }
+}
+
+/**
+ * Clear chat history for a specific container
+ */
+window.clearAiChatHistory = function(containerId) {
+    localStorage.removeItem(`ai_history_${containerId}`);
+    const container = document.getElementById(containerId);
+    if (container) container.innerHTML = '';
+};
+
+/**
  * Append AI message with professional formatting and word-by-word animation
  */
 async function appendAiMessageEnhanced(containerId, role, text, animate = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
+
+    // Save to history if it's a real message (not an error or during loading)
+    if (role === 'user' || role === 'assistant') {
+        const historyKey = `ai_history_${containerId}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        const isDuplicate = history.some(m => m.text === text && m.role === role);
+        if (!isDuplicate && animate) { // Only save if it's new and being animated (fresh message)
+            saveMessageToHistory(containerId, role, text);
+        }
+    }
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `ai-response-card ${role}-card`;
@@ -372,8 +447,97 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 // ATTACH TO WINDOW - Global access
 // ============================================
 
-window.callGeminiAPI = callGeminiAPI;
-window.analyzeCodeErrors = analyzeCodeErrors;
+window.loadChatHistory = loadChatHistory;
+window.saveMessageToHistory = saveMessageToHistory;
+window.clearAiChatHistory = clearAiChatHistory;
+
+// Initialize histories for all known AI containers when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const containers = [
+        'projectAiMessages', 
+        'gripAiMessages', 
+        'docContentAiMessages', 
+        'docAiMessages', 
+        'whiteboardAiMessages'
+    ];
+    containers.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) loadChatHistory(id);
+    });
+});
+/**
+ * Toggle the Chat History sidebar for the main AI view
+ */
+window.toggleChatHistorySidebar = function() {
+    let sidebar = document.getElementById('aiHistorySidebar');
+    if (!sidebar) {
+        // Create sidebar if it doesn't exist
+        sidebar = document.createElement('div');
+        sidebar.id = 'aiHistorySidebar';
+        sidebar.className = 'ai-history-sidebar';
+        sidebar.innerHTML = `
+            <div class="ai-history-sidebar-header">
+                <h3>Chat History</h3>
+                <div class="ai-history-sidebar-actions">
+                    <button class="ai-history-clear-btn" onclick="clearAiChatHistory('aiAgentMessages')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Clear
+                    </button>
+                    <button class="ai-history-close-btn" onclick="toggleChatHistorySidebar()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="ai-history-sidebar-content" id="aiHistorySidebarContent">
+                <!-- History items will be injected here -->
+            </div>
+        `;
+        document.body.appendChild(sidebar);
+
+        // Add overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'aiHistoryOverlay';
+        overlay.className = 'ai-history-overlay';
+        overlay.onclick = toggleChatHistorySidebar;
+        document.body.appendChild(overlay);
+    }
+
+    const isOpen = sidebar.classList.contains('open');
+    if (isOpen) {
+        sidebar.classList.remove('open');
+        document.getElementById('aiHistoryOverlay').classList.remove('open');
+    } else {
+        renderHistoryList();
+        sidebar.classList.add('open');
+        document.getElementById('aiHistoryOverlay').classList.add('open');
+    }
+};
+
+function renderHistoryList() {
+    const content = document.getElementById('aiHistorySidebarContent');
+    if (!content) return;
+
+    const historyKey = `ai_history_aiAgentMessages`;
+    const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+    if (history.length === 0) {
+        content.innerHTML = '<div class="ai-history-empty">No recent history</div>';
+        return;
+    }
+
+    // Group history by sessions (approximate by time gaps or just list all)
+    content.innerHTML = history.slice().reverse().map((msg, idx) => `
+        <div class="ai-history-item ${msg.role}">
+            <div class="ai-history-item-role">${msg.role === 'user' ? 'You' : 'AI'}</div>
+            <div class="ai-history-item-text">${escapeHtml(msg.text).substring(0, 100)}${msg.text.length > 100 ? '...' : ''}</div>
+            <div class="ai-history-item-time">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        </div>
+    `).join('');
+}
 window.formatAIResponse = formatAIResponse;
 window.appendAiMessageEnhanced = appendAiMessageEnhanced;
 window.processAISidebarChat = processAISidebarChat;
