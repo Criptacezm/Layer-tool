@@ -21350,16 +21350,58 @@ async function createWhiteboardDraft() {
   }
 }
 
+// Function to open a doc draft
+function openDocEditorForDraft(draftId) {
+  const drafts = loadDrafts();
+  // Check both d.id and d.metadata.docId
+  const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.docId) === String(draftId)));
+  
+  if (draft && draft.type === 'doc') {
+    // Pass the actual document ID from metadata if it exists, otherwise use draft ID
+    const targetDocId = draft.metadata?.docId || draft.id;
+    openDocEditor(targetDocId);
+  } else {
+    console.error('Doc draft not found:', draftId);
+    showToast('Doc draft not found', 'error');
+  }
+}
+
+// Function to open a sheet draft
+function openExcelEditorForDraft(draftId) {
+  const drafts = loadDrafts();
+  // Check both d.id and d.metadata.excelId
+  const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.excelId) === String(draftId)));
+  
+  if (draft && draft.type === 'sheet') {
+    // Pass the actual spreadsheet ID from metadata if it exists, otherwise use draft ID
+    const targetExcelId = draft.metadata?.excelId || draft.id;
+    openExcelEditor(targetExcelId);
+  } else {
+    console.error('Sheet draft not found:', draftId);
+    showToast('Sheet draft not found', 'error');
+  }
+}
+
 // Function to open a whiteboard draft
 function openGripDiagramForDraft(draftId) {
-  const projects = loadProjects();
-  const projectIndex = projects.findIndex(p => p.id === draftId);
+  const drafts = loadDrafts();
+  const draft = drafts.find(d => String(d.id) === String(draftId));
   
-  if (projectIndex !== -1) {
-    openGripDiagram(projectIndex);
+  if (draft && draft.type === 'whiteboard') {
+    const projects = loadProjects();
+    // Check both draft.id and draft.metadata.projectId for the project link
+    const targetProjectId = draft.metadata?.projectId || draft.id;
+    const projectIndex = projects.findIndex(p => String(p.id) === String(targetProjectId));
+    
+    if (projectIndex !== -1) {
+      openGripDiagram(projectIndex);
+    } else {
+      console.error('Draft project not found for whiteboard draft:', draft.id, 'Project ID:', targetProjectId);
+      showToast('Draft project not found', 'error');
+    }
   } else {
-    console.error('Draft project not found:', draftId);
-    showToast('Draft project not found', 'error');
+    console.error('Whiteboard draft not found:', draftId);
+    showToast('Whiteboard draft not found', 'error');
   }
 }
 
