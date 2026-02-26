@@ -5694,6 +5694,11 @@
   border-radius: 12px;
 }
 
+.ai-assistant-content strong {
+  color: var(--foreground, #fafafa);
+  font-weight: 650;
+}
+
 /* AI Text Styles */
 .ai-text {
   font-size: 14px;
@@ -5737,27 +5742,35 @@ h4.ai-heading {
   margin: 12px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ai-list-item,
 .ai-numbered-item {
   position: relative;
-  padding-left: 20px;
+  padding-left: 22px;
   font-size: 14px;
   line-height: 1.6;
-  color: #ffffff;
+  color: var(--ai-text, #d4d4d8);
+  letter-spacing: 0.01em;
 }
 
 .ai-list-item::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 9px;
-  width: 6px;
-  height: 6px;
-  background: var(--primary, #6366f1);
+  top: 0.68em;
+  width: 7px;
+  height: 7px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, var(--primary, #6366f1) 0%, rgba(139, 92, 246, 1) 100%);
   border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
+}
+
+.ai-list-item:hover::before {
+  transform: scale(1.06);
+  transition: transform 0.18s ease;
 }
 
 .ai-numbered-list {
@@ -5785,6 +5798,21 @@ h4.ai-heading {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Subtle stagger reveal for lists (used by postProcessAIContent) */
+.ai-stagger-item {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: aiStaggerIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--ai-stagger-index, 0) * 28ms);
+}
+
+@keyframes aiStaggerIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================

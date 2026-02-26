@@ -195,12 +195,18 @@ function formatAIResponse(text) {
     html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
 
     // Bullet points - multiple formats
-    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div class="ai-list-item"><span class="ai-list-bullet">•</span><div class="ai-list-content">$1</div></div>');
-    html = html.replace(/(<div class="ai-list-item">.*<\/div>\n?)+/g, '<div class="ai-list">$&</div>');
+    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div class="ai-list-item">$1</div>');
+    html = html.replace(/(?:^|\n)(<div class="ai-list-item">[\s\S]*?<\/div>\n?)+/g, (m) => {
+        const trimmed = m.replace(/^\n/, '');
+        return `<div class="ai-list">${trimmed}</div>`;
+    });
 
     // Numbered lists
-    html = html.replace(/^\d+\.\s+(.+)$/gm, '<div class="ai-list-item"><span class="ai-list-bullet">$&</span><div class="ai-list-content">$1</div></div>');
-    html = html.replace(/(<div class="ai-list-item">.*<\/div>\n?)+/g, '<div class="ai-numbered-list">$&</div>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<div class="ai-numbered-item">$1</div>');
+    html = html.replace(/(?:^|\n)(<div class="ai-numbered-item">[\s\S]*?<\/div>\n?)+/g, (m) => {
+        const trimmed = m.replace(/^\n/, '');
+        return `<div class="ai-numbered-list">${trimmed}</div>`;
+    });
 
     // Paragraphs - split by double newlines
     html = html.split('\n\n').map(p => {
@@ -210,15 +216,30 @@ function formatAIResponse(text) {
             p.startsWith('<h2') || p.startsWith('<h3') || p.startsWith('<h4')) {
             return p;
         }
-        return `<p class="ai-text">${p}</p>`;
+        const withBreaks = p.replace(/\n/g, '<br>');
+        return `<p class="ai-text">${withBreaks}</p>`;
     }).join('');
 
-    // Clean up line breaks
-    html = html.replace(/\n/g, '<br>');
-    // Remove excessive breaks
+    // Remove excessive breaks (only those introduced inside paragraphs)
     html = html.replace(/(<br>){3,}/g, '<br><br>');
 
     return html;
+}
+
+/**
+ * Apply subtle, professional animations + post processing to formatted AI HTML.
+ */
+function postProcessAIContent(container) {
+    if (!container) return;
+
+    container.classList.add('ai-content-ready');
+
+    // Stagger list items for a ChatGPT/Claude-like feel
+    const items = container.querySelectorAll('.ai-list-item, .ai-numbered-item');
+    items.forEach((el, idx) => {
+        el.style.setProperty('--ai-stagger-index', String(idx));
+        el.classList.add('ai-stagger-item');
+    });
 }
 
 /**
@@ -246,6 +267,7 @@ async function revealWordsAnimated(container, formattedHtml, speed = 10) {
                 container.style.opacity = '0';
                 setTimeout(() => {
                     container.innerHTML = formattedHtml;
+                    postProcessAIContent(container);
                     container.style.opacity = '1';
                     container.style.transition = 'opacity 0.15s ease';
                     container.scrollTop = container.scrollHeight;
@@ -345,6 +367,7 @@ async function appendAiMessageEnhanced(containerId, role, text, animate = true) 
             await revealWordsAnimated(contentDiv, formattedHtml, 8);
         } else {
             contentDiv.innerHTML = formattedHtml;
+            postProcessAIContent(contentDiv);
         }
         container.scrollTop = container.scrollHeight;
     }
