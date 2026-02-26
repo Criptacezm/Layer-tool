@@ -27,14 +27,21 @@ class AnimatedBackground {
       color1: options.color1 || '#FF9FFC',
       color2: options.color2 || '#5227FF',
       color3: options.color3 || '#B19EEF',
+      maxPixelRatio: options.maxPixelRatio || 1.5,
+      lowPerfMode: options.lowPerfMode || false,
+      fpsLimit: options.fpsLimit || 30,
       ...options
     };
     
     this.gl = null;
     this.program = null;
     this.animationId = null;
+    this.lastFrameTime = 0;
+    this.frameCount = 0;
+    this.isVisible = true;
     this.startTime = performance.now();
     this.resizeObserver = null;
+    this.intersectionObserver = null;
     
     this.init();
   }
@@ -67,11 +74,12 @@ class AnimatedBackground {
     // Initialize WebGL
     this.initWebGL();
     
-    // Setup resize observer
+    // Setup observers
     this.setupResizeObserver();
+    this.setupIntersectionObserver();
     
     // Start animation
-    this.animate();
+    this.animate(performance.now());
   }
   
   initWebGL() {
@@ -98,7 +106,7 @@ class AnimatedBackground {
     
     // Fragment shader
     const fragmentShaderSource = `#version 300 es
-      precision highp float;
+      precision mediump float;
       uniform vec2 iResolution;
       uniform float iTime;
       uniform float uTimeSpeed;
@@ -131,19 +139,20 @@ class AnimatedBackground {
         return mat2(c,-s,s,c); 
       }
       
-      vec2 hash(vec2 p){
-        p=vec2(dot(p,vec2(2127.1,81.17)),dot(p,vec2(1269.5,283.37)));
-        return fract(sin(p)*43758.5453);
+      float hash(vec2 p){
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
       }
       
       float noise(vec2 p){
-        vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
-        float n=mix(
-          mix(dot(-1.0+2.0*hash(i+vec2(0.0,0.0)),f-vec2(0.0,0.0)),
-              dot(-1.0+2.0*hash(i+vec2(1.0,0.0)),f-vec2(1.0,0.0)),u.x),
-          mix(dot(-1.0+2.0*hash(i+vec2(0.0,1.0)),f-vec2(0.0,1.0)),
-              dot(-1.0+2.0*hash(i+vec2(1.0,1.0)),f-vec2(1.0,1.0)),u.x),u.y);
-        return 0.5+0.5*n;
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i + vec2(0.0,0.0)), 
+                       hash(i + vec2(1.0,0.0)), u.x),
+                   mix(hash(i + vec2(0.0,1.0)), 
+                       hash(i + vec2(1.0,1.0)), u.x), u.y);
       }
       
       void mainImage(out vec4 o, vec2 C){
@@ -180,10 +189,12 @@ class AnimatedBackground {
         vec3 layer2=mix(colOrg,colLav,S(edge0,edge1,blendX));
         vec3 col=mix(layer1,layer2,S(v0,v1,tuv.y));
 
-        vec2 grainUv=uv*max(uGrainScale,0.001);
-        if(uGrainAnimated>0.5){grainUv+=vec2(iTime*0.05);} 
-        float grain=fract(sin(dot(grainUv,vec2(12.9898,78.233)))*43758.5453);
-        col+=(grain-0.5)*uGrainAmount;
+        if(uGrainAmount > 0.0) {
+          vec2 grainUv=uv*max(uGrainScale,0.001);
+          if(uGrainAnimated>0.5){grainUv+=vec2(iTime*0.05);} 
+          float grain=fract(sin(dot(grainUv,vec2(12.9898,78.233)))*43758.5453);
+          col+=(grain-0.5)*uGrainAmount;
+        }
 
         col=(col-0.5)*uContrast+0.5;
         float luma=dot(col,vec3(0.2126,0.7152,0.0722));
@@ -304,31 +315,56 @@ class AnimatedBackground {
     this.resize();
   }
   
+  setupIntersectionObserver() {
+    this.intersectionObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        this.isVisible = entry.isIntersecting;
+        if (this.isVisible) {
+          this.animate(performance.now());
+        }
+      });
+    }, { threshold: 0.1 });
+    this.intersectionObserver.observe(this.container);
+  }
+  
   resize() {
     if (!this.gl || !this.container) return;
     
     const rect = this.container.getBoundingClientRect();
-    const width = Math.max(1, Math.floor(rect.width));
-    const height = Math.max(1, Math.floor(rect.height));
+    const dpr = Math.min(window.devicePixelRatio || 1, this.options.maxPixelRatio);
+    const width = Math.max(1, Math.floor(rect.width * dpr));
+    const height = Math.max(1, Math.floor(rect.height * dpr));
     
-    this.canvas.width = width;
-    this.canvas.height = height;
-    
-    this.gl.viewport(0, 0, width, height);
-    
-    // Update resolution uniform
-    const gl = this.gl;
-    gl.useProgram(this.program);
-    const resolutionLocation = gl.getUniformLocation(this.program, 'iResolution');
-    if (resolutionLocation) {
-      gl.uniform2fv(resolutionLocation, [width, height]);
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.gl.viewport(0, 0, width, height);
+      
+      // Update resolution uniform
+      const gl = this.gl;
+      gl.useProgram(this.program);
+      const resolutionLocation = gl.getUniformLocation(this.program, 'iResolution');
+      if (resolutionLocation) {
+        gl.uniform2fv(resolutionLocation, [width, height]);
+      }
     }
   }
   
-  animate() {
-    if (!this.gl || !this.program) return;
+  animate(timestamp) {
+    if (!this.gl || !this.program || !this.isVisible) return;
     
-    const currentTime = (performance.now() - this.startTime) * 0.001;
+    // Performance optimization: limit FPS
+    const frameInterval = 1000 / this.options.fpsLimit;
+    const elapsed = timestamp - this.lastFrameTime;
+    
+    if (elapsed < frameInterval) {
+      this.animationId = requestAnimationFrame((t) => this.animate(t));
+      return;
+    }
+    
+    this.lastFrameTime = timestamp - (elapsed % frameInterval);
+    
+    const currentTime = (timestamp - this.startTime) * 0.001;
     
     // Update time uniform
     const gl = this.gl;
@@ -342,7 +378,7 @@ class AnimatedBackground {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     
     // Continue animation
-    this.animationId = requestAnimationFrame(() => this.animate());
+    this.animationId = requestAnimationFrame((t) => this.animate(t));
   }
   
   updateOptions(newOptions) {
@@ -357,6 +393,10 @@ class AnimatedBackground {
     
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
+    }
+
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
     }
     
     if (this.canvas && this.container) {

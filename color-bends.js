@@ -16,6 +16,8 @@ class ColorBendsBackground {
       mouseInfluence: options.mouseInfluence || 1,
       parallax: options.parallax || 0.5,
       noise: options.noise || 0.1,
+      fpsLimit: options.fpsLimit || 30,
+      maxPixelRatio: options.maxPixelRatio || 1.5,
       ...options
     };
 
@@ -24,6 +26,9 @@ class ColorBendsBackground {
     this.material = null;
     this.rafId = null;
     this.resizeObserver = null;
+    this.intersectionObserver = null;
+    this.isVisible = true;
+    this.lastFrameTime = 0;
     this.pointerTarget = { x: 0, y: 0 };
     this.pointerCurrent = { x: 0, y: 0 };
     this.clock = { start: performance.now(), elapsed: 0 };
@@ -82,12 +87,13 @@ class ColorBendsBackground {
     // Renderer
     this.renderer = new THREE.WebGLRenderer({
       antialias: false,
-      powerPreference: 'high-performance',
+      powerPreference: 'low-power',
       alpha: true
     });
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const dpr = Math.min(window.devicePixelRatio || 1, this.options.maxPixelRatio);
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setClearColor(0x000000, this.options.transparent ? 0 : 1);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
@@ -116,6 +122,19 @@ class ColorBendsBackground {
       window.addEventListener('resize', handleResize);
     }
 
+    // Setup Intersection Observer
+    if ('IntersectionObserver' in window) {
+      this.intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          this.isVisible = entry.isIntersecting;
+          if (this.isVisible) {
+            this.rafId = requestAnimationFrame(loop);
+          }
+        });
+      }, { threshold: 0.1 });
+      this.intersectionObserver.observe(container);
+    }
+
     // Pointer move handler
     this.handlePointerMove = (e) => {
       const rect = container.getBoundingClientRect();
@@ -127,7 +146,20 @@ class ColorBendsBackground {
     container.addEventListener('pointermove', this.handlePointerMove);
 
     // Animation loop
-    const loop = () => {
+    const loop = (timestamp) => {
+      if (!this.isVisible) return;
+
+      // FPS limit
+      const frameInterval = 1000 / this.options.fpsLimit;
+      const elapsed = timestamp - this.lastFrameTime;
+      
+      if (elapsed < frameInterval) {
+        this.rafId = requestAnimationFrame(loop);
+        return;
+      }
+      
+      this.lastFrameTime = timestamp - (elapsed % frameInterval);
+
       const now = performance.now();
       const dt = (now - this.clock.start) / 1000;
       this.clock.elapsed = dt;
@@ -157,6 +189,7 @@ class ColorBendsBackground {
 
   getFragmentShader() {
     return `
+      precision mediump float;
       #define MAX_COLORS 8
       uniform vec2 uCanvas;
       uniform float uTime;
@@ -295,6 +328,10 @@ class ColorBendsBackground {
 
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
+    }
+
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
     }
 
     if (this.container && this.handlePointerMove) {
