@@ -6376,12 +6376,19 @@ function renderProjectDetailView(projectIndex) {
                 </svg>
                 Add document or link...
               </button>
+              <button class="pd-add-resource" onclick="openAddGoogleDriveResourceModal(this, ${projectIndex})">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" style="width: 16px; height: 16px;">
+                Google Drive
+              </button>
               ${(project.resources || []).map((res, idx) => `
                 <div class="pd-resource-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
+                  ${res.provider === 'google-drive' ? 
+                    `<img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" style="width: 14px; height: 14px;">` :
+                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>`
+                  }
                   ${res.type === 'existing' && res.docId ?
         `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
         res.link ?
@@ -6805,12 +6812,19 @@ function renderOverviewTab(projectIndex, container) {
         </svg>
         Add document or link...
       </button>
+      <button class="pd-add-resource" onclick="openAddGoogleDriveResourceModal(this, ${projectIndex})">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" style="width: 16px; height: 16px;">
+        Google Drive
+      </button>
       ${(project.resources || []).map((res, idx) => `
         <div class="pd-resource-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
+          ${res.provider === 'google-drive' ? 
+            `<img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" style="width: 14px; height: 14px;">` :
+            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>`
+          }
           ${res.type === 'existing' && res.docId ?
       `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
       res.link ?
@@ -13751,6 +13765,134 @@ function openAddResourceModal(button, projectIndex) {
   }, 100);
 }
 
+// ============================================
+// Google Drive Picker Integration
+// ============================================
+
+let gdrive_picker_api_loaded = false;
+let gdrive_gis_loaded = false;
+let gdrive_access_token = null;
+
+// Replace with your actual Client ID and API Key from Google Cloud Console
+const GDRIVE_CLIENT_ID = '1028059195096-bqe4em511or99dc83f847u23q6tbc67t.apps.googleusercontent.com'; 
+const GDRIVE_API_KEY = 'AIzaSyACeCmBKo9ryeT7vHLyG6Tv1f9-I8bQNWg';
+const GDRIVE_APP_ID = GDRIVE_CLIENT_ID ? GDRIVE_CLIENT_ID.split('-')[0] : '';
+
+function onGdriveApiLoad() {
+  gapi.load('picker', () => {
+    gdrive_picker_api_loaded = true;
+  });
+}
+
+function onGisLoad() {
+  gdrive_gis_loaded = true;
+}
+
+// Initialize Google API loading
+window.addEventListener('load', () => {
+  if (typeof gapi !== 'undefined') onGdriveApiLoad();
+  if (typeof google !== 'undefined') onGisLoad();
+});
+
+async function openAddGoogleDriveResourceModal(button, projectIndex) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to link Google Drive files', 'error');
+    return;
+  }
+
+  // If we already have a token, just open the picker
+  if (gdrive_access_token) {
+    createPicker(projectIndex);
+    return;
+  }
+
+  // Otherwise, request authorization
+  try {
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.readonly',
+      callback: async (response) => {
+        if (response.error !== undefined) {
+          throw response;
+        }
+        gdrive_access_token = response.access_token;
+        createPicker(projectIndex);
+      },
+    });
+
+    if (gdrive_access_token === null) {
+      // Prompt the user to select a Google Account and ask for consent to share their data
+      // with the developer of the application.
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      // Skip display of account chooser and consent dialog for an existing session.
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  } catch (err) {
+    console.error('Google Drive Auth Error:', err);
+    showToast('Failed to connect to Google Drive', 'error');
+  }
+}
+
+function createPicker(projectIndex) {
+  if (gdrive_picker_api_loaded && gdrive_access_token) {
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setIncludeFolders(true)
+        .setSelectableMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/pdf,image/png,image/jpeg');
+
+    const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.NAV_HIDDEN)
+        .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+        .setAppId(GDRIVE_APP_ID)
+        .setOAuthToken(gdrive_access_token)
+        .addView(view)
+        .setDeveloperKey(GDRIVE_API_KEY)
+        .setCallback((data) => pickerCallback(data, projectIndex))
+        .build();
+    picker.setVisible(true);
+  }
+}
+
+async function pickerCallback(data, projectIndex) {
+  if (data.action === google.picker.Action.PICKED) {
+    const documents = data[google.picker.Response.DOCUMENTS];
+    const projects = loadProjects();
+    
+    if (!projects[projectIndex].resources) {
+      projects[projectIndex].resources = [];
+    }
+
+    documents.forEach(doc => {
+      const resourceData = {
+        name: doc[google.picker.Document.NAME],
+        link: doc[google.picker.Document.URL],
+        type: 'custom', // Treating as external link
+        provider: 'google-drive',
+        icon: doc[google.picker.Document.ICON_URL],
+        addedAt: new Date().toISOString()
+      };
+      projects[projectIndex].resources.push(resourceData);
+    });
+
+    saveProjects(projects);
+
+    // Sync to database
+    if (window.LayerDB && window.LayerDB.isAuthenticated() && projects[projectIndex].id) {
+      try {
+        await window.LayerDB.updateProject(projects[projectIndex].id, {
+          resources: projects[projectIndex].resources
+        });
+        showToast(`Linked ${documents.length} Google Drive file(s)`);
+      } catch (error) {
+        console.error('Failed to sync to DB:', error);
+      }
+    }
+
+    renderCurrentView();
+  }
+}
+
+
 function toggleResourceType(projectIndex) {
   const container = document.getElementById(`resource-form-container-${projectIndex}`);
   const resourceType = container.querySelector('input[name="resourceType"]:checked').value;
@@ -20579,9 +20721,9 @@ function toggleAnimatedBg(enabled) {
   // Convert to string to ensure consistency with how we check it elsewhere
   const value = enabled ? 'true' : 'false';
   localStorage.setItem('layerAnimatedBg', value);
-  
+
   console.log('Setting animated background to:', value);
-  
+
   if (!enabled) {
     // 1. Cleanup drafts backgrounds
     if (typeof window.cleanupAnimatedBackgrounds === 'function') {
@@ -20589,7 +20731,7 @@ function toggleAnimatedBg(enabled) {
     } else if (typeof cleanupAnimatedBackgrounds === 'function') {
       cleanupAnimatedBackgrounds();
     }
-    
+
     // 2. Cleanup login background
     if (typeof window.loginPageAnimatedBg !== 'undefined' && window.loginPageAnimatedBg) {
       try {
@@ -20612,13 +20754,13 @@ function toggleAnimatedBg(enabled) {
       const isDraftBg = canvas.parentElement && canvas.parentElement.classList.contains('animated-background-container');
       const isLoginBg = canvas.id === 'loginPageBg' || (canvas.parentElement && canvas.parentElement.id === 'loginPageBg');
       const isViewsBg = canvas.parentElement && canvas.parentElement.id === 'viewsBackground';
-      
+
       if (isDraftBg || isLoginBg || isViewsBg) {
         console.log('Removing background canvas manually');
         canvas.remove();
       }
     });
-    
+
     // 5. Update any containers to show a static background
     document.querySelectorAll('.animated-background-container').forEach(container => {
       container.style.background = 'var(--surface-hover)';
@@ -20639,7 +20781,7 @@ function toggleAnimatedBg(enabled) {
       initIridescence();
     }
   }
-  
+
   showNotification(enabled ? 'Animated backgrounds enabled' : 'Animated backgrounds disabled', 'info');
 }
 
@@ -22193,7 +22335,7 @@ function openDocEditor(docId = null) {
     if (!doc) {
       const tempId = Date.now();
       currentDocId = tempId;
-      
+
       const newDoc = {
         id: tempId,
         title: 'Untitled',
@@ -22209,7 +22351,7 @@ function openDocEditor(docId = null) {
         try {
           console.log('📝 Creating new document in DB:', newDoc);
           const savedDoc = await window.LayerDB.saveDoc(newDoc);
-          
+
           // CRITICAL: Check if editor is still open and for the SAME temporary ID
           // before updating currentDocId to avoid cross-contamination
           if (documentEditorState.isOpen && currentDocId === tempId) {
@@ -22222,7 +22364,7 @@ function openDocEditor(docId = null) {
 
           // Create a draft entry for the document ONLY if it's NOT in a space or project
           const isInSpaceOrProject = !!(newDoc.spaceId || (typeof currentProjectId !== 'undefined' && currentProjectId));
-          
+
           if (!isInSpaceOrProject) {
             if (window.LayerDB && window.LayerDB.isAuthenticated()) {
               try {
@@ -23315,7 +23457,7 @@ function openExcelEditor(excelId = null) {
       try {
         console.log('📊 Creating new spreadsheet in DB:', newExcel);
         const savedExcel = await window.LayerDB.saveExcel(newExcel);
-        
+
         // CRITICAL: Check if we are still working on the SAME temporary ID
         // before updating currentExcelId to avoid cross-contamination
         if (currentExcelId === tempId) {
@@ -23328,7 +23470,7 @@ function openExcelEditor(excelId = null) {
 
         // Create a draft entry for the spreadsheet ONLY if it's NOT in a space
         const isInSpace = !!newExcel.spaceId;
-        
+
         if (!isInSpace) {
           if (window.LayerDB && window.LayerDB.isAuthenticated()) {
             try {
@@ -28123,6 +28265,11 @@ function updateAIStats() {
 }
 
 function renderAIView() {
+  // If we are already in an active chat session, return the chat view
+  if (typeof isAiChatActive !== 'undefined' && isAiChatActive) {
+    return renderAIChatView();
+  }
+
   // Get user name if signed in
   const currentUser = window.LayerDB?.getCurrentUser?.();
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
@@ -28241,6 +28388,9 @@ let aiChatIsLoading = false;
 let aiGeneratedContent = null; // For Essay/Report/Code panel
 let aiChatHistorySidebarOpen = false;
 let currentConversationId = null;
+let isAiChatActive = false; // Flag to track if we are in chat mode vs landing
+
+let currentAttachment = null;
 
 // Load saved conversations from localStorage
 function loadAIChatHistory() {
@@ -28393,6 +28543,7 @@ function loadConversation(conversationId) {
     aiChatMessages = [...conversation.messages];
     currentConversationId = conversationId;
     aiChatHistorySidebarOpen = false;
+    isAiChatActive = true; // Set flag when loading a conversation
 
     const sidebar = document.getElementById('aiHistorySidebar');
     if (sidebar) sidebar.classList.remove('open');
@@ -28428,6 +28579,7 @@ function openAIChatView(initialMessage) {
   aiGeneratedContent = null;
   currentConversationId = null; // Start fresh conversation
   aiChatHistorySidebarOpen = false;
+  isAiChatActive = true; // Set flag when entering chat mode
 
   if (initialMessage) {
     aiChatMessages.push({
@@ -28456,6 +28608,11 @@ function openAIChatView(initialMessage) {
 
 function renderAIChatView() {
   return `
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/2.16.105/pdf.min.js"></script>
+    <script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/2.16.105/pdf.worker.min.js';
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <div class="ai-clean-chat">
       <!-- Chat Header -->
       <div class="ai-clean-chat-header">
@@ -28465,6 +28622,11 @@ function renderAIChatView() {
           </svg>
         </button>
         <span class="ai-clean-chat-title">AI Assistant</span>
+        <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Messages -->
@@ -28472,29 +28634,54 @@ function renderAIChatView() {
         ${renderAIChatMessages()}
         ${aiChatIsLoading ? `
           <div class="ai-clean-loading">
+            <div class="ai-assistant-header">
+              <div class="ai-assistant-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <span class="ai-assistant-name">AI Assistant</span>
+            </div>
             <span class="ai-thinking-text">Thinking...</span>
           </div>
         ` : ''}
       </div>
 
+      <!-- Attachments -->
+      <div id="aiAttachments"></div>
+
       <!-- Input -->
       <div class="ai-clean-chat-input-area">
         <div class="ai-clean-input-box">
+          <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
           <input
             type="text"
             class="ai-clean-input"
             id="aiChatInput"
-            placeholder="Type your message..."
+            placeholder="Ask anything"
             onkeydown="handleAIChatInputKeydown(event)"
             ${aiChatIsLoading ? 'disabled' : ''}
           />
+          <div class="ai-input-model-selector">
+            <span>Auto</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
           <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
             </svg>
           </button>
         </div>
       </div>
+      <input type="file" id="aiFileInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleFileSelect(event)">
     </div>
   `;
 }
@@ -28518,6 +28705,16 @@ function renderAIChatMessages() {
     } else {
       return `
         <div class="ai-clean-msg ai-clean-msg-assistant">
+          <div class="ai-assistant-header">
+            <div class="ai-assistant-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span class="ai-assistant-name">AI Assistant</span>
+          </div>
           <div class="ai-clean-bubble-assistant">
             <div class="ai-clean-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
             <div class="ai-clean-actions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
@@ -28526,11 +28723,13 @@ function renderAIChatMessages() {
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                 </svg>
+                <span>Copy</span>
               </button>
               <button class="ai-clean-action-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                   <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                 </svg>
+                <span>Regenerate</span>
               </button>
             </div>
           </div>
@@ -28668,16 +28867,23 @@ async function sendAIChatMessage() {
 
   const userMessage = input.value.trim();
   input.value = '';
+  currentAttachment = null;
+  renderAttachments();
+
+  let messageToSend = userMessage;
+  if (currentAttachment) {
+    messageToSend += '\n\nAttachment: ' + currentAttachment.text;
+  }
 
   aiChatMessages.push({
     role: 'user',
-    content: userMessage,
+    content: messageToSend,
     timestamp: new Date()
   });
   saveCurrentConversation();
 
   updateChatView();
-  processAIMessage(userMessage);
+  processAIMessage(messageToSend);
 }
 
 async function processAIMessage(message) {
@@ -28845,6 +29051,7 @@ function goBackToAILanding() {
   aiChatMessages = [];
   aiGeneratedContent = null;
   aiChatIsLoading = false;
+  isAiChatActive = false; // Reset flag when going back to landing
 
   const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
   if (viewsContent) {
@@ -28905,6 +29112,93 @@ function sendFollowUp(followUp) {
   }
 }
 
+function handleAIPlusClick() {
+  document.getElementById('aiFileInput').click();
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const fileType = file.type;
+  let text = '';
+  try {
+    if (fileType === 'text/plain') {
+      text = await file.text();
+    } else if (fileType === 'application/pdf') {
+      text = await extractTextFromPDF(file);
+    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileType === 'application/msword') {
+      text = await extractTextFromDoc(file);
+    } else {
+      showToast('Unsupported file type. Only PDF, DOC, DOCX, and TXT are supported.');
+      return;
+    }
+    currentAttachment = { name: file.name, size: file.size, text: text };
+    renderAttachments();
+    showToast('File attached successfully!');
+  } catch (error) {
+    showToast('Error reading file: ' + error.message);
+  }
+}
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    text += textContent.items.map(item => item.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function extractTextFromDoc(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+  return result.value;
+}
+
+function renderAttachments() {
+  const container = document.getElementById('aiAttachments');
+  if (currentAttachment) {
+    container.innerHTML = `
+      <div class="ai-file-attachment">
+        <div class="ai-file-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>${currentAttachment.name}</span>
+          <span class="ai-file-size">${formatFileSize(currentAttachment.size)}</span>
+        </div>
+        <button class="ai-file-remove" onclick="removeAttachment()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function removeAttachment() {
+  currentAttachment = null;
+  renderAttachments();
+}
+
+window.isAiChatActive = () => isAiChatActive;
+window.setAiChatActive = (val) => isAiChatActive = val;
+
 // Expose functions globally
 window.renderAIView = renderAIView;
 window.renderAIChatView = renderAIChatView;
@@ -28924,6 +29218,13 @@ window.regenerateAIMessage = regenerateAIMessage;
 window.likeAIMessage = likeAIMessage;
 window.dislikeAIMessage = dislikeAIMessage;
 window.sendFollowUp = sendFollowUp;
+window.handleAIPlusClick = handleAIPlusClick;
+window.handleFileSelect = handleFileSelect;
+window.renderAttachments = renderAttachments;
+window.removeAttachment = removeAttachment;
+window.extractTextFromPDF = extractTextFromPDF;
+window.extractTextFromDoc = extractTextFromDoc;
+window.formatFileSize = formatFileSize;
 
 // ============================================
 // TIME ZONE SUPPORT

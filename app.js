@@ -4910,6 +4910,7 @@ const FocusStateManager = {
         currentProjectIndex: window.currentProjectIndex || null,
         currentDocId: window.currentDocId || null,
         currentExcelId: window.currentExcelId || null,
+        isAiChatActive: typeof window.isAiChatActive === 'function' ? window.isAiChatActive() : false,
 
         // Scroll positions
         scrollX: window.pageXOffset || document.documentElement.scrollLeft,
@@ -4962,9 +4963,29 @@ const FocusStateManager = {
 
       // Restore view
       if (this.savedState.currentView && window.currentView !== this.savedState.currentView) {
-        window.currentView = this.savedState.currentView;
-        if (typeof window.renderCurrentView === 'function') {
-          await window.renderCurrentView();
+        // CRITICAL: If we are currently in 'ai' view, DO NOT restore the view
+        // This prevents the focus restoration from kicking the user out of an active AI session
+        if (window.currentView === 'ai') {
+          console.log('🔄 Skipping view restoration - currently in AI view');
+        } else {
+          window.currentView = this.savedState.currentView;
+          if (typeof window.renderCurrentView === 'function') {
+            await window.renderCurrentView();
+          }
+        }
+      }
+
+      // Special handling for AI view internal state
+      if (window.currentView === 'ai' && this.savedState.isAiChatActive) {
+        if (typeof window.renderAIChatView === 'function') {
+          console.log('🔄 Restoring AI Chat internal view');
+          const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+          if (viewsContent) {
+            viewsContent.innerHTML = window.renderAIChatView();
+            if (typeof window.setAiChatActive === 'function') {
+              window.setAiChatActive(true);
+            }
+          }
         }
       }
 

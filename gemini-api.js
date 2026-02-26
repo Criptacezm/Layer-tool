@@ -195,12 +195,12 @@ function formatAIResponse(text) {
     html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
 
     // Bullet points - multiple formats
-    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ai-list-item">$1</li>');
-    html = html.replace(/(<li class="ai-list-item">.*<\/li>\n?)+/g, '<ul class="ai-list">$&</ul>');
+    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div class="ai-list-item"><span class="ai-list-bullet">•</span><div class="ai-list-content">$1</div></div>');
+    html = html.replace(/(<div class="ai-list-item">.*<\/div>\n?)+/g, '<div class="ai-list">$&</div>');
 
     // Numbered lists
-    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ai-numbered-item">$1</li>');
-    html = html.replace(/(<li class="ai-numbered-item">.*<\/li>\n?)+/g, '<ol class="ai-numbered-list">$&</ol>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<div class="ai-list-item"><span class="ai-list-bullet">$&</span><div class="ai-list-content">$1</div></div>');
+    html = html.replace(/(<div class="ai-list-item">.*<\/div>\n?)+/g, '<div class="ai-numbered-list">$&</div>');
 
     // Paragraphs - split by double newlines
     html = html.split('\n\n').map(p => {
