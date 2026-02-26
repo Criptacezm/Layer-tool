@@ -22112,8 +22112,11 @@ function openDocEditor(docId = null) {
     }
     // Auto-create the document immediately if new (auth already checked at function start)
     if (!doc) {
+      const tempId = Date.now();
+      currentDocId = tempId;
+      
       const newDoc = {
-        id: currentDocId,
+        id: tempId,
         title: 'Untitled',
         content: '',
         spaceId: currentSpaceId || null,
@@ -22127,55 +22130,67 @@ function openDocEditor(docId = null) {
         try {
           console.log('📝 Creating new document in DB:', newDoc);
           const savedDoc = await window.LayerDB.saveDoc(newDoc);
-          // Update currentDocId to use database ID
-          currentDocId = savedDoc.id;
-          console.log('📝 Document created successfully with DB ID:', currentDocId);
+          
+          // CRITICAL: Check if editor is still open and for the SAME temporary ID
+          // before updating currentDocId to avoid cross-contamination
+          if (documentEditorState.isOpen && currentDocId === tempId) {
+            currentDocId = savedDoc.id;
+            console.log('📝 Document created successfully with DB ID:', currentDocId);
+          } else {
+            console.log('📝 Editor closed or changed during save, skipping ID update');
+            return;
+          }
 
-          // Create a draft entry for the document
-          if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-            try {
+          // Create a draft entry for the document ONLY if it's NOT in a space or project
+          const isInSpaceOrProject = !!(newDoc.spaceId || (typeof currentProjectId !== 'undefined' && currentProjectId));
+          
+          if (!isInSpaceOrProject) {
+            if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+              try {
+                const draftEntry = {
+                  title: savedDoc.title,
+                  content: savedDoc.content || '',
+                  type: 'doc',
+                  metadata: { docId: savedDoc.id },
+                  createdAt: savedDoc.createdAt,
+                  updatedAt: savedDoc.updatedAt
+                };
+
+                const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+                console.log('✅ Document draft saved to DB:', savedDraft.id);
+
+                // Update cache
+                if (window.cachedDrafts) {
+                  window.cachedDrafts.unshift(savedDraft);
+                }
+              } catch (error) {
+                console.error('❌ Failed to save document draft to DB:', error);
+              }
+            } else {
+              // Fallback to localStorage for unauthenticated users
+              const drafts = loadDrafts();
               const draftEntry = {
+                id: savedDoc.id,
                 title: savedDoc.title,
-                content: savedDoc.content || '',
                 type: 'doc',
-                metadata: { docId: savedDoc.id },
                 createdAt: savedDoc.createdAt,
                 updatedAt: savedDoc.updatedAt
               };
-
-              const savedDraft = await window.LayerDB.saveDraft(draftEntry);
-              console.log('✅ Document draft saved to DB:', savedDraft.id);
-
-              // Update cache
-              if (window.cachedDrafts) {
-                window.cachedDrafts.unshift(savedDraft);
-              }
-            } catch (error) {
-              console.error('❌ Failed to save document draft to DB:', error);
+              drafts.push(draftEntry);
+              saveDrafts(drafts);
             }
-          } else {
-            // Fallback to localStorage for unauthenticated users
-            const drafts = loadDrafts();
-            const draftEntry = {
-              id: savedDoc.id,
-              title: savedDoc.title,
-              type: 'doc',
-              createdAt: savedDoc.createdAt,
-              updatedAt: savedDoc.updatedAt
-            };
-            drafts.push(draftEntry);
-            saveDrafts(drafts);
-          }
 
-          // Mark drafts view for refresh
-          window.draftsNeedRefresh = true;
+            // Mark drafts view for refresh
+            window.draftsNeedRefresh = true;
+          }
 
           const docs = await window.LayerDB.loadDocs();
           saveDocs(docs);
 
           // Show success message
           if (typeof showToast === 'function') {
-            showToast('Document created and saved as draft', 'success');
+            const toastMsg = isInSpaceOrProject ? 'Document created and saved' : 'Document created and saved as draft';
+            showToast(toastMsg, 'success');
           }
         } catch (error) {
           console.error('Failed to create doc in database:', error);
@@ -22278,6 +22293,13 @@ function setupNotionEditor() {
   // Debounced auto-save function
   let saveTimeout;
   function triggerAutoSave() {
+    // 🛡️ PREVENT DUPLICATION: If the document was just created, wait for the ID sync
+    // or let the initial save handle it.
+    if (typeof currentDocId === 'number' && Date.now() - (documentEditorState.openTimestamp || 0) < 2000) {
+      console.log('📝 Skipping auto-save: Document just created, waiting for ID sync...');
+      return;
+    }
+
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
       autoSaveDoc();
@@ -22546,12 +22568,12 @@ async function autoSaveDoc() {
 
         if (existingDoc) {
           // Document exists, update it
-          console.log('📝 Updating existing doc:', currentDocId);
+          console.log('📝 Updating existing doc:', existingDoc.id);
           await window.LayerDB.updateDoc(existingDoc.id, { title, content });
           // Ensure currentDocId matches the database ID format
           currentDocId = existingDoc.id;
-        } else if (currentDocId && (!isNaN(currentDocId) || (typeof currentDocId === 'string' && currentDocId.includes('-')))) {
-          // If currentDocId looks like a database ID (number or UUID) but wasn't found in current loadDocs(),
+        } else if (currentDocId && (typeof currentDocId === 'string' && currentDocId.includes('-'))) {
+          // If currentDocId looks like a database ID (UUID) but wasn't found in current loadDocs(),
           // it's still likely an existing doc that just needs updating.
           console.log('📝 Attempting update for suspected existing ID:', currentDocId);
           try {
@@ -22560,13 +22582,13 @@ async function autoSaveDoc() {
           } catch (updateErr) {
             console.error('📝 Update failed for suspected ID:', currentDocId, updateErr);
             // If it's a 404/not found, only then should we consider creating a new one
-            // However, to be safe and prevent duplicates, we'll stop here if it's a numeric/UUID ID
             return;
           }
         } else {
           // Document doesn't exist in DB yet (likely new doc), create it first
           console.log('📝 Creating new doc in DB:', currentDocId);
           const newDoc = {
+            id: currentDocId, // Pass currentDocId (might be a temporary ID)
             title,
             content,
             spaceId: currentSpaceId || null,
@@ -23027,6 +23049,7 @@ function openExcelEditor(excelId = null) {
   }
 
   currentExcelId = excel ? excel.id : Date.now();
+  window._excelOpenTimestamp = Date.now();
   const data = excel ? excel.data : createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS);
   const isFavorited = excel ? isExcelFavorited(excel.id) : false;
 
@@ -23195,8 +23218,11 @@ function openExcelEditor(excelId = null) {
 
   // Auto-create the spreadsheet immediately if new (auth already checked at function start)
   if (!excel) {
+    const tempId = Date.now();
+    currentExcelId = tempId;
+
     const newExcel = {
-      id: currentExcelId,
+      id: tempId,
       title: 'Untitled Spreadsheet',
       data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
       spaceId: currentSpaceId || null,
@@ -23208,55 +23234,69 @@ function openExcelEditor(excelId = null) {
     // Save to Supabase (auth is guaranteed by check at function start)
     (async () => {
       try {
+        console.log('📊 Creating new spreadsheet in DB:', newExcel);
         const savedExcel = await window.LayerDB.saveExcel(newExcel);
-        // Update currentExcelId to use database ID
-        currentExcelId = savedExcel.id;
+        
+        // CRITICAL: Check if we are still working on the SAME temporary ID
+        // before updating currentExcelId to avoid cross-contamination
+        if (currentExcelId === tempId) {
+          currentExcelId = savedExcel.id;
+          console.log('📊 Spreadsheet created successfully with DB ID:', currentExcelId);
+        } else {
+          console.log('📊 Spreadsheet changed or closed during save, skipping ID update');
+          return;
+        }
 
-        // Create a draft entry for the spreadsheet
-        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-          try {
+        // Create a draft entry for the spreadsheet ONLY if it's NOT in a space
+        const isInSpace = !!newExcel.spaceId;
+        
+        if (!isInSpace) {
+          if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+            try {
+              const draftEntry = {
+                title: savedExcel.title,
+                content: JSON.stringify(savedExcel.data || []),
+                type: 'sheet',
+                metadata: { excelId: savedExcel.id },
+                createdAt: savedExcel.createdAt,
+                updatedAt: savedExcel.updatedAt
+              };
+
+              const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+              console.log('✅ Spreadsheet draft saved to DB:', savedDraft.id);
+
+              // Update cache
+              if (window.cachedDrafts) {
+                window.cachedDrafts.unshift(savedDraft);
+              }
+            } catch (error) {
+              console.error('❌ Failed to save spreadsheet draft to DB:', error);
+            }
+          } else {
+            // Fallback to localStorage for unauthenticated users
+            const drafts = loadDrafts();
             const draftEntry = {
+              id: savedExcel.id,
               title: savedExcel.title,
-              content: JSON.stringify(savedExcel.data || []),
               type: 'sheet',
-              metadata: { excelId: savedExcel.id },
               createdAt: savedExcel.createdAt,
               updatedAt: savedExcel.updatedAt
             };
-
-            const savedDraft = await window.LayerDB.saveDraft(draftEntry);
-            console.log('✅ Spreadsheet draft saved to DB:', savedDraft.id);
-
-            // Update cache
-            if (window.cachedDrafts) {
-              window.cachedDrafts.unshift(savedDraft);
-            }
-          } catch (error) {
-            console.error('❌ Failed to save spreadsheet draft to DB:', error);
+            drafts.push(draftEntry);
+            saveDrafts(drafts);
           }
-        } else {
-          // Fallback to localStorage for unauthenticated users
-          const drafts = loadDrafts();
-          const draftEntry = {
-            id: savedExcel.id,
-            title: savedExcel.title,
-            type: 'sheet',
-            createdAt: savedExcel.createdAt,
-            updatedAt: savedExcel.updatedAt
-          };
-          drafts.push(draftEntry);
-          saveDrafts(drafts);
-        }
 
-        // Mark drafts view for refresh
-        window.draftsNeedRefresh = true;
+          // Mark drafts view for refresh
+          window.draftsNeedRefresh = true;
+        }
 
         const excels = await window.LayerDB.loadExcels();
         saveExcels(excels);
 
         // Show success message
         if (typeof showToast === 'function') {
-          showToast('Spreadsheet created and saved as draft', 'success');
+          const toastMsg = isInSpace ? 'Spreadsheet created and saved' : 'Spreadsheet created and saved as draft';
+          showToast(toastMsg, 'success');
         }
       } catch (error) {
         console.error('Failed to create excel in database:', error);
@@ -23420,8 +23460,8 @@ async function autoSaveExcel() {
     if (existingExcel) {
       await window.LayerDB.updateExcel(existingExcel.id, { title, data });
       currentExcelId = existingExcel.id;
-    } else if (currentExcelId && (!isNaN(currentExcelId) || (typeof currentExcelId === 'string' && currentExcelId.includes('-')))) {
-      // Suspected existing ID (Numeric or UUID)
+    } else if (currentExcelId && (typeof currentExcelId === 'string' && currentExcelId.includes('-'))) {
+      // Suspected existing ID (UUID)
       try {
         await window.LayerDB.updateExcel(currentExcelId, { title, data });
       } catch (err) {
@@ -23431,6 +23471,7 @@ async function autoSaveExcel() {
     } else {
       // Actually new spreadsheet
       const newExcel = {
+        id: currentExcelId, // Pass currentExcelId (might be a temporary ID)
         title,
         data,
         spaceId: currentSpaceId || null,
@@ -24423,9 +24464,22 @@ function renderSpaceDetailView(space) {
   const allExcels = loadExcels();
   const excelFavorites = loadExcelFavorites();
 
-  // Filter docs and excels by space - use string comparison for UUID/number compatibility
-  const docs = allDocs.filter(d => String(d.spaceId) === String(space.id));
-  const excels = allExcels.filter(e => String(e.spaceId) === String(space.id));
+  // 🛡️ PREVENT DUPLICATION in UI: Use a Map to store unique items by ID
+  const uniqueDocsMap = new Map();
+  allDocs.forEach(d => {
+    if (String(d.spaceId) === String(space.id)) {
+      uniqueDocsMap.set(String(d.id), d);
+    }
+  });
+  const docs = Array.from(uniqueDocsMap.values());
+
+  const uniqueExcelsMap = new Map();
+  allExcels.forEach(e => {
+    if (String(e.spaceId) === String(space.id)) {
+      uniqueExcelsMap.set(String(e.id), e);
+    }
+  });
+  const excels = Array.from(uniqueExcelsMap.values());
 
   // Recent items (last 5 docs + excels combined)
   const allItems = [

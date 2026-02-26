@@ -1559,22 +1559,29 @@ async function saveDocToDB(docData) {
   }
 
   console.log('💾 saveDocToDB: Saving doc:', { 
+    id: docData.id,
     title: docData.title, 
     contentLength: docData.content?.length || 0,
     spaceId: docData.spaceId,
     userId: currentUser.id 
   });
 
-  const insertData = {
+  const upsertData = {
     user_id: currentUser.id,
     title: docData.title || 'Untitled',
     content: docData.content || '',
-    space_id: docData.spaceId || null
+    space_id: docData.spaceId || null,
+    updated_at: new Date().toISOString()
   };
+
+  // If an ID is provided and looks like a UUID, include it for upsert
+  if (docData.id && typeof docData.id === 'string' && docData.id.includes('-')) {
+    upsertData.id = docData.id;
+  }
 
   const { data, error } = await supabaseClient
     .from('docs')
-    .insert(insertData)
+    .upsert(upsertData, { onConflict: 'id' })
     .select()
     .single();
 
@@ -1583,7 +1590,7 @@ async function saveDocToDB(docData) {
     throw error;
   }
 
-  console.log('✅ saveDocToDB: Doc saved successfully:', data.id);
+  console.log('✅ saveDocToDB: Doc saved/upserted successfully:', data.id);
   return {
     id: data.id,
     title: data.title,
@@ -1680,16 +1687,22 @@ async function saveExcelToDB(excelData) {
     return null;
   }
 
-  const insertData = {
+  const upsertData = {
     user_id: currentUser.id,
     title: excelData.title || 'Untitled Spreadsheet',
     data: excelData.data || [],
-    space_id: excelData.spaceId || null
+    space_id: excelData.spaceId || null,
+    updated_at: new Date().toISOString()
   };
+
+  // If an ID is provided and looks like a UUID, include it for upsert
+  if (excelData.id && typeof excelData.id === 'string' && excelData.id.includes('-')) {
+    upsertData.id = excelData.id;
+  }
 
   const { data, error } = await supabaseClient
     .from('excels')
-    .insert(insertData)
+    .upsert(upsertData, { onConflict: 'id' })
     .select()
     .single();
 
