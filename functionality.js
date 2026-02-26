@@ -13838,9 +13838,9 @@ function createPicker(projectIndex) {
   console.log('Attempting to create picker. API Loaded:', gdrive_picker_api_loaded, 'Token exists:', !!gdrive_access_token);
   if (gdrive_picker_api_loaded && gdrive_access_token) {
     try {
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-          .setIncludeFolders(true)
-          .setSelectableMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/pdf,image/png,image/jpeg');
+      // Use the standard DocsView without the setIncludeFolders if it's causing issues
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
+      view.setSelectableMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/pdf,image/png,image/jpeg');
 
       const picker = new google.picker.PickerBuilder()
           .enableFeature(google.picker.Feature.NAV_HIDDEN)
@@ -13849,7 +13849,6 @@ function createPicker(projectIndex) {
           .setOAuthToken(gdrive_access_token)
           .addView(view)
           .setDeveloperKey(GDRIVE_API_KEY)
-          .setAppId(GDRIVE_APP_ID)
           .setOrigin(window.location.origin)
           .setCallback((data) => {
             console.log('Picker callback data:', data);
