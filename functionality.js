@@ -13776,7 +13776,7 @@ let gdrive_access_token = null;
 // Replace with your actual Client ID and API Key from Google Cloud Console
 const GDRIVE_CLIENT_ID = '1028059195096-bqe4em511or99dc83f847u23q6tbc67t.apps.googleusercontent.com'; 
 const GDRIVE_API_KEY = 'AIzaSyACeCmBKo9ryeT7vHLyG6Tv1f9-I8bQNWg';
-const GDRIVE_APP_ID = GDRIVE_CLIENT_ID ? GDRIVE_CLIENT_ID.split('-')[0] : '';
+const GDRIVE_APP_ID = '1028059195096'; // Extracted project number from Client ID
 
 function onGdriveApiLoad() {
   gapi.load('picker', () => {
@@ -13849,7 +13849,8 @@ function createPicker(projectIndex) {
           .setOAuthToken(gdrive_access_token)
           .addView(view)
           .setDeveloperKey(GDRIVE_API_KEY)
-          .setOrigin(window.location.protocol + '//' + window.location.host)
+          .setAppId(GDRIVE_APP_ID)
+          .setOrigin(window.location.origin)
           .setCallback((data) => {
             console.log('Picker callback data:', data);
             pickerCallback(data, projectIndex);
