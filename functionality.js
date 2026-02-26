@@ -13835,21 +13835,35 @@ async function openAddGoogleDriveResourceModal(button, projectIndex) {
 }
 
 function createPicker(projectIndex) {
+  console.log('Attempting to create picker. API Loaded:', gdrive_picker_api_loaded, 'Token exists:', !!gdrive_access_token);
   if (gdrive_picker_api_loaded && gdrive_access_token) {
-    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-        .setIncludeFolders(true)
-        .setSelectableMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/pdf,image/png,image/jpeg');
+    try {
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+          .setIncludeFolders(true)
+          .setSelectableMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/pdf,image/png,image/jpeg');
 
-    const picker = new google.picker.PickerBuilder()
-        .enableFeature(google.picker.Feature.NAV_HIDDEN)
-        .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-        .setAppId(GDRIVE_APP_ID)
-        .setOAuthToken(gdrive_access_token)
-        .addView(view)
-        .setDeveloperKey(GDRIVE_API_KEY)
-        .setCallback((data) => pickerCallback(data, projectIndex))
-        .build();
-    picker.setVisible(true);
+      const picker = new google.picker.PickerBuilder()
+          .enableFeature(google.picker.Feature.NAV_HIDDEN)
+          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+          .setAppId(GDRIVE_APP_ID)
+          .setOAuthToken(gdrive_access_token)
+          .addView(view)
+          .setDeveloperKey(GDRIVE_API_KEY)
+          .setOrigin(window.location.protocol + '//' + window.location.host)
+          .setCallback((data) => {
+            console.log('Picker callback data:', data);
+            pickerCallback(data, projectIndex);
+          })
+          .build();
+      picker.setVisible(true);
+      console.log('Picker set to visible');
+    } catch (err) {
+      console.error('Error building/showing picker:', err);
+      showToast('Error opening Google Drive picker', 'error');
+    }
+  } else {
+    console.error('Picker cannot be created: API not loaded or no token');
+    showToast('Google Drive not ready. Please try again.', 'error');
   }
 }
 
