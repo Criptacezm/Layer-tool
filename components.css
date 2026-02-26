@@ -18826,6 +18826,139 @@ h4.ai-heading {
   z-index: 100;
 }
 
+.ai-clean-loading.windsurf-style {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(var(--surface-rgb), 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--border-rgb), 0.5);
+  margin: 8px 0;
+  animation: ai-fade-in 0.3s ease-out;
+}
+
+.ai-thinking-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-thinking-step-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.ai-thinking-step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background: rgba(var(--surface-rgb), 0.3);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.ai-thinking-step-header:hover {
+  background: rgba(var(--surface-rgb), 0.5);
+  border-color: rgba(var(--border-rgb), 0.8);
+}
+
+.ai-thinking-step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--muted-foreground);
+}
+
+.ai-thinking-step-item.loading .ai-thinking-step-icon {
+  color: var(--primary);
+}
+
+.ai-thinking-step-item.completed .ai-thinking-step-icon {
+  color: #10b981;
+}
+
+.ai-thinking-step-item.error .ai-thinking-step-icon {
+  color: #ef4444;
+}
+
+.ai-thinking-step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+  flex: 1;
+}
+
+.ai-thinking-step-duration {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+.ai-thinking-step-arrow {
+  transition: transform 0.2s ease;
+  color: var(--muted-foreground);
+}
+
+.ai-thinking-step-item.expanded .ai-thinking-step-arrow {
+  transform: rotate(180deg);
+}
+
+.ai-thinking-step-details {
+  display: none;
+  padding: 8px 12px 8px 42px;
+  background: rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(var(--border-rgb), 0.2);
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+}
+
+.ai-thinking-step-item.expanded .ai-thinking-step-details {
+  display: block;
+  animation: ai-slide-down 0.2s ease-out;
+}
+
+.ai-thinking-step-detail-line {
+  position: relative;
+  padding-left: 12px;
+}
+
+.ai-thinking-step-detail-line::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  opacity: 0.6;
+}
+
+@keyframes ai-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ai-spin {
+  animation: ai-spin 1s linear infinite;
+}
+
+@keyframes ai-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ai-slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .ai-clean-header-actions {
   display: flex;
   align-items: center;

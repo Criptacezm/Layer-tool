@@ -28489,43 +28489,127 @@ function showAIAddOptions() {
 
 let aiChatMessages = [];
 let aiChatIsLoading = false;
-let aiThinkingStatus = 'Thinking...';
-const thinkingStatuses = [
-  'Analysing the text...',
-  'Searching the web...',
-  'Putting things together...',
-  'Refining response...',
-  'Finalizing...'
-];
+let aiThinkingSteps = []; // Array of { id: string, label: string, status: 'loading'|'completed'|'error', details: string[], startTime: number, duration?: string }
 let thinkingStatusInterval = null;
 
+function addThinkingStep(id, label) {
+  aiThinkingSteps.push({
+    id,
+    label,
+    status: 'loading',
+    details: [],
+    startTime: Date.now()
+  });
+  updateThinkingUI();
+}
+
+function updateThinkingStep(id, updates) {
+  const step = aiThinkingSteps.find(s => s.id === id);
+  if (step) {
+    if (updates.status === 'completed' || updates.status === 'error') {
+      step.duration = ((Date.now() - step.startTime) / 1000).toFixed(2) + 's';
+    }
+    Object.assign(step, updates);
+    updateThinkingUI();
+  }
+}
+
+function addThinkingDetail(stepId, detail) {
+  const step = aiThinkingSteps.find(s => s.id === stepId);
+  if (step) {
+    step.details.push(detail);
+    updateThinkingUI();
+  }
+}
+
+function updateThinkingUI() {
+  const container = document.querySelector('.ai-thinking-steps-container');
+  if (container) {
+    container.innerHTML = renderThinkingSteps();
+    scrollChatToBottom();
+  } else {
+    updateChatView();
+  }
+}
+
+function renderThinkingSteps() {
+  return aiThinkingSteps.map(step => `
+    <div class="ai-thinking-step-item ${step.status}">
+      <div class="ai-thinking-step-header" onclick="this.parentElement.classList.toggle('expanded')">
+        <div class="ai-thinking-step-icon">
+          ${step.status === 'loading' ? `
+            <svg class="ai-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+          ` : step.status === 'completed' ? `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          ` : `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          `}
+        </div>
+        <span class="ai-thinking-step-label">${escapeHtml(step.label)}</span>
+        ${step.duration ? `<span class="ai-thinking-step-duration">in ${step.duration}</span>` : ''}
+        ${step.details.length > 0 ? `
+          <svg class="ai-thinking-step-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        ` : ''}
+      </div>
+      ${step.details.length > 0 ? `
+        <div class="ai-thinking-step-details">
+          ${step.details.map(d => `<div class="ai-thinking-step-detail-line">${escapeHtml(d)}</div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
 function startThinkingStatus() {
-  let index = 0;
-  aiThinkingStatus = thinkingStatuses[index];
-  updateChatView();
+  aiThinkingSteps = [];
+  // Initial step
+  addThinkingStep('analyze', 'Analyzing request...');
   
+  // Simulation of "real" work if the API takes time
+  let simulationIndex = 0;
+  const simulationSteps = [
+    { delay: 1500, id: 'analyze', update: { status: 'completed' } },
+    { delay: 1600, id: 'search', label: 'Searching knowledge base...', type: 'add' },
+    { delay: 3000, id: 'search', detail: 'Found 3 relevant documents' },
+    { delay: 3500, id: 'search', update: { status: 'completed' } },
+    { delay: 3600, id: 'context', label: 'Processing context...', type: 'add' },
+    { delay: 5000, id: 'context', detail: 'Integrating codebase context' },
+    { delay: 5500, id: 'context', update: { status: 'completed' } },
+    { delay: 5600, id: 'response', label: 'Generating response...', type: 'add' }
+  ];
+
   if (thinkingStatusInterval) clearInterval(thinkingStatusInterval);
   
-  thinkingStatusInterval = setInterval(() => {
-    index = (index + 1) % thinkingStatuses.length;
-    aiThinkingStatus = thinkingStatuses[index];
-    
-    // Efficiently update only the thinking text if it exists
-    const statusEl = document.querySelector('.ai-thinking-text');
-    if (statusEl) {
-      statusEl.textContent = aiThinkingStatus;
-    } else {
-      updateChatView();
+  thinkingStatusInterval = setTimeout(function nextSim() {
+    if (simulationIndex < simulationSteps.length && aiChatIsLoading) {
+      const sim = simulationSteps[simulationIndex];
+      if (sim.type === 'add') {
+        addThinkingStep(sim.id, sim.label);
+      } else if (sim.detail) {
+        addThinkingDetail(sim.id, sim.detail);
+      } else if (sim.update) {
+        updateThinkingStep(sim.id, sim.update);
+      }
+      simulationIndex++;
+      const nextDelay = simulationIndex < simulationSteps.length ? simulationSteps[simulationIndex].delay - sim.delay : 1000;
+      thinkingStatusInterval = setTimeout(nextSim, nextDelay);
     }
-  }, 3000);
+  }, simulationSteps[0].delay);
 }
 
 function stopThinkingStatus() {
   if (thinkingStatusInterval) {
-    clearInterval(thinkingStatusInterval);
+    clearTimeout(thinkingStatusInterval);
     thinkingStatusInterval = null;
   }
-  aiThinkingStatus = 'Thinking...';
 }
 let aiGeneratedContent = null; // For Essay/Report/Code panel
 let aiChatHistorySidebarOpen = false;
@@ -28809,7 +28893,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
           <div class="ai-clean-messages" id="aiChatMessages">
             ${renderAIChatMessages()}
             ${aiChatIsLoading ? `
-              <div class="ai-clean-loading">
+              <div class="ai-clean-loading windsurf-style">
                 <div class="ai-assistant-header">
                   <div class="ai-assistant-avatar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -28820,7 +28904,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
                   </div>
                   <span class="ai-assistant-name">AI Assistant</span>
                 </div>
-                <span class="ai-thinking-text">${aiThinkingStatus}</span>
+                <div class="ai-thinking-steps-container">
+                  ${renderThinkingSteps()}
+                </div>
               </div>
             ` : ''}
           </div>
