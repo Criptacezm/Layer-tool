@@ -5860,7 +5860,7 @@ function renderActivityView(searchQuery = '') {
     const { total, completed, percentage } = calculateProgress(project.columns);
     const statusColor = getStatusColor(project.status);
     const isStarted = project.status !== 'todo' || percentage > 0;
-    const projectIconEmoji = project.iconEmoji || '◇';
+    const projectIconEmoji = project.iconEmoji || project.icon_emoji || '◇';
 
     // Get linked space docs/excels
     const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
