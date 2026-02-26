@@ -1,7 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/ai", "destination": "/server.js" },
+    { "source": "/api/ai", "destination": "/api/ai.js" },
     { "source": "/(.*)", "destination": "/layer.html" }
   ]
-
 }
