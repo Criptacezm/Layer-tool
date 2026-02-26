@@ -5,7 +5,7 @@
    ============================================ */
 
 // API CONFIGURATION
-const NVIDIA_API_KEY = "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";
+const NVIDIA_API_KEY = "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";
 const INVOKE_URL = "/api/ai";
 const MODEL_NAME = "qwen/qwen3.5-397b-a17b";
 
@@ -58,7 +58,7 @@ Only return valid JSON, no other text or explanation.`;
 async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
         const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
-        
+
         // Always use absolute URL for the proxy to support Live Server (port 5500)
         const response = await fetch("http://localhost:3001/api/ai", {
             method: 'POST',
@@ -68,8 +68,8 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
             body: JSON.stringify({
                 "model": MODEL_NAME,
                 "messages": [
-                    {"role": "system", "content": systemPrompt},
-                    {"role": "user", "content": fullPrompt}
+                    { "role": "system", "content": systemPrompt },
+                    { "role": "user", "content": fullPrompt }
                 ],
                 "max_tokens": 4096,
                 "temperature": 0.60,
@@ -98,21 +98,21 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
 
         const data = await response.json();
         const text = data.choices[0]?.message?.content;
-        
+
         if (text) return text;
         throw new Error('AI returned an empty response.');
     } catch (error) {
         console.error('NVIDIA API Error:', error);
         const errorMsg = error.message || String(error);
-        
+
         if (errorMsg.includes('429') || errorMsg.includes('Rate limit')) {
             return "⚠️ Rate limit reached. Please wait 60 seconds and try again.";
         }
-        
+
         if (errorMsg.includes('401') || errorMsg.includes('403')) {
             return "⚠️ API key issue. Please check your NVIDIA API key is valid.";
         }
-        
+
         return `❌ Error: ${errorMsg}`;
     }
 }
@@ -131,7 +131,7 @@ async function analyzeCodeErrors(code, language = 'javascript') {
     try {
         const prompt = `Analyze this ${language} code for errors:\n\`\`\`${language}\n${code}\n\`\`\``;
         const text = await callQwenAPI(prompt, CODE_ANALYSIS_SYSTEM_PROMPT);
-        
+
         // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -160,7 +160,7 @@ function escapeHtml(text) {
  */
 function formatAIResponse(text) {
     let html = text;
-    
+
     // Code blocks with enhanced styling and copy button
     html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang || 'plaintext';
@@ -182,42 +182,42 @@ function formatAIResponse(text) {
             <pre class="ai-code-pre" id="${codeId}"><code class="ai-code">${escapeHtml(code.trim())}</code></pre>
         </div>`;
     });
-    
+
     // Inline code
     html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
-    
+
     // Bold text - handle **text** format
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    
+
     // Headers
     html = html.replace(/^### (.+)$/gm, '<h4 class="ai-heading">$1</h4>');
     html = html.replace(/^## (.+)$/gm, '<h3 class="ai-heading">$1</h3>');
     html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
-    
+
     // Bullet points - multiple formats
     html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ai-list-item">$1</li>');
     html = html.replace(/(<li class="ai-list-item">.*<\/li>\n?)+/g, '<ul class="ai-list">$&</ul>');
-    
+
     // Numbered lists
     html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ai-numbered-item">$1</li>');
     html = html.replace(/(<li class="ai-numbered-item">.*<\/li>\n?)+/g, '<ol class="ai-numbered-list">$&</ol>');
-    
+
     // Paragraphs - split by double newlines
     html = html.split('\n\n').map(p => {
         p = p.trim();
         if (!p) return '';
-        if (p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<div') || 
+        if (p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<div') ||
             p.startsWith('<h2') || p.startsWith('<h3') || p.startsWith('<h4')) {
             return p;
         }
         return `<p class="ai-text">${p}</p>`;
     }).join('');
-    
+
     // Clean up line breaks
     html = html.replace(/\n/g, '<br>');
     // Remove excessive breaks
     html = html.replace(/(<br>){3,}/g, '<br><br>');
-    
+
     return html;
 }
 
@@ -227,18 +227,18 @@ function formatAIResponse(text) {
 async function revealWordsAnimated(container, formattedHtml, speed = 10) {
     return new Promise((resolve) => {
         container.innerHTML = '';
-        
+
         // Create a temporary container to parse HTML
         const temp = document.createElement('div');
         temp.innerHTML = formattedHtml;
-        
+
         // Get text content for word-by-word reveal
         const textContent = temp.textContent || temp.innerText;
         const words = textContent.split(/(\s+)/);
-        
+
         let wordIndex = 0;
         let displayText = '';
-        
+
         const revealInterval = setInterval(() => {
             if (wordIndex >= words.length) {
                 clearInterval(revealInterval);
@@ -253,7 +253,7 @@ async function revealWordsAnimated(container, formattedHtml, speed = 10) {
                 }, 50);
                 return;
             }
-            
+
             // Add words progressively
             displayText += words[wordIndex];
             container.textContent = displayText;
@@ -269,7 +269,7 @@ async function revealWordsAnimated(container, formattedHtml, speed = 10) {
 function createLoadingIndicator(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return null;
-    
+
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'ai-response-card ai-loading-state';
     loadingDiv.id = 'aiLoadingIndicator';
@@ -333,7 +333,7 @@ async function loadChatHistory(containerId) {
 /**
  * Clear chat history for a specific container
  */
-window.clearAiChatHistory = function(containerId) {
+window.clearAiChatHistory = function (containerId) {
     localStorage.removeItem(`ai_history_${containerId}`);
     const container = document.getElementById(containerId);
     if (container) container.innerHTML = '';
@@ -358,7 +358,7 @@ async function appendAiMessageEnhanced(containerId, role, text, animate = true) 
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `ai-response-card ${role}-card`;
-    
+
     if (role === 'user') {
         msgDiv.innerHTML = `
             <div class="ai-user-message">
@@ -388,9 +388,9 @@ async function appendAiMessageEnhanced(containerId, role, text, animate = true) 
             </div>
         `;
         container.appendChild(msgDiv);
-        
+
         const contentDiv = msgDiv.querySelector('.ai-assistant-content');
-        
+
         if (animate) {
             await revealWordsAnimated(contentDiv, formattedHtml, 8);
         } else {
@@ -447,6 +447,9 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 // ATTACH TO WINDOW - Global access
 // ============================================
 
+window.callQwenAPI = callQwenAPI;
+window.callGeminiAPI = callGeminiAPI;
+window.analyzeCodeErrors = analyzeCodeErrors;
 window.loadChatHistory = loadChatHistory;
 window.saveMessageToHistory = saveMessageToHistory;
 window.clearAiChatHistory = clearAiChatHistory;
@@ -454,10 +457,10 @@ window.clearAiChatHistory = clearAiChatHistory;
 // Initialize histories for all known AI containers when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     const containers = [
-        'projectAiMessages', 
-        'gripAiMessages', 
-        'docContentAiMessages', 
-        'docAiMessages', 
+        'projectAiMessages',
+        'gripAiMessages',
+        'docContentAiMessages',
+        'docAiMessages',
         'whiteboardAiMessages'
     ];
     containers.forEach(id => {
@@ -468,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Toggle the Chat History sidebar for the main AI view
  */
-window.toggleChatHistorySidebar = function() {
+window.toggleChatHistorySidebar = function () {
     let sidebar = document.getElementById('aiHistorySidebar');
     if (!sidebar) {
         // Create sidebar if it doesn't exist
@@ -534,7 +537,7 @@ function renderHistoryList() {
         <div class="ai-history-item ${msg.role}">
             <div class="ai-history-item-role">${msg.role === 'user' ? 'You' : 'AI'}</div>
             <div class="ai-history-item-text">${escapeHtml(msg.text).substring(0, 100)}${msg.text.length > 100 ? '...' : ''}</div>
-            <div class="ai-history-item-time">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+            <div class="ai-history-item-time">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
     `).join('');
 }
@@ -546,21 +549,21 @@ window.removeLoadingIndicator = removeLoadingIndicator;
 window.escapeHtml = escapeHtml;
 
 // Copy code button handler - Enhanced with visual feedback
-window.copyAICode = function(codeId, btn) {
+window.copyAICode = function (codeId, btn) {
     const codeEl = document.getElementById(codeId);
     if (!codeEl) return;
-    
+
     const code = codeEl.querySelector('code').textContent;
     navigator.clipboard.writeText(code).then(() => {
         const copyIcon = btn.querySelector('.copy-icon');
         const checkIcon = btn.querySelector('.check-icon');
         const copyText = btn.querySelector('.copy-text');
-        
+
         copyIcon.style.display = 'none';
         checkIcon.style.display = 'block';
         copyText.textContent = 'Copied!';
         btn.classList.add('copied');
-        
+
         setTimeout(() => {
             copyIcon.style.display = 'block';
             checkIcon.style.display = 'none';
@@ -571,7 +574,7 @@ window.copyAICode = function(codeId, btn) {
 };
 
 // Project AI handler
-window.handleProjectAiSend = function() {
+window.handleProjectAiSend = function () {
     let ctx = "You are helping with project management. Be concise.";
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
         const projects = loadProjects();
@@ -582,12 +585,12 @@ window.handleProjectAiSend = function() {
 };
 
 // Whiteboard AI handler  
-window.handleAiSend = function() {
+window.handleAiSend = function () {
     processAISidebarChat('gripAiInput', 'gripAiMessages', 'User is on a whiteboard. Keep answers short and actionable.');
 };
 
 // Doc content AI handler
-window.handleDocContentAiSend = function() {
+window.handleDocContentAiSend = function () {
     const editor = document.getElementById('docEditorContent');
     const docText = editor ? editor.innerText.substring(0, 1000) : '';
     const ctx = `Editing document. Content: "${docText}"\n\nBe concise. Focus on writing help.`;
@@ -595,12 +598,12 @@ window.handleDocContentAiSend = function() {
 };
 
 // Doc sidebar AI handler
-window.handleDocAiSend = function() {
+window.handleDocAiSend = function () {
     processAISidebarChat('docAiInput', 'docAiMessages', 'Help with document editing. Be brief and helpful.');
 };
 
 // Whiteboard AI handler
-window.handleWhiteboardAiSend = function() {
+window.handleWhiteboardAiSend = function () {
     let ctx = 'On whiteboard canvas. Keep answers concise.';
     if (typeof gripProjectIndex !== 'undefined' && gripProjectIndex !== null) {
         const projects = typeof loadProjects === 'function' ? loadProjects() : [];
@@ -617,7 +620,7 @@ window.handleWhiteboardAiSend = function() {
 /**
  * Analyze code in whiteboard cell and highlight errors
  */
-window.analyzeWhiteboardCode = async function(cellId, code, language) {
+window.analyzeWhiteboardCode = async function (cellId, code, language) {
     try {
         const analysis = await analyzeCodeErrors(code, language);
         if (analysis.errors && analysis.errors.length > 0) {
@@ -637,14 +640,14 @@ window.analyzeWhiteboardCode = async function(cellId, code, language) {
 function highlightCodeCellErrors(cellId, errors) {
     const codeEl = document.querySelector(`[data-cell-id="${cellId}"].grip-cell-code-content`);
     if (!codeEl || !errors.length) return;
-    
+
     const lines = (codeEl.textContent || '').split('\n');
     let html = '';
-    
+
     lines.forEach((line, idx) => {
         const lineNum = idx + 1;
         const error = errors.find(e => e.line === lineNum);
-        
+
         if (error) {
             const escapedLine = escapeHtml(line);
             const errorType = error.type.charAt(0).toUpperCase() + error.type.slice(1);
@@ -668,6 +671,6 @@ function highlightCodeCellErrors(cellId, errors) {
             html += escapeHtml(line) + '\n';
         }
     });
-    
+
     codeEl.innerHTML = html;
 }
