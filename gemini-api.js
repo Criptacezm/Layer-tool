@@ -15,7 +15,7 @@ const GENERAL_SYSTEM_PROMPT = `You are a highly intelligent, concise AI assistan
 RESPONSE RULES:
 - Keep responses under 150 words unless specifically asked for detail
 - Get straight to the point - no filler phrases like "Great question!" or "I'd be happy to help"
-- Use bullet points (•) for lists - max 5 items
+- Prefer short paragraphs. Only use lists if the user explicitly asks for a list.
 - For code: wrap in triple backticks with language name
 - Use **bold** sparingly for key terms only
 - One paragraph max for explanations unless complex
@@ -194,20 +194,6 @@ function formatAIResponse(text) {
     html = html.replace(/^## (.+)$/gm, '<h3 class="ai-heading">$1</h3>');
     html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
 
-    // Bullet points - multiple formats
-    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div class="ai-list-item">$1</div>');
-    html = html.replace(/(?:^|\n)(<div class="ai-list-item">[\s\S]*?<\/div>\n?)+/g, (m) => {
-        const trimmed = m.replace(/^\n/, '');
-        return `<div class="ai-list">${trimmed}</div>`;
-    });
-
-    // Numbered lists
-    html = html.replace(/^\d+\.\s+(.+)$/gm, '<div class="ai-numbered-item">$1</div>');
-    html = html.replace(/(?:^|\n)(<div class="ai-numbered-item">[\s\S]*?<\/div>\n?)+/g, (m) => {
-        const trimmed = m.replace(/^\n/, '');
-        return `<div class="ai-numbered-list">${trimmed}</div>`;
-    });
-
     // Paragraphs - split by double newlines
     html = html.split('\n\n').map(p => {
         p = p.trim();
@@ -233,13 +219,6 @@ function postProcessAIContent(container) {
     if (!container) return;
 
     container.classList.add('ai-content-ready');
-
-    // Stagger list items for a ChatGPT/Claude-like feel
-    const items = container.querySelectorAll('.ai-list-item, .ai-numbered-item');
-    items.forEach((el, idx) => {
-        el.style.setProperty('--ai-stagger-index', String(idx));
-        el.classList.add('ai-stagger-item');
-    });
 }
 
 /**
