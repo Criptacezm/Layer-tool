@@ -5860,6 +5860,7 @@ function renderActivityView(searchQuery = '') {
     const { total, completed, percentage } = calculateProgress(project.columns);
     const statusColor = getStatusColor(project.status);
     const isStarted = project.status !== 'todo' || percentage > 0;
+    const projectIconEmoji = project.iconEmoji || '◇';
 
     // Get linked space docs/excels
     const linkedSpace = project.linkedSpaceId ? loadSpaces().find(s => s.id === project.linkedSpaceId) : null;
@@ -5871,9 +5872,7 @@ function renderActivityView(searchQuery = '') {
               <!-- Card Header -->
               <div class="workspace-card-header">
                 <div class="workspace-card-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                  </svg>
+                  <span class="nav-emoji">${projectIconEmoji}</span>
                 </div>
                 <div class="workspace-card-title-area">
                   <h3 class="workspace-card-title">${project.name}</h3>
@@ -5983,6 +5982,8 @@ function renderProjectDetailView(projectIndex) {
 
   if (!project) return '';
 
+  const projectIconEmoji = project.iconEmoji || '◇';
+
   const { total, completed, percentage } = calculateProgress(project.columns);
 
   // Dynamic status based on progress
@@ -6029,7 +6030,7 @@ function renderProjectDetailView(projectIndex) {
               <path d="M9 18l6-6-6-6"/>
             </svg>
             <div class="pd-breadcrumb-current">
-              <span class="pd-project-icon-mini">◇</span>
+              <span class="pd-project-icon-mini">${projectIconEmoji}</span>
               <span class="pd-project-name-mini">${project.name}</span>
             </div>
             <button class="pd-star-btn" onclick="toggleProjectStar(${projectIndex})" title="Star project">
@@ -6290,9 +6291,14 @@ function renderProjectDetailView(projectIndex) {
           <div class="pd-content-scroll">
             <!-- Project Title Section -->
             <div class="pd-title-section">
-              <div class="pd-project-icon">
-                <span>◇</span>
+              <div class="pd-project-icon" ${isProjectOwner(projectIndex) ? `onclick=\"openProjectIconPicker(event, ${projectIndex})\"` : ''}>
+                <span>${projectIconEmoji}</span>
               </div>
+              ${isProjectOwner(projectIndex) && (!project.iconEmoji || project.iconEmoji === '◇') ? `
+                <div class="pd-icon-tip" id="pdIconTip-${projectIndex}">
+                  Press on the icon to change it
+                </div>
+              ` : ''}
               <div class="pd-title-content">
                 <h1 class="pd-title" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
                 <p class="pd-summary" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
@@ -6741,13 +6747,20 @@ function renderOverviewTab(projectIndex, container) {
   const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
   const targetDateFormatted = formatDateAdvanced(project.targetDate);
 
+  const projectIconEmoji = project.iconEmoji || '◇';
+
   // Render the overview content directly into the container
   container.innerHTML = `
     <!-- Project Title Section -->
     <div class="pd-title-section">
-      <div class="pd-project-icon">
-        <span>◇</span>
+      <div class="pd-project-icon" ${isProjectOwner(projectIndex) ? `onclick=\"openProjectIconPicker(event, ${projectIndex})\"` : ''}>
+        <span>${projectIconEmoji}</span>
       </div>
+      ${isProjectOwner(projectIndex) && (!project.iconEmoji || project.iconEmoji === '◇') ? `
+        <div class="pd-icon-tip" id="pdIconTip-${projectIndex}">
+          Press on the icon to change it
+        </div>
+      ` : ''}
       <div class="pd-title-content">
         <h1 class="pd-title" contenteditable="true" onblur="handleUpdateProjectName(${projectIndex}, this.textContent)">${project.name}</h1>
         <p class="pd-summary" contenteditable="true" onblur="handleUpdateProjectSummary(${projectIndex}, this.textContent)">${project.summary || 'Add a short summary...'}</p>
@@ -6880,6 +6893,17 @@ function renderBacklogTab(projectIndex, container) {
 
   if (!project) return;
 
+  // Show the tip for a few seconds if it exists and the icon is default
+  if ((!project.iconEmoji || project.iconEmoji === '◇') && document.getElementById(`pdIconTip-${projectIndex}`)) {
+    const tip = document.getElementById(`pdIconTip-${projectIndex}`);
+    tip.style.opacity = '1';
+    tip.style.transform = 'translate(-100%, -50%)';
+    setTimeout(() => {
+      tip.style.opacity = '0';
+      tip.style.transform = 'translate(-120%, -50%)';
+    }, 5000); // Hide after 5 seconds
+  }
+
   // Get all tasks from all columns that could be considered backlog items
   const allTasks = [];
   const backlogColumns = ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'];
@@ -6943,15 +6967,16 @@ function renderBacklogTab(projectIndex, container) {
         <!-- Empty State -->
         <div class="backlog-empty-state">
           <div class="empty-illustration">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="120" height="120">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="140" height="140">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
-              <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+              <rect x="9" y="3" width="6" height="4" rx="1.5"></rect>
+              <path d="M12 11h.01M12 15h.01M16 11h.01M16 15h.01M8 11h.01M8 15h.01" stroke-linecap="round"></path>
             </svg>
           </div>
-          <h2 class="empty-title">No backlog tasks</h2>
-          <p class="empty-description">Tasks that need to be planned will appear here. Start by adding your first task to get organized.</p>
+          <h2 class="empty-title">Your backlog is clear</h2>
+          <p class="empty-description">Capture ideas, tasks, and requirements here before moving them to your active sprint.</p>
           <button class="btn-primary" onclick="openAddProjectBacklogTaskModal(${projectIndex})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
               <path d="M12 5v14M5 12h14"/>
             </svg>
             Add First Task
@@ -15063,12 +15088,75 @@ async function handleCreateProjectSubmit(event) {
     await addProject({
       name: name.trim(),
       status: 'todo',
+      iconEmoji: '◇',
       startDate: new Date().toISOString().split('T')[0],
       targetDate,
       description: description.trim()
     });
     renderCurrentView();
   }
+}
+
+async function setProjectIconEmoji(projectIndex, emoji) {
+  if (!isProjectOwner(projectIndex)) {
+    showNotification('Only the project leader can change the project emoji', 'error');
+    return;
+  }
+
+  await updateProject(projectIndex, { iconEmoji: emoji });
+  renderCurrentView();
+
+  // Hide the tip once an emoji is chosen
+  const tip = document.getElementById(`pdIconTip-${projectIndex}`);
+  if (tip) tip.style.display = 'none';
+}
+
+function closeProjectIconPicker() {
+  const existing = document.getElementById('pdProjectIconPicker');
+  if (existing) existing.remove();
+}
+
+function openProjectIconPicker(event, projectIndex) {
+  event.stopPropagation();
+
+  if (!isProjectOwner(projectIndex)) {
+    showNotification('Only the project leader can change the project emoji', 'error');
+    return;
+  }
+
+  closeProjectIconPicker();
+
+  // Hide the tip when opening the picker
+  const tip = document.getElementById(`pdIconTip-${projectIndex}`);
+  if (tip) tip.style.display = 'none';
+
+  const anchor = event.currentTarget;
+  const rect = anchor.getBoundingClientRect();
+
+  const pickerContainer = document.createElement('div');
+  pickerContainer.id = 'pdProjectIconPicker';
+  pickerContainer.className = 'pd-icon-picker';
+  pickerContainer.style.top = `${Math.min(window.innerHeight - 440, rect.bottom + 8)}px`;
+  pickerContainer.style.left = `${Math.min(window.innerWidth - 360, rect.left)}px`;
+  pickerContainer.innerHTML = `<emoji-picker class="pd-emoji-picker"></emoji-picker>`;
+  pickerContainer.addEventListener('click', (e) => e.stopPropagation());
+
+  document.body.appendChild(pickerContainer);
+
+  const pickerEl = pickerContainer.querySelector('emoji-picker');
+  if (pickerEl) {
+    pickerEl.addEventListener('emoji-click', (e) => {
+      const unicode = e?.detail?.unicode;
+      if (unicode) {
+        setProjectIconEmoji(projectIndex, unicode);
+      }
+      closeProjectIconPicker();
+    });
+  }
+
+  setTimeout(() => {
+    document.addEventListener('click', closeProjectIconPicker, { once: true });
+  }, 10);
 }
 
 async function openProjectDetail(index) {

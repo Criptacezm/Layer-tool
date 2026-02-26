@@ -2660,6 +2660,7 @@ async function handleCreateProjectSubmit(event) {
     const newProject = await addProject({
       name: name.trim(),
       status: 'todo',
+      iconEmoji: '◇',
       startDate: new Date().toISOString().split('T')[0],
       targetDate,
       description: description.trim()

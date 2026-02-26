@@ -225,6 +225,7 @@ async function updateProject(index, updates) {
 
   if (projects[index]?.id) {
     try {
+      console.log('--- updateProject DEBUG ---', { projectId: projects[index].id, updates });
       await window.LayerDB.updateProject(projects[index].id, updates);
       const updatedProjects = await window.LayerDB.loadProjects();
       saveProjects(updatedProjects);
@@ -246,7 +247,13 @@ async function updateProject(index, updates) {
       return updatedProjects;
     } catch (error) {
       console.error('Failed to update project in database:', error);
-      showToast('Failed to update project', 'error');
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      showToast(`Failed to update project: ${error.message || 'Unknown error'}`, 'error');
     }
   }
 

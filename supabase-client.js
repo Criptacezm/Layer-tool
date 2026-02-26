@@ -690,6 +690,7 @@ function transformProject(p, userId) {
     name: p.name,
     description: p.description,
     status: p.status,
+    iconEmoji: p.icon_emoji || '◇',
     startDate: p.start_date,
     targetDate: p.target_date,
     flowchart: p.flowchart,
@@ -1068,6 +1069,7 @@ async function saveProjectToDB(projectData) {
       name: projectData.name,
       description: projectData.description || '',
       status: projectData.status || 'todo',
+      icon_emoji: projectData.iconEmoji || '◇',
       start_date: projectData.startDate || new Date().toISOString().split('T')[0],
       target_date: projectData.targetDate,
       flowchart: projectData.flowchart || { nodes: [], edges: [] },
@@ -1089,6 +1091,7 @@ async function saveProjectToDB(projectData) {
 }
 
 async function updateProjectInDB(projectId, updates) {
+  console.log('--- updateProjectInDB DEBUG ---', { projectId, updates });
   if (!currentUser) {
     // Fall back to localStorage
     const projects = loadProjects();
@@ -1103,6 +1106,7 @@ async function updateProjectInDB(projectId, updates) {
   if (updates.name !== undefined) dbUpdates.name = updates.name;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
   if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.iconEmoji !== undefined) dbUpdates.icon_emoji = updates.iconEmoji;
   if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
   if (updates.targetDate !== undefined) dbUpdates.target_date = updates.targetDate;
   if (updates.flowchart !== undefined) dbUpdates.flowchart = updates.flowchart;
@@ -1118,6 +1122,7 @@ async function updateProjectInDB(projectId, updates) {
 
   // Don't filter by user_id - RLS policies handle permissions
   // This allows project members to update tasks/columns too
+  console.log('Executing Supabase update with:', dbUpdates);
   const { data, error } = await supabaseClient
     .from('projects')
     .update(dbUpdates)
@@ -1125,7 +1130,10 @@ async function updateProjectInDB(projectId, updates) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase update error:', error);
+    throw error;
+  }
   return data;
 }
 
