@@ -59,8 +59,8 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
         const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
 
-        // Always use absolute URL for the proxy to support Live Server (port 5500)
-        const response = await fetch("http://localhost:3001/api/ai", {
+        // Use relative URL for Vercel deployment and local proxy compatibility
+        const response = await fetch("/api/ai", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -297,47 +297,6 @@ function removeLoadingIndicator() {
     }
 }
 
-/**
- * Save a message to chat history
- */
-function saveMessageToHistory(containerId, role, text) {
-    try {
-        const historyKey = `ai_history_${containerId}`;
-        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-        history.push({ role, text, timestamp: new Date().toISOString() });
-        // Keep only last 50 messages to prevent storage bloat
-        if (history.length > 50) history.shift();
-        localStorage.setItem(historyKey, JSON.stringify(history));
-    } catch (e) {
-        console.error('Failed to save chat history:', e);
-    }
-}
-
-/**
- * Load chat history for a specific container
- */
-async function loadChatHistory(containerId) {
-    try {
-        const historyKey = `ai_history_${containerId}`;
-        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-        if (history.length > 0) {
-            for (const msg of history) {
-                await appendAiMessageEnhanced(containerId, msg.role, msg.text, false);
-            }
-        }
-    } catch (e) {
-        console.error('Failed to load chat history:', e);
-    }
-}
-
-/**
- * Clear chat history for a specific container
- */
-window.clearAiChatHistory = function (containerId) {
-    localStorage.removeItem(`ai_history_${containerId}`);
-    const container = document.getElementById(containerId);
-    if (container) container.innerHTML = '';
-};
 
 /**
  * Append AI message with professional formatting and word-by-word animation
@@ -346,15 +305,6 @@ async function appendAiMessageEnhanced(containerId, role, text, animate = true) 
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Save to history if it's a real message (not an error or during loading)
-    if (role === 'user' || role === 'assistant') {
-        const historyKey = `ai_history_${containerId}`;
-        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-        const isDuplicate = history.some(m => m.text === text && m.role === role);
-        if (!isDuplicate && animate) { // Only save if it's new and being animated (fresh message)
-            saveMessageToHistory(containerId, role, text);
-        }
-    }
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `ai-response-card ${role}-card`;
@@ -450,97 +400,7 @@ async function processGenericAiChat(inputId, messagesId, typingId, contextData =
 window.callQwenAPI = callQwenAPI;
 window.callGeminiAPI = callGeminiAPI;
 window.analyzeCodeErrors = analyzeCodeErrors;
-window.loadChatHistory = loadChatHistory;
-window.saveMessageToHistory = saveMessageToHistory;
-window.clearAiChatHistory = clearAiChatHistory;
 
-// Initialize histories for all known AI containers when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    const containers = [
-        'projectAiMessages',
-        'gripAiMessages',
-        'docContentAiMessages',
-        'docAiMessages',
-        'whiteboardAiMessages'
-    ];
-    containers.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) loadChatHistory(id);
-    });
-});
-/**
- * Toggle the Chat History sidebar for the main AI view
- */
-window.toggleChatHistorySidebar = function () {
-    let sidebar = document.getElementById('aiHistorySidebar');
-    if (!sidebar) {
-        // Create sidebar if it doesn't exist
-        sidebar = document.createElement('div');
-        sidebar.id = 'aiHistorySidebar';
-        sidebar.className = 'ai-history-sidebar';
-        sidebar.innerHTML = `
-            <div class="ai-history-sidebar-header">
-                <h3>Chat History</h3>
-                <div class="ai-history-sidebar-actions">
-                    <button class="ai-history-clear-btn" onclick="clearAiChatHistory('aiAgentMessages')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                        Clear
-                    </button>
-                    <button class="ai-history-close-btn" onclick="toggleChatHistorySidebar()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                            <path d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="ai-history-sidebar-content" id="aiHistorySidebarContent">
-                <!-- History items will be injected here -->
-            </div>
-        `;
-        document.body.appendChild(sidebar);
-
-        // Add overlay
-        const overlay = document.createElement('div');
-        overlay.id = 'aiHistoryOverlay';
-        overlay.className = 'ai-history-overlay';
-        overlay.onclick = toggleChatHistorySidebar;
-        document.body.appendChild(overlay);
-    }
-
-    const isOpen = sidebar.classList.contains('open');
-    if (isOpen) {
-        sidebar.classList.remove('open');
-        document.getElementById('aiHistoryOverlay').classList.remove('open');
-    } else {
-        renderHistoryList();
-        sidebar.classList.add('open');
-        document.getElementById('aiHistoryOverlay').classList.add('open');
-    }
-};
-
-function renderHistoryList() {
-    const content = document.getElementById('aiHistorySidebarContent');
-    if (!content) return;
-
-    const historyKey = `ai_history_aiAgentMessages`;
-    const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-
-    if (history.length === 0) {
-        content.innerHTML = '<div class="ai-history-empty">No recent history</div>';
-        return;
-    }
-
-    // Group history by sessions (approximate by time gaps or just list all)
-    content.innerHTML = history.slice().reverse().map((msg, idx) => `
-        <div class="ai-history-item ${msg.role}">
-            <div class="ai-history-item-role">${msg.role === 'user' ? 'You' : 'AI'}</div>
-            <div class="ai-history-item-text">${escapeHtml(msg.text).substring(0, 100)}${msg.text.length > 100 ? '...' : ''}</div>
-            <div class="ai-history-item-time">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        </div>
-    `).join('');
-}
 window.formatAIResponse = formatAIResponse;
 window.appendAiMessageEnhanced = appendAiMessageEnhanced;
 window.processAISidebarChat = processAISidebarChat;

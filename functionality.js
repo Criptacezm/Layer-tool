@@ -1008,7 +1008,7 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
       </div>
     </div>
   `;
-  
+
   // Restore sidebar state
   restorePdSidebarState();
 }
@@ -1370,9 +1370,9 @@ function renderDmChecklistTab(dmChecklistId, query = '') {
         ${completed && checked_by ? `
           <div class="team-dm-checklist-checked-by" title="Checked by ${checkedByName}">
             ${checkedByAvatar
-              ? `<img src="${checkedByAvatar}" alt="${checkedByName}" class="team-dm-checklist-checked-avatar" />`
-              : `<div class="team-dm-checklist-checked-avatar-fallback">${checkedByInitial}</div>`
-            }
+          ? `<img src="${checkedByAvatar}" alt="${checkedByName}" class="team-dm-checklist-checked-avatar" />`
+          : `<div class="team-dm-checklist-checked-avatar-fallback">${checkedByInitial}</div>`
+        }
           </div>
         ` : ''}
         <div class="team-dm-checklist-delete" onclick="deleteDmChecklistItem('${dmChecklistIdEscaped}', ${itemId})">
@@ -1405,7 +1405,7 @@ function toggleCreateIssueForm() {
   if (container) {
     const isHidden = container.style.display === 'none';
     container.style.display = isHidden ? 'block' : 'none';
-    
+
     if (emptyStateContent) {
       emptyStateContent.style.display = isHidden ? 'none' : 'block';
     }
@@ -1413,7 +1413,7 @@ function toggleCreateIssueForm() {
     if (isHidden) {
       const input = container.querySelector('input[name="title"]');
       if (input) setTimeout(() => input.focus(), 50);
-      
+
       // If we are in empty state, maybe scroll to form?
       container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -1999,13 +1999,13 @@ function openDeleteTaskModal(eventId) {
 function showInlineDeleteConfirmation(eventId, task) {
   // First, hide the context menu if it's open
   hideTaskContextMenu();
-  
+
   // Find the task element that triggered the delete
   const taskElement = document.querySelector(`[onclick*="openEditTaskModal('${eventId}')"]:not(button), [data-event-id="${eventId}"]`);
-  
+
   // If not found, try agenda event card
   let targetElement = taskElement || document.querySelector(`.agenda-event-card[onclick*="openEditTaskModal('${eventId}')"]`);
-  
+
   // If still not found, try to find by context menu trigger
   if (!targetElement) {
     // Try to find the closest event card from the context menu
@@ -2017,7 +2017,7 @@ function showInlineDeleteConfirmation(eventId, task) {
       return;
     }
   }
-  
+
   if (targetElement) {
     // Create confirmation container
     const confirmContainer = document.createElement('div');
@@ -2034,7 +2034,7 @@ function showInlineDeleteConfirmation(eventId, task) {
       color: var(--foreground);
       min-width: 200px;
     `;
-    
+
     confirmContainer.innerHTML = `
       <div style="margin-bottom: 12px;">Delete this task permanently?</div>
       <div style="display: flex; gap: 8px;">
@@ -2042,18 +2042,18 @@ function showInlineDeleteConfirmation(eventId, task) {
         <button class="btn btn-sm btn-destructive" style="flex: 1; padding: 6px 12px; font-size: 12px;" onclick="confirmInlineDelete('${eventId}', this)">Delete</button>
       </div>
     `;
-    
+
     // Position the confirmation near the task
     const rect = targetElement.getBoundingClientRect();
     document.body.appendChild(confirmContainer);
-    
+
     // Position to the right of the task element
     const top = rect.top + window.scrollY;
     const left = rect.right + 5 + window.scrollX;
-    
+
     confirmContainer.style.top = top + 'px';
     confirmContainer.style.left = left + 'px';
-    
+
     // Store reference to original element
     confirmContainer.setAttribute('data-original-element', targetElement.outerHTML.substring(0, 50));
   } else {
@@ -2078,7 +2078,7 @@ function createFloatingConfirmation(eventId, task) {
     justify-content: center;
     align-items: center;
   `;
-  
+
   // Create confirmation container
   const confirmContainer = document.createElement('div');
   confirmContainer.className = 'inline-delete-confirmation';
@@ -2094,7 +2094,7 @@ function createFloatingConfirmation(eventId, task) {
     min-width: 280px;
     max-width: 400px;
   `;
-  
+
   confirmContainer.innerHTML = `
     <div style="margin-bottom: 16px;"><strong>Delete this task permanently?</strong></div>
     <div style="margin-bottom: 20px; color: var(--muted-foreground); font-size: 14px;">"${task.title}"</div>
@@ -2103,12 +2103,12 @@ function createFloatingConfirmation(eventId, task) {
       <button class="btn btn-destructive" style="flex: 1;" onclick="confirmInlineDelete('${eventId}', this)">Delete</button>
     </div>
   `;
-  
+
   overlay.appendChild(confirmContainer);
   document.body.appendChild(overlay);
-  
+
   // Close on click outside
-  overlay.addEventListener('click', function(e) {
+  overlay.addEventListener('click', function (e) {
     if (e.target === overlay) {
       cancelInlineDeleteConfirmation();
     }
@@ -2124,10 +2124,10 @@ function cancelInlineDeleteConfirmation(element) {
 async function confirmInlineDelete(eventId, element) {
   // Remove confirmation first to avoid UI conflicts
   cancelInlineDeleteConfirmation();
-  
+
   // Perform the actual deletion
   await deleteSingleCalendarEvent(eventId);
-  
+
   // Refresh the view after deletion is complete
   renderCurrentView(true);
 }
@@ -3055,10 +3055,10 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
 
   // Position the dropdown near the cursor
   const dropdown = document.getElementById('eventDropdownForm');
-  
+
   // Store preview element reference for later cleanup
   window.currentEventPreviewElement = previewElement;
-  
+
   // Calculate position to avoid going off-screen
   const rect = dropdown.getBoundingClientRect();
   let posX = x + 10; // Small offset from cursor
@@ -3068,22 +3068,22 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
   if (posX + rect.width > window.innerWidth) {
     posX = window.innerWidth - rect.width - 10;
   }
-  
+
   // Adjust if it goes off the bottom edge
   if (posY + rect.height > window.innerHeight) {
     posY = y - rect.height - 10; // Position above cursor if needed
   }
-  
+
   // Ensure it doesn't go off the left edge
   if (posX < 10) {
     posX = 10;
   }
-  
+
   // Ensure it doesn't go off the top edge
   if (posY < 10) {
     posY = 10;
   }
-  
+
   dropdown.style.left = `${posX}px`;
   dropdown.style.top = `${posY}px`;
 
@@ -3099,16 +3099,16 @@ function closeEventDropdown() {
   if (dropdown) {
     dropdown.remove();
   }
-  
+
   // Remove the preview element if it exists
   if (window.currentEventPreviewElement) {
     window.currentEventPreviewElement.remove();
     window.currentEventPreviewElement = null;
   }
-  
+
   // Remove the click listener
   document.removeEventListener('click', handleDropdownClickOutside);
-  
+
   // Reset drag state
   dragCreateState = {
     isDragging: false,
@@ -3463,7 +3463,7 @@ function renderScheduleView() {
   setTimeout(() => {
     initCalendarSwipe();
   }, 100);
-  
+
   return `
     <div class="advanced-schedule-container">
       <!-- Left Sidebar -->
@@ -6246,16 +6246,16 @@ function renderProjectDetailView(projectIndex) {
         <div class="pd-header-right">
           <button class="pd-action-btn" onclick="toggleSidebar()" title="Toggle sidebar" id="sidebarToggleBtn">
             ${isSidebarCollapsed ?
-              `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="11 18 6 13 11 8"/>
                 <polyline points="18 18 13 13 18 8"/>
               </svg>` :
-              `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="6" x2="21" y2="6"/>
                 <line x1="3" y1="12" x2="21" y2="12"/>
                 <line x1="3" y1="18" x2="21" y2="18"/>
               </svg>`
-            }
+    }
           </button>
 
           <button class="pd-action-btn" onclick="copyProjectLink(${projectIndex})" title="Copy link">
@@ -6383,11 +6383,11 @@ function renderProjectDetailView(projectIndex) {
                     <polyline points="14 2 14 8 20 8"/>
                   </svg>
                   ${res.type === 'existing' && res.docId ?
-      `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
-      res.link ?
-        `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
-        `<span>${res.name}</span>`
-    }
+        `<a href="#" onclick="openDocEditor('${res.docId}'); return false;" class="pd-resource-link">${res.name}</a>` :
+        res.link ?
+          `<a href="${res.link}" target="_blank" class="pd-resource-link">${res.name}</a>` :
+          `<span>${res.name}</span>`
+      }
                   <button class="pd-resource-remove" onclick="removeProjectResource(${projectIndex}, ${idx})">×</button>
                 </div>
               `).join('')}
@@ -6443,9 +6443,9 @@ function renderProjectDetailView(projectIndex) {
                 <span class="pd-prop-label">Members</span>
                 <div class="pd-members-list" id="pdMembersList-${projectIndex}">
                   ${teamMembers.map((member, idx) => {
-      const initials = getMemberAvatarInitialsWithFullNames(member);
-      const backgroundColor = getNameColor(member);
-      return `
+        const initials = getMemberAvatarInitialsWithFullNames(member);
+        const backgroundColor = getNameColor(member);
+        return `
                     <div class="pd-member-item" data-member="${member}" data-member-id="${idx}" data-project-index="${projectIndex}">
                       <div class="pd-member-avatar" id="memberAvatar-${projectIndex}-${idx}" style="background: ${backgroundColor}" oncontextmenu="showMemberContextMenu(event, '${member}', ${projectIndex}, ${idx})" title="${member === 'You' ? getCurrentUserName() : member}">
                         ${initials}
@@ -6456,7 +6456,7 @@ function renderProjectDetailView(projectIndex) {
                       </span>
                     </div>
                   `;
-    }).join('')}
+      }).join('')}
                   <button class="pd-prop-value clickable muted" onclick="openInviteMemberModal(${projectIndex})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
@@ -6620,7 +6620,7 @@ function restorePdSidebarState() {
   const sidebar = document.getElementById('pdSidebar');
   const layout = document.querySelector('.pd-layout');
   const toggleBtn = document.getElementById('sidebarToggleBtn');
-  
+
   if (!sidebar || !layout) return;
 
   const isCollapsed = localStorage.getItem('pdSidebarCollapsed') === 'true';
@@ -6696,7 +6696,7 @@ function switchProjectTab(tabName, projectIndex) {
       renderOverviewTab(projectIndex, contentScroll);
       break;
   }
-  
+
   // Ensure sidebar state is preserved after tab switch
   restorePdSidebarState();
 }
@@ -6863,13 +6863,13 @@ if (typeof timelineState === 'undefined') {
 function renderBacklogTab(projectIndex, container) {
   const projects = loadProjects();
   const project = projects[projectIndex];
-  
+
   if (!project) return;
 
   // Get all tasks from all columns that could be considered backlog items
   const allTasks = [];
   const backlogColumns = ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'];
-  
+
   (project.columns || []).forEach((column, colIndex) => {
     if (backlogColumns.includes(column.title)) {
       (column.tasks || []).forEach((task, taskIndex) => {
@@ -6904,11 +6904,11 @@ function renderBacklogTab(projectIndex, container) {
     const priorityOrder = { high: 3, medium: 2, low: 1 };
     const aPriority = priorityOrder[a.priority] || 2;
     const bPriority = priorityOrder[b.priority] || 2;
-    
+
     if (aPriority !== bPriority) {
       return bPriority - aPriority; // Higher priority first
     }
-    
+
     // Then by creation date (newest first)
     const aDate = new Date(a.createdAt || 0);
     const bDate = new Date(b.createdAt || 0);
@@ -6989,14 +6989,14 @@ function renderBacklogTab(projectIndex, container) {
             <div class="backlog-task-card ${task.done ? 'done' : ''}" data-task-id="${task.columnIndex}-${task.taskIndex}">
               <div class="task-card-main">
                 <button class="task-checkbox" onclick="toggleProjectBacklogTaskStatus(${projectIndex}, ${task.columnIndex}, ${task.taskIndex}, !${task.done})">
-                  ${task.done ? 
-                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  ${task.done ?
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>` :
-                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="3" y="3" width="18" height="18" rx="4"/>
                     </svg>`
-                  }
+    }
                 </button>
                 <div class="task-content" onclick="editProjectBacklogTask(${projectIndex}, ${task.columnIndex}, ${task.taskIndex})">
                   <div class="task-title">${task.title || 'Untitled Task'}</div>
@@ -7053,7 +7053,7 @@ function renderBacklogTab(projectIndex, container) {
       `}
     </div>
   `;
-  
+
   // Restore sidebar state
   restorePdSidebarState();
 }
@@ -7063,7 +7063,7 @@ function toggleProjectBacklogTaskStatus(projectIndex, columnIndex, taskIndex, is
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
     task.done = isDone;
@@ -7076,10 +7076,10 @@ function editProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (!task) return;
-  
+
   const content = `
     <form onsubmit="saveProjectBacklogTaskEdit(event, ${projectIndex}, ${columnIndex}, ${taskIndex})">
       <div class="form-group">
@@ -7108,18 +7108,18 @@ function editProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
       </div>
     </form>
   `;
-  
+
   openModal('Edit Backlog Task', content);
 }
 
 function saveProjectBacklogTaskEdit(event, projectIndex, columnIndex, taskIndex) {
   event.preventDefault();
   const formData = new FormData(event.target);
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (task) {
     task.title = formData.get('title');
@@ -7127,7 +7127,7 @@ function saveProjectBacklogTaskEdit(event, projectIndex, columnIndex, taskIndex)
     task.priority = formData.get('priority');
     task.dueDate = formData.get('dueDate');
     task.updatedAt = new Date().toISOString();
-    
+
     saveProjects(projects);
     closeModal();
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
@@ -7138,14 +7138,14 @@ function moveProjectBacklogTaskToColumn(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   const task = project.columns[columnIndex].tasks[taskIndex];
   if (!task) return;
-  
-  const columns = project.columns.map((col, idx) => 
+
+  const columns = project.columns.map((col, idx) =>
     `<option value="${idx}">${col.title}</option>`
   ).join('');
-  
+
   const content = `
     <form onsubmit="confirmMoveProjectBacklogTask(event, ${projectIndex}, ${columnIndex}, ${taskIndex})">
       <div class="form-group">
@@ -7160,7 +7160,7 @@ function moveProjectBacklogTaskToColumn(projectIndex, columnIndex, taskIndex) {
       </div>
     </form>
   `;
-  
+
   openModal('Move Task to Column', content);
 }
 
@@ -7168,19 +7168,19 @@ function confirmMoveProjectBacklogTask(event, projectIndex, columnIndex, taskInd
   event.preventDefault();
   const formData = new FormData(event.target);
   const targetColumnIndex = parseInt(formData.get('targetColumn'));
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Remove task from current column
   const task = project.columns[columnIndex].tasks.splice(taskIndex, 1)[0];
-  
+
   // Add to target column
   if (project.columns[targetColumnIndex]) {
     project.columns[targetColumnIndex].tasks.push(task);
   }
-  
+
   saveProjects(projects);
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
@@ -7197,7 +7197,7 @@ function deleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
       </div>
     </div>
   `;
-  
+
   openModal('Confirm Delete', content);
 }
 
@@ -7205,7 +7205,7 @@ function confirmDeleteProjectBacklogTask(projectIndex, columnIndex, taskIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project || !project.columns[columnIndex]) return;
-  
+
   project.columns[columnIndex].tasks.splice(taskIndex, 1);
   saveProjects(projects);
   closeModal();
@@ -7241,23 +7241,23 @@ function openAddProjectBacklogTaskModal(projectIndex) {
       </div>
     </form>
   `;
-  
+
   openModal('Add Backlog Task', content);
 }
 
 function handleAddProjectBacklogTaskForm(event, projectIndex) {
   event.preventDefault();
   const formData = new FormData(event.target);
-  
+
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Find or create a backlog column
-  let backlogColumn = project.columns.find(col => 
+  let backlogColumn = project.columns.find(col =>
     ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
   );
-  
+
   if (!backlogColumn) {
     // Create a new backlog column
     backlogColumn = {
@@ -7267,7 +7267,7 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     };
     project.columns.push(backlogColumn);
   }
-  
+
   const newTask = {
     id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: formData.get('title'),
@@ -7278,7 +7278,7 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  
+
   backlogColumn.tasks.push(newTask);
   saveProjects(projects);
   closeModal();
@@ -7305,12 +7305,12 @@ function quickAddProjectBacklogTask(projectIndex, title) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   // Find or create a backlog column
-  let backlogColumn = project.columns.find(col => 
+  let backlogColumn = project.columns.find(col =>
     ['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(col.title)
   );
-  
+
   if (!backlogColumn) {
     // Create a new backlog column
     backlogColumn = {
@@ -7320,7 +7320,7 @@ function quickAddProjectBacklogTask(projectIndex, title) {
     };
     project.columns.push(backlogColumn);
   }
-  
+
   const newTask = {
     id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title,
@@ -7331,7 +7331,7 @@ function quickAddProjectBacklogTask(projectIndex, title) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  
+
   backlogColumn.tasks.push(newTask);
   saveProjects(projects);
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
@@ -7341,9 +7341,9 @@ function clearCompletedProjectBacklogTasks(projectIndex) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
-  
+
   let clearedCount = 0;
-  
+
   // Remove completed tasks from backlog columns
   project.columns.forEach((column, colIndex) => {
     if (['Backlog', 'Todo', 'To Do', 'Backlog Tasks'].includes(column.title)) {
@@ -7352,7 +7352,7 @@ function clearCompletedProjectBacklogTasks(projectIndex) {
       clearedCount += originalLength - column.tasks.length;
     }
   });
-  
+
   if (clearedCount > 0) {
     saveProjects(projects);
     renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
@@ -13258,10 +13258,10 @@ function toggleSidebar() {
   const sidebar = document.getElementById('pdSidebar');
   const layout = document.querySelector('.pd-layout');
   const toggleBtn = document.getElementById('sidebarToggleBtn');
-  
+
   if (sidebar && layout) {
     const isCollapsed = sidebar.classList.contains('collapsed');
-    
+
     if (isCollapsed) {
       sidebar.classList.remove('collapsed');
       layout.classList.remove('sidebar-collapsed');
@@ -13321,7 +13321,7 @@ let currentFolderDropdown = null;
 function openFolderDropdown(button) {
   // Close any existing dropdown
   closeFolderDropdown();
-  
+
   // Create dropdown container if it doesn't exist
   let container = button.closest('.folder-dropdown-container');
   if (!container) {
@@ -13330,7 +13330,7 @@ function openFolderDropdown(button) {
     button.parentNode.insertBefore(container, button);
     container.appendChild(button);
   }
-  
+
   // Create dropdown form
   const dropdown = document.createElement('div');
   dropdown.className = 'folder-dropdown-form';
@@ -13353,10 +13353,10 @@ function openFolderDropdown(button) {
       <button type="button" class="folder-dropdown-btn create" id="folder-dropdown-create-btn" onclick="createFolder()" disabled>Create</button>
     </div>
   `;
-  
+
   container.appendChild(dropdown);
   currentFolderDropdown = dropdown;
-  
+
   // Focus the input
   const input = dropdown.querySelector('#folder-name-input');
   const createBtn = dropdown.querySelector('#folder-dropdown-create-btn');
@@ -13365,7 +13365,7 @@ function openFolderDropdown(button) {
     input.focus();
     input.select();
   }, 10);
-  
+
   // Add event listeners
   document.addEventListener('click', handleFolderDropdownOutsideClick);
   input.addEventListener('keydown', handleFolderInputKeydown);
@@ -13378,7 +13378,7 @@ function openFolderDropdown(button) {
     }
     if (createBtn) createBtn.disabled = name.length === 0;
   });
-  
+
   // Prevent form submission on Enter in input
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
@@ -13396,7 +13396,7 @@ function closeFolderDropdown() {
     if (input) {
       input.removeEventListener('keydown', handleFolderInputKeydown);
     }
-    
+
     // Remove dropdown
     currentFolderDropdown.remove();
     currentFolderDropdown = null;
@@ -13404,8 +13404,8 @@ function closeFolderDropdown() {
 }
 
 function handleFolderDropdownOutsideClick(e) {
-  if (currentFolderDropdown && !currentFolderDropdown.contains(e.target) && 
-      !e.target.closest('.add-folder-btn')) {
+  if (currentFolderDropdown && !currentFolderDropdown.contains(e.target) &&
+    !e.target.closest('.add-folder-btn')) {
     closeFolderDropdown();
   }
 }
@@ -13418,14 +13418,14 @@ function handleFolderInputKeydown(e) {
 
 async function createFolder() {
   console.log('Creating folder...');
-  
+
   if (!currentFolderDropdown) return;
-  
+
   const input = currentFolderDropdown.querySelector('#folder-name-input');
   const errorEl = currentFolderDropdown.querySelector('#folder-dropdown-error');
   const createBtn = currentFolderDropdown.querySelector('#folder-dropdown-create-btn');
   const folderName = input.value.trim();
-  
+
   if (!folderName) {
     if (errorEl) {
       errorEl.textContent = 'Folder name is required.';
@@ -13436,7 +13436,7 @@ async function createFolder() {
     input.focus();
     return;
   }
-  
+
   try {
     if (createBtn) createBtn.disabled = true;
 
@@ -13451,18 +13451,18 @@ async function createFolder() {
       is_favorite: false,
       created_at: new Date().toISOString()
     };
-    
+
     console.log('Folder data to save:', folderData);
-    
+
     // Save to database
     const savedFolder = await saveFolderToDB(folderData);
-    
+
     console.log('Saved folder result:', savedFolder);
-    
+
     if (savedFolder) {
       // Close the dropdown
       closeFolderDropdown();
-      
+
       // Render folders in the placeholder
       await renderFoldersInPlaceholder();
     } else {
@@ -13503,7 +13503,7 @@ function openAddMilestoneModal(projectIndex) {
 
 async function renderFoldersInPlaceholder() {
   console.log('Rendering folders in placeholder...');
-  
+
   const placeholder = document.querySelector('.folders-placeholder');
   if (!placeholder) return;
 
@@ -13515,17 +13515,17 @@ async function renderFoldersInPlaceholder() {
       if (!activeSpaceId) return false;
       return String(f.space_id) === String(activeSpaceId);
     });
-    
+
     console.log('Folders loaded for rendering:', folders);
-    
+
     if (filteredFolders && filteredFolders.length > 0) {
       // Clear the placeholder content
       placeholder.innerHTML = '';
-      
+
       // Create folders container
       const foldersContainer = document.createElement('div');
       foldersContainer.className = 'folders-grid';
-      
+
       // Add each folder
       filteredFolders.forEach(folder => {
         const folderElement = document.createElement('div');
@@ -13552,7 +13552,7 @@ async function renderFoldersInPlaceholder() {
         `;
         foldersContainer.appendChild(folderElement);
       });
-      
+
       // Add the "Add Folder" button
       const addButtonContainer = document.createElement('div');
       addButtonContainer.className = 'folder-add-container';
@@ -13565,7 +13565,7 @@ async function renderFoldersInPlaceholder() {
         </button>
       `;
       foldersContainer.appendChild(addButtonContainer);
-      
+
       placeholder.appendChild(foldersContainer);
       console.log('Folders rendered successfully');
     } else {
@@ -13592,11 +13592,11 @@ async function deleteFolder(folderId) {
   if (!confirm('Are you sure you want to delete this folder and all its contents?')) {
     return;
   }
-  
+
   try {
     // First delete all files in the folder
     await deleteFolderContents(folderId);
-    
+
     // Then delete the folder itself
     const success = await deleteFolderFromDB(folderId);
     if (success) {
@@ -13613,17 +13613,17 @@ async function deleteFolder(folderId) {
 
 async function openFolder(folderId) {
   console.log('Opening folder:', folderId);
-  
+
   try {
     // Load folders and find the selected folder
     const folders = await loadFoldersFromDB();
     const folder = folders.find(f => f.id === folderId);
-    
+
     if (!folder) {
       showToast('Folder not found');
       return;
     }
-    
+
     // Show folder explorer view
     showFolderExplorer(folder);
   } catch (error) {
@@ -14749,24 +14749,24 @@ function generateTeamChartData(project, teamMembers) {
 function handleAddColumn(projectIndex) {
   // Find the kanban header where the button is located
   const kanbanHeader = document.querySelector(`[data-project-index="${projectIndex}"], .tl-kanban-header`);
-  
+
   // Look for a more specific selector
-  const parentContainer = document.querySelector(`.pd-tab[data-tab="kanban"][data-project-index="${projectIndex}"]`) || 
-                        document.querySelector('.tl-kanban-header');
-  
+  const parentContainer = document.querySelector(`.pd-tab[data-tab="kanban"][data-project-index="${projectIndex}"]`) ||
+    document.querySelector('.tl-kanban-header');
+
   // Find the add column button container
   const addButton = parentContainer.querySelector('.tl-kanban-add-col-btn');
-  
+
   // Hide the original button temporarily
   addButton.style.display = 'none';
-  
+
   // Create input field for column name
   const inputField = document.createElement('input');
   inputField.type = 'text';
   inputField.placeholder = 'Enter column name...';
   inputField.className = 'tl-kanban-col-input';
   inputField.value = 'New Column';
-  
+
   // Style the input to match the button
   inputField.style.padding = '8px 12px';
   inputField.style.marginLeft = '10px';
@@ -14775,27 +14775,27 @@ function handleAddColumn(projectIndex) {
   inputField.style.backgroundColor = 'var(--background)';
   inputField.style.color = 'var(--foreground)';
   inputField.style.fontSize = '14px';
-  
+
   // Insert input field next to the button
   addButton.parentNode.insertBefore(inputField, addButton.nextSibling);
-  
+
   // Focus the input field and select the text
   inputField.focus();
   inputField.select();
-  
+
   // Handle input submission
-  inputField.addEventListener('keypress', function(e) {
+  inputField.addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
       const columnName = inputField.value;
       if (columnName && columnName.trim()) {
         // Save the current active tab before re-render
         const activeTab = document.querySelector('.pd-tab.active');
         const currentTabName = activeTab ? activeTab.dataset.tab : 'overview';
-        
+
         addColumnToProject(projectIndex, columnName.trim());
-        
+
         renderCurrentView();
-        
+
         // Restore the active tab if we're in project detail view and timeline was active
         if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
           requestAnimationFrame(() => {
@@ -14809,17 +14809,17 @@ function handleAddColumn(projectIndex) {
       }
     }
   });
-  
+
   // Handle cancel on blur if empty
-  inputField.addEventListener('blur', function() {
+  inputField.addEventListener('blur', function () {
     if (!inputField.value.trim()) {
       inputField.remove();
       addButton.style.display = 'inline-flex';
     }
   });
-  
+
   // Handle escape key to cancel
-  inputField.addEventListener('keydown', function(e) {
+  inputField.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       inputField.remove();
       addButton.style.display = 'inline-flex';
@@ -15334,11 +15334,11 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   // Find the column body where the input should be added
   const columnElement = event.target.closest('.tl-kanban-column');
   const taskListContainer = columnElement.querySelector('.tl-kanban-col-tasks');
-  
+
   // Clear any existing input fields
   const existingInputs = taskListContainer.querySelectorAll('.tl-kanban-task-input');
   existingInputs.forEach(input => input.remove());
-  
+
   // Create input field for task title
   const inputField = document.createElement('input');
   inputField.type = 'text';
@@ -15351,12 +15351,12 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   inputField.style.borderRadius = '6px';
   inputField.style.backgroundColor = 'var(--background)';
   inputField.style.color = 'var(--foreground)';
-  
+
   // Focus the input field
   inputField.focus();
-  
+
   // Handle input submission
-  inputField.addEventListener('keypress', function(e) {
+  inputField.addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
       const title = inputField.value;
       if (title && title.trim()) {
@@ -15366,7 +15366,7 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
         if (scrollPos && restoreKanbanScrollPosition) {
           restoreKanbanScrollPosition(scrollPos);
         }
-        
+
         // Restore the active tab if we're in project detail view and timeline was active
         if (currentTabName === 'timeline' && typeof switchProjectTab === 'function') {
           requestAnimationFrame(() => {
@@ -15379,14 +15379,14 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
       }
     }
   });
-  
+
   // Add cancel on blur if empty
-  inputField.addEventListener('blur', function() {
+  inputField.addEventListener('blur', function () {
     if (!inputField.value.trim()) {
       taskListContainer.removeChild(inputField);
     }
   });
-  
+
   // Insert input field at the top of the task list
   taskListContainer.insertBefore(inputField, taskListContainer.firstChild);
 }
@@ -16321,7 +16321,7 @@ async function renderTeamMembersPanel() {
     const presenceData = userPresenceMap.get(userId);
     const lastSeen = presenceData?.last_seen ? new Date(presenceData.last_seen).toLocaleDateString() : 'Recently';
     const isActive = presenceData?.is_online;
-    
+
     // Determine status text based on presence
     const statusText = isActive ? 'Online' : `Last seen: ${lastSeen}`;
     const statusClassFinal = isActive ? 'online' : 'offline';
@@ -17227,15 +17227,15 @@ async function deleteMessage(messageId) {
 
     if (window.LayerDB && window.LayerDB.deleteTeamMessage) {
       await window.LayerDB.deleteTeamMessage(messageId);
-      
+
       // Remove the message from the local cache
       if (teamMessages[teamCurrentChannel]) {
         teamMessages[teamCurrentChannel] = teamMessages[teamCurrentChannel].filter(msg => msg.id !== messageId);
       }
-      
+
       // Refresh the chat display
       updateChatContentOnly();
-      
+
       showNotification('Message deleted', 'success');
     } else {
       showNotification('Database connection not available', 'error');
@@ -17255,7 +17255,7 @@ async function toggleMessageFavorite(messageId) {
 
     if (window.LayerDB && window.LayerDB.toggleMessageFavorite) {
       const result = await window.LayerDB.toggleMessageFavorite(messageId);
-      
+
       // Update the local message cache
       if (teamMessages[teamCurrentChannel]) {
         const messageIndex = teamMessages[teamCurrentChannel].findIndex(msg => msg.id === messageId);
@@ -17263,10 +17263,10 @@ async function toggleMessageFavorite(messageId) {
           teamMessages[teamCurrentChannel][messageIndex].is_favorite = result.is_favorite;
         }
       }
-      
+
       // Refresh the chat display
       updateChatContentOnly();
-      
+
       showNotification(result.is_favorite ? 'Message favorited' : 'Message unfavorited', 'success');
     } else {
       showNotification('Database connection not available', 'error');
@@ -17339,7 +17339,7 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
   if (document.visibilityState === 'hidden') {
     // Page is hidden, show notification
   }
-  
+
   // Create notification container if it doesn't exist
   let container = document.getElementById('message-popup-container');
   if (!container) {
@@ -17357,21 +17357,21 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
     });
     document.body.appendChild(container);
   }
-  
+
   // Create notification element
   const notification = document.createElement('div');
   notification.className = 'message-popup-notification';
   const notificationId = 'msg-notif-' + Date.now();
   notification.id = notificationId;
-  
+
   // Truncate message if too long
   const truncatedMessage = message.length > 60 ? message.substring(0, 60) + '...' : message;
-  
+
   // Avatar HTML
-  const avatarHtml = avatarUrl 
+  const avatarHtml = avatarUrl
     ? `<img src="${avatarUrl}" alt="${senderName}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
     : `<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;">${senderName.charAt(0).toUpperCase()}</div>`;
-  
+
   notification.innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);cursor:pointer;transition:all 0.2s ease;">
       ${avatarHtml}
@@ -17386,7 +17386,7 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
       </button>
     </div>
   `;
-  
+
   // Add hover effect
   notification.addEventListener('mouseenter', () => {
     notification.querySelector('div').style.transform = 'translateY(-2px)';
@@ -17396,7 +17396,7 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
     notification.querySelector('div').style.transform = 'translateY(0)';
     notification.querySelector('div').style.boxShadow = '0 8px 32px rgba(0,0,0,0.2)';
   });
-  
+
   // Click handler - open the chat
   notification.addEventListener('click', (e) => {
     if (e.target.closest('.close-msg-notif')) {
@@ -17407,18 +17407,18 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
       if (onClick) onClick();
     }
   });
-  
+
   // Close button handler
   const closeBtn = notification.querySelector('.close-msg-notif');
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     removeNotification(notificationId);
   });
-  
+
   // Add to container
   container.appendChild(notification);
   activeMessageNotifications.push(notificationId);
-  
+
   // Animate in
   requestAnimationFrame(() => {
     notification.style.opacity = '0';
@@ -17429,12 +17429,12 @@ function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
       notification.style.transform = 'translateX(0)';
     });
   });
-  
+
   // Auto-remove after 5 seconds
   setTimeout(() => {
     removeNotification(notificationId);
   }, 5000);
-  
+
   // Keep max 3 notifications
   while (activeMessageNotifications.length > 3) {
     const oldestId = activeMessageNotifications.shift();
@@ -17784,7 +17784,7 @@ class ChatScrollManager {
     try {
       // Get all message elements
       const messageElements = this.messagesList.querySelectorAll('.team-message[data-message-id]');
-      
+
       // Find messages that are currently visible (in viewport)
       const visibleMessages = [];
       const rect = this.messagesList.getBoundingClientRect();
@@ -17794,7 +17794,7 @@ class ChatScrollManager {
       messageElements.forEach(element => {
         const msgRect = element.getBoundingClientRect();
         const isVisible = (msgRect.top <= viewBottom) && (msgRect.bottom >= viewTop);
-        
+
         if (isVisible) {
           const messageId = element.getAttribute('data-message-id');
           if (messageId) {
@@ -17814,13 +17814,13 @@ class ChatScrollManager {
             if (message && !message.isRead) {
               message.isRead = true; // Update local state
               hasChanges = true;
-              
+
               // Update in database
               await window.LayerDB.markMessageAsRead(messageId);
             }
           }
         }
-        
+
         // Update UI to reflect new read status only if there were changes
         if (hasChanges) {
           updateChatContentOnly();
@@ -18033,10 +18033,10 @@ function updateChatContentOnly() {
           ${!msg.isSystem ? `
             <div class="team-message-status">
               ${msg.userId === window.currentUser?.id ? `
-                ${msg.isRead ? 
-                  `<span class="message-status seen" title="Seen">✓✓</span>` : 
-                  `<span class="message-status received" title="Received">✓</span>`
-                }
+                ${msg.isRead ?
+            `<span class="message-status seen" title="Seen">✓✓</span>` :
+            `<span class="message-status received" title="Received">✓</span>`
+          }
               ` : `
                 <!-- Status for received messages could go here if needed -->
               `}
@@ -18123,10 +18123,10 @@ function createMessageHTML(msg) {
         ${!msg.isSystem ? `
           <div class="team-message-status">
             ${msg.userId === window.currentUser?.id ? `
-              ${msg.isRead ? 
-                `<span class="message-status seen" title="Seen">✓✓</span>` : 
-                `<span class="message-status received" title="Received">✓</span>`
-              }
+              ${msg.isRead ?
+          `<span class="message-status seen" title="Seen">✓✓</span>` :
+          `<span class="message-status received" title="Received">✓</span>`
+        }
             ` : ''}
           </div>
         ` : ''}
@@ -18562,7 +18562,7 @@ async function setupGlobalDMListener() {
           updateTeamSidebar(); // Update sidebar specificially for better UX
 
           showNotification(`New message from ${profile.name}`, 'info');
-          
+
           // Show popup notification for new DM
           showMessagePopupNotification(profile.name, newRecord.message, profile.avatar_url, () => {
             selectTeamChannel(newDM.id);
@@ -18589,7 +18589,7 @@ async function setupGlobalDMListener() {
         existingDM.unread = (existingDM.unread || 0) + 1;
         updateTeamChatArea(); // Update badges
         updateTeamSidebar(); // Update sidebar badges
-        
+
         // Show popup notification for new message
         showMessagePopupNotification(existingDM.name, newRecord.message, existingDM.avatarUrl, () => {
           selectTeamChannel(existingDM.id);
@@ -19949,10 +19949,10 @@ async function renderSettingsView() {
   const currentUser = window.LayerDB?.getCurrentUser();
   let name = 'User';
   let email = 'Not signed in';
-  
+
   if (currentUser) {
     email = currentUser.email || 'Not signed in';
-    
+
     // ONLY try to get saved profile name from database (async for fresh data)
     try {
       const profile = await window.LayerDB?.getProfile();
@@ -20604,7 +20604,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (focusState && focusState.active) {
     restoreFocusMode(focusState);
   }
-  
+
   // Render folders
   await renderFoldersInPlaceholder();
 });
@@ -20641,7 +20641,7 @@ function clearFocusModeState() {
 function toggleFocusModeExpand() {
   const expandable = document.getElementById('focusModeExpandable');
   const projectSelect = document.getElementById('focusProjectSelect');
-  
+
   if (!expandable.classList.contains('expanded')) {
     // Populate projects when expanding
     const projects = loadProjects();
@@ -20650,7 +20650,7 @@ function toggleFocusModeExpand() {
     } else {
       projectSelect.innerHTML = projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
     }
-    
+
     expandable.classList.add('expanded');
   } else {
     expandable.classList.remove('expanded');
@@ -20718,7 +20718,7 @@ function startFocusMode() {
   if (expandable) {
     expandable.classList.remove('expanded');
   }
-  
+
   showFocusTimer(project.name);
 }
 
@@ -21293,7 +21293,7 @@ async function createWhiteboardDraft() {
 
     // Create the project
     const newProject = await addProject(draftProject);
-    
+
     if (newProject) {
       // Create a draft entry for the whiteboard
       if (window.LayerDB && window.LayerDB.isAuthenticated()) {
@@ -21306,10 +21306,10 @@ async function createWhiteboardDraft() {
             createdAt: newProject.createdAt || new Date().toISOString(),
             updatedAt: newProject.updatedAt || newProject.createdAt || new Date().toISOString()
           };
-          
+
           const savedDraft = await window.LayerDB.saveDraft(draftEntry);
           console.log('✅ Whiteboard draft saved to DB:', savedDraft.id);
-          
+
           // Update cache
           if (window.cachedDrafts) {
             window.cachedDrafts.unshift(savedDraft);
@@ -21330,18 +21330,18 @@ async function createWhiteboardDraft() {
         drafts.push(draftEntry);
         saveDrafts(drafts);
       }
-      
+
       // Mark drafts view for refresh
       window.draftsNeedRefresh = true;
-      
+
       showToast('Whiteboard created and saved as draft', 'success');
-      
+
       // Return the project index for the newly created project
       const projects = loadProjects();
       const projectIndex = projects.findIndex(p => p.id === newProject.id);
       return projectIndex;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Failed to create whiteboard draft:', error);
@@ -21355,7 +21355,7 @@ function openDocEditorForDraft(draftId) {
   const drafts = loadDrafts();
   // Check both d.id and d.metadata.docId
   const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.docId) === String(draftId)));
-  
+
   if (draft && draft.type === 'doc') {
     // Pass the actual document ID from metadata if it exists, otherwise use draft ID
     const targetDocId = draft.metadata?.docId || draft.id;
@@ -21371,7 +21371,7 @@ function openExcelEditorForDraft(draftId) {
   const drafts = loadDrafts();
   // Check both d.id and d.metadata.excelId
   const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.excelId) === String(draftId)));
-  
+
   if (draft && draft.type === 'sheet') {
     // Pass the actual spreadsheet ID from metadata if it exists, otherwise use draft ID
     const targetExcelId = draft.metadata?.excelId || draft.id;
@@ -21386,13 +21386,13 @@ function openExcelEditorForDraft(draftId) {
 function openGripDiagramForDraft(draftId) {
   const drafts = loadDrafts();
   const draft = drafts.find(d => String(d.id) === String(draftId));
-  
+
   if (draft && draft.type === 'whiteboard') {
     const projects = loadProjects();
     // Check both draft.id and draft.metadata.projectId for the project link
     const targetProjectId = draft.metadata?.projectId || draft.id;
     const projectIndex = projects.findIndex(p => String(p.id) === String(targetProjectId));
-    
+
     if (projectIndex !== -1) {
       openGripDiagram(projectIndex);
     } else {
@@ -21457,10 +21457,10 @@ async function clearAllDrafts() {
   if (!confirm('Are you sure you want to delete ALL drafts? This action cannot be undone.')) {
     return;
   }
-  
+
   try {
     const drafts = loadDrafts();
-    
+
     // Delete all whiteboard projects
     const whiteboardDrafts = drafts.filter(d => d.type === 'whiteboard');
     for (const draft of whiteboardDrafts) {
@@ -21470,7 +21470,7 @@ async function clearAllDrafts() {
         await deleteProject(projectIndex);
       }
     }
-    
+
     // Clear all drafts from storage
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       const drafts = await window.LayerDB.loadDrafts();
@@ -21482,12 +21482,12 @@ async function clearAllDrafts() {
       // Fallback to localStorage for unauthenticated users
       localStorage.removeItem(DRAFTS_KEY);
     }
-    
+
     // Refresh the view
     if (window.currentView === 'drafts' && typeof renderCurrentView === 'function') {
       renderCurrentView();
     }
-    
+
     showToast('All drafts cleared successfully', 'success');
   } catch (error) {
     console.error('Failed to clear all drafts:', error);
@@ -21646,7 +21646,7 @@ function loadDrafts() {
     if (window.cachedDrafts) {
       return window.cachedDrafts;
     }
-    
+
     // Load asynchronously and cache
     window.LayerDB.loadDrafts().then(drafts => {
       window.cachedDrafts = drafts;
@@ -21655,7 +21655,7 @@ function loadDrafts() {
       console.error('Error loading drafts from DB:', error);
       return [];
     });
-    
+
     return window.cachedDrafts || [];
   } catch (error) {
     console.error('Error loading drafts:', error);
@@ -21871,33 +21871,33 @@ function openDocEditor(docId = null) {
     currentDocId = doc ? doc.id : Date.now();
     const isFavorited = doc ? isDocFavorited(doc.id) : false;
 
-  // Get current user for author display
-  const currentUser = window.LayerDB?.getCurrentUser() || {};
-  const authorName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User';
-  const userAvatar = currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture;
-  const lastUpdated = doc ? formatTimeAgo(doc.updatedAt) : 'Just now';
+    // Get current user for author display
+    const currentUser = window.LayerDB?.getCurrentUser() || {};
+    const authorName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User';
+    const userAvatar = currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture;
+    const lastUpdated = doc ? formatTimeAgo(doc.updatedAt) : 'Just now';
 
-  // Create avatar HTML
-  const getAuthorAvatarHtml = () => {
-    if (userAvatar) {
-      return `<img src="${userAvatar}" alt="${authorName}" class="notion-author-avatar-img">`;
-    } else {
-      return `<span class="notion-author-avatar">${authorName.charAt(0).toUpperCase()}</span>`;
-    }
-  };
+    // Create avatar HTML
+    const getAuthorAvatarHtml = () => {
+      if (userAvatar) {
+        return `<img src="${userAvatar}" alt="${authorName}" class="notion-author-avatar-img">`;
+      } else {
+        return `<span class="notion-author-avatar">${authorName.charAt(0).toUpperCase()}</span>`;
+      }
+    };
 
-  // 🧹 CLEANUP: Remove any existing overlays before creating new one
-  const existingOverlays = document.querySelectorAll('.doc-editor-overlay');
-  existingOverlays.forEach(overlay => overlay.remove());
+    // 🧹 CLEANUP: Remove any existing overlays before creating new one
+    const existingOverlays = document.querySelectorAll('.doc-editor-overlay');
+    existingOverlays.forEach(overlay => overlay.remove());
 
-  const overlay = document.createElement('div');
-  overlay.className = 'doc-editor-overlay';
-  overlay.id = 'docEditorOverlay';
+    const overlay = document.createElement('div');
+    overlay.className = 'doc-editor-overlay';
+    overlay.id = 'docEditorOverlay';
 
-  // 🔄 UPDATE STATE: Store reference to overlay
-  documentEditorState.overlayElement = overlay;
+    // 🔄 UPDATE STATE: Store reference to overlay
+    documentEditorState.overlayElement = overlay;
 
-  overlay.innerHTML = `
+    overlay.innerHTML = `
     <div class="doc-editor-container notion-style">
       <!-- Minimalistic Header Bar -->
       <div class="doc-editor-header notion-header">
@@ -22094,162 +22094,162 @@ function openDocEditor(docId = null) {
     </div>
   `;
 
-  document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
 
-  // Set up placeholder and autosave
-  setupNotionEditor();
+    // Set up placeholder and autosave
+    setupNotionEditor();
 
-  // Set up AI command (** trigger)
-  setupDocAiCommand();
+    // Set up AI command (** trigger)
+    setupDocAiCommand();
 
-  // Load and display shared users avatars instantly when opening existing doc
-  if (doc) {
-    loadExistingSharedUsers('doc').then(() => {
-      // Update avatars immediately after loading shared users
-      updateDocHeaderAvatars(inEditorShareEmails);
-    });
-  }
-  // Auto-create the document immediately if new (auth already checked at function start)
-  if (!doc) {
-    const newDoc = {
-      id: currentDocId,
-      title: 'Untitled',
-      content: '',
-      spaceId: currentSpaceId || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isDraft: true // Mark as draft initially
-    };
+    // Load and display shared users avatars instantly when opening existing doc
+    if (doc) {
+      loadExistingSharedUsers('doc').then(() => {
+        // Update avatars immediately after loading shared users
+        updateDocHeaderAvatars(inEditorShareEmails);
+      });
+    }
+    // Auto-create the document immediately if new (auth already checked at function start)
+    if (!doc) {
+      const newDoc = {
+        id: currentDocId,
+        title: 'Untitled',
+        content: '',
+        spaceId: currentSpaceId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDraft: true // Mark as draft initially
+      };
 
-    // Save to Supabase immediately and synchronously
-    (async () => {
-      try {
-        console.log('📝 Creating new document in DB:', newDoc);
-        const savedDoc = await window.LayerDB.saveDoc(newDoc);
-        // Update currentDocId to use database ID
-        currentDocId = savedDoc.id;
-        console.log('📝 Document created successfully with DB ID:', currentDocId);
+      // Save to Supabase immediately and synchronously
+      (async () => {
+        try {
+          console.log('📝 Creating new document in DB:', newDoc);
+          const savedDoc = await window.LayerDB.saveDoc(newDoc);
+          // Update currentDocId to use database ID
+          currentDocId = savedDoc.id;
+          console.log('📝 Document created successfully with DB ID:', currentDocId);
 
-        // Create a draft entry for the document
-        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-          try {
+          // Create a draft entry for the document
+          if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+            try {
+              const draftEntry = {
+                title: savedDoc.title,
+                content: savedDoc.content || '',
+                type: 'doc',
+                metadata: { docId: savedDoc.id },
+                createdAt: savedDoc.createdAt,
+                updatedAt: savedDoc.updatedAt
+              };
+
+              const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+              console.log('✅ Document draft saved to DB:', savedDraft.id);
+
+              // Update cache
+              if (window.cachedDrafts) {
+                window.cachedDrafts.unshift(savedDraft);
+              }
+            } catch (error) {
+              console.error('❌ Failed to save document draft to DB:', error);
+            }
+          } else {
+            // Fallback to localStorage for unauthenticated users
+            const drafts = loadDrafts();
             const draftEntry = {
+              id: savedDoc.id,
               title: savedDoc.title,
-              content: savedDoc.content || '',
               type: 'doc',
-              metadata: { docId: savedDoc.id },
               createdAt: savedDoc.createdAt,
               updatedAt: savedDoc.updatedAt
             };
-            
-            const savedDraft = await window.LayerDB.saveDraft(draftEntry);
-            console.log('✅ Document draft saved to DB:', savedDraft.id);
-            
-            // Update cache
-            if (window.cachedDrafts) {
-              window.cachedDrafts.unshift(savedDraft);
-            }
-          } catch (error) {
-            console.error('❌ Failed to save document draft to DB:', error);
+            drafts.push(draftEntry);
+            saveDrafts(drafts);
           }
-        } else {
-          // Fallback to localStorage for unauthenticated users
-          const drafts = loadDrafts();
-          const draftEntry = {
-            id: savedDoc.id,
-            title: savedDoc.title,
-            type: 'doc',
-            createdAt: savedDoc.createdAt,
-            updatedAt: savedDoc.updatedAt
-          };
-          drafts.push(draftEntry);
-          saveDrafts(drafts);
-        }
 
-        // Mark drafts view for refresh
-        window.draftsNeedRefresh = true;
+          // Mark drafts view for refresh
+          window.draftsNeedRefresh = true;
 
-        const docs = await window.LayerDB.loadDocs();
-        saveDocs(docs);
-        
-        // Show success message
-        if (typeof showToast === 'function') {
-          showToast('Document created and saved as draft', 'success');
+          const docs = await window.LayerDB.loadDocs();
+          saveDocs(docs);
+
+          // Show success message
+          if (typeof showToast === 'function') {
+            showToast('Document created and saved as draft', 'success');
+          }
+        } catch (error) {
+          console.error('Failed to create doc in database:', error);
+          showToast('Failed to save document', 'error');
         }
-      } catch (error) {
-        console.error('Failed to create doc in database:', error);
-        showToast('Failed to save document', 'error');
-      }
-    })();
-  } else {
-    // For existing documents, check if title is "Untitled" and generate from content
-    if (doc.title === 'Untitled' && doc.content && doc.content.trim() !== '') {
-      const generatedTitle = generateTitleFromContent(doc.content);
-      if (generatedTitle !== 'Untitled') {
-        // Update the title input immediately
-        setTimeout(() => {
-          const titleInput = document.getElementById('docTitleInput');
-          if (titleInput) {
-            titleInput.value = generatedTitle;
-            console.log('📝 Updated existing document title from content:', generatedTitle);
-            
-            // Save the updated title
-            (async () => {
-              try {
-                await window.LayerDB.updateDoc(doc.id, { title: generatedTitle });
-                const docs = await window.LayerDB.loadDocs();
-                saveDocs(docs);
-                
-                // Update drafts
-                if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-                  try {
-                    const drafts = await window.LayerDB.loadDrafts();
-                    const draftIndex = drafts.findIndex(d => d.id === doc.id);
-                    if (draftIndex !== -1) {
-                      const updatedDraft = {
-                        ...drafts[draftIndex],
-                        title: generatedTitle,
-                        updatedAt: new Date().toISOString()
-                      };
-                      await window.LayerDB.updateDraft(doc.id, updatedDraft);
-                      
-                      // Update cache
-                      if (window.cachedDrafts) {
-                        const cacheIndex = window.cachedDrafts.findIndex(d => d.id === doc.id);
-                        if (cacheIndex !== -1) {
-                          window.cachedDrafts[cacheIndex] = updatedDraft;
+      })();
+    } else {
+      // For existing documents, check if title is "Untitled" and generate from content
+      if (doc.title === 'Untitled' && doc.content && doc.content.trim() !== '') {
+        const generatedTitle = generateTitleFromContent(doc.content);
+        if (generatedTitle !== 'Untitled') {
+          // Update the title input immediately
+          setTimeout(() => {
+            const titleInput = document.getElementById('docTitleInput');
+            if (titleInput) {
+              titleInput.value = generatedTitle;
+              console.log('📝 Updated existing document title from content:', generatedTitle);
+
+              // Save the updated title
+              (async () => {
+                try {
+                  await window.LayerDB.updateDoc(doc.id, { title: generatedTitle });
+                  const docs = await window.LayerDB.loadDocs();
+                  saveDocs(docs);
+
+                  // Update drafts
+                  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+                    try {
+                      const drafts = await window.LayerDB.loadDrafts();
+                      const draftIndex = drafts.findIndex(d => d.id === doc.id);
+                      if (draftIndex !== -1) {
+                        const updatedDraft = {
+                          ...drafts[draftIndex],
+                          title: generatedTitle,
+                          updatedAt: new Date().toISOString()
+                        };
+                        await window.LayerDB.updateDraft(doc.id, updatedDraft);
+
+                        // Update cache
+                        if (window.cachedDrafts) {
+                          const cacheIndex = window.cachedDrafts.findIndex(d => d.id === doc.id);
+                          if (cacheIndex !== -1) {
+                            window.cachedDrafts[cacheIndex] = updatedDraft;
+                          }
                         }
                       }
+                    } catch (error) {
+                      console.error('❌ Failed to update draft title in DB:', error);
                     }
-                  } catch (error) {
-                    console.error('❌ Failed to update draft title in DB:', error);
+                  } else {
+                    // Fallback to localStorage
+                    const drafts = loadDrafts();
+                    const draftIndex = drafts.findIndex(d => d.id === doc.id);
+                    if (draftIndex !== -1) {
+                      drafts[draftIndex].title = generatedTitle;
+                      drafts[draftIndex].updatedAt = new Date().toISOString();
+                      saveDrafts(drafts);
+                    }
                   }
-                } else {
-                  // Fallback to localStorage
-                  const drafts = loadDrafts();
-                  const draftIndex = drafts.findIndex(d => d.id === doc.id);
-                  if (draftIndex !== -1) {
-                    drafts[draftIndex].title = generatedTitle;
-                    drafts[draftIndex].updatedAt = new Date().toISOString();
-                    saveDrafts(drafts);
-                  }
+
+                  console.log('✅ Updated existing document title in database');
+                } catch (error) {
+                  console.error('Failed to update existing document title:', error);
                 }
-                
-                console.log('✅ Updated existing document title in database');
-              } catch (error) {
-                console.error('Failed to update existing document title:', error);
-              }
-            })();
-          }
-        }, 100);
+              })();
+            }
+          }, 100);
+        }
       }
     }
-  }
 
-  setTimeout(() => {
-    document.getElementById('docTitleInput')?.focus();
-  }, 100);
+    setTimeout(() => {
+      document.getElementById('docTitleInput')?.focus();
+    }, 100);
 
   } finally {
     // 🛡️ RELEASE LOCK: Always release the lock when done
@@ -22300,7 +22300,7 @@ function setupNotionEditor() {
   });
 
   // Generate title from content when title is still "Untitled"
-  contentDiv.addEventListener('input', function() {
+  contentDiv.addEventListener('input', function () {
     const titleInput = document.getElementById('docTitleInput');
     if (titleInput && titleInput.value.trim() === 'Untitled') {
       const generatedTitle = generateTitleFromContent(this.innerHTML);
@@ -22315,7 +22315,7 @@ function setupNotionEditor() {
   // Use MutationObserver for reliable change detection (catches formatting changes too)
   const observer = new MutationObserver(function (mutations) {
     triggerAutoSave();
-    
+
     // Also check for title generation from content
     const titleInput = document.getElementById('docTitleInput');
     if (titleInput && titleInput.value.trim() === 'Untitled') {
@@ -22340,9 +22340,9 @@ function setupNotionEditor() {
     titleInput.addEventListener('blur', function () {
       autoSaveDoc();
     });
-    
+
     // Real-time title sync with draft cards
-    titleInput.addEventListener('input', function() {
+    titleInput.addEventListener('input', function () {
       const newTitle = this.value.trim() || 'Untitled';
       syncDraftCardTitle(currentDocId, newTitle);
     });
@@ -22410,26 +22410,26 @@ function generateTitleFromContent(content) {
   if (!content || content.trim() === '') {
     return 'Untitled';
   }
-  
+
   // Remove HTML tags and get plain text
   const plainText = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-  
+
   if (!plainText) {
     return 'Untitled';
   }
-  
+
   // Get first few words or characters
   const words = plainText.split(/\s+/).filter(word => word.length > 0);
-  
+
   if (words.length === 0) {
     return 'Untitled';
   }
-  
+
   // Try to get first 3-5 words, but limit to 50 characters
   let title = '';
   let charCount = 0;
   let wordCount = 0;
-  
+
   for (const word of words) {
     if (charCount + word.length + (title ? 1 : 0) > 50) {
       break;
@@ -22437,40 +22437,40 @@ function generateTitleFromContent(content) {
     if (wordCount >= 5) {
       break;
     }
-    
+
     if (title) {
       title += ' ';
       charCount += 1;
     }
-    
+
     title += word;
     charCount += word.length;
     wordCount++;
   }
-  
+
   // Capitalize first letter
   if (title.length > 0) {
     title = title.charAt(0).toUpperCase() + title.slice(1);
   }
-  
+
   // Add ellipsis if truncated
   if ((words.length > wordCount) || (plainText.length > 50)) {
     title += '...';
   }
-  
+
   return title || 'Untitled';
 }
 
 // Real-time sync of draft card title with notion title input
 function syncDraftCardTitle(draftId, newTitle) {
   if (!draftId) return;
-  
+
   console.log(`🔄 Syncing title for draft ${draftId}: "${newTitle}"`);
-  
+
   // Update draft card title in the DOM if drafts view is currently visible
   const draftCards = document.querySelectorAll('.draft-card');
   let updatedInDOM = false;
-  
+
   draftCards.forEach(card => {
     const titleElement = card.querySelector('.draft-card-title');
     if (titleElement && titleElement.getAttribute('onclick') && titleElement.getAttribute('onclick').includes(draftId)) {
@@ -22479,11 +22479,11 @@ function syncDraftCardTitle(draftId, newTitle) {
       console.log(`✅ Updated draft card title in DOM: "${newTitle}"`);
     }
   });
-  
+
   if (!updatedInDOM && draftCards.length > 0) {
     console.log(`ℹ️ Draft card not found in DOM for ID: ${draftId} (drafts view may not be visible)`);
   }
-  
+
   // Also update in localStorage drafts data for consistency
   try {
     const drafts = loadDrafts();
@@ -22521,7 +22521,7 @@ async function autoSaveDoc() {
 
   let title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
-  
+
   // If title is still "Untitled", try to generate one from content
   if (title === 'Untitled') {
     const generatedTitle = generateTitleFromContent(content);
@@ -23223,10 +23223,10 @@ function openExcelEditor(excelId = null) {
               createdAt: savedExcel.createdAt,
               updatedAt: savedExcel.updatedAt
             };
-            
+
             const savedDraft = await window.LayerDB.saveDraft(draftEntry);
             console.log('✅ Spreadsheet draft saved to DB:', savedDraft.id);
-            
+
             // Update cache
             if (window.cachedDrafts) {
               window.cachedDrafts.unshift(savedDraft);
@@ -23253,7 +23253,7 @@ function openExcelEditor(excelId = null) {
 
         const excels = await window.LayerDB.loadExcels();
         saveExcels(excels);
-        
+
         // Show success message
         if (typeof showToast === 'function') {
           showToast('Spreadsheet created and saved as draft', 'success');
@@ -23267,7 +23267,7 @@ function openExcelEditor(excelId = null) {
     setTimeout(() => {
       const excelTitleInput = document.getElementById('excelTitleInput');
       excelTitleInput?.focus();
-      
+
       // Generate title immediately if current title is "Untitled Spreadsheet" and there's data
       if (excelTitleInput && excelTitleInput.value.trim() === 'Untitled Spreadsheet' && data && data.length > 0) {
         const generatedTitle = generateTitleFromExcelData(data);
@@ -23276,10 +23276,10 @@ function openExcelEditor(excelId = null) {
           console.log('📊 Generated spreadsheet title on open:', generatedTitle);
         }
       }
-      
+
       // Add real-time title sync for Excel spreadsheets
       if (excelTitleInput) {
-        excelTitleInput.addEventListener('input', function() {
+        excelTitleInput.addEventListener('input', function () {
           const newTitle = this.value.trim() || 'Untitled Spreadsheet';
           syncDraftCardTitle(currentExcelId, newTitle);
         });
@@ -23296,14 +23296,14 @@ function openExcelEditor(excelId = null) {
           if (titleInput) {
             titleInput.value = generatedTitle;
             console.log('📊 Updated existing spreadsheet title from data:', generatedTitle);
-            
+
             // Save the updated title
             (async () => {
               try {
                 await window.LayerDB.updateExcel(excel.id, { title: generatedTitle });
                 const excels = await window.LayerDB.loadExcels();
                 saveExcels(excels);
-                
+
                 // Update drafts
                 const drafts = loadDrafts();
                 const draftIndex = drafts.findIndex(d => d.id === excel.id);
@@ -23312,7 +23312,7 @@ function openExcelEditor(excelId = null) {
                   drafts[draftIndex].updatedAt = new Date().toISOString();
                   saveDrafts(drafts);
                 }
-                
+
                 console.log('✅ Updated existing spreadsheet title in database');
               } catch (error) {
                 console.error('Failed to update existing spreadsheet title:', error);
@@ -23375,7 +23375,7 @@ function updateExcelCell(row, col, value) {
       console.log('📊 Generated spreadsheet title from cell change:', generatedTitle);
     }
   }
-  
+
   // Auto-save on cell change
   clearTimeout(excelSaveTimeout);
   excelSaveTimeout = setTimeout(() => {
@@ -23454,7 +23454,7 @@ async function autoSaveExcel() {
       console.log('📊 Excel draft title synced:', title);
       // Mark drafts view for refresh so title shows updated
       window.draftsNeedRefresh = true;
-      
+
       // Also sync the draft card title in real-time
       syncDraftCardTitle(currentExcelId, title);
     }
@@ -23513,22 +23513,22 @@ function generateTitleFromExcelData(data) {
   // Clean up the title
   if (title) {
     title = title.replace(/[""'']/g, '').trim();
-    
+
     // Capitalize first letter if it's not already
     if (title.length > 0 && title[0] !== title[0].toUpperCase()) {
       title = title.charAt(0).toUpperCase() + title.slice(1);
     }
-    
+
     // Add "Spreadsheet" suffix if it doesn't sound like a title
     if (!title.includes('Sheet') && !title.includes('Table') && !title.includes('Data')) {
       title += ' Spreadsheet';
     }
-    
+
     // Limit length
     if (title.length > 60) {
       title = title.substring(0, 57) + '...';
     }
-    
+
     return title;
   }
 
@@ -23667,11 +23667,11 @@ async function confirmSaveExcelToSpace(spaceId) {
   try {
     // Save to Supabase database
     await window.LayerDB.updateExcel(currentExcelId, { title, data, spaceId });
-    
+
     // Load updated data and sync to localStorage
     const excels = await window.LayerDB.loadExcels();
     saveExcels(excels);
-    
+
     // Update drafts
     const drafts = loadDrafts();
     const draftIndex = drafts.findIndex(d => d.id === currentExcelId);
@@ -23681,16 +23681,16 @@ async function confirmSaveExcelToSpace(spaceId) {
       saveDrafts(drafts);
       window.draftsNeedRefresh = true;
     }
-    
+
     closeModal();
-    
+
     // Refresh favorites sidebar
     renderFavoritesInSidebar();
 
     const spaces = loadSpaces();
     const space = spaces.find(s => String(s.id) === String(spaceId));
     showToast('Spreadsheet saved to "' + (space ? space.name : 'Space') + '"!');
-    
+
     console.log('✅ Spreadsheet saved to database:', { id: currentExcelId, title, spaceId });
   } catch (error) {
     console.error('Failed to save spreadsheet to database:', error);
@@ -27996,11 +27996,10 @@ function renderAIView() {
 
   return `
     <div class="ai-clean-landing">
-      <!-- Top Action Bar -->
       <div class="ai-top-bar">
         <div class="ai-top-left"></div>
         <div class="ai-top-right">
-          <button class="ai-history-btn" onclick="toggleChatHistorySidebar()" title="View Chat History">
+          <button class="ai-history-btn-minimal" onclick="toggleAIChatHistorySidebar()" title="View Chat History">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
               <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
@@ -28138,14 +28137,12 @@ function saveCurrentConversation() {
   const title = firstUserMsg ? firstUserMsg.content.substring(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '') : 'New Conversation';
 
   if (currentConversationId) {
-    // Update existing conversation
     const index = conversations.findIndex(c => c.id === currentConversationId);
     if (index !== -1) {
       conversations[index].messages = [...aiChatMessages];
       conversations[index].updatedAt = new Date().toISOString();
     }
   } else {
-    // Create new conversation
     currentConversationId = 'conv_' + Date.now();
     conversations.unshift({
       id: currentConversationId,
@@ -28156,65 +28153,50 @@ function saveCurrentConversation() {
     });
   }
 
-  // Keep only last 50 conversations
   saveAIChatHistory(conversations.slice(0, 50));
-}
-
-// Load a specific conversation
-function loadConversation(conversationId) {
-  const conversations = loadAIChatHistory();
-  const conversation = conversations.find(c => c.id === conversationId);
-
-  if (conversation) {
-    aiChatMessages = [...conversation.messages];
-    currentConversationId = conversationId;
-    aiChatHistorySidebarOpen = false;
-
-    const viewsContainer = document.getElementById('viewsContainer');
-    if (viewsContainer) {
-      viewsContainer.innerHTML = renderAIChatView();
-    }
-  }
-}
-
-// Delete a conversation
-function deleteConversation(conversationId, event) {
-  event.stopPropagation();
-
-  const conversations = loadAIChatHistory();
-  const filtered = conversations.filter(c => c.id !== conversationId);
-  saveAIChatHistory(filtered);
-
-  if (currentConversationId === conversationId) {
-    currentConversationId = null;
-  }
-
-  // Re-render sidebar
-  const sidebar = document.getElementById('aiHistorySidebar');
-  if (sidebar) {
-    sidebar.innerHTML = renderHistorySidebarContent();
-  }
 }
 
 // Toggle history sidebar
 function toggleAIChatHistorySidebar() {
+  let sidebar = document.getElementById('aiHistorySidebar');
+  let overlay = document.getElementById('aiHistoryOverlay');
+
+  if (!sidebar) {
+    sidebar = document.createElement('div');
+    sidebar.id = 'aiHistorySidebar';
+    sidebar.className = 'ai-history-sidebar';
+    sidebar.innerHTML = `
+      <div class="ai-history-sidebar-header">
+        <h3>Chat History</h3>
+        <button class="ai-history-close-btn" onclick="toggleAIChatHistorySidebar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="ai-history-sidebar-content" id="aiHistorySidebarContent"></div>
+    `;
+    document.body.appendChild(sidebar);
+
+    overlay = document.createElement('div');
+    overlay.id = 'aiHistoryOverlay';
+    overlay.className = 'ai-history-overlay';
+    overlay.onclick = toggleAIChatHistorySidebar;
+    document.body.appendChild(overlay);
+  }
+
   aiChatHistorySidebarOpen = !aiChatHistorySidebarOpen;
 
-  const sidebar = document.getElementById('aiHistorySidebar');
-  const overlay = document.getElementById('aiHistoryOverlay');
-
-  if (sidebar && overlay) {
-    if (aiChatHistorySidebarOpen) {
-      sidebar.classList.add('open');
-      overlay.classList.add('show');
-    } else {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('show');
-    }
+  if (aiChatHistorySidebarOpen) {
+    document.getElementById('aiHistorySidebarContent').innerHTML = renderHistorySidebarContent();
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+  } else {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
   }
 }
 
-// Render sidebar content
 function renderHistorySidebarContent() {
   const conversations = loadAIChatHistory();
 
@@ -28256,7 +28238,6 @@ function renderHistorySidebarContent() {
   }).join('');
 }
 
-// Helper for time ago
 function getTimeAgo(date) {
   const now = new Date();
   const diffMs = now - date;
@@ -28270,6 +28251,44 @@ function getTimeAgo(date) {
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString();
 }
+
+function loadConversation(conversationId) {
+  const conversations = loadAIChatHistory();
+  const conversation = conversations.find(c => c.id === conversationId);
+
+  if (conversation) {
+    aiChatMessages = [...conversation.messages];
+    currentConversationId = conversationId;
+    aiChatHistorySidebarOpen = false;
+
+    const sidebar = document.getElementById('aiHistorySidebar');
+    if (sidebar) sidebar.classList.remove('open');
+    const overlay = document.getElementById('aiHistoryOverlay');
+    if (overlay) overlay.classList.remove('show');
+
+    const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+    if (viewsContent) {
+      viewsContent.innerHTML = renderAIChatView();
+    }
+  }
+}
+
+function deleteConversation(conversationId, event) {
+  event.stopPropagation();
+  const conversations = loadAIChatHistory();
+  const filtered = conversations.filter(c => c.id !== conversationId);
+  saveAIChatHistory(filtered);
+
+  if (currentConversationId === conversationId) {
+    currentConversationId = null;
+  }
+
+  const content = document.getElementById('aiHistorySidebarContent');
+  if (content) {
+    content.innerHTML = renderHistorySidebarContent();
+  }
+}
+
 
 function openAIChatView(initialMessage) {
   aiChatMessages = [];
@@ -28287,9 +28306,9 @@ function openAIChatView(initialMessage) {
   }
 
   // Render the chat view
-  const viewsContainer = document.getElementById('viewsContainer');
-  if (viewsContainer) {
-    viewsContainer.innerHTML = renderAIChatView();
+  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+  if (viewsContent) {
+    viewsContent.innerHTML = renderAIChatView();
 
     // Focus the input
     const chatInput = document.getElementById('aiChatInput');
@@ -28320,9 +28339,7 @@ function renderAIChatView() {
         ${renderAIChatMessages()}
         ${aiChatIsLoading ? `
           <div class="ai-clean-loading">
-            <div class="ai-clean-loading-dot"></div>
-            <div class="ai-clean-loading-dot"></div>
-            <div class="ai-clean-loading-dot"></div>
+            <span class="ai-thinking-text">Thinking...</span>
           </div>
         ` : ''}
       </div>
@@ -28369,8 +28386,8 @@ function renderAIChatMessages() {
       return `
         <div class="ai-clean-msg ai-clean-msg-assistant">
           <div class="ai-clean-bubble-assistant">
-            <div class="ai-clean-content">${formatAIResponse(msg.content)}</div>
-            <div class="ai-clean-actions">
+            <div class="ai-clean-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
+            <div class="ai-clean-actions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
               <button class="ai-clean-action-btn" onclick="copyAIMessage(${index})" title="Copy">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -28405,15 +28422,26 @@ function formatAIResponse(content) {
 
   // Numbered lists
   formatted = formatted.replace(/^(\d+)\.\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div><strong>$2</strong> — $3</div></div>');
+    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div class="ai-list-content"><strong>$2</strong> — $3</div></div>');
 
-  // Simple numbered lists
   formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div>$2</div></div>');
+    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div class="ai-list-content">$2</div></div>');
+
+  // Bullet points
+  formatted = formatted.replace(/^[-*]\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm,
+    '<div class="ai-list-item"><span class="ai-list-bullet">&bull;</span><div class="ai-list-content"><strong>$1</strong> — $2</div></div>');
+
+  formatted = formatted.replace(/^[-*]\s+(.+)$/gm,
+    '<div class="ai-list-item"><span class="ai-list-bullet">&bull;</span><div class="ai-list-content">$1</div></div>');
 
   // Line breaks
   formatted = formatted.replace(/\n\n/g, '</p><p>');
   formatted = formatted.replace(/\n/g, '<br>');
+
+  // Clean empty paragraphs resulting from lists and line breaks
+  formatted = formatted.replace(/<p><div class="ai-list-item">/g, '<div class="ai-list-item">');
+  formatted = formatted.replace(/<\/div><\/p>/g, '</div>');
+  formatted = formatted.replace(/<br><div class="ai-list-item">/g, '<div class="ai-list-item">');
 
   return `<p>${formatted}</p>`;
 }
@@ -28537,7 +28565,8 @@ async function processAIMessage(message) {
       role: 'assistant',
       content: parsedResponse.message,
       followUps: parsedResponse.followUps,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isNew: true
     });
     saveCurrentConversation();
 
@@ -28597,10 +28626,79 @@ function parseAIResponse(response, isGeneration) {
 }
 
 function updateChatView() {
-  const viewsContainer = document.getElementById('viewsContainer');
-  if (viewsContainer) {
-    viewsContainer.innerHTML = renderAIChatView();
+  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+  if (viewsContent) {
+    viewsContent.innerHTML = renderAIChatView();
+
+    // Check for typing animation
+    const newMsgIndex = aiChatMessages.findIndex(m => m.isNew);
+    if (newMsgIndex !== -1) {
+      const msg = aiChatMessages[newMsgIndex];
+      msg.isNew = false;
+      const el = document.getElementById(`ai-msg-content-${newMsgIndex}`);
+      const actionsEl = document.getElementById(`ai-msg-actions-${newMsgIndex}`);
+      if (el) {
+        if (actionsEl) actionsEl.style.display = 'none';
+
+        typeHTML(el, formatAIResponse(msg.content), 8, () => {
+          if (actionsEl) actionsEl.style.display = 'flex';
+          scrollChatToBottom();
+        });
+      }
+    }
   }
+}
+
+function typeHTML(element, html, speed, callback) {
+  element.innerHTML = html;
+
+  // Wrap text nodes in spans for animation
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+  const textNodes = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.nodeValue.trim() !== '') {
+      textNodes.push(node);
+    }
+  }
+
+  const spans = [];
+  textNodes.forEach(node => {
+    const parent = node.parentNode;
+    const text = node.nodeValue;
+    const fragment = document.createDocumentFragment();
+
+    for (let i = 0; i < text.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = text[i];
+      if (text[i] === ' ') {
+        span.style.whiteSpace = 'pre';
+      }
+      span.style.opacity = '0';
+      span.style.display = 'inline-block';
+      fragment.appendChild(span);
+      spans.push(span);
+    }
+    parent.replaceChild(fragment, node);
+  });
+
+  let currentSpan = 0;
+  function revealNext() {
+    if (currentSpan < spans.length) {
+      // reveal character by character, slightly batched to maintain speed
+      for (let step = 0; step < 2 && currentSpan < spans.length; step++, currentSpan++) {
+        spans[currentSpan].style.opacity = '1';
+      }
+
+      const scrollArea = document.getElementById('aiChatMessages');
+      if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
+
+      setTimeout(revealNext, speed);
+    } else {
+      if (callback) callback();
+    }
+  }
+  revealNext();
 }
 
 function scrollChatToBottom() {
@@ -28615,9 +28713,9 @@ function goBackToAILanding() {
   aiGeneratedContent = null;
   aiChatIsLoading = false;
 
-  const viewsContainer = document.getElementById('viewsContainer');
-  if (viewsContainer) {
-    viewsContainer.innerHTML = renderAIView();
+  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+  if (viewsContent) {
+    viewsContent.innerHTML = renderAIView();
   }
 }
 
@@ -29103,7 +29201,7 @@ let touchEndY = 0;
 function initCalendarSwipe() {
   const container = document.querySelector('.advanced-schedule-container');
   if (!container) return;
-  
+
   container.addEventListener('touchstart', handleTouchStart, false);
   container.addEventListener('touchend', handleTouchEnd, false);
 }
@@ -29123,7 +29221,7 @@ function handleSwipeGesture() {
   const minSwipeDistance = 50;
   const dx = touchEndX - touchStartX;
   const dy = touchEndY - touchStartY;
-  
+
   // Check if horizontal swipe is dominant
   if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipeDistance) {
     if (dx > 0) {
@@ -29145,7 +29243,7 @@ function goToScheduleToday() {
   setTimeout(() => {
     initCalendarSwipe();
   }, 100);
-  
+
   // Scroll to current time in day/week view
   setTimeout(() => {
     const now = new Date();
@@ -32085,7 +32183,7 @@ function getCurrentUserName() {
     } catch (error) {
       console.warn('getCurrentUserName: Failed to get profile, trying fallback');
     }
-    
+
     // If no profile, use email split (NEVER use Google metadata)
     const user = window.LayerDB.getCurrentUser();
     if (user && user.email) {
@@ -32094,14 +32192,14 @@ function getCurrentUserName() {
       return emailName;
     }
   }
-  
+
   // Final fallback - only use localStorage as last resort
   const savedName = localStorage.getItem('userDisplayName');
   if (savedName && savedName !== 'User') {
     console.log('getCurrentUserName: Using localStorage fallback:', savedName);
     return savedName;
   }
-  
+
   console.log('getCurrentUserName: Using default "User"');
   return 'User';
 }

@@ -1140,11 +1140,13 @@
 }
 
 @keyframes aiIconPulse {
+
   0%,
   100% {
     transform: scale(1);
     opacity: 0.9;
   }
+
   50% {
     transform: scale(1.03);
     opacity: 1;
@@ -1849,117 +1851,7 @@
   color: var(--foreground);
 }
 
-/* ============================================
-   History Sidebar - Liquid Glass
-   ============================================ */
-.ai-history-overlay {
-  background: hsla(0, 0%, 0%, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
 
-.ai-history-sidebar {
-  background: var(--glass-bg-primary);
-  backdrop-filter: blur(var(--glass-blur-strong));
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  border-left: 1px solid var(--glass-border-normal);
-  box-shadow: -20px 0 60px hsla(0, 0%, 0%, 0.15);
-}
-
-.ai-history-sidebar-header {
-  padding: 24px;
-  border-bottom: 1px solid var(--glass-border-subtle);
-  background: var(--glass-bg-secondary);
-}
-
-.ai-history-sidebar-header h3 {
-  font-size: 17px;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--foreground), var(--muted-foreground));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.ai-history-close-btn {
-  width: 36px;
-  height: 36px;
-  background: var(--glass-bg-secondary);
-  border: 1px solid var(--glass-border-subtle);
-  border-radius: 10px;
-}
-
-.ai-history-close-btn:hover {
-  background: var(--glass-bg-tertiary);
-}
-
-.ai-history-sidebar-content {
-  padding: 16px;
-}
-
-/* History Items - Enhanced */
-.ai-history-item {
-  padding: 14px 16px;
-  border-radius: 12px;
-  margin-bottom: 6px;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.ai-history-item:hover {
-  background: var(--glass-bg-secondary);
-  border-color: var(--glass-border-subtle);
-}
-
-.ai-history-item.active {
-  background: var(--glass-bg-tertiary);
-  border-color: hsla(263, 70%, 50%, 0.2);
-}
-
-.ai-history-item-icon {
-  width: 36px;
-  height: 36px;
-  background: var(--glass-bg-secondary);
-  border: 1px solid var(--glass-border-subtle);
-  border-radius: 10px;
-}
-
-.ai-history-item-title {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.ai-history-item-meta {
-  font-size: 12px;
-  opacity: 0.6;
-}
-
-.ai-history-item-delete {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-}
-
-.ai-history-item-delete:hover {
-  background: hsla(0, 71%, 60%, 0.15);
-  color: hsl(0, 71%, 60%);
-}
-
-/* Empty State */
-.ai-history-empty {
-  padding: 60px 24px;
-}
-
-.ai-history-empty svg {
-  width: 56px;
-  height: 56px;
-  opacity: 0.3;
-}
-
-.ai-history-empty p {
-  font-size: 15px;
-  margin-bottom: 6px;
-}
 
 /* ============================================
    Loading Animation - Enhanced
@@ -2049,9 +1941,7 @@
     align-items: center;
   }
 
-  .ai-history-sidebar {
-    width: 100%;
-  }
+
 }
 
 /* ============================================
@@ -2074,9 +1964,7 @@
     0 0 60px hsla(263, 70%, 50%, 0.05);
 }
 
-.light .ai-history-sidebar {
-  box-shadow: -20px 0 60px hsla(0, 0%, 0%, 0.08);
-}
+
 
 .light .ai-chat-input-area.clickup-input-area {
   background: linear-gradient(to top,
