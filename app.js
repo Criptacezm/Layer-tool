@@ -797,6 +797,12 @@ function showLoginPage() {
   }
 
   if (loginBgContainer && window.ColorBendsBackground) {
+    // Check if animated backgrounds are disabled in settings
+    if (localStorage.getItem('layerAnimatedBg') === 'false') {
+      loginBgContainer.style.background = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
+      return;
+    }
+
     try {
       if (!loginPageAnimatedBg) {
         loginPageAnimatedBg = new window.ColorBendsBackground(loginBgContainer, {
@@ -3365,6 +3371,11 @@ function renderDraftsView() {
 
 // Initialize animated backgrounds for draft cards
 function initializeAnimatedBackgrounds() {
+  // Check if animated backgrounds are disabled in settings
+  if (localStorage.getItem('layerAnimatedBg') === 'false') {
+    return;
+  }
+  
   const containers = document.querySelectorAll('.animated-background-container');
   
   containers.forEach(container => {
@@ -3423,10 +3434,19 @@ function cleanupAnimatedBackgrounds() {
   
   containers.forEach(container => {
     if (container._animatedBackground) {
-      container._animatedBackground.destroy();
+      try {
+        container._animatedBackground.destroy();
+      } catch (e) {
+        console.error('Error destroying background:', e);
+      }
       delete container._animatedBackground;
     }
     delete container.dataset.initialized;
+  });
+
+  // Also handle any other active canvases in these containers
+  document.querySelectorAll('.animated-background-container canvas').forEach(canvas => {
+    canvas.remove();
   });
 }
 

@@ -206,6 +206,10 @@ void main() {
         uSpeed: gl.getUniformLocation(this.program, 'uSpeed')
       };
 
+      this.lastFrameTime = 0;
+      this.fpsLimit = 30;
+      this.maxPixelRatio = 1.5;
+
       this.setStaticUniforms();
       this.updateThemeColor();
       this.setupResizeObserver();
@@ -267,7 +271,7 @@ void main() {
       if (!gl || !this.canvas || !this.container) return;
 
       const rect = this.container.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(this.maxPixelRatio, window.devicePixelRatio || 1);
       const width = Math.max(1, Math.floor(rect.width * dpr));
       const height = Math.max(1, Math.floor(rect.height * dpr));
 
@@ -300,9 +304,20 @@ void main() {
       }
     };
 
-    animate = () => {
+    animate = (timestamp) => {
       const gl = this.gl;
       if (!gl) return;
+
+      // FPS limit
+      const frameInterval = 1000 / this.fpsLimit;
+      const elapsed = timestamp - this.lastFrameTime;
+      
+      if (elapsed < frameInterval) {
+        this.rafId = requestAnimationFrame(this.animate);
+        return;
+      }
+      
+      this.lastFrameTime = timestamp - (elapsed % frameInterval);
 
       const t = (performance.now() - this.startTime) * 0.001;
       gl.useProgram(this.program);
@@ -341,9 +356,15 @@ void main() {
   }
 
   window.IridescenceBackground = IridescenceBackground;
+  window.initIridescenceViewsBackground = initIridescenceViewsBackground;
 
   let instance = null;
   function initIridescenceViewsBackground() {
+    // Check if animated backgrounds are disabled in settings
+    if (localStorage.getItem('layerAnimatedBg') === 'false') {
+      return;
+    }
+
     const bg = document.getElementById('viewsBackground');
     if (!bg) return;
 

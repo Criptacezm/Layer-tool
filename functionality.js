@@ -19941,7 +19941,8 @@ async function rejectFollowRequest(requestId, followerId) {
    ============================================ */
 
 async function renderSettingsView() {
-  const currentTheme = localStorage.getItem('layerTheme') || 'dark';
+  const currentTheme = localStorage.getItem('layerTheme') || 'rosepine';
+  const animatedBgEnabled = localStorage.getItem('layerAnimatedBg') !== 'false';
   const appVersion = '0.3.1';
   const lastSync = new Date().toLocaleString();
 
@@ -20134,6 +20135,16 @@ async function renderSettingsView() {
             </label>
             <span style="font-size: 13px; color: var(--muted-foreground);">Light</span>
           </div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">
+            <span>Animated Backgrounds</span>
+            <p class="settings-description">Enable or disable WebGL animations to save RAM and power</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="animatedBgToggle" ${animatedBgEnabled ? 'checked' : ''} onchange="toggleAnimatedBg(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
 
@@ -20564,13 +20575,81 @@ function toggleThemeModeFromSettings(isLight) {
   document.documentElement.setAttribute('data-mode', newMode);
 }
 
+function toggleAnimatedBg(enabled) {
+  // Convert to string to ensure consistency with how we check it elsewhere
+  const value = enabled ? 'true' : 'false';
+  localStorage.setItem('layerAnimatedBg', value);
+  
+  console.log('Setting animated background to:', value);
+  
+  if (!enabled) {
+    // 1. Cleanup drafts backgrounds
+    if (typeof window.cleanupAnimatedBackgrounds === 'function') {
+      window.cleanupAnimatedBackgrounds();
+    } else if (typeof cleanupAnimatedBackgrounds === 'function') {
+      cleanupAnimatedBackgrounds();
+    }
+    
+    // 2. Cleanup login background
+    if (typeof window.loginPageAnimatedBg !== 'undefined' && window.loginPageAnimatedBg) {
+      try {
+        window.loginPageAnimatedBg.destroy();
+        window.loginPageAnimatedBg = null;
+      } catch (e) {
+        console.error('Error destroying login bg:', e);
+      }
+    }
+
+    // 3. Cleanup iridescence background (the one in the screenshot)
+    const viewsBg = document.getElementById('viewsBackground');
+    if (viewsBg) {
+      while (viewsBg.firstChild) viewsBg.removeChild(viewsBg.firstChild);
+      viewsBg.style.background = 'transparent';
+    }
+
+    // 4. Force remove any remaining canvases
+    document.querySelectorAll('canvas').forEach(canvas => {
+      const isDraftBg = canvas.parentElement && canvas.parentElement.classList.contains('animated-background-container');
+      const isLoginBg = canvas.id === 'loginPageBg' || (canvas.parentElement && canvas.parentElement.id === 'loginPageBg');
+      const isViewsBg = canvas.parentElement && canvas.parentElement.id === 'viewsBackground';
+      
+      if (isDraftBg || isLoginBg || isViewsBg) {
+        console.log('Removing background canvas manually');
+        canvas.remove();
+      }
+    });
+    
+    // 5. Update any containers to show a static background
+    document.querySelectorAll('.animated-background-container').forEach(container => {
+      container.style.background = 'var(--surface-hover)';
+    });
+  } else {
+    // Re-initialize if on drafts view
+    if (typeof currentView !== 'undefined' && currentView === 'drafts') {
+      if (typeof window.initializeAnimatedBackgrounds === 'function') {
+        window.initializeAnimatedBackgrounds();
+      } else if (typeof initializeAnimatedBackgrounds === 'function') {
+        initializeAnimatedBackgrounds();
+      }
+    }
+
+    // Re-initialize iridescence background
+    const initIridescence = window.initIridescenceViewsBackground;
+    if (typeof initIridescence === 'function') {
+      initIridescence();
+    }
+  }
+  
+  showNotification(enabled ? 'Animated backgrounds enabled' : 'Animated backgrounds disabled', 'info');
+}
+
 function initThemeSelector() {
   const themeSelect = document.getElementById('themeSelect');
   const modeContainer = document.getElementById('themeModeToggleContainer');
 
   if (!themeSelect) return;
 
-  const current = localStorage.getItem('layerTheme') || 'dark';
+  const current = localStorage.getItem('layerTheme') || 'rosepine';
   themeSelect.value = current;
 
   themeSelect.addEventListener('change', (e) => {
@@ -20595,7 +20674,7 @@ function initThemeSelector() {
 
 // Apply saved theme on load
 document.addEventListener('DOMContentLoaded', async () => {
-  const saved = localStorage.getItem('layerTheme') || 'dark';
+  const saved = localStorage.getItem('layerTheme') || 'rosepine';
   applyTheme(saved);
   initThemeSelector();
 
