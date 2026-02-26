@@ -53,11 +53,26 @@ If no errors are found, return: {"errors": []}
 Only return valid JSON, no other text or explanation.`;
 
 /**
- * Core API Call to NVIDIA Qwen API
+ * Core API Call to NVIDIA Qwen API with support for message history
  */
-async function callQwenAPI(userPrompt, systemPrompt, context = '') {
+async function callQwenAPI(messages, systemPrompt) {
     try {
-        const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
+        const payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                { "role": "system", "content": systemPrompt },
+                ...messages
+            ],
+            "max_tokens": 4096,
+            "temperature": 0.60,
+            "top_p": 0.95,
+            "top_k": 20,
+            "presence_penalty": 0,
+            "repetition_penalty": 1,
+            "stream": false
+        };
+
+        console.log('Final Payload to Proxy:', JSON.stringify(payload, null, 2));
 
         // Use relative URL for Vercel deployment and local proxy compatibility
         const response = await fetch("/api/ai", {
@@ -65,20 +80,7 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                "model": MODEL_NAME,
-                "messages": [
-                    { "role": "system", "content": systemPrompt },
-                    { "role": "user", "content": fullPrompt }
-                ],
-                "max_tokens": 4096,
-                "temperature": 0.60,
-                "top_p": 0.95,
-                "top_k": 20,
-                "presence_penalty": 0,
-                "repetition_penalty": 1,
-                "stream": false
-            })
+            body: JSON.stringify(payload)
         });
 
         console.log('Proxy response status:', response.status);
@@ -119,9 +121,21 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
 
 /**
  * Compatibility wrapper for the original callGeminiAPI
+ * Now supports full message history
  */
-async function callGeminiAPI(userPrompt, context = '') {
-    return await callQwenAPI(userPrompt, GENERAL_SYSTEM_PROMPT, context);
+async function callGeminiAPI(messages) {
+    // If messages is just a string (legacy support), wrap it in an array
+    const messageHistory = Array.isArray(messages) 
+        ? messages
+            .filter(msg => msg && msg.content && String(msg.content).trim() !== '')
+            .map(msg => ({
+                role: msg.role === 'assistant' ? 'assistant' : 'user',
+                content: String(msg.content)
+            }))
+        : [{ role: 'user', content: String(messages) }];
+
+    console.log('Sending message history to API:', JSON.stringify(messageHistory, null, 2));
+    return await callQwenAPI(messageHistory, GENERAL_SYSTEM_PROMPT);
 }
 
 /**
@@ -130,7 +144,7 @@ async function callGeminiAPI(userPrompt, context = '') {
 async function analyzeCodeErrors(code, language = 'javascript') {
     try {
         const prompt = `Analyze this ${language} code for errors:\n\`\`\`${language}\n${code}\n\`\`\``;
-        const text = await callQwenAPI(prompt, CODE_ANALYSIS_SYSTEM_PROMPT);
+        const text = await callQwenAPI([{ role: 'user', content: prompt }], CODE_ANALYSIS_SYSTEM_PROMPT);
 
         // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);

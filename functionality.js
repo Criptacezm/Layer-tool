@@ -29415,7 +29415,8 @@ async function processAIMessage(message) {
     // Check if this is a content generation request
     const isGeneration = detectContentGeneration(message);
 
-    const response = await window.callGeminiAPI(message);
+    // Pass the entire message history for context
+    const response = await window.callGeminiAPI(aiChatMessages);
 
     // Parse the response for structured content
     const parsedResponse = parseAIResponse(response, isGeneration);
@@ -29427,6 +29428,7 @@ async function processAIMessage(message) {
       timestamp: new Date(),
       isNew: true
     });
+    console.log('Current chat history after assistant response:', JSON.stringify(aiChatMessages, null, 2));
     saveCurrentConversation();
 
     // If there's generated content, set it for the right panel
