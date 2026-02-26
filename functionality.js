@@ -16321,7 +16321,7 @@ function renderTeamMessageInput() {
         </div>
         
         <div class="team-input-area">
-          <input type="text" class="team-message-input" placeholder="Write to ${channelName}, press 'space' for AI, '/' for commands" id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)">
+          <input type="text" class="team-message-input" placeholder="Type here..." id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)">
         </div>
         
         <div class="team-input-actions">
@@ -28489,10 +28489,58 @@ function showAIAddOptions() {
 
 let aiChatMessages = [];
 let aiChatIsLoading = false;
+let aiThinkingStatus = 'Thinking...';
+const thinkingStatuses = [
+  'Analysing the text...',
+  'Searching the web...',
+  'Putting things together...',
+  'Refining response...',
+  'Finalizing...'
+];
+let thinkingStatusInterval = null;
+
+function startThinkingStatus() {
+  let index = 0;
+  aiThinkingStatus = thinkingStatuses[index];
+  updateChatView();
+  
+  if (thinkingStatusInterval) clearInterval(thinkingStatusInterval);
+  
+  thinkingStatusInterval = setInterval(() => {
+    index = (index + 1) % thinkingStatuses.length;
+    aiThinkingStatus = thinkingStatuses[index];
+    
+    // Efficiently update only the thinking text if it exists
+    const statusEl = document.querySelector('.ai-thinking-text');
+    if (statusEl) {
+      statusEl.textContent = aiThinkingStatus;
+    } else {
+      updateChatView();
+    }
+  }, 3000);
+}
+
+function stopThinkingStatus() {
+  if (thinkingStatusInterval) {
+    clearInterval(thinkingStatusInterval);
+    thinkingStatusInterval = null;
+  }
+  aiThinkingStatus = 'Thinking...';
+}
 let aiGeneratedContent = null; // For Essay/Report/Code panel
 let aiChatHistorySidebarOpen = false;
 let currentConversationId = null;
 let isAiChatActive = false; // Flag to track if we are in chat mode vs landing
+
+let aiCodingModeOpen = false;
+let aiCodingSplitRatio = 52; // percent for left panel
+let aiCodingDraftCode = '';
+let aiCodingDraftLanguage = 'javascript';
+let aiCodingLangAuto = true;
+let aiCodingIsFixing = false;
+let aiCodingRunTab = 'preview';
+let aiCodingRunSrcdoc = '';
+let aiCodingConsoleLines = [];
 
 let currentAttachment = null;
 
@@ -28711,13 +28759,26 @@ function openAIChatView(initialMessage) {
 }
 
 function renderAIChatView() {
+  try {
+    const savedOpen = localStorage.getItem('aiCodingModeOpen');
+    if (savedOpen !== null) aiCodingModeOpen = savedOpen === 'true';
+    const savedRatio = localStorage.getItem('aiCodingSplitRatio');
+    if (savedRatio !== null && !Number.isNaN(parseFloat(savedRatio))) aiCodingSplitRatio = Math.min(80, Math.max(35, parseFloat(savedRatio)));
+    const savedLang = localStorage.getItem('aiCodingDraftLanguage');
+    if (savedLang) aiCodingDraftLanguage = savedLang;
+    const savedAuto = localStorage.getItem('aiCodingLangAuto');
+    if (savedAuto !== null) aiCodingLangAuto = savedAuto === 'true';
+    const savedCode = localStorage.getItem('aiCodingDraftCode');
+    if (savedCode !== null && typeof savedCode === 'string') aiCodingDraftCode = savedCode;
+  } catch (e) {}
+
   return `
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/2.16.105/pdf.min.js"></script>
     <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/2.16.105/pdf.worker.min.js';
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <div class="ai-clean-chat">
+    <div class="ai-clean-chat ${aiCodingModeOpen ? 'ai-coding-mode' : ''}" id="aiCleanChatRoot" style="--ai-split-left:${aiCodingSplitRatio}%;">
       <!-- Chat Header -->
       <div class="ai-clean-chat-header">
         <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
@@ -28726,68 +28787,382 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
           </svg>
         </button>
         <span class="ai-clean-chat-title">AI Assistant</span>
-        <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </button>
+        <div class="ai-clean-header-actions">
+          <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M16 18l6-6-6-6"/>
+              <path d="M8 6l-6 6 6 6"/>
+              <path d="M14 4l-4 16"/>
+            </svg>
+          </button>
+          <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <!-- Messages -->
-      <div class="ai-clean-messages" id="aiChatMessages">
-        ${renderAIChatMessages()}
-        ${aiChatIsLoading ? `
-          <div class="ai-clean-loading">
-            <div class="ai-assistant-header">
-              <div class="ai-assistant-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                  <path d="M2 17l10 5 10-5"/>
-                  <path d="M2 12l10 5 10-5"/>
+      <div class="ai-clean-chat-body" id="aiCleanChatBody">
+        <div class="ai-clean-left" id="aiCleanLeft">
+          <!-- Messages -->
+          <div class="ai-clean-messages" id="aiChatMessages">
+            ${renderAIChatMessages()}
+            ${aiChatIsLoading ? `
+              <div class="ai-clean-loading">
+                <div class="ai-assistant-header">
+                  <div class="ai-assistant-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                      <path d="M2 17l10 5 10-5"/>
+                      <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <span class="ai-assistant-name">AI Assistant</span>
+                </div>
+                <span class="ai-thinking-text">${aiThinkingStatus}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Attachments -->
+          <div id="aiAttachments"></div>
+
+          <!-- Input -->
+          <div class="ai-clean-chat-input-area">
+            <div class="ai-clean-input-box">
+              <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+              <input
+                type="text"
+                class="ai-clean-input"
+                id="aiChatInput"
+                placeholder="Ask anything"
+                onkeydown="handleAIChatInputKeydown(event)"
+                ${aiChatIsLoading ? 'disabled' : ''}
+              />
+              <div class="ai-input-model-selector">
+                <span>Auto</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                  <path d="M6 9l6 6 6-6"/>
                 </svg>
               </div>
-              <span class="ai-assistant-name">AI Assistant</span>
+              <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+              </button>
             </div>
-            <span class="ai-thinking-text">Thinking...</span>
           </div>
-        ` : ''}
-      </div>
+        </div>
 
-      <!-- Attachments -->
-      <div id="aiAttachments"></div>
+        <div class="ai-clean-splitter" id="aiCleanSplitter" onmousedown="startAICodeResize(event)" title="Drag to resize">
+          <div class="ai-clean-splitter-handle"></div>
+        </div>
 
-      <!-- Input -->
-      <div class="ai-clean-chat-input-area">
-        <div class="ai-clean-input-box">
-          <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
-          <input
-            type="text"
-            class="ai-clean-input"
-            id="aiChatInput"
-            placeholder="Ask anything"
-            onkeydown="handleAIChatInputKeydown(event)"
-            ${aiChatIsLoading ? 'disabled' : ''}
-          />
-          <div class="ai-input-model-selector">
-            <span>Auto</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
+        <div class="ai-clean-right" id="aiCleanRight" aria-hidden="${aiCodingModeOpen ? 'false' : 'true'}">
+          <div class="ai-code-panel">
+            <div class="ai-code-panel-header">
+              <div class="ai-code-panel-title">
+                <span>Coding</span>
+                <span class="ai-code-panel-sub">AI-assisted fixes</span>
+              </div>
+              <div class="ai-code-panel-actions">
+                <select class="ai-code-lang" onchange="setAICodeLanguage(this.value)" title="Language">
+                  <option value="auto" ${aiCodingLangAuto ? 'selected' : ''}>auto</option>
+                  ${['javascript','typescript','python','html','css','json','sql','java','c','cpp','go','rust','php','bash'].map(l => `<option value="${l}" ${(!aiCodingLangAuto && l === aiCodingDraftLanguage) ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>
+                <button class="ai-code-action-btn" onclick="copyAICodeDraft()" title="Copy code">Copy</button>
+                <button class="ai-code-action-btn" onclick="runAICodeDraft()" title="Run code">Run</button>
+                <button class="ai-code-action-btn" onclick="clearAICodeOutput()" title="Clear output">Clear</button>
+                <button class="ai-code-action-btn primary" onclick="autoFixAICodeDraft()" ${aiCodingIsFixing ? 'disabled' : ''} title="Auto fix">
+                  ${aiCodingIsFixing ? 'Fixing…' : 'Auto‑Fix'}
+                </button>
+              </div>
+            </div>
+
+            <div class="ai-code-panel-body">
+              <textarea class="ai-code-editor" id="aiCodeDraft" spellcheck="false" placeholder="Paste your code here…" oninput="onAICodeDraftInput(this.value)">${escapeHtml(aiCodingDraftCode)}</textarea>
+              <div class="ai-code-output">
+                <div class="ai-code-output-tabs">
+                  <button class="ai-code-tab ${aiCodingRunTab === 'preview' ? 'active' : ''}" onclick="setAICodeRunTab('preview')">Preview</button>
+                  <button class="ai-code-tab ${aiCodingRunTab === 'console' ? 'active' : ''}" onclick="setAICodeRunTab('console')">Console</button>
+                  <div class="ai-code-output-meta">Sandbox · ${escapeHtml((aiCodingDraftLanguage || 'javascript').toUpperCase())}</div>
+                </div>
+                <div class="ai-code-output-body">
+                  <div class="ai-code-output-view ${aiCodingRunTab === 'preview' ? 'show' : ''}">
+                    <iframe class="ai-code-iframe" id="aiCodeIframe" sandbox="allow-scripts" srcdoc="${escapeHtml(aiCodingRunSrcdoc)}"></iframe>
+                  </div>
+                  <div class="ai-code-output-view ${aiCodingRunTab === 'console' ? 'show' : ''}">
+                    <div class="ai-code-console" id="aiCodeConsole">${aiCodingConsoleLines.length ? aiCodingConsoleLines.map(l => `<div class=\"ai-code-console-line\">${escapeHtml(l)}</div>`).join('') : '<div class="ai-code-console-empty">No output yet. Click Run.</div>'}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ai-code-hint">
+                Tip: Ask the AI on the left, then paste code here and press <strong>Auto‑Fix</strong>.
+              </div>
+            </div>
           </div>
-          <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-            </svg>
-          </button>
         </div>
       </div>
       <input type="file" id="aiFileInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleFileSelect(event)">
     </div>
   `;
+}
+
+function toggleAICodingMode() {
+  aiCodingModeOpen = !aiCodingModeOpen;
+  try { localStorage.setItem('aiCodingModeOpen', String(aiCodingModeOpen)); } catch (e) {}
+  updateChatView();
+}
+
+function setAICodeLanguage(lang) {
+  if (!lang || lang === 'auto') {
+    aiCodingLangAuto = true;
+    try { localStorage.setItem('aiCodingLangAuto', 'true'); } catch (e) {}
+    aiCodingDraftLanguage = detectAICodeLanguage(aiCodingDraftCode) || aiCodingDraftLanguage || 'javascript';
+    try { localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage); } catch (e) {}
+    updateChatView();
+    return;
+  }
+
+  aiCodingLangAuto = false;
+  aiCodingDraftLanguage = lang;
+  try {
+    localStorage.setItem('aiCodingLangAuto', 'false');
+    localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage);
+  } catch (e) {}
+}
+
+function onAICodeDraftInput(val) {
+  aiCodingDraftCode = val;
+  try { localStorage.setItem('aiCodingDraftCode', aiCodingDraftCode); } catch (e) {}
+
+  if (aiCodingLangAuto) {
+    const detected = detectAICodeLanguage(aiCodingDraftCode);
+    if (detected && detected !== aiCodingDraftLanguage) {
+      aiCodingDraftLanguage = detected;
+      try { localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage); } catch (e) {}
+      const meta = document.querySelector('.ai-code-output-meta');
+      if (meta) meta.textContent = `Sandbox · ${aiCodingDraftLanguage.toUpperCase()}`;
+    }
+  }
+}
+
+function detectAICodeLanguage(code) {
+  const src = (code || '').trim();
+  if (!src) return 'javascript';
+
+  const lower = src.toLowerCase();
+  if (lower.startsWith('<!doctype html') || lower.startsWith('<html') || /<\s*(div|span|body|head|script|style|main|section|button|input|p|a|h\d)\b/.test(lower)) {
+    return 'html';
+  }
+
+  if (lower.includes('<?php')) return 'php';
+  if (/(^|\n)\s*#include\s+<.+>/.test(src)) return 'cpp';
+  if (/(^|\n)\s*package\s+main\b/.test(src) || /\bfunc\s+main\s*\(/.test(src)) return 'go';
+  if (/\bfn\s+main\s*\(/.test(src) || /\buse\s+\w+::/.test(src)) return 'rust';
+  if (/\bpublic\s+class\b/.test(src) || /\bpublic\s+static\s+void\s+main\b/.test(src)) return 'java';
+  if (/\bdef\s+\w+\s*\(/.test(src) || /(^|\n)\s*import\s+\w+/.test(src) || /(^|\n)\s*from\s+\w+\s+import\s+/.test(src)) return 'python';
+
+  // JSON: quick check
+  if ((src.startsWith('{') && src.endsWith('}')) || (src.startsWith('[') && src.endsWith(']'))) {
+    try {
+      JSON.parse(src);
+      return 'json';
+    } catch (e) {}
+  }
+
+  // SQL
+  if (/\b(select|insert|update|delete|create\s+table|alter\s+table|drop\s+table)\b/.test(lower)) return 'sql';
+
+  // CSS: selector { prop: value; }
+  if (/\{[^}]*:[^}]*;[^}]*\}/.test(src) && !/\b(function|const|let|var)\b/.test(src)) return 'css';
+
+  // Typescript-ish
+  if (/\binterface\s+\w+\b/.test(src) || /:\s*\w+\[?\]?\s*(=|;|,)/.test(src) || /\bas\s+const\b/.test(src)) return 'typescript';
+
+  return 'javascript';
+}
+
+function copyAICodeDraft() {
+  const el = document.getElementById('aiCodeDraft');
+  const code = el ? el.value : aiCodingDraftCode;
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(() => showToast('Code copied!')).catch(() => showToast('Failed to copy'));
+}
+
+function extractCodeBlock(text) {
+  if (!text) return '';
+  const m = text.match(/```(?:\w+)?\n([\s\S]*?)```/);
+  if (m && m[1]) return m[1].trim();
+  return text.trim();
+}
+
+async function autoFixAICodeDraft() {
+  const editor = document.getElementById('aiCodeDraft');
+  const code = editor ? editor.value : aiCodingDraftCode;
+  if (!code || aiCodingIsFixing) return;
+
+  aiCodingIsFixing = true;
+  updateChatView();
+
+  try {
+    const prompt = `Fix and improve this ${aiCodingDraftLanguage} code.\n\nReturn ONLY the final fixed code. No explanation.\n\nCODE_START\n${code}\nCODE_END`;
+    const resp = await window.callGeminiAPI(prompt);
+    const fixed = extractCodeBlock(resp);
+    if (fixed) {
+      aiCodingDraftCode = fixed;
+      try { localStorage.setItem('aiCodingDraftCode', aiCodingDraftCode); } catch (e) {}
+    }
+  } catch (e) {
+    showToast('Auto-fix failed');
+  }
+
+  aiCodingIsFixing = false;
+  updateChatView();
+}
+
+function startAICodeResize(e) {
+  if (!aiCodingModeOpen) return;
+  e.preventDefault();
+  const root = document.getElementById('aiCleanChatRoot');
+  const body = document.getElementById('aiCleanChatBody');
+  if (!root || !body) return;
+
+  const rect = body.getBoundingClientRect();
+  const onMove = (ev) => {
+    const x = ev.clientX - rect.left;
+    const pct = (x / rect.width) * 100;
+    aiCodingSplitRatio = Math.min(80, Math.max(35, pct));
+    root.style.setProperty('--ai-split-left', `${aiCodingSplitRatio}%`);
+  };
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    try { localStorage.setItem('aiCodingSplitRatio', String(aiCodingSplitRatio)); } catch (e) {}
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function setAICodeRunTab(tab) {
+  aiCodingRunTab = tab === 'console' ? 'console' : 'preview';
+  updateChatView();
+}
+
+function clearAICodeOutput() {
+  aiCodingConsoleLines = [];
+  aiCodingRunSrcdoc = '';
+  aiCodingDraftCode = '';
+  try {
+    localStorage.removeItem('aiCodingDraftCode');
+  } catch (e) {}
+  
+  const editor = document.getElementById('aiCodeDraft');
+  if (editor) {
+    editor.value = '';
+  }
+  
+  updateChatView();
+}
+
+function buildRunnerSrcdoc(language, code) {
+  const lang = (language || 'javascript').toLowerCase();
+  const safeCode = String(code || '');
+  const capture = `
+  <script>
+  (function(){
+    function send(type, payload){
+      try { parent.postMessage({ __aiCodeRunner: true, type: type, payload: payload }, '*'); } catch(e) {}
+    }
+    function stringify(v){
+      try {
+        if (typeof v === 'string') return v;
+        return JSON.stringify(v);
+      } catch(e){
+        return String(v);
+      }
+    }
+    ['log','info','warn','error'].forEach(function(level){
+      const orig = console[level];
+      console[level] = function(){
+        try { send('console', { level: level, args: Array.prototype.slice.call(arguments).map(stringify) }); } catch(e) {}
+        try { orig && orig.apply(console, arguments); } catch(e) {}
+      }
+    });
+    window.addEventListener('error', function(ev){
+      send('error', { message: ev.message || 'Error', source: ev.filename, line: ev.lineno, col: ev.colno });
+    });
+    window.addEventListener('unhandledrejection', function(ev){
+      send('error', { message: (ev.reason && ev.reason.message) ? ev.reason.message : String(ev.reason || 'Unhandled rejection') });
+    });
+  })();
+  <\/script>`;
+
+  if (lang === 'html') {
+    return `${safeCode}\n${capture}`;
+  }
+
+  if (lang === 'css') {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>${safeCode}<\/style>${capture}</head><body></body></html>`;
+  }
+
+  if (lang === 'javascript' || lang === 'js') {
+    return `<!doctype html><html><head><meta charset="utf-8">${capture}</head><body><script>\ntry {\n${safeCode}\n} catch (e) { console.error(e && e.stack ? e.stack : String(e)); }\n<\/script></body></html>`;
+  }
+
+  return `<!doctype html><html><head><meta charset="utf-8">${capture}</head><body><div style="font-family:system-ui;padding:12px;color:#888;">Run is supported for JavaScript/HTML/CSS only.</div></body></html>`;
+}
+
+function runAICodeDraft() {
+  // Get latest code from DOM if possible, otherwise use memory
+  const editor = document.getElementById('aiCodeDraft');
+  if (editor) {
+    aiCodingDraftCode = editor.value;
+  }
+
+  try { localStorage.setItem('aiCodingDraftCode', aiCodingDraftCode); } catch (e) {}
+
+  if (aiCodingLangAuto) {
+    aiCodingDraftLanguage = detectAICodeLanguage(aiCodingDraftCode) || aiCodingDraftLanguage;
+    try { localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage); } catch (e) {}
+  }
+
+  // Reset console
+  aiCodingConsoleLines = [];
+  
+  // Prepare the iframe content
+  const srcdoc = buildRunnerSrcdoc(aiCodingDraftLanguage, aiCodingDraftCode);
+  aiCodingRunSrcdoc = srcdoc;
+  
+  // First, switch to preview tab and update UI structure
+  aiCodingRunTab = 'preview';
+  updateChatView();
+
+  // CRITICAL: Manually update the iframe's srcdoc after updateChatView() 
+  // to ensure it actually triggers a reload even if the string is similar.
+  setTimeout(() => {
+    const iframe = document.getElementById('aiCodeIframe');
+    if (iframe) {
+      iframe.srcdoc = srcdoc;
+    }
+  }, 50);
+}
+
+function appendAICodeConsoleLine(line) {
+  aiCodingConsoleLines.push(line);
+  if (aiCodingConsoleLines.length > 300) aiCodingConsoleLines = aiCodingConsoleLines.slice(-300);
+
+  const consoleEl = document.getElementById('aiCodeConsole');
+  if (consoleEl) {
+    consoleEl.innerHTML = aiCodingConsoleLines.map(l => `<div class="ai-code-console-line">${escapeHtml(l)}</div>`).join('');
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
 }
 
 function renderAIChatMessages() {
@@ -28807,6 +29182,7 @@ function renderAIChatMessages() {
         </div>
       `;
     } else {
+      const hasFencedCode = typeof msg.content === 'string' && msg.content.includes('```');
       return `
         <div class="ai-clean-msg ai-clean-msg-assistant">
           <div class="ai-assistant-header">
@@ -28829,6 +29205,16 @@ function renderAIChatMessages() {
                 </svg>
                 <span>Copy</span>
               </button>
+              ${hasFencedCode ? `
+              <button class="ai-clean-action-btn" onclick="importAIMessageCode(${index})" title="Import code to editor">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Import</span>
+              </button>
+              ` : ''}
               <button class="ai-clean-action-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                   <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
@@ -28843,6 +29229,49 @@ function renderAIChatMessages() {
   }).join('');
 }
 
+function extractLastFencedCodeBlock(text) {
+  if (!text) return null;
+  const re = /```(\w+)?\n([\s\S]*?)```/g;
+  let match = null;
+  let last = null;
+  while ((match = re.exec(text)) !== null) {
+    last = { lang: (match[1] || '').toLowerCase(), code: (match[2] || '').trim() };
+  }
+  if (last && last.code) return last;
+  return null;
+}
+
+function importAIMessageCode(index) {
+  const msg = aiChatMessages[index];
+  if (!msg || typeof msg.content !== 'string') return;
+
+  const block = extractLastFencedCodeBlock(msg.content);
+  if (!block) {
+    showToast('No code block found');
+    return;
+  }
+
+  aiCodingDraftCode = block.code;
+  if (block.lang) {
+    aiCodingLangAuto = false;
+    aiCodingDraftLanguage = block.lang;
+  } else {
+    aiCodingLangAuto = true;
+    aiCodingDraftLanguage = detectAICodeLanguage(aiCodingDraftCode) || aiCodingDraftLanguage;
+  }
+  aiCodingModeOpen = true;
+
+  try {
+    localStorage.setItem('aiCodingDraftCode', aiCodingDraftCode);
+    localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage);
+    localStorage.setItem('aiCodingLangAuto', String(aiCodingLangAuto));
+    localStorage.setItem('aiCodingModeOpen', 'true');
+  } catch (e) {}
+
+  updateChatView();
+  showToast('Imported to editor');
+}
+
 function formatAIResponse(content) {
   // Convert markdown-style formatting to HTML
   let formatted = escapeHtml(content);
@@ -28855,20 +29284,6 @@ function formatAIResponse(content) {
 
   // Headers with emoji (💡 Agent Ideas)
   formatted = formatted.replace(/^(💡|🎯|📋|✨|🚀)\s*(.+)$/gm, '<h3 class="ai-response-heading"><span class="ai-heading-icon">$1</span> $2</h3>');
-
-  // Numbered lists
-  formatted = formatted.replace(/^(\d+)\.\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div class="ai-list-content"><strong>$2</strong> — $3</div></div>');
-
-  formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-number">$1.</span><div class="ai-list-content">$2</div></div>');
-
-  // Bullet points
-  formatted = formatted.replace(/^[-*]\s+\*\*(.+?)\*\*\s*[-–—]\s*(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-bullet">&bull;</span><div class="ai-list-content"><strong>$1</strong> — $2</div></div>');
-
-  formatted = formatted.replace(/^[-*]\s+(.+)$/gm,
-    '<div class="ai-list-item"><span class="ai-list-bullet">&bull;</span><div class="ai-list-content">$1</div></div>');
 
   // Line breaks
   formatted = formatted.replace(/\n\n/g, '</p><p>');
@@ -28992,6 +29407,7 @@ async function sendAIChatMessage() {
 
 async function processAIMessage(message) {
   aiChatIsLoading = true;
+  startThinkingStatus();
   updateChatView();
   scrollChatToBottom();
 
@@ -29028,6 +29444,7 @@ async function processAIMessage(message) {
   }
 
   aiChatIsLoading = false;
+  stopThinkingStatus();
   updateChatView();
   scrollChatToBottom();
 }
@@ -29329,6 +29746,35 @@ window.removeAttachment = removeAttachment;
 window.extractTextFromPDF = extractTextFromPDF;
 window.extractTextFromDoc = extractTextFromDoc;
 window.formatFileSize = formatFileSize;
+
+window.toggleAICodingMode = toggleAICodingMode;
+window.setAICodeLanguage = setAICodeLanguage;
+window.onAICodeDraftInput = onAICodeDraftInput;
+window.copyAICodeDraft = copyAICodeDraft;
+window.autoFixAICodeDraft = autoFixAICodeDraft;
+window.startAICodeResize = startAICodeResize;
+window.importAIMessageCode = importAIMessageCode;
+window.runAICodeDraft = runAICodeDraft;
+window.clearAICodeOutput = clearAICodeOutput;
+window.setAICodeRunTab = setAICodeRunTab;
+
+if (!window.__aiCodeRunnerListenerAdded) {
+  window.__aiCodeRunnerListenerAdded = true;
+  window.addEventListener('message', (ev) => {
+    const data = ev && ev.data;
+    if (!data || !data.__aiCodeRunner) return;
+
+    if (data.type === 'console' && data.payload) {
+      const level = data.payload.level || 'log';
+      const args = Array.isArray(data.payload.args) ? data.payload.args.join(' ') : '';
+      appendAICodeConsoleLine(`[${level}] ${args}`);
+    } else if (data.type === 'error' && data.payload) {
+      const p = data.payload;
+      const loc = p.source ? ` (${p.source}${p.line ? ':' + p.line : ''})` : '';
+      appendAICodeConsoleLine(`[error] ${p.message || 'Error'}${loc}`);
+    }
+  });
+}
 
 // ============================================
 // TIME ZONE SUPPORT
