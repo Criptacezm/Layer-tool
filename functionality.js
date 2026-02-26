@@ -29490,7 +29490,17 @@ function parseAIResponse(response, isGeneration) {
 function updateChatView() {
   const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
   if (viewsContent) {
+    // Preserve the root element classes instead of re-rendering everything
+    const chatRoot = document.getElementById('aiCleanChatRoot');
+    const wasInCodingMode = chatRoot ? chatRoot.classList.contains('ai-coding-mode') : aiCodingModeOpen;
+    
     viewsContent.innerHTML = renderAIChatView();
+    
+    // Ensure the class is applied correctly after re-render if it was open
+    const newChatRoot = document.getElementById('aiCleanChatRoot');
+    if (newChatRoot && wasInCodingMode) {
+      newChatRoot.classList.add('ai-coding-mode');
+    }
 
     // Check for typing animation
     const newMsgIndex = aiChatMessages.findIndex(m => m.isNew);

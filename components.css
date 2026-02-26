@@ -18871,16 +18871,20 @@ h4.ai-heading {
   display: flex;
   min-height: 0;
   position: relative;
+  width: 100%;
+  overflow: hidden;
 }
 
 .ai-clean-left {
-  width: 100%;
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .ai-clean-chat.ai-coding-mode .ai-clean-left {
+  flex: 0 0 var(--ai-split-left, 52%);
   width: var(--ai-split-left, 52%);
 }
 
@@ -18891,10 +18895,11 @@ h4.ai-heading {
 
 .ai-clean-right {
   display: none;
-  width: calc(100% - var(--ai-split-left, 52%));
+  flex: 1;
   min-width: 0;
   border-left: 1px solid rgba(var(--border-rgb), 0.8);
   background: linear-gradient(180deg, rgba(var(--background-rgb), 0.65) 0%, rgba(var(--background-rgb), 0.9) 100%);
+  position: relative;
 }
 
 .ai-clean-chat.ai-coding-mode .ai-clean-right {
@@ -19318,9 +19323,13 @@ h4.ai-heading {
 }
 
 .ai-clean-chat.ai-coding-mode .ai-clean-chat-input-area {
-  right: calc(100% - var(--ai-split-left, 52%));
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 16px;
-  justify-content: stretch;
+  background: linear-gradient(to top, var(--background) 80%, transparent);
+  width: 100%;
 }
 
 .ai-clean-input-box {
