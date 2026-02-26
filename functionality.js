@@ -5982,9 +5982,10 @@ function renderProjectDetailView(projectIndex) {
 
   if (!project) return '';
 
-  const projectIconEmoji = project.iconEmoji || '◇';
+  const projectIconEmoji = project.iconEmoji || project.icon_emoji || '◇';
 
   const { total, completed, percentage } = calculateProgress(project.columns);
+  console.log('renderProjectDetailView Progress:', { total, completed, percentage, currentProjectTab });
 
   // Dynamic status based on progress
   let dynamicStatus = 'backlog';
@@ -6041,13 +6042,13 @@ function renderProjectDetailView(projectIndex) {
           </nav>
           
           <div class="pd-tabs">
-            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'overview' ? 'active' : (typeof currentProjectTab !== 'undefined' && currentProjectTab === 'timeline' ? '' : 'active')}" data-tab="overview" onclick="switchProjectTab('overview', ${projectIndex})">
+            <button class="pd-tab ${currentProjectTab === 'overview' ? 'active' : ''}" data-tab="overview" onclick="switchProjectTab('overview', ${projectIndex})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>
               </svg>
               Project detail
             </button>
-            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'timeline' ? 'active' : ''}" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
+            <button class="pd-tab ${currentProjectTab === 'timeline' ? 'active' : ''}" data-tab="timeline" onclick="switchProjectTab('timeline', ${projectIndex})">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <style>
                   @keyframes docPop {
@@ -6191,7 +6192,7 @@ function renderProjectDetailView(projectIndex) {
               </svg>
               Whiteboard
             </button>
-            <button class="pd-tab ${typeof currentProjectTab !== 'undefined' && currentProjectTab === 'backlog' ? 'active' : ''}" data-tab="backlog" onclick="switchProjectTab('backlog', ${projectIndex})">
+            <button class="pd-tab ${currentProjectTab === 'backlog' ? 'active' : ''}" data-tab="backlog" onclick="switchProjectTab('backlog', ${projectIndex})">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <style>
                   @keyframes clipboardPop {
@@ -6723,6 +6724,7 @@ function renderOverviewTab(projectIndex, container) {
   if (!project) return;
 
   const { total, completed, percentage } = calculateProgress(project.columns);
+  console.log('renderOverviewTab Progress:', { total, completed, percentage, currentProjectTab });
 
   // Dynamic status based on progress
   let dynamicStatus = 'backlog';
@@ -6747,7 +6749,7 @@ function renderOverviewTab(projectIndex, container) {
   const startDateFormatted = formatDateAdvanced(project.startDate || new Date().toISOString());
   const targetDateFormatted = formatDateAdvanced(project.targetDate);
 
-  const projectIconEmoji = project.iconEmoji || '◇';
+  const projectIconEmoji = project.iconEmoji || project.icon_emoji || '◇';
 
   // Render the overview content directly into the container
   container.innerHTML = `
