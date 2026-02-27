@@ -28871,10 +28871,18 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
                 <span class="ai-code-panel-sub">AI-assisted fixes</span>
               </div>
               <div class="ai-code-panel-actions">
-                <select class="ai-code-lang" onchange="setAICodeLanguage(this.value)" title="Language">
-                  <option value="auto" ${aiCodingLangAuto ? 'selected' : ''}>auto</option>
-                  ${['javascript','typescript','python','html','css','json','sql','java','c','cpp','go','rust','php','bash'].map(l => `<option value="${l}" ${(!aiCodingLangAuto && l === aiCodingDraftLanguage) ? 'selected' : ''}>${l}</option>`).join('')}
-                </select>
+                <div class="ai-code-lang-container" id="aiCodeLangContainer">
+                  <div class="ai-code-lang-trigger" onclick="toggleAICodeLangDropdown(event)">
+                    <span>${aiCodingLangAuto ? 'AUTO' : aiCodingDraftLanguage}</span>
+                    <i class="fas fa-chevron-down"></i>
+                  </div>
+                  <div class="ai-code-lang-dropdown">
+                    <div class="ai-code-lang-option ${aiCodingLangAuto ? 'selected' : ''}" onclick="setAICodeLanguage('auto')">AUTO</div>
+                    ${['javascript','typescript','python','html','css','json','sql','java','c','cpp','go','rust','php','bash'].map(l => `
+                      <div class="ai-code-lang-option ${(!aiCodingLangAuto && l === aiCodingDraftLanguage) ? 'selected' : ''}" onclick="setAICodeLanguage('${l}')">${l}</div>
+                    `).join('')}
+                  </div>
+                </div>
                 <button class="ai-code-action-btn" onclick="copyAICodeDraft()" title="Copy code">Copy</button>
                 <button class="ai-code-action-btn" onclick="runAICodeDraft()" title="Run code">Run</button>
                 <button class="ai-code-action-btn" onclick="clearAICodeOutput()" title="Clear output">Clear</button>
@@ -28886,11 +28894,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
             <div class="ai-code-panel-body">
               <textarea class="ai-code-editor" id="aiCodeDraft" spellcheck="false" placeholder="Paste your code here…" oninput="onAICodeDraftInput(this.value)">${escapeHtml(aiCodingDraftCode)}</textarea>
-              <div class="ai-code-output">
+              <div class="ai-code-output ${aiCodingRunSrcdoc || (aiCodingConsoleLines && aiCodingConsoleLines.length > 0) ? 'show' : ''}">
                 <div class="ai-code-output-tabs">
                   <button class="ai-code-tab ${aiCodingRunTab === 'preview' ? 'active' : ''}" onclick="setAICodeRunTab('preview')">Preview</button>
                   <button class="ai-code-tab ${aiCodingRunTab === 'console' ? 'active' : ''}" onclick="setAICodeRunTab('console')">Console</button>
                   <div class="ai-code-output-meta">Sandbox · ${escapeHtml((aiCodingDraftLanguage || 'javascript').toUpperCase())}</div>
+                  <button class="ai-code-output-close" onclick="clearAICodeOutput()" title="Close output">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
                 </div>
                 <div class="ai-code-output-body">
                   <div class="ai-code-output-view ${aiCodingRunTab === 'preview' ? 'show' : ''}">
@@ -28925,6 +28936,11 @@ function setAICodeLanguage(lang) {
     try { localStorage.setItem('aiCodingLangAuto', 'true'); } catch (e) {}
     aiCodingDraftLanguage = detectAICodeLanguage(aiCodingDraftCode) || aiCodingDraftLanguage || 'javascript';
     try { localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage); } catch (e) {}
+    
+    // Close dropdown after selection
+    const container = document.getElementById('aiCodeLangContainer');
+    if (container) container.classList.remove('active');
+    
     updateChatView();
     return;
   }
@@ -28935,6 +28951,33 @@ function setAICodeLanguage(lang) {
     localStorage.setItem('aiCodingLangAuto', 'false');
     localStorage.setItem('aiCodingDraftLanguage', aiCodingDraftLanguage);
   } catch (e) {}
+  
+  // Close dropdown after selection
+  const container = document.getElementById('aiCodeLangContainer');
+  if (container) container.classList.remove('active');
+  
+  updateChatView();
+}
+
+function toggleAICodeLangDropdown(event) {
+  if (event) event.stopPropagation();
+  const container = document.getElementById('aiCodeLangContainer');
+  if (container) {
+    container.classList.toggle('active');
+  }
+}
+
+// Add global click listener to close dropdown when clicking outside
+if (!window.aiDropdownListenerAdded) {
+  document.addEventListener('click', (event) => {
+    const container = document.getElementById('aiCodeLangContainer');
+    if (container && container.classList.contains('active')) {
+      if (!container.contains(event.target)) {
+        container.classList.remove('active');
+      }
+    }
+  });
+  window.aiDropdownListenerAdded = true;
 }
 
 function onAICodeDraftInput(val) {
@@ -29056,25 +29099,39 @@ function setAICodeRunTab(tab) {
 }
 
 function clearAICodeOutput() {
-  aiCodingConsoleLines = [];
-  aiCodingRunSrcdoc = '';
-  aiCodingDraftCode = '';
-  try {
-    localStorage.removeItem('aiCodingDraftCode');
-  } catch (e) {}
-  
-  const editor = document.getElementById('aiCodeDraft');
-  if (editor) {
-    editor.value = '';
+  // Hide the output panel with animation first
+  const outputPanel = document.querySelector('.ai-code-output');
+  if (outputPanel) {
+    outputPanel.classList.remove('show');
+    
+    // Wait for animation to finish before clearing state and re-rendering
+    setTimeout(() => {
+      aiCodingConsoleLines = [];
+      aiCodingRunSrcdoc = '';
+      updateChatView();
+    }, 350); // Match CSS transition duration
+  } else {
+    aiCodingConsoleLines = [];
+    aiCodingRunSrcdoc = '';
+    updateChatView();
   }
-  
-  updateChatView();
 }
 
 function buildRunnerSrcdoc(language, code) {
   const lang = (language || 'javascript').toLowerCase();
   const safeCode = String(code || '');
   const capture = `
+  <style>
+    body { 
+      background-color: #0a0a0c; 
+      color: #e4e4e7; 
+      margin: 0; 
+      padding: 12px; 
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
   <script>
   (function(){
     function send(type, payload){
@@ -29126,6 +29183,8 @@ function runAICodeDraft() {
     aiCodingDraftCode = editor.value;
   }
 
+  if (!aiCodingDraftCode) return;
+
   try { localStorage.setItem('aiCodingDraftCode', aiCodingDraftCode); } catch (e) {}
 
   if (aiCodingLangAuto) {
@@ -29136,20 +29195,17 @@ function runAICodeDraft() {
   // Reset console
   aiCodingConsoleLines = [];
   
-  // Prepare the iframe content
-  const srcdoc = buildRunnerSrcdoc(aiCodingDraftLanguage, aiCodingDraftCode);
-  aiCodingRunSrcdoc = srcdoc;
+  // Build and set srcdoc
+  aiCodingRunSrcdoc = buildRunnerSrcdoc(aiCodingDraftLanguage, aiCodingDraftCode);
   
-  // First, switch to preview tab and update UI structure
-  aiCodingRunTab = 'preview';
+  // Re-render so the panel exists in DOM
   updateChatView();
 
-  // CRITICAL: Manually update the iframe's srcdoc after updateChatView() 
-  // to ensure it actually triggers a reload even if the string is similar.
+  // Trigger animation in next frame
   setTimeout(() => {
-    const iframe = document.getElementById('aiCodeIframe');
-    if (iframe) {
-      iframe.srcdoc = srcdoc;
+    const outputPanel = document.querySelector('.ai-code-output');
+    if (outputPanel) {
+      outputPanel.classList.add('show');
     }
   }, 50);
 }
@@ -29490,16 +29546,31 @@ function parseAIResponse(response, isGeneration) {
 function updateChatView() {
   const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
   if (viewsContent) {
-    // Preserve the root element classes instead of re-rendering everything
-    const chatRoot = document.getElementById('aiCleanChatRoot');
-    const wasInCodingMode = chatRoot ? chatRoot.classList.contains('ai-coding-mode') : aiCodingModeOpen;
-    
+    // Save current scroll position
+    const messagesContainer = document.getElementById('aiChatMessages');
+    const scrollPos = messagesContainer ? messagesContainer.scrollTop : null;
+    const isAtBottom = messagesContainer ? (messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50) : true;
+
     viewsContent.innerHTML = renderAIChatView();
     
-    // Ensure the class is applied correctly after re-render if it was open
+    // Ensure the class is applied correctly after re-render based on the truth (aiCodingModeOpen)
     const newChatRoot = document.getElementById('aiCleanChatRoot');
-    if (newChatRoot && wasInCodingMode) {
-      newChatRoot.classList.add('ai-coding-mode');
+    if (newChatRoot) {
+      if (aiCodingModeOpen) {
+        newChatRoot.classList.add('ai-coding-mode');
+      } else {
+        newChatRoot.classList.remove('ai-coding-mode');
+      }
+    }
+
+    // Restore scroll position or scroll to bottom
+    const newMessagesContainer = document.getElementById('aiChatMessages');
+    if (newMessagesContainer) {
+      if (isAtBottom) {
+        newMessagesContainer.scrollTop = newMessagesContainer.scrollHeight;
+      } else if (scrollPos !== null) {
+        newMessagesContainer.scrollTop = scrollPos;
+      }
     }
 
     // Check for typing animation

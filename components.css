@@ -18729,13 +18729,13 @@ h4.ai-heading {
 
 /* Input Area */
 .ai-clean-input-area {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 0 24px 32px;
-  background: linear-gradient(to top, var(--background) 60%, transparent 100%);
-  z-index: 50;
+  padding: 16px 24px;
+  background: linear-gradient(to top, rgba(10, 10, 12, 1) 70%, rgba(10, 10, 12, 0));
+  z-index: 10;
 }
 
 .ai-clean-input-box {
@@ -18985,15 +18985,95 @@ h4.ai-heading {
   gap: 10px;
 }
 
-.ai-code-lang {
+.ai-code-lang-container {
+  position: relative;
+  min-width: 100px;
+}
+
+.ai-code-lang-trigger {
   height: 30px;
   padding: 0 10px;
   border-radius: 8px;
   background: rgba(var(--surface-rgb), 0.7);
   border: 1px solid rgba(var(--border-rgb), 0.9);
   color: var(--foreground);
-  outline: none;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.ai-code-lang-trigger:hover {
+  background: rgba(var(--surface-rgb), 0.95);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.ai-code-lang-trigger i {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.ai-code-lang-container.active .ai-code-lang-trigger i {
+  transform: rotate(180deg);
+}
+
+.ai-code-lang-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 140px;
+  background: #1a1b1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: none;
+  flex-direction: column;
+  padding: 6px;
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.ai-code-lang-container.active .ai-code-lang-dropdown {
+  display: flex;
+}
+
+.ai-code-lang-option {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-code-lang-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.ai-code-lang-option.selected {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+}
+
+.ai-code-lang-option.selected::after {
+  content: '✓';
+  font-size: 10px;
 }
 
 .ai-code-action-btn {
@@ -19038,19 +19118,94 @@ h4.ai-heading {
 }
 
 .ai-code-output {
-  border-radius: 14px;
-  border: 1px solid rgba(var(--border-rgb), 0.85);
-  background: rgba(var(--surface-rgb), 0.35);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 18, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
+  height: 0;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+  margin-top: 0;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.ai-code-output.show {
+  height: 320px;
+  opacity: 1;
+  transform: translateY(0);
+  margin-top: 12px;
+  pointer-events: all;
 }
 
 .ai-code-output-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 10px;
-  border-bottom: 1px solid rgba(var(--border-rgb), 0.85);
-  background: rgba(var(--background-rgb), 0.35);
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ai-code-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #71717a;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-code-tab:hover {
+  color: #fafafa;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ai-code-tab.active {
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.ai-code-output-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: #52525b;
+  margin-left: auto;
+  margin-right: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Source Code Pro', monospace;
+}
+
+.ai-code-output-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  color: #71717a;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ai-code-output-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  transform: scale(1.05);
+}
+
+.ai-code-output-close:active {
+  transform: scale(0.95);
 }
 
 .ai-code-tab {
@@ -19103,7 +19258,8 @@ h4.ai-heading {
   width: 100%;
   height: 100%;
   border: none;
-  background: white;
+  background: #0a0a0c;
+  display: block;
 }
 
 .ai-code-console {
@@ -19301,24 +19457,29 @@ h4.ai-heading {
 
 /* Chat input area */
 .ai-clean-chat-input-area {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 24px;
-  background: linear-gradient(to top, var(--background) 80%, transparent);
+  padding: 16px 24px;
   z-index: 100;
   display: flex;
   justify-content: center;
   box-sizing: border-box;
+  background: linear-gradient(to top, var(--background) 60%, transparent);
+}
+
+/* Base style for non-coding mode (fixed to screen) */
+.ai-clean-chat:not(.ai-coding-mode) .ai-clean-chat-input-area {
+  position: fixed;
 }
 
 /* Respect app sidebar (prevents input from going behind navbar) */
-.sidebar ~ .main-content .ai-clean-chat-input-area {
+.sidebar ~ .main-content .ai-clean-chat:not(.ai-coding-mode) .ai-clean-chat-input-area {
   left: 180px;
 }
 
-.sidebar.collapsed ~ .main-content .ai-clean-chat-input-area {
+.sidebar.collapsed ~ .main-content .ai-clean-chat:not(.ai-coding-mode) .ai-clean-chat-input-area {
   left: 48px;
 }
 
@@ -19328,7 +19489,6 @@ h4.ai-heading {
   right: 0;
   bottom: 0;
   padding: 16px;
-  background: linear-gradient(to top, var(--background) 80%, transparent);
   width: 100%;
 }
 
