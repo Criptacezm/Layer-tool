@@ -1093,21 +1093,34 @@ body {
   text-align: left;
 }
 
-.custom-space-item:hover {
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--foreground);
-}
-
+.custom-space-item:hover,
 .custom-space-item.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.custom-space-item.active .icon,
-.custom-space-item.active svg {
-  color: var(--primary-foreground);
+/* Dark theme: active custom-space items should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item.active {
+  color: hsl(0 0% 100%);
+}
+
+/* Dark theme: custom-space item hover should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
+  color: hsl(0 0% 100%);
+}
+
+.custom-space-item:hover .space-name-text,
+.custom-space-item.active .space-name-text {
+  color: var(--primary);
+}
+
+/* Dark theme: active/hover custom-space item names should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover .space-name-text,
+html:not([data-mode="light"]) body:not(.light) .custom-space-item.active .space-name-text {
+  color: hsl(0 0% 100%);
 }
 
 .custom-space-item .icon,
@@ -1117,8 +1130,18 @@ body {
 }
 
 .custom-space-item:hover .icon,
-.custom-space-item:hover svg:not(.favorite-star-right) {
-  color: var(--foreground);
+.custom-space-item:hover svg:not(.favorite-star-right),
+.custom-space-item.active .icon,
+.custom-space-item.active svg:not(.favorite-star-right) {
+  color: var(--primary);
+}
+
+/* Dark theme: active/hover custom-space item icons should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover .icon,
+html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover svg:not(.favorite-star-right),
+html:not([data-mode="light"]) body:not(.light) .custom-space-item.active .icon,
+html:not([data-mode="light"]) body:not(.light) .custom-space-item.active svg:not(.favorite-star-right) {
+  color: hsl(0 0% 100%);
 }
 
 /* Sidebar Navigation */
@@ -1166,21 +1189,23 @@ body {
 }
 
 /* Dark theme: active nav items should be white */
-:not(.light) .nav-item.active {
+html:not([data-mode="light"]) body:not(.light) .nav-item.active {
   color: hsl(0 0% 100%);
 }
 
 /* Dark theme: nav item hover should be white */
-:not(.light) .nav-item:hover {
+html:not([data-mode="light"]) body:not(.light) .nav-item:hover {
   color: hsl(0 0% 100%);
 }
 
 /* Active indicator dot for collapsed sidebar */
-.sidebar.collapsed .nav-item.active {
+.sidebar.collapsed .nav-item.active,
+.sidebar.collapsed .custom-space-item.active {
   position: relative;
 }
 
-.sidebar.collapsed .nav-item.active::after {
+.sidebar.collapsed .nav-item.active::after,
+.sidebar.collapsed .custom-space-item.active::after {
   content: '';
   position: absolute;
   bottom: 2px;
@@ -8783,16 +8808,21 @@ body.light .views-background,
 
 .custom-space-item:hover,
 .custom-space-item.active {
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--foreground);
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.custom-space-item.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: transparent;
+/* Dark theme: active custom-space items should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item.active {
+  color: hsl(0 0% 100%);
+}
+
+/* Dark theme: custom-space item hover should be white */
+html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
+  color: hsl(0 0% 100%);
 }
 
 .delete-item-btn {
@@ -9960,16 +9990,6 @@ body.light .views-background,
 
 .sidebar.collapsed .space-name-text {
   display: none;
-}
-
-.sidebar.collapsed .custom-space-item {
-  justify-content: center;
-  padding: 10px;
-}
-
-.sidebar.collapsed .space-icon-svg {
-  width: 18px;
-  height: 18px;
 }
 
 .sidebar.collapsed .delete-item-btn {

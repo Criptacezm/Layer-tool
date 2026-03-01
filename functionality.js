@@ -29169,8 +29169,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <span class="ai-clean-chat-title">AI Assistant</span>
+        <span class="ai-clean-chat-title">Layer Intelligence</span>
         <div class="ai-clean-header-actions">
+          ${renderProjectContextButton()}
           <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
               <path d="M16 18l6-6-6-6"/>
@@ -29194,14 +29195,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             ${aiChatIsLoading ? `
               <div class="ai-clean-loading">
                 <div class="ai-assistant-header">
-                  <div class="ai-assistant-avatar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                      <path d="M2 17l10 5 10-5"/>
-                      <path d="M2 12l10 5 10-5"/>
-                    </svg>
-                  </div>
-                  <span class="ai-assistant-name">AI Assistant</span>
+                  <span class="ai-assistant-name">Layer Intelligence</span>
                 </div>
                 <span class="ai-thinking-text">${aiThinkingStatus}</span>
               </div>
@@ -29606,6 +29600,272 @@ function appendAICodeConsoleLine(line) {
   }
 }
 
+/**
+ * Project Context Feature - Button and Modal
+ */
+let projectSelectorModalOpen = false;
+
+/**
+ * Render the Project Context button for chat header
+ * Pill-shaped button that shows "Select Project" or "Chatting about: [Name]"
+ */
+function renderProjectContextButton() {
+  const state = window.ProjectContext?.getState() || { selectedProject: null };
+  const project = state.selectedProject;
+  const isLoading = state.isLoading;
+
+  if (project) {
+    return `
+      <button class="ai-project-context-btn active" onclick="openProjectSelectorModal()" title="Change project context">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        <span class="ai-project-context-text">${escapeHtml(project.name)}</span>
+        <button class="ai-project-context-clear" onclick="event.stopPropagation(); clearProjectContext();" title="Clear project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </button>
+    `;
+  }
+
+  return `
+    <button class="ai-project-context-btn" onclick="openProjectSelectorModal()" title="Select a project for context">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+      </svg>
+      <span class="ai-project-context-text">Select Project</span>
+    </button>
+  `;
+}
+
+/**
+ * Open the project selector modal
+ */
+function openProjectSelectorModal() {
+  projectSelectorModalOpen = true;
+  renderProjectSelectorModal();
+}
+
+/**
+ * Close the project selector modal
+ */
+function closeProjectSelectorModal() {
+  projectSelectorModalOpen = false;
+  const modal = document.getElementById('projectSelectorModal');
+  if (modal) modal.remove();
+}
+
+/**
+ * Clear the selected project context
+ */
+function clearProjectContext() {
+  window.ProjectContext?.clearProject();
+  // Re-render the chat header
+  const header = document.querySelector('.ai-clean-chat-header');
+  if (header) {
+    const actionsContainer = header.querySelector('.ai-clean-header-actions');
+    if (actionsContainer) {
+      // Re-render the button
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = renderProjectContextButton();
+      const newBtn = tempDiv.firstElementChild;
+      const oldBtn = actionsContainer.querySelector('.ai-project-context-btn');
+      if (oldBtn) {
+        actionsContainer.insertBefore(newBtn, oldBtn);
+        oldBtn.remove();
+      } else {
+        actionsContainer.insertBefore(newBtn, actionsContainer.firstChild);
+      }
+    }
+  }
+  // Update input badge if present
+  updateProjectBadgeInInput();
+}
+
+/**
+ * Render the project selector modal into the DOM
+ */
+function renderProjectSelectorModal() {
+  // Remove existing modal if any
+  const existing = document.getElementById('projectSelectorModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'projectSelectorModal';
+  modal.className = 'project-selector-modal';
+  modal.innerHTML = `
+    <div class="project-selector-overlay" onclick="closeProjectSelectorModal()"></div>
+    <div class="project-selector-content">
+      <div class="project-selector-header">
+        <h3>Select Project</h3>
+        <button class="project-selector-close" onclick="closeProjectSelectorModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="project-selector-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input 
+          type="text" 
+          id="projectSelectorSearch" 
+          placeholder="Search projects..."
+          oninput="filterProjectSelector(this.value)"
+          autofocus
+        />
+      </div>
+      <div class="project-selector-list" id="projectSelectorList">
+        ${renderProjectSelectorList()}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Focus the search input
+  setTimeout(() => {
+    const searchInput = document.getElementById('projectSelectorSearch');
+    if (searchInput) searchInput.focus();
+  }, 50);
+
+  // Handle escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeProjectSelectorModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+/**
+ * Render the list of projects for the selector
+ */
+function renderProjectSelectorList(filter = '') {
+  // Get projects from workspace using loadProjects from data-store.js
+  const projects = typeof loadProjects === 'function' ? loadProjects() : [];
+  
+  if (projects.length === 0) {
+    return `
+      <div class="project-selector-empty">
+        <p>No projects found</p>
+        <p class="project-selector-empty-hint">Create a project first to use this feature</p>
+      </div>
+    `;
+  }
+
+  const filtered = filter 
+    ? projects.filter(p => 
+        (p.name || '').toLowerCase().includes(filter.toLowerCase()) ||
+        (p.description || '').toLowerCase().includes(filter.toLowerCase())
+      )
+    : projects;
+
+  if (filtered.length === 0) {
+    return `
+      <div class="project-selector-empty">
+        <p>No projects match "${escapeHtml(filter)}"</p>
+      </div>
+    `;
+  }
+
+  return filtered.map(project => `
+    <div class="project-selector-item" onclick="selectProjectFromSelector('${project.id}', '${escapeHtml(project.name || 'Untitled')}')">
+      <div class="project-selector-item-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+      </div>
+      <div class="project-selector-item-info">
+        <span class="project-selector-item-name">${escapeHtml(project.name || 'Untitled')}</span>
+        ${project.description ? `<span class="project-selector-item-desc">${escapeHtml(project.description.substring(0, 60))}${project.description.length > 60 ? '...' : ''}</span>` : ''}
+      </div>
+      <div class="project-selector-item-status ${project.status || 'active'}">${project.status || 'active'}</div>
+    </div>
+  `).join('');
+}
+
+/**
+ * Filter the project selector list
+ */
+function filterProjectSelector(filter) {
+  const list = document.getElementById('projectSelectorList');
+  if (list) {
+    list.innerHTML = renderProjectSelectorList(filter);
+  }
+}
+
+/**
+ * Select a project from the modal
+ */
+async function selectProjectFromSelector(projectId, projectName) {
+  closeProjectSelectorModal();
+  
+  // Use ProjectContext to select the project
+  await window.ProjectContext?.selectProject(projectId, projectName);
+  
+  // Update the header button
+  const header = document.querySelector('.ai-clean-chat-header');
+  if (header) {
+    const actionsContainer = header.querySelector('.ai-clean-header-actions');
+    if (actionsContainer) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = renderProjectContextButton();
+      const newBtn = tempDiv.firstElementChild;
+      const oldBtn = actionsContainer.querySelector('.ai-project-context-btn');
+      if (oldBtn) {
+        actionsContainer.insertBefore(newBtn, oldBtn);
+        oldBtn.remove();
+      }
+    }
+  }
+  
+  // Update input badge
+  updateProjectBadgeInInput();
+  
+  // Show toast notification
+  showToast(`Now chatting about: ${projectName}`, 'success');
+}
+
+/**
+ * Update the project badge in the chat input area
+ */
+function updateProjectBadgeInInput() {
+  const inputArea = document.querySelector('.ai-clean-chat-input-area');
+  if (!inputArea) return;
+
+  const existingBadge = inputArea.querySelector('.ai-project-badge');
+  if (existingBadge) existingBadge.remove();
+
+  const state = window.ProjectContext?.getState() || { selectedProject: null };
+  const project = state.selectedProject;
+
+  if (project) {
+    const badge = document.createElement('div');
+    badge.className = 'ai-project-badge';
+    badge.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+      </svg>
+      <span>Context: ${escapeHtml(project.name)}</span>
+    `;
+    inputArea.insertBefore(badge, inputArea.firstChild);
+  }
+}
+
+// Subscribe to project context changes
+if (typeof window !== 'undefined' && window.ProjectContext) {
+  window.ProjectContext.subscribe((state) => {
+    // Update UI when project context changes
+    updateProjectBadgeInInput();
+  });
+}
+
 function renderAIChatMessages() {
   if (aiChatMessages.length === 0) {
     return `
@@ -29627,14 +29887,7 @@ function renderAIChatMessages() {
       return `
         <div class="ai-clean-msg ai-clean-msg-assistant">
           <div class="ai-assistant-header">
-            <div class="ai-assistant-avatar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-            <span class="ai-assistant-name">AI Assistant</span>
+            <span class="ai-assistant-name">Layer Intelligence</span>
           </div>
           <div class="ai-clean-bubble-assistant">
             <div class="ai-clean-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>

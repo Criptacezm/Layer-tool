@@ -121,7 +121,7 @@ async function callQwenAPI(messages, systemPrompt) {
 
 /**
  * Compatibility wrapper for the original callGeminiAPI
- * Now supports full message history
+ * Now supports full message history and project context injection
  */
 async function callGeminiAPI(messages) {
     // If messages is just a string (legacy support), wrap it in an array
@@ -134,8 +134,20 @@ async function callGeminiAPI(messages) {
             }))
         : [{ role: 'user', content: String(messages) }];
 
+    // Build system prompt with optional project context
+    let systemPrompt = GENERAL_SYSTEM_PROMPT;
+    
+    // Check for project context and inject it
+    if (typeof window !== 'undefined' && window.ProjectContext) {
+        const projectContextPrompt = window.ProjectContext.buildProjectContextPrompt();
+        if (projectContextPrompt) {
+            systemPrompt = `${projectContextPrompt}\n\n${GENERAL_SYSTEM_PROMPT}`;
+            console.log('Injected project context into system prompt');
+        }
+    }
+
     console.log('Sending message history to API:', JSON.stringify(messageHistory, null, 2));
-    return await callQwenAPI(messageHistory, GENERAL_SYSTEM_PROMPT);
+    return await callQwenAPI(messageHistory, systemPrompt);
 }
 
 /**

@@ -872,6 +872,129 @@
     ALTER TABLE dm_checklists REPLICA IDENTITY FULL;
 
     -- ============================================
+    -- Project Embeddings for RAG (AI Chat Context)
+    -- ============================================
+    
+    -- Enable pgvector extension if not already enabled
+    CREATE EXTENSION IF NOT EXISTS vector;
+    
+    -- Table for storing project content embeddings for RAG
+    CREATE TABLE IF NOT EXISTS project_embeddings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        content_type TEXT NOT NULL, -- 'task', 'note', 'doc', 'milestone', 'roadmap', 'description'
+        content TEXT NOT NULL,
+        embedding vector(1536), -- OpenAI text-embedding-3-small dimension
+        metadata JSONB DEFAULT '{}', -- Additional context (title, status, assignee, etc.)
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Create index for faster project-scoped queries
+    CREATE INDEX IF NOT EXISTS idx_project_embeddings_project_id ON project_embeddings(project_id);
+    CREATE INDEX IF NOT EXISTS idx_project_embeddings_content_type ON project_embeddings(content_type);
+    
+    -- Create HNSW index for vector similarity search (efficient for RAG)
+    CREATE INDEX IF NOT EXISTS idx_project_embeddings_embedding ON project_embeddings 
+    USING hnsw (embedding vector_cosine_ops);
+    
+    -- RLS policies for project_embeddings
+    ALTER TABLE project_embeddings ENABLE ROW LEVEL SECURITY;
+    
+    DROP POLICY IF EXISTS "Users can view project embeddings" ON project_embeddings;
+    DROP POLICY IF EXISTS "Users can insert project embeddings" ON project_embeddings;
+    DROP POLICY IF EXISTS "Users can update project embeddings" ON project_embeddings;
+    DROP POLICY IF EXISTS "Users can delete project embeddings" ON project_embeddings;
+    
+    -- Users can view embeddings for projects they are members of
+    CREATE POLICY "Users can view project embeddings" ON project_embeddings FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_embeddings.project_id
+            AND (p.user_id = auth.uid() OR p.id IN (
+                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = auth.uid()
+            ))
+        )
+    );
+    
+    -- Users can insert embeddings for projects they are members of
+    CREATE POLICY "Users can insert project embeddings" ON project_embeddings FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_embeddings.project_id
+            AND (p.user_id = auth.uid() OR p.id IN (
+                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = auth.uid()
+            ))
+        )
+    );
+    
+    -- Users can update embeddings for projects they are members of
+    CREATE POLICY "Users can update project embeddings" ON project_embeddings FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_embeddings.project_id
+            AND (p.user_id = auth.uid() OR p.id IN (
+                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = auth.uid()
+            ))
+        )
+    );
+    
+    -- Users can delete embeddings for projects they are members of
+    CREATE POLICY "Users can delete project embeddings" ON project_embeddings FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_embeddings.project_id
+            AND (p.user_id = auth.uid() OR p.id IN (
+                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = auth.uid()
+            ))
+        )
+    );
+    
+    -- Trigger for auto-updating timestamps
+    DROP TRIGGER IF EXISTS update_project_embeddings_updated_at ON project_embeddings;
+    CREATE TRIGGER update_project_embeddings_updated_at 
+    BEFORE UPDATE ON project_embeddings 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+    -- ============================================
+    -- RPC Function for Vector Similarity Search
+    -- ============================================
+    CREATE OR REPLACE FUNCTION search_project_embeddings(
+        p_project_id UUID,
+        p_query_embedding vector(1536),
+        p_limit INTEGER DEFAULT 5,
+        p_threshold FLOAT DEFAULT 0.7,
+        p_content_types TEXT[] DEFAULT NULL
+    )
+    RETURNS TABLE (
+        id UUID,
+        content_type TEXT,
+        content TEXT,
+        metadata JSONB,
+        similarity FLOAT
+    ) AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT 
+            pe.id,
+            pe.content_type,
+            pe.content,
+            pe.metadata,
+            1 - (pe.embedding <=> p_query_embedding) AS similarity
+        FROM project_embeddings pe
+        WHERE pe.project_id = p_project_id
+        AND (p_content_types IS NULL OR pe.content_type = ANY(p_content_types))
+        AND 1 - (pe.embedding <=> p_query_embedding) >= p_threshold
+        ORDER BY pe.embedding <=> p_query_embedding
+        LIMIT p_limit;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    -- ============================================
     -- SAFE SCHEMA COMPLETE!
     -- You can run this script multiple times without losing data.
     -- ============================================
