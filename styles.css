@@ -1165,6 +1165,16 @@ body {
   white-space: nowrap;
 }
 
+/* Dark theme: active nav items should be white */
+:not(.light) .nav-item.active {
+  color: hsl(0 0% 100%);
+}
+
+/* Dark theme: nav item hover should be white */
+:not(.light) .nav-item:hover {
+  color: hsl(0 0% 100%);
+}
+
 /* Active indicator dot for collapsed sidebar */
 .sidebar.collapsed .nav-item.active {
   position: relative;
@@ -1267,19 +1277,35 @@ body {
 }
 
 .workspace-space-item .custom-space-item.workspace-space:hover {
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .workspace-space-item .custom-space-item.workspace-space.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Dark theme: custom space item hover and active should be white */
+:not(.light) .workspace-space-item .custom-space-item.workspace-space:hover {
+  color: hsl(0 0% 100%);
+}
+
+:not(.light) .workspace-space-item .custom-space-item.workspace-space.active {
+  color: hsl(0 0% 100%);
 }
 
 .workspace-space-item .custom-space-item.workspace-space .space-icon-svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+  color: currentColor;
 }
 
 .workspace-space-item .custom-space-item.workspace-space .space-name-text {

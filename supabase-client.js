@@ -2978,6 +2978,24 @@ window.LayerDB = {
     return true;
   },
 
+  // Delete a DM message (deletes for both users)
+  deleteDmMessage: async (messageId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+
+    // Delete the message directly - this removes it for both users
+    const { error } = await supabaseClient
+      .from('team_chat_messages')
+      .delete()
+      .match({
+        id: messageId,
+        user_id: currentUser.id,
+        channel_type: 'dm'
+      });
+
+    if (error) throw error;
+    return true;
+  },
+
   // Clear all messages in a DM chat
   clearDMChat: async (channelId) => {
     if (!currentUser) throw new Error('Not authenticated');
@@ -2987,16 +3005,36 @@ window.LayerDB = {
     // Ideally we'd just hide them, but the request was "clear and delete all chat... completely"
 
     try {
-      const { error } = await supabaseClient
-        .from('team_chat_messages')
-        .delete()
-        .eq('channel_id', channelId);
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw sessionError || new Error('No active session');
+      }
 
-      if (error) throw error;
+      const token = session.access_token;
+      const { error: invokeError } = await supabaseClient.functions.invoke('delete-dm-conversation', {
+        body: { channelId },
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      if (invokeError) throw invokeError;
       return true;
     } catch (error) {
-      console.error('Error clearing DM chat:', error);
-      throw error;
+      console.error('Error clearing DM chat via edge function:', error);
+
+      // Fallback: attempt client-side delete (may be blocked by RLS)
+      try {
+        const { error: fallbackError } = await supabaseClient
+          .from('team_chat_messages')
+          .delete()
+          .eq('channel_id', channelId)
+          .eq('channel_type', 'dm');
+
+        if (fallbackError) throw fallbackError;
+        return true;
+      } catch (fallback) {
+        console.error('Fallback client-side DM delete also failed:', fallback);
+        throw error;
+      }
     }
   },
 

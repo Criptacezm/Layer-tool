@@ -9342,6 +9342,69 @@ function renderBarMilestones(projectIndex, barId, barWidth) {
   }).join('');
 }
 
+function addTeamComposerDocLink(docId, title) {
+  const existing = teamPendingDocLinks.some(d => String(d.id) === String(docId));
+  if (existing) {
+    closeTeamComposerPopover();
+    return;
+  }
+
+  teamPendingDocLinks.push({
+    id: String(docId),
+    title: title || 'Doc'
+  });
+
+  renderTeamComposerDocLinks();
+  closeTeamComposerPopover();
+}
+
+function removeTeamComposerDocLink(docId) {
+  teamPendingDocLinks = teamPendingDocLinks.filter(d => String(d.id) !== String(docId));
+  renderTeamComposerDocLinks();
+}
+
+function clearTeamComposerDocLinks() {
+  teamPendingDocLinks = [];
+  renderTeamComposerDocLinks();
+}
+
+function renderTeamComposerDocLinks() {
+  const root = document.getElementById('teamComposerLinks');
+  if (!root) return;
+
+  if (!teamPendingDocLinks.length) {
+    root.style.display = 'none';
+    root.innerHTML = '';
+    return;
+  }
+
+  root.style.display = 'flex';
+  root.innerHTML = teamPendingDocLinks.map(d => {
+    const titleEsc = String(d.title || 'Doc').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const docIdEsc = String(d.id || '').replace(/'/g, "\\'");
+    return `
+      <div class="team-composer-link-chip" data-doc-id="${docIdEsc}">
+        <button class="team-chat-doc-btn" onclick="openDocEditor('${docIdEsc}');" type="button" title="Open doc">
+          <span class="team-chat-doc-btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </span>
+          <span class="team-chat-doc-btn-text">${titleEsc}</span>
+        </button>
+        <button class="team-composer-link-remove" onclick="removeTeamComposerDocLink('${docIdEsc}')" title="Remove">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
 // Add right-click listener to timeline bars
 function setupBarContextMenu(projectIndex) {
   document.addEventListener('contextmenu', function (e) {
@@ -16040,11 +16103,6 @@ function renderTeamChatHeader() {
             <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
           </svg>
         </button>
-        <button class="team-header-action-btn star" title="Star channel">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        </button>
       </div>
       
       <nav class="team-chat-tabs">
@@ -16061,53 +16119,9 @@ function renderTeamChatHeader() {
           </svg>
           List
         </button>
-        <button class="team-tab ${teamCurrentTab === 'board' ? 'active' : ''}" onclick="setTeamTab('board')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
-          </svg>
-          Board
-        </button>
-        <button class="team-tab ${teamCurrentTab === 'calendar' ? 'active' : ''}" onclick="setTeamTab('calendar')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          Calendar
-        </button>
-        <button class="team-tab ${teamCurrentTab === 'whiteboard' ? 'active' : ''}" onclick="setTeamTab('whiteboard')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
-          </svg>
-          Whiteboard
-        </button>
-        <button class="team-tab add-view" onclick="addTeamView()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          View
-        </button>
       </nav>
       
       <div class="team-chat-header-right">
-        <button class="team-header-btn" onclick="toggleAutomation()" title="Automate">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-          </svg>
-          <span class="badge-count">1</span>
-        </button>
-        <button class="team-header-btn ai-btn" onclick="openTeamAI()" title="Ask AI">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z"/>
-          </svg>
-          Ask AI
-        </button>
-        <button class="team-header-btn share-btn" onclick="openTeamShareModal()" title="Share">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/>
-            <line x1="12" y1="2" x2="12" y2="15"/>
-          </svg>
-          Share
-        </button>
         <button class="team-icon-btn" onclick="toggleTeamMembersPanel()" title="Toggle members panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -16219,7 +16233,7 @@ function renderTeamChatContent() {
     <div class="team-chat-content">
       <div class="team-messages-list">
         ${messages.map(msg => `
-          <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}" oncontextmenu="showMessageContextMenu(event, '${msg.id}', '${msg.user_id}', '${msg.channel_type}')">
+          <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}" oncontextmenu="showMessageContextMenu(event, '${msg.id}', '${msg.user_id}', '${msg.channel_type}')">
             <div class="team-message-avatar">
               ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
       `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
@@ -16233,35 +16247,6 @@ function renderTeamChatContent() {
               </div>
               <div class="team-message-content">
                 ${msg.content}
-                <button class="team-message-reaction-trigger" onclick="toggleReactionPicker('${msg.id}')" title="Add reaction">
-                  😊
-                </button>
-                <div class="team-reaction-picker" id="reaction-picker-${msg.id}">
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '👍')">👍</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '❤️')">❤️</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😂')">😂</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😮')">😮</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😢')">😢</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😡')">😡</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '🎉')">🎉</button>
-                  <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '🔥')">🔥</button>
-                </div>
-                ${msg.reactions && Object.keys(msg.reactions).length > 0 ? `
-                  <div class="team-message-reactions">
-                    ${Object.entries(msg.reactions).map(([emoji, users]) => {
-      const currentUser = window.LayerDB?.getCurrentUser();
-      const hasReacted = users.includes(currentUser?.id);
-      return `
-                        <button class="team-message-reaction ${hasReacted ? 'reacted' : ''}" 
-                                onclick="addReaction('${msg.id}', '${emoji}')"
-                                title="${users.length > 0 ? `${users.length} user${users.length > 1 ? 's' : ''} reacted` : 'React'}">
-                          <span class="team-message-reaction-emoji">${emoji}</span>
-                          <span class="team-message-reaction-count">${users.length}</span>
-                        </button>
-                      `;
-    }).join('')}
-                  </div>
-                ` : ''}
               </div>
             </div>
           </div>
@@ -16278,8 +16263,9 @@ function renderTeamMessageInput() {
   return `
     <div class="team-message-input-container">
       <div class="team-message-input-wrapper">
+        <input type="file" id="teamComposerAttachmentInput" style="display:none" multiple onchange="handleTeamComposerAttachmentsSelected(event)">
         <div class="team-input-toolbar">
-          <button class="toolbar-btn add" title="Add attachment">
+          <button class="toolbar-btn add" title="Add attachment" onclick="openTeamComposerAttachmentPicker(event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 5v14M5 12h14"/>
             </svg>
@@ -16293,17 +16279,17 @@ function renderTeamMessageInput() {
               </svg>
             </button>
           </div>
-          <button class="toolbar-btn" title="Attach file">
+          <button class="toolbar-btn" title="Attach file" onclick="openTeamComposerAttachmentPicker(event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
             </svg>
           </button>
-          <button class="toolbar-btn" title="Mention">
+          <button class="toolbar-btn" title="Mention" onclick="toggleTeamComposerPopover(event, 'mention')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>
             </svg>
           </button>
-          <button class="toolbar-btn" title="Emoji">
+          <button class="toolbar-btn" title="Emoji" onclick="toggleTeamComposerPopover(event, 'emoji')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
             </svg>
@@ -16313,12 +16299,18 @@ function renderTeamMessageInput() {
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
           </button>
-          <button class="toolbar-btn" title="File">
+          <button class="toolbar-btn" title="File" onclick="toggleTeamComposerPopover(event, 'file')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
             </svg>
           </button>
         </div>
+
+        <div class="team-composer-links" id="teamComposerLinks" style="display:none"></div>
+
+        <div class="team-composer-attachments" id="teamComposerAttachments" style="display:none"></div>
+
+        <div class="team-composer-popover" id="teamComposerPopover" style="display:none"></div>
         
         <div class="team-input-area">
           <input type="text" class="team-message-input" placeholder="Type here..." id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)">
@@ -16334,6 +16326,294 @@ function renderTeamMessageInput() {
       </div>
     </div>
   `;
+}
+
+let teamComposerPopoverState = { open: false, type: null, anchorRect: null };
+let teamPendingAttachments = [];
+let teamPendingDocLinks = [];
+
+function openTeamComposerAttachmentPicker(event) {
+  if (event) event.preventDefault();
+  closeTeamComposerPopover();
+  const input = document.getElementById('teamComposerAttachmentInput');
+  if (input) input.click();
+}
+
+function handleTeamComposerAttachmentsSelected(event) {
+  const files = Array.from(event?.target?.files || []);
+  if (!files.length) return;
+
+  teamPendingAttachments = teamPendingAttachments.concat(files.map(f => ({
+    id: `att_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    name: f.name,
+    type: f.type,
+    size: f.size,
+    file: f,
+    url: URL.createObjectURL(f)
+  })));
+
+  const input = document.getElementById('teamComposerAttachmentInput');
+  if (input) input.value = '';
+
+  renderTeamComposerAttachments();
+}
+
+function removeTeamComposerAttachment(attachmentId) {
+  const idx = teamPendingAttachments.findIndex(a => a.id === attachmentId);
+  if (idx === -1) return;
+  const [removed] = teamPendingAttachments.splice(idx, 1);
+  try {
+    if (removed?.url) URL.revokeObjectURL(removed.url);
+  } catch (e) {}
+  renderTeamComposerAttachments();
+}
+
+function renderTeamComposerAttachments() {
+  const root = document.getElementById('teamComposerAttachments');
+  if (!root) return;
+
+  if (!teamPendingAttachments.length) {
+    root.style.display = 'none';
+    root.innerHTML = '';
+    return;
+  }
+
+  root.style.display = 'flex';
+  root.innerHTML = teamPendingAttachments.map(att => {
+    const nameEsc = String(att.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
+    return `
+      <div class="team-composer-attachment-chip" data-attachment-id="${att.id}">
+        <a class="team-composer-attachment-name" href="${att.url}" download="${nameEsc}" target="_blank" rel="noopener noreferrer">${nameEsc}</a>
+        <button class="team-composer-attachment-remove" onclick="removeTeamComposerAttachment('${att.id}')" title="Remove">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleTeamComposerPopover(event, type) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const rect = event?.currentTarget?.getBoundingClientRect?.();
+  if (!rect) return;
+
+  if (teamComposerPopoverState.open && teamComposerPopoverState.type === type) {
+    closeTeamComposerPopover();
+    return;
+  }
+
+  teamComposerPopoverState = { open: true, type, anchorRect: rect };
+  renderTeamComposerPopover();
+}
+
+function closeTeamComposerPopover() {
+  teamComposerPopoverState = { open: false, type: null, anchorRect: null };
+  const pop = document.getElementById('teamComposerPopover');
+  if (pop) {
+    pop.style.display = 'none';
+    pop.innerHTML = '';
+  }
+}
+
+function positionTeamComposerPopover() {
+  const pop = document.getElementById('teamComposerPopover');
+  if (!pop || !teamComposerPopoverState.open || !teamComposerPopoverState.anchorRect) return;
+
+  pop.style.left = '0px';
+  pop.style.top = '0px';
+
+  const rect = teamComposerPopoverState.anchorRect;
+  const margin = 8;
+  const popRect = pop.getBoundingClientRect();
+
+  let left = rect.left + (rect.width / 2) - (popRect.width / 2);
+  left = Math.max(margin, Math.min(left, window.innerWidth - popRect.width - margin));
+
+  let top = rect.top - popRect.height - margin;
+  if (top < margin) {
+    top = rect.bottom + margin;
+  }
+
+  pop.style.left = `${left}px`;
+  pop.style.top = `${top}px`;
+}
+
+async function getTeamComposerMentionUsers() {
+  const currentUser = window.LayerDB?.getCurrentUser();
+  const users = [];
+
+  if (currentUser) {
+    users.push({
+      id: currentUser.id,
+      name: currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'You',
+      avatar_url: currentUser?.user_metadata?.avatar_url || ''
+    });
+  }
+
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const followers = await window.LayerDB.getFollowers();
+      const accepted = (followers || []).filter(f => f.status === 'accepted');
+
+      accepted.forEach(f => {
+        const otherId = f.follower_id === currentUser?.id ? f.following_id : f.follower_id;
+        const otherProfile = f.follower_id === currentUser?.id ? f.following_profile : f.follower_profile;
+        const otherName = otherProfile?.name || otherProfile?.email?.split('@')[0] || 'Unknown';
+        const otherAvatar = otherProfile?.avatar_url || '';
+        if (otherId && !users.some(u => u.id === otherId)) {
+          users.push({ id: otherId, name: otherName, avatar_url: otherAvatar });
+        }
+      });
+    } catch (e) {}
+  }
+
+  users.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return users;
+}
+
+function insertIntoTeamMessageInput(textToInsert) {
+  const input = document.getElementById('teamMessageInput');
+  if (!input) return;
+
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  input.value = before + textToInsert + after;
+  const nextPos = start + textToInsert.length;
+  input.setSelectionRange(nextPos, nextPos);
+  input.focus();
+}
+
+async function renderTeamComposerPopover() {
+  const pop = document.getElementById('teamComposerPopover');
+  if (!pop) return;
+
+  if (!teamComposerPopoverState.open) {
+    pop.style.display = 'none';
+    pop.innerHTML = '';
+    return;
+  }
+
+  const type = teamComposerPopoverState.type;
+
+  if (type === 'emoji') {
+    const emojis = ['😀','😁','😂','🤣','😊','😍','😘','😎','🤔','😮','😢','😡','👍','👎','❤️','🔥','🎉','✅','🙏','💡','📌','📎'];
+    pop.innerHTML = `
+      <div class="team-composer-popover-header">Emoji</div>
+      <div class="team-composer-emoji-grid">
+        ${emojis.map(e => `<button class="team-composer-emoji-btn" onclick="selectTeamComposerEmoji('${e.replace(/'/g, "\\'")}')">${e}</button>`).join('')}
+      </div>
+    `;
+  } else if (type === 'mention') {
+    pop.innerHTML = `
+      <div class="team-composer-popover-header">Mention</div>
+      <div class="team-composer-list" id="teamComposerMentionList">
+        <div class="team-composer-list-loading">Loading...</div>
+      </div>
+    `;
+  } else if (type === 'file') {
+    const docs = (typeof loadDocs === 'function') ? (loadDocs() || []) : [];
+    const seenIds = new Set();
+    const uniqueDocs = docs.filter(d => {
+      const id = String(d.id || '');
+      if (!id || seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    pop.innerHTML = `
+      <div class="team-composer-popover-header">Docs</div>
+      <div class="team-composer-list">
+        ${uniqueDocs.length ? uniqueDocs.map(d => {
+          const title = String(d.title || d.name || 'Untitled').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const docId = String(d.id || '').replace(/'/g, "\\'");
+          return `<button class="team-composer-list-item" onclick="selectTeamComposerDoc('${docId}')">${title}</button>`;
+        }).join('') : `<div class="team-composer-list-empty">No docs found</div>`}
+      </div>
+    `;
+  } else {
+    pop.innerHTML = '';
+  }
+
+  pop.style.display = 'block';
+
+  requestAnimationFrame(() => {
+    positionTeamComposerPopover();
+  });
+
+  if (type === 'mention') {
+    try {
+      const users = await getTeamComposerMentionUsers();
+      const list = document.getElementById('teamComposerMentionList');
+      if (list) {
+        list.innerHTML = users.map(u => {
+          const nameEsc = String(u.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const idEsc = String(u.id || '').replace(/'/g, "\\'");
+          const initial = nameEsc ? nameEsc.charAt(0).toUpperCase() : 'U';
+          const avatar = u.avatar_url;
+          return `
+            <button class="team-composer-list-item mention" onclick="selectTeamComposerMention('${idEsc}', '${String(u.name || '').replace(/'/g, "\\'")}')">
+              <span class="team-composer-mention-avatar">
+                ${avatar ? `<img src="${avatar}" alt="${nameEsc}">` : `<span>${initial}</span>`}
+              </span>
+              <span class="team-composer-mention-name">${nameEsc}</span>
+            </button>
+          `;
+        }).join('');
+      }
+      requestAnimationFrame(() => positionTeamComposerPopover());
+    } catch (e) {}
+  }
+}
+
+function selectTeamComposerEmoji(emoji) {
+  insertIntoTeamMessageInput(emoji);
+  closeTeamComposerPopover();
+}
+
+function selectTeamComposerMention(userId, userName) {
+  const name = userName || 'user';
+  insertIntoTeamMessageInput(`@${name} `);
+  closeTeamComposerPopover();
+}
+
+function selectTeamComposerDoc(docId) {
+  const docs = (typeof loadDocs === 'function') ? (loadDocs() || []) : [];
+  const doc = docs.find(d => String(d.id) === String(docId));
+  const title = doc?.title || doc?.name || 'Doc';
+  addTeamComposerDocLink(docId, title);
+}
+
+if (!window.__teamComposerPopoverInit) {
+  window.__teamComposerPopoverInit = true;
+  document.addEventListener('click', (e) => {
+    const pop = document.getElementById('teamComposerPopover');
+    if (!teamComposerPopoverState.open) return;
+    if (!pop) return;
+    if (pop.contains(e.target)) return;
+    closeTeamComposerPopover();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeTeamComposerPopover();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (teamComposerPopoverState.open) positionTeamComposerPopover();
+  });
+
+  window.addEventListener('scroll', () => {
+    if (teamComposerPopoverState.open) positionTeamComposerPopover();
+  }, true);
 }
 
 async function renderTeamMembersPanel() {
@@ -17224,9 +17504,18 @@ async function unfollowTeamMember(userId, email, name) {
   if (contextMenu) contextMenu.remove();
 
   // Confirm before unfollowing
-  if (!confirm(`Are you sure you want to unfollow ${name}? They will be removed from your team members.`)) {
-    return;
-  }
+  const safeName = String(name ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const shouldUnfollow = (typeof window.confirmModal === 'function')
+    ? await window.confirmModal({
+        title: 'Unfollow',
+        message: `Are you sure you want to unfollow <strong>${safeName}</strong>? They will be removed from your team members.`,
+        confirmText: 'Unfollow',
+        cancelText: 'Cancel',
+        confirmButtonClass: 'btn btn-danger'
+      })
+    : confirm(`Are you sure you want to unfollow ${name}? They will be removed from your team members.`);
+
+  if (!shouldUnfollow) return;
 
   try {
     console.log('🔄 Unfollowing user:', userId, email);
@@ -17342,9 +17631,18 @@ async function clearLocalDMChat(dmId, partnerName) {
   const contextMenu = document.querySelector('.team-dm-context-menu');
   if (contextMenu) contextMenu.remove();
 
-  if (!confirm(`Are you sure you want to PERMANENTLY delete this entire conversation with ${partnerName}? This will remove it for EVERYONE and cannot be undone.`)) {
-    return;
-  }
+  const safePartnerName = String(partnerName ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const shouldDelete = (typeof window.confirmModal === 'function')
+    ? await window.confirmModal({
+        title: 'Delete conversation',
+        message: `Are you sure you want to PERMANENTLY delete this entire conversation with <strong>${safePartnerName}</strong>? This will remove it for EVERYONE and cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        confirmButtonClass: 'btn btn-danger'
+      })
+    : confirm(`Are you sure you want to PERMANENTLY delete this entire conversation with ${partnerName}? This will remove it for EVERYONE and cannot be undone.`);
+
+  if (!shouldDelete) return;
 
   try {
     if (window.LayerDB && window.LayerDB.clearDMChat) {
@@ -17398,25 +17696,7 @@ function showMessageContextMenu(event, messageId, messageUserId, channelType) {
   // Build menu items based on permissions
   let menuItems = '';
 
-  // Delete option - only for user's own messages
-  if (isCurrentUserMessage) {
-    menuItems += `
-      <div class="context-menu-item delete" onclick="deleteMessage('${messageId}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-        <span>Delete Message</span>
-      </div>
-    `;
-  }
-
-  // Add divider if both options are available
-  if (menuItems) {
-    menuItems += '<div class="context-menu-divider"></div>';
-  }
-
-  // Favorite option - available for any message
+  // Toggle Favorite option - available for any message
   menuItems += `
     <div class="context-menu-item favorite" onclick="toggleMessageFavorite('${messageId}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -17425,6 +17705,20 @@ function showMessageContextMenu(event, messageId, messageUserId, channelType) {
       <span>Toggle Favorite</span>
     </div>
   `;
+
+  // Delete option - only for user's own messages
+  if (isCurrentUserMessage) {
+    menuItems += `
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item delete" onclick="deleteMessage('${messageId}', '${channelType}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>Delete Message</span>
+      </div>
+    `;
+  }
 
   contextMenu.innerHTML = menuItems;
 
@@ -17461,18 +17755,27 @@ function showMessageContextMenu(event, messageId, messageUserId, channelType) {
 }
 
 // Delete a message
-async function deleteMessage(messageId) {
+async function deleteMessage(messageId, channelType) {
   try {
     // Remove the context menu
     const contextMenu = document.querySelector('.context-menu');
     if (contextMenu) contextMenu.remove();
 
-    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this message? This will delete it for both users.')) {
       return;
     }
 
-    if (window.LayerDB && window.LayerDB.deleteTeamMessage) {
-      await window.LayerDB.deleteTeamMessage(messageId);
+    if (window.LayerDB) {
+      // For DM messages, delete from database (affects both users)
+      if (channelType === 'dm' && window.LayerDB.deleteDmMessage) {
+        await window.LayerDB.deleteDmMessage(messageId);
+      } else if (window.LayerDB.deleteTeamMessage) {
+        // For team messages, use the existing function
+        await window.LayerDB.deleteTeamMessage(messageId);
+      } else {
+        showNotification('Database connection not available', 'error');
+        return;
+      }
 
       // Remove the message from the local cache
       if (teamMessages[teamCurrentChannel]) {
@@ -18239,7 +18542,7 @@ function updateChatContentOnly() {
 
     // Generate only the messages HTML
     const messagesHTML = messages.map(msg => `
-      <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}">
+      <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}">
         <div class="team-message-avatar">
           ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
         `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
@@ -18253,28 +18556,6 @@ function updateChatContentOnly() {
           </div>
           <div class="team-message-content">
             ${msg.content}
-            ${!msg.isSystem ? `
-              <button class="team-message-reaction-trigger" onclick="toggleReactionPicker('${msg.id}')" title="Add reaction">
-                😊
-              </button>
-              <div class="team-reaction-picker" id="reaction-picker-${msg.id}">
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '👍')">👍</button>
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '❤️')">❤️</button>
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😂')">😂</button>
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😮')">😮</button>
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😢')">😢</button>
-                <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😡')">😡</button>
-              </div>
-            ` : ''}
-            ${msg.reactions && Object.keys(msg.reactions).length > 0 ? `
-              <div class="team-message-reactions">
-                ${Object.entries(msg.reactions).map(([emoji, users]) => `
-                  <span class="team-reaction" onclick="toggleReaction('${msg.id}', '${emoji}')">
-                    ${emoji} ${users.length}
-                  </span>
-                `).join('')}
-              </div>
-            ` : ''}
           </div>
           ${!msg.isSystem ? `
             <div class="team-message-status">
@@ -18329,7 +18610,7 @@ function updateChatContentOnly() {
 // Helper function to create HTML for a single message
 function createMessageHTML(msg) {
   return `
-    <div class="team-message ${msg.isSystem ? 'system' : ''}" data-message-id="${msg.id}">
+    <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}">
       <div class="team-message-avatar">
         ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
       `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
@@ -18343,28 +18624,6 @@ function createMessageHTML(msg) {
         </div>
         <div class="team-message-content">
           ${msg.content}
-          ${!msg.isSystem ? `
-            <button class="team-message-reaction-trigger" onclick="toggleReactionPicker('${msg.id}')" title="Add reaction">
-              😊
-            </button>
-            <div class="team-reaction-picker" id="reaction-picker-${msg.id}">
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '👍')">👍</button>
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '❤️')">❤️</button>
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😂')">😂</button>
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😮')">😮</button>
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😢')">😢</button>
-              <button class="team-reaction-emoji-btn" onclick="addReaction('${msg.id}', '😡')">😡</button>
-            </div>
-          ` : ''}
-          ${msg.reactions && Object.keys(msg.reactions).length > 0 ? `
-            <div class="team-message-reactions">
-              ${Object.entries(msg.reactions).map(([emoji, users]) => `
-                <span class="team-reaction" onclick="toggleReaction('${msg.id}', '${emoji}')">
-                  ${emoji} ${users.length}
-                </span>
-              `).join('')}
-            </div>
-          ` : ''}
         </div>
         ${!msg.isSystem ? `
           <div class="team-message-status">
@@ -18448,9 +18707,44 @@ function closeTeamCreateDropdown() {
 
 async function sendTeamMessage() {
   const input = document.getElementById('teamMessageInput');
-  if (!input || !input.value.trim()) return;
+  if (!input) return;
+  const originalText = input.value.trim();
+  if (!originalText && !teamPendingAttachments.length && !teamPendingDocLinks.length) return;
 
-  const messageText = input.value.trim();
+  let messageText = originalText;
+
+  if (teamPendingDocLinks.length) {
+    const docsHtml = teamPendingDocLinks.map(d => {
+      const titleEsc = String(d.title || 'Doc').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const docIdEsc = String(d.id || '').replace(/'/g, "\\'");
+      return `
+        <div class="team-message-doc">
+          <button class="team-chat-doc-btn" onclick="openDocEditor('${docIdEsc}');" type="button" title="Open doc">
+            <span class="team-chat-doc-btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </span>
+            <span class="team-chat-doc-btn-text">${titleEsc}</span>
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    messageText = messageText ? `${messageText}<div class="team-message-docs">${docsHtml}</div>` : `<div class="team-message-docs">${docsHtml}</div>`;
+  }
+
+  if (teamPendingAttachments.length) {
+    const attachmentsHtml = teamPendingAttachments.map(att => {
+      const nameEsc = String(att.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
+      return `<div class="team-message-attachment"><a href="${att.url}" download="${nameEsc}" target="_blank" rel="noopener noreferrer">📎 ${nameEsc}</a></div>`;
+    }).join('');
+    messageText = messageText ? `${messageText}<div class="team-message-attachments">${attachmentsHtml}</div>` : `<div class="team-message-attachments">${attachmentsHtml}</div>`;
+  }
+
   input.value = '';
 
   console.log('🔵 Attempting to send message:', messageText);
@@ -18495,7 +18789,7 @@ async function sendTeamMessage() {
       updateTeamChatArea();
 
       showNotification('Please sign in to send messages', 'error');
-      input.value = messageText; // Restore message
+      input.value = originalText; // Restore message
       return;
     }
 
@@ -18591,6 +18885,17 @@ async function sendTeamMessage() {
 
     console.log('✅ Message confirmed in UI');
 
+    teamPendingAttachments.forEach(att => {
+      try {
+        if (att?.url) URL.revokeObjectURL(att.url);
+      } catch (e) {}
+    });
+    teamPendingAttachments = [];
+    renderTeamComposerAttachments();
+
+    clearTeamComposerDocLinks();
+    closeTeamComposerPopover();
+
   } catch (error) {
     console.error('❌ Failed to send team message:', error);
     console.error('❌ Error details:', {
@@ -18617,7 +18922,7 @@ async function sendTeamMessage() {
 
     // Restore the message text on error
     const inp = document.getElementById('teamMessageInput');
-    if (inp) inp.value = messageText;
+    if (inp) inp.value = originalText;
   }
 }
 
@@ -20189,7 +20494,7 @@ async function rejectFollowRequest(requestId, followerId) {
 async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'rosepine';
   const animatedBgEnabled = localStorage.getItem('layerAnimatedBg') !== 'false';
-  const appVersion = '0.3.1';
+  const appVersion = '0.3.3';
   const lastSync = new Date().toLocaleString();
 
   // Get current user info - ONLY use saved profile name, never Google metadata
@@ -22028,6 +22333,59 @@ async function initDocsFromDB() {
   }
   return [];
 }
+
+/**
+ * Temporary utility to clean up duplicate documents in the database.
+ * Run this by typing `await cleanupDuplicateDocs()` in the browser console.
+ */
+window.cleanupDuplicateDocs = async function() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    console.error('Please sign in first.');
+    return;
+  }
+  
+  console.log('Fetching docs for cleanup...');
+  const docs = await window.LayerDB.loadDocs();
+  if (!docs || docs.length === 0) {
+    console.log('No docs found.');
+    return;
+  }
+
+  const seenIds = new Set();
+  const duplicates = [];
+  const unique = [];
+
+  docs.forEach(doc => {
+    if (seenIds.has(doc.id)) {
+      duplicates.push(doc);
+    } else {
+      seenIds.add(doc.id);
+      unique.push(doc);
+    }
+  });
+
+  if (duplicates.length === 0) {
+    console.log('No duplicates found in the database.');
+    return;
+  }
+
+  console.log(`Found ${duplicates.length} duplicates. Deleting...`);
+  
+  for (const doc of duplicates) {
+    try {
+      await window.LayerDB.deleteDoc(doc.id);
+      console.log(`Deleted duplicate: ${doc.title || doc.id}`);
+    } catch (e) {
+      console.error(`Failed to delete ${doc.id}:`, e);
+    }
+  }
+
+  // Refresh local cache
+  const finalDocs = await window.LayerDB.loadDocs();
+  saveDocs(finalDocs);
+  console.log('Cleanup complete. Unique docs remaining:', finalDocs.length);
+  return 'Done';
+};
 
 async function addDoc(doc) {
   // Require authentication - no localStorage fallback
@@ -28692,7 +29050,11 @@ function loadConversation(conversationId) {
   const conversation = conversations.find(c => c.id === conversationId);
 
   if (conversation) {
-    aiChatMessages = [...conversation.messages];
+    // Reset isNew flag for all messages when loading saved conversation
+    aiChatMessages = conversation.messages.map(msg => ({
+      ...msg,
+      isNew: false
+    }));
     currentConversationId = conversationId;
     aiChatHistorySidebarOpen = false;
     isAiChatActive = true; // Set flag when loading a conversation
@@ -28705,12 +29067,33 @@ function loadConversation(conversationId) {
     const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
     if (viewsContent) {
       viewsContent.innerHTML = renderAIChatView();
+      
+      // Auto-scroll to the last message after rendering
+      setTimeout(() => {
+        const messagesContainer = document.getElementById('aiChatMessages');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 100);
     }
   }
 }
 
-function deleteConversation(conversationId, event) {
+async function deleteConversation(conversationId, event) {
   event.stopPropagation();
+
+  const shouldDelete = (typeof window.confirmModal === 'function')
+    ? await window.confirmModal({
+        title: 'Delete conversation',
+        message: 'Are you sure you want to PERMANENTLY delete this entire conversation? This cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        confirmButtonClass: 'btn btn-danger'
+      })
+    : confirm('Are you sure you want to PERMANENTLY delete this entire conversation? This cannot be undone.');
+
+  if (!shouldDelete) return;
+
   const conversations = loadAIChatHistory();
   const filtered = conversations.filter(c => c.id !== conversationId);
   saveAIChatHistory(filtered);
@@ -28859,11 +29242,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
           </div>
         </div>
 
+        ${aiCodingModeOpen ? `
         <div class="ai-clean-splitter" id="aiCleanSplitter" onmousedown="startAICodeResize(event)" title="Drag to resize">
           <div class="ai-clean-splitter-handle"></div>
         </div>
 
-        <div class="ai-clean-right" id="aiCleanRight" aria-hidden="${aiCodingModeOpen ? 'false' : 'true'}">
+        <div class="ai-clean-right" id="aiCleanRight" aria-hidden="false">
           <div class="ai-code-panel">
             <div class="ai-code-panel-header">
               <div class="ai-code-panel-title">
@@ -28918,6 +29302,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             </div>
           </div>
         </div>
+        ` : ''}
       </div>
       <input type="file" id="aiFileInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleFileSelect(event)">
     </div>

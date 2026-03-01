@@ -102,6 +102,8 @@ const modalContent = document.getElementById('modalContent');
 const modalClose = document.getElementById('modalClose');
 const themeToggle = document.getElementById('themeToggle');
 
+let activeConfirmModalResolver = null;
+
 // ============================================
 // Realtime Subscriptions
 // ============================================
@@ -777,10 +779,69 @@ function openModal(title, content) {
 }
 
 function closeModal() {
+  if (activeConfirmModalResolver) {
+    const resolve = activeConfirmModalResolver;
+    activeConfirmModalResolver = null;
+    resolve(false);
+  }
   modalOverlay.classList.remove('active');
   const modalEl = document.getElementById('modal');
   if (modalEl) modalEl.classList.remove('modal-auth-variant');
 }
+
+function confirmModal({
+  title = 'Confirm',
+  message = 'Are you sure?',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  confirmButtonClass = 'btn btn-danger'
+} = {}) {
+  if (activeConfirmModalResolver) {
+    try {
+      activeConfirmModalResolver(false);
+    } catch (e) {}
+    activeConfirmModalResolver = null;
+  }
+
+  return new Promise((resolve) => {
+    activeConfirmModalResolver = resolve;
+
+    const content = `
+      <div style="color: var(--muted-foreground); font-size: 14px; line-height: 1.5;">
+        ${message}
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 18px;">
+        <button class="btn btn-secondary" id="confirmModalCancelBtn">${cancelText}</button>
+        <button class="${confirmButtonClass}" id="confirmModalConfirmBtn">${confirmText}</button>
+      </div>
+    `;
+
+    openModal(title, content);
+
+    const cancelBtn = document.getElementById('confirmModalCancelBtn');
+    const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        const res = activeConfirmModalResolver;
+        activeConfirmModalResolver = null;
+        closeModal();
+        if (res) res(false);
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const res = activeConfirmModalResolver;
+        activeConfirmModalResolver = null;
+        closeModal();
+        if (res) res(true);
+      });
+    }
+  });
+}
+
+window.confirmModal = confirmModal;
 
 // ============================================
 // Login Page Management

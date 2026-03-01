@@ -2026,8 +2026,9 @@
   overflow-x: hidden;
   height: 100%;
   max-height: calc(100vh - 200px);
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   scroll-behavior: smooth;
   /* Custom scrollbar for professional look */
   scrollbar-width: thin;
@@ -2128,6 +2129,22 @@
   display: flex;
   gap: 12px;
   min-width: 0;
+}
+
+.team-message.own {
+  flex-direction: row-reverse;
+}
+
+.team-message.own .team-message-header {
+  flex-direction: row-reverse;
+}
+
+.team-message.own .team-message-content {
+  text-align: right;
+}
+
+.team-message.own .team-message-status {
+  justify-content: flex-start;
 }
 
 .team-message.system {
@@ -2269,122 +2286,6 @@
   display: none;
 }
 
-/* Message Reactions */
-.team-message-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  align-items: center;
-}
-
-.team-message-reaction {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  position: relative;
-}
-
-.team-message-reaction:hover {
-  background: var(--surface);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-}
-
-.team-message-reaction.reacted {
-  background: hsl(217 91% 60% / 0.1);
-  border-color: hsl(217 91% 60%);
-  color: hsl(217 91% 60%);
-}
-
-.team-message-reaction-emoji {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.team-message-reaction-count {
-  font-size: 11px;
-  font-weight: 500;
-  min-width: 12px;
-  text-align: center;
-}
-
-/* Reaction Picker */
-.team-reaction-picker {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  display: none;
-  margin-bottom: 8px;
-}
-
-.team-reaction-picker.show {
-  display: flex;
-  gap: 4px;
-}
-
-.team-reaction-emoji-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.team-reaction-emoji-btn:hover {
-  background: var(--surface-hover);
-  transform: scale(1.2);
-}
-
-/* Reaction trigger button */
-.team-message-reaction-trigger {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-
-.team-message:hover .team-message-reaction-trigger {
-  opacity: 1;
-}
-
-.team-message-reaction-trigger:hover {
-  background: var(--surface-hover);
-  opacity: 1;
-}
-
 /* Message Input */
 .team-message-input-container {
 
@@ -2448,6 +2349,238 @@
   font-size: 13px;
   gap: 4px;
 }
+
+ .team-composer-attachments {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 6px;
+   padding: 10px 12px;
+   border-top: 1px solid var(--border);
+   background: var(--surface);
+ }
+
+ .team-composer-links {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 6px;
+   padding: 10px 12px;
+   border-top: 1px solid var(--border);
+   background: var(--surface);
+ }
+
+ .team-composer-link-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   max-width: 100%;
+ }
+
+ .team-composer-link-remove {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 28px;
+   height: 28px;
+   border: 1px solid var(--border);
+   border-radius: 10px;
+   background: var(--surface-hover);
+   color: var(--muted-foreground);
+   cursor: pointer;
+   flex-shrink: 0;
+ }
+
+ .team-composer-link-remove:hover {
+   background: var(--accent);
+   color: var(--foreground);
+ }
+
+ .team-composer-attachment-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 8px;
+   padding: 6px 10px;
+   border: 1px solid var(--border);
+   border-radius: 999px;
+   background: var(--surface-hover);
+   max-width: 100%;
+ }
+
+ .team-composer-attachment-name {
+   color: var(--foreground);
+   text-decoration: none;
+   font-size: 12px;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   max-width: 260px;
+ }
+
+ .team-composer-attachment-name:hover {
+   text-decoration: underline;
+ }
+
+ .team-composer-attachment-remove {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 24px;
+   height: 24px;
+   border: none;
+   border-radius: 6px;
+   background: transparent;
+   color: var(--muted-foreground);
+   cursor: pointer;
+ }
+
+ .team-composer-attachment-remove:hover {
+   background: var(--accent);
+   color: var(--foreground);
+ }
+
+ .team-composer-popover {
+   position: fixed;
+   z-index: 10050;
+   width: 320px;
+   max-width: calc(100vw - 16px);
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: 12px;
+   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+   overflow: hidden;
+ }
+
+ .team-composer-popover-header {
+   padding: 10px 12px;
+   font-size: 12px;
+   font-weight: 600;
+   color: var(--muted-foreground);
+   border-bottom: 1px solid var(--border);
+ }
+
+ .team-composer-emoji-grid {
+   display: grid;
+   grid-template-columns: repeat(8, 1fr);
+   gap: 6px;
+   padding: 10px;
+ }
+
+ .team-composer-emoji-btn {
+   width: 34px;
+   height: 34px;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   border: 1px solid transparent;
+   border-radius: 10px;
+   background: transparent;
+   cursor: pointer;
+   font-size: 18px;
+ }
+
+ .team-composer-emoji-btn:hover {
+   background: var(--surface-hover);
+   border-color: var(--border);
+ }
+
+ .team-composer-list {
+   max-height: 260px;
+   overflow: auto;
+   padding: 6px;
+ }
+
+ .team-composer-list-item {
+   width: 100%;
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   padding: 10px 10px;
+   border: none;
+   background: transparent;
+   color: var(--foreground);
+   border-radius: 10px;
+   cursor: pointer;
+   text-align: left;
+   font-size: 13px;
+ }
+
+ .team-composer-list-item:hover {
+   background: var(--surface-hover);
+ }
+
+ .team-composer-list-loading,
+ .team-composer-list-empty {
+   padding: 14px 12px;
+   color: var(--muted-foreground);
+   font-size: 13px;
+ }
+
+ .team-composer-mention-avatar {
+   width: 24px;
+   height: 24px;
+   border-radius: 50%;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   background: var(--surface-hover);
+   border: 1px solid var(--border);
+   overflow: hidden;
+   flex-shrink: 0;
+ }
+
+ .team-composer-mention-avatar img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+ }
+
+ .team-composer-mention-avatar span {
+   font-size: 12px;
+   font-weight: 600;
+   color: var(--muted-foreground);
+ }
+
+ .team-composer-mention-name {
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+ }
+
+ .team-chat-doc-btn {
+   display: inline-flex;
+   align-items: center;
+   gap: 8px;
+   padding: 6px 10px;
+   border: 1px solid var(--border);
+   border-radius: 10px;
+   background: var(--surface-hover);
+   color: var(--foreground);
+   cursor: pointer;
+   max-width: 100%;
+   vertical-align: middle;
+ }
+
+ .team-chat-doc-btn:hover {
+   background: var(--accent);
+ }
+
+ .team-chat-doc-btn-icon {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 18px;
+   height: 18px;
+   color: var(--muted-foreground);
+   flex-shrink: 0;
+ }
+
+ .team-chat-doc-btn-text {
+   font-size: 12px;
+   font-weight: 500;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   max-width: 260px;
+ }
 
 .team-input-area {
   padding: 12px 16px;
@@ -18734,7 +18867,6 @@ h4.ai-heading {
   left: 0;
   right: 0;
   padding: 16px 24px;
-  background: linear-gradient(to top, rgba(10, 10, 12, 1) 70%, rgba(10, 10, 12, 0));
   z-index: 10;
 }
 
