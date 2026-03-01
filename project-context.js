@@ -8,6 +8,29 @@ const PROJECT_CONTEXT_STORAGE_KEY = 'layer_selected_project';
 const PROJECT_CONTEXT_DATA_KEY = 'layer_project_context_data';
 
 /**
+ * Helper function to extract kanban tasks from columns
+ * @param {Array} columns - Project columns array
+ * @returns {Array} - Flattened array of tasks with column info
+ */
+function extractKanbanTasks(columns) {
+    const tasks = [];
+    if (!columns || !Array.isArray(columns)) return tasks;
+    
+    columns.forEach((column, colIndex) => {
+        if (column.tasks && Array.isArray(column.tasks)) {
+            column.tasks.forEach(task => {
+                tasks.push({
+                    ...task,
+                    column: column.title || `Column ${colIndex + 1}`,
+                    status: column.title?.toLowerCase().replace(' ', '_') || 'todo'
+                });
+            });
+        }
+    });
+    return tasks;
+}
+
+/**
  * @typedef {Object} ProjectContext
  * @property {string|null} id - Selected project ID
  * @property {string|null} name - Project name
@@ -174,47 +197,87 @@ async function selectProject(projectId, projectName = null) {
  * @param {string} projectId - Project ID
  */
 async function refreshProjectData(projectId) {
-    if (!projectId || !window.supabase) {
+    if (!projectId) {
+        console.error('refreshProjectData: No projectId provided');
+        return;
+    }
+
+    // Get Supabase client - try multiple sources
+    const supabase = window.supabaseClient || (window.LayerDB?.getSupabase?.()) || null;
+    
+    if (!supabase) {
+        console.error('refreshProjectData: Supabase client not available');
+        // Fallback: try to load from localStorage cache
+        const projects = typeof loadProjects === 'function' ? loadProjects() : [];
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+            console.log('Using localStorage fallback for project data');
+            projectContextState.projectData = {
+                ...project,
+                startDate: project.start_date,
+                targetDate: project.target_date,
+                kanbanTasks: extractKanbanTasks(project.columns),
+                backlogTasks: [],
+                milestones: [],
+                teamMembers: [],
+                docs: [],
+                issues: []
+            };
+            projectContextState.selectedProject = {
+                id: projectId,
+                name: project.name,
+                description: project.description
+            };
+            projectContextState.isLoading = false;
+            notifyProjectContextListeners();
+        }
         return;
     }
 
     try {
+        console.log('refreshProjectData: Fetching data for project', projectId);
+        
         // Fetch project details
-        const { data: project, error: projectError } = await window.supabase
+        const { data: project, error: projectError } = await supabase
             .from('projects')
             .select('*')
             .eq('id', projectId)
             .single();
 
-        if (projectError) throw projectError;
+        if (projectError) {
+            console.error('Error fetching project:', projectError);
+            throw projectError;
+        }
+        
+        console.log('Project fetched:', project?.name);
 
         // Fetch backlog tasks
-        const { data: backlogTasks, error: tasksError } = await window.supabase
+        const { data: backlogTasks, error: tasksError } = await supabase
             .from('backlog_tasks')
             .select('*')
             .eq('project_id', projectId);
 
         // Fetch project milestones
-        const { data: milestones, error: milestonesError } = await window.supabase
+        const { data: milestones, error: milestonesError } = await supabase
             .from('milestones')
             .select('*')
             .eq('project_id', projectId);
 
         // Fetch project members
-        const { data: members, error: membersError } = await window.supabase
+        const { data: members, error: membersError } = await supabase
             .from('project_members')
             .select('*, profiles(name, email, avatar_url)')
             .eq('project_id', projectId);
 
         // Fetch project docs with full content
-        const { data: docs, error: docsError } = await window.supabase
+        const { data: docs, error: docsError } = await supabase
             .from('docs')
             .select('id, title, content, updated_at')
             .eq('project_id', projectId)
             .limit(10);
 
         // Fetch issues
-        const { data: issues, error: issuesError } = await window.supabase
+        const { data: issues, error: issuesError } = await supabase
             .from('issues')
             .select('id, title, description, status, priority, assignee_name, created_at')
             .eq('project_id', projectId)

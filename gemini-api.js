@@ -31,6 +31,24 @@ Format code blocks like:
 
 Be helpful, precise, and brief.`;
 
+// System prompt when a project is selected - more directive
+const PROJECT_CONTEXT_SYSTEM_PROMPT = `You are a highly intelligent AI assistant helping with a specific project.
+
+CRITICAL: You have been given detailed context about the user's current project above. You MUST:
+1. ALWAYS acknowledge which project you are discussing when asked
+2. Answer questions BASED ON the project context provided
+3. Reference specific tasks, dates, documents, or team members from the context when relevant
+4. If asked about project details, use ONLY the information from the project context
+5. Never say you don't know about the project - the context contains everything you need
+
+RESPONSE RULES:
+- Be concise but thorough when discussing project specifics
+- Reference specific items from the context (e.g., "In your Website Redesign project...", "The task 'Design homepage' is in To Do column")
+- If the user asks about something not in the project context, say "Based on the current project context, I don't see information about that"
+- For code: wrap in triple backticks with language name
+
+Be helpful, precise, and project-focused.`;
+
 const CODE_ANALYSIS_SYSTEM_PROMPT = `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
 2. Logic errors - incorrect conditions, infinite loops, off-by-one errors
@@ -136,14 +154,22 @@ async function callGeminiAPI(messages) {
 
     // Build system prompt with optional project context
     let systemPrompt = GENERAL_SYSTEM_PROMPT;
+    let hasProjectContext = false;
     
     // Check for project context and inject it
     if (typeof window !== 'undefined' && window.ProjectContext) {
         const projectContextPrompt = window.ProjectContext.buildProjectContextPrompt();
-        if (projectContextPrompt) {
-            systemPrompt = `${projectContextPrompt}\n\n${GENERAL_SYSTEM_PROMPT}`;
-            console.log('Injected project context into system prompt');
+        if (projectContextPrompt && projectContextPrompt.trim().length > 0) {
+            // Use project-specific system prompt when context is available
+            systemPrompt = `${projectContextPrompt}\n\n${PROJECT_CONTEXT_SYSTEM_PROMPT}`;
+            hasProjectContext = true;
+            console.log('✅ Project context injected into system prompt');
+            console.log('Project context preview:', projectContextPrompt.substring(0, 200) + '...');
+        } else {
+            console.log('⚠️ No project context available (no project selected)');
         }
+    } else {
+        console.log('⚠️ ProjectContext module not available');
     }
 
     console.log('Sending message history to API:', JSON.stringify(messageHistory, null, 2));
