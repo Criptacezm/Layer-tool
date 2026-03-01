@@ -1582,8 +1582,12 @@ async function saveDocToDB(docData) {
     updated_at: new Date().toISOString()
   };
 
-  // If an ID is provided and looks like a UUID, include it for upsert
-  if (docData.id && typeof docData.id === 'string' && docData.id.includes('-')) {
+  // Check if this is an existing doc by looking for UUID format
+  // Only include ID for upsert if it's a valid UUID (existing doc)
+  const isUUID = docData.id && typeof docData.id === 'string' && 
+                 /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docData.id);
+  
+  if (isUUID) {
     upsertData.id = docData.id;
   }
 

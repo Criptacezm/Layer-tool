@@ -375,6 +375,18 @@
     );
 
     -- ============================================
+    -- Project Members Table (for project collaboration)
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS project_members (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'member', -- 'owner', 'admin', 'member', 'viewer'
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_id, user_id)
+    );
+
+    -- ============================================
     -- User Presence Table (for online/watching status)
     -- ============================================
     CREATE TABLE IF NOT EXISTS user_presence (
@@ -698,6 +710,52 @@
     );
     CREATE POLICY "Users can delete project invitations" ON project_invitations FOR DELETE USING (
     auth.uid() = inviter_id
+    );
+
+    -- Project Members policies
+    DROP POLICY IF EXISTS "Users can view project members" ON project_members;
+    DROP POLICY IF EXISTS "Users can insert project members" ON project_members;
+    DROP POLICY IF EXISTS "Users can update project members" ON project_members;
+    DROP POLICY IF EXISTS "Users can delete project members" ON project_members;
+    CREATE POLICY "Users can view project members" ON project_members FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_members.project_id
+            AND (p.user_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = p.id AND pm.user_id = auth.uid()
+            ))
+        )
+    );
+    CREATE POLICY "Users can insert project members" ON project_members FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_members.project_id
+            AND (p.user_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = p.id AND pm.user_id = auth.uid() AND pm.role IN ('owner', 'admin')
+            ))
+        )
+    );
+    CREATE POLICY "Users can update project members" ON project_members FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_members.project_id
+            AND (p.user_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = p.id AND pm.user_id = auth.uid() AND pm.role IN ('owner', 'admin')
+            ))
+        )
+    );
+    CREATE POLICY "Users can delete project members" ON project_members FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.id = project_members.project_id
+            AND (p.user_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = p.id AND pm.user_id = auth.uid() AND pm.role IN ('owner', 'admin')
+            ))
+        )
     );
 
     -- Team Chat Messages policies

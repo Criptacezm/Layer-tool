@@ -23244,44 +23244,41 @@ async function autoSaveDoc() {
     // Use Supabase if authenticated
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
       try {
-        // Check if this is a new document (temporary ID) or existing document
-        const docs = await window.LayerDB.loadDocs();
-        // Use String comparison to handle both string and number IDs
-        const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
-
-        if (existingDoc) {
-          // Document exists, update it
-          console.log('📝 Updating existing doc:', existingDoc.id);
-          await window.LayerDB.updateDoc(existingDoc.id, { title, content });
-          // Ensure currentDocId matches the database ID format
-          currentDocId = existingDoc.id;
-        } else if (currentDocId && (typeof currentDocId === 'string' && currentDocId.includes('-'))) {
-          // If currentDocId looks like a database ID (UUID) but wasn't found in current loadDocs(),
-          // it's still likely an existing doc that just needs updating.
-          console.log('📝 Attempting update for suspected existing ID:', currentDocId);
-          try {
-            await window.LayerDB.updateDoc(currentDocId, { title, content });
-            console.log('✅ Update successful for suspected existing ID:', currentDocId);
-          } catch (updateErr) {
-            console.error('📝 Update failed for suspected ID:', currentDocId, updateErr);
-            // If it's a 404/not found, only then should we consider creating a new one
-            return;
-          }
+        // 🛡️ CRITICAL FIX: Check if currentDocId is a valid UUID first
+        const isUUID = currentDocId && typeof currentDocId === 'string' && 
+                       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentDocId);
+        
+        if (isUUID) {
+          // If we have a UUID, this is an existing doc - update it directly
+          console.log('📝 Updating existing doc by UUID:', currentDocId);
+          await window.LayerDB.updateDoc(currentDocId, { title, content });
+          console.log('✅ Doc updated successfully:', currentDocId);
         } else {
-          // Document doesn't exist in DB yet (likely new doc), create it first
-          console.log('📝 Creating new doc in DB:', currentDocId);
-          const newDoc = {
-            id: currentDocId, // Pass currentDocId (might be a temporary ID)
-            title,
-            content,
-            spaceId: currentSpaceId || null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          const savedDoc = await window.LayerDB.saveDoc(newDoc);
-          // Update currentDocId to use the database ID
-          currentDocId = savedDoc.id;
-          console.log('📝 Doc created with DB ID:', currentDocId);
+          // This might be a new doc with temp ID - check if it exists
+          const docs = await window.LayerDB.loadDocs();
+          const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
+
+          if (existingDoc) {
+            // Document exists, update it
+            console.log('📝 Updating existing doc:', existingDoc.id);
+            await window.LayerDB.updateDoc(existingDoc.id, { title, content });
+            currentDocId = existingDoc.id;
+          } else {
+            // Document doesn't exist in DB yet (new doc), create it
+            console.log('📝 Creating new doc in DB:', currentDocId);
+            const newDoc = {
+              id: currentDocId,
+              title,
+              content,
+              spaceId: currentSpaceId || null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            const savedDoc = await window.LayerDB.saveDoc(newDoc);
+            // Update currentDocId to use the database ID
+            currentDocId = savedDoc.id;
+            console.log('📝 Doc created with DB ID:', currentDocId);
+          }
         }
 
         // Sync draft title
