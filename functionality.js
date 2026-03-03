@@ -13695,6 +13695,33 @@ async function renderFoldersInPlaceholder() {
   }
 }
 
+async function deleteFolderContents(folderId) {
+  try {
+    // Load all documents in the folder
+    const docs = await loadDocsFromFolder(folderId);
+    if (docs && docs.length > 0) {
+      for (const doc of docs) {
+        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+          await window.LayerDB.deleteDoc(doc.id);
+        }
+      }
+    }
+
+    // Load all quizzes in the folder
+    const quizzes = await loadQuizzesFromFolder(folderId);
+    if (quizzes && quizzes.length > 0) {
+      for (const quiz of quizzes) {
+        if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+          await window.LayerDB.deleteQuiz(quiz.id);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting folder contents:', error);
+    throw error;
+  }
+}
+
 async function deleteFolder(folderId) {
   if (!confirm('Are you sure you want to delete this folder and all its contents?')) {
     return;
@@ -13708,7 +13735,18 @@ async function deleteFolder(folderId) {
     const success = await deleteFolderFromDB(folderId);
     if (success) {
       showToast('Folder deleted successfully!');
-      await renderFoldersInPlaceholder();
+      
+      // If we are currently inside the folder that was just deleted, go back to space view
+      const folderExplorer = document.querySelector('.folder-explorer-container');
+      if (folderExplorer && folderExplorer.dataset.folderId === folderId) {
+        if (currentSpaceId) {
+          openSpaceView(currentSpaceId);
+        } else {
+          renderCurrentView();
+        }
+      } else {
+        await renderFoldersInPlaceholder();
+      }
     } else {
       throw new Error('Failed to delete folder');
     }
@@ -35037,6 +35075,11 @@ async function renderEnhancedFolderGrid(spaceId) {
                     <span class="folder-row-date">${formatRelativeTime(folder.updated_at)}</span>
                   </div>
                   <div class="col-actions">
+                    <button class="row-action-btn-modern delete" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete Folder">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
                     <button class="row-action-btn-modern" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)" title="Menu">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>

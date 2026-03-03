@@ -28136,26 +28136,21 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #ffffff;
-  color: #000000;
-  border-radius: 8px;
+  background: var(--foreground);
+  color: var(--background);
   border: none;
-  font-size: 14px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  height: 36px;
 }
 
 .btn-primary-minimal:hover {
-  background: #f3f4f6;
+  opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-primary-minimal:active {
-  transform: translateY(0);
 }
 
 .folder-list-container-modern {
@@ -28167,7 +28162,7 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 
 .folder-list-header-modern {
   display: grid;
-  grid-template-columns: 48px 1fr 180px 140px 80px;
+  grid-template-columns: 48px 1fr 180px 140px 100px;
   padding: 12px 20px;
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--glass-border);
@@ -28179,7 +28174,7 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 
 .folder-list-row-modern {
   display: grid;
-  grid-template-columns: 48px 1fr 180px 140px 80px;
+  grid-template-columns: 48px 1fr 180px 140px 100px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--glass-border);
   align-items: center;
@@ -28258,6 +28253,12 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.row-action-btn-modern svg {
+  width: 18px;
+  height: 18px;
 }
 
 .row-action-btn-modern:hover {
@@ -28265,9 +28266,68 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   color: var(--foreground);
 }
 
-.row-action-btn-modern svg {
+.col-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.row-action-btn-modern.delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.folder-menu-dropdown {
+  position: fixed;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 140px;
+  z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.folder-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.folder-menu-dropdown button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.folder-menu-dropdown button svg {
   width: 16px;
   height: 16px;
+  opacity: 0.7;
+}
+
+.folder-menu-dropdown button.danger {
+  color: #ef4444;
+}
+
+.folder-menu-dropdown button.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* --- Responsive for modern list --- */
@@ -28403,26 +28463,21 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #ffffff;
-  color: #000000;
-  border-radius: 10px;
+  background: var(--foreground);
+  color: var(--background);
   border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  height: 36px;
 }
 
 .btn-primary-modern:hover {
-  background: #f3f4f6;
+  opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-primary-modern:active {
-  transform: translateY(0);
 }
 
 .icon-btn-modern {
