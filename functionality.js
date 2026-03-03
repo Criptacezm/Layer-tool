@@ -35091,7 +35091,37 @@ async function renderEnhancedFolderGrid(spaceId) {
 // Folder Explorer View
 // ============================================
 
-async function openFolderExplorer(folderId) {
+function activateFolderExplorerTab(tabName = 'documents') {
+  const root = document.querySelector('.folder-explorer-container');
+  if (!root) return;
+
+  const tabs = root.querySelectorAll('.folder-tab');
+  const docsSection = root.querySelector('#documentsSection');
+  const quizzesSection = root.querySelector('#quizzesSection');
+
+  tabs.forEach(t => t.classList.remove('active'));
+  const activeTab = root.querySelector(`.folder-tab[data-tab="${tabName}"]`);
+  if (activeTab) activeTab.classList.add('active');
+
+  if (docsSection) docsSection.classList.toggle('active', tabName === 'documents');
+  if (quizzesSection) quizzesSection.classList.toggle('active', tabName === 'quizzes');
+}
+
+function initFolderExplorerTabs(defaultTab = 'documents') {
+  const root = document.querySelector('.folder-explorer-container');
+  if (!root) return;
+
+  root.querySelectorAll('.folder-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+      activateFolderExplorerTab(tabName);
+    });
+  });
+
+  activateFolderExplorerTab(defaultTab);
+}
+
+async function openFolderExplorer(folderId, initialTab = 'documents') {
   console.log('Opening folder explorer:', folderId);
 
   try {
@@ -35123,6 +35153,8 @@ async function openFolderExplorer(folderId) {
     if (viewsContent) {
       viewsContent.innerHTML = renderFolderExplorerView(folder, docs, quizzes);
     }
+
+    initFolderExplorerTabs(initialTab);
 
     updateBreadcrumb(folder.name);
   } catch (error) {
@@ -35610,7 +35642,7 @@ async function processAIQuiz() {
 
     // Refresh folder view
     if (currentFolderId) {
-      openFolderExplorer(currentFolderId);
+      openFolderExplorer(currentFolderId, 'quizzes');
     }
   } catch (error) {
     console.error('Quiz generation error:', error);
@@ -36027,7 +36059,7 @@ async function processDocQuiz(docId) {
     showToast('Quiz created!');
 
     if (currentFolderId) {
-      openFolderExplorer(currentFolderId);
+      openFolderExplorer(currentFolderId, 'quizzes');
     }
   } catch (error) {
     console.error('Error generating quiz from doc:', error);
