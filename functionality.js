@@ -619,6 +619,65 @@ async function toggleDashboardGoal(taskId) {
   }
 }
 
+async function deleteFolderWhiteboardItem(folderItemId, projectId) {
+  if (!folderItemId || !projectId) return;
+
+  window._folderWhiteboardDeletesInFlight = window._folderWhiteboardDeletesInFlight || new Set();
+  if (window._folderWhiteboardDeletesInFlight.has(folderItemId)) return;
+
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete whiteboards', 'error');
+    return;
+  }
+
+  if (!confirm('Delete this whiteboard? This cannot be undone.')) {
+    return;
+  }
+
+  window._folderWhiteboardDeletesInFlight.add(folderItemId);
+  const rowEl = document.querySelector(`.folder-list-item[data-folder-item-id="${folderItemId}"]`);
+  const actionsEl = document.querySelector(`[data-actions-for-folder-item-id="${folderItemId}"]`);
+  const prevActionsHtml = actionsEl ? actionsEl.innerHTML : null;
+
+  if (rowEl) {
+    rowEl.style.pointerEvents = 'none';
+    rowEl.style.opacity = '0.75';
+  }
+  if (actionsEl) {
+    actionsEl.innerHTML = `<span class="spinner" title="Deleting..."></span>`;
+  }
+
+  try {
+    const projectDeleteOk = await window.LayerDB.deleteProject(projectId);
+    const folderItemDeleteOk = await window.deleteFolderItemFromDB(folderItemId);
+
+    if (typeof window.refreshProjects === 'function') {
+      await window.refreshProjects();
+    }
+
+    if (projectDeleteOk === false || folderItemDeleteOk === false) {
+      showToast('Some items could not be deleted. Please refresh and try again.', 'error');
+    } else {
+      showToast('Whiteboard deleted', 'success');
+    }
+  } catch (error) {
+    console.error('Error deleting folder whiteboard:', error);
+    showToast('Failed to delete whiteboard', 'error');
+    if (actionsEl && prevActionsHtml !== null) {
+      actionsEl.innerHTML = prevActionsHtml;
+    }
+    if (rowEl) {
+      rowEl.style.pointerEvents = '';
+      rowEl.style.opacity = '';
+    }
+  } finally {
+    window._folderWhiteboardDeletesInFlight.delete(folderItemId);
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  }
+}
+
 function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   const hour = new Date().getHours();
   let greeting = 'Hello';
@@ -5792,6 +5851,9 @@ function getDefaultRepeatEndDate(startDate) {
 function renderActivityView(searchQuery = '') {
   let projects = loadProjects();
   console.log('renderActivityView called with', projects.length, 'projects');
+
+  // Hide folder-only whiteboards/projects from the main workspace list
+  projects = (projects || []).filter(p => !(p?.milestones && p.milestones.folder_only === true));
 
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
@@ -13723,9 +13785,14 @@ async function deleteFolderContents(folderId) {
 }
 
 async function deleteFolder(folderId) {
+  console.log('deleteFolder function called with ID:', folderId);
+  
   if (!confirm('Are you sure you want to delete this folder and all its contents?')) {
+    console.log('User cancelled deletion');
     return;
   }
+
+  console.log('User confirmed deletion, proceeding...');
 
   try {
     // First delete all files in the folder
@@ -13733,6 +13800,8 @@ async function deleteFolder(folderId) {
 
     // Then delete the folder itself
     const success = await deleteFolderFromDB(folderId);
+    console.log('Delete result:', success);
+    
     if (success) {
       showToast('Folder deleted successfully!');
       
@@ -22473,6 +22542,7 @@ let documentEditorState = {
   overlayElement: null,
   isClosing: false,
   openTimestamp: null,
+  returnToFolderId: null,
   eventListeners: [] // Track event listeners for proper cleanup
 };
 
@@ -22568,6 +22638,7 @@ function openDocEditor(docId = null) {
     documentEditorState.currentDocId = doc ? doc.id : Date.now();
     documentEditorState.isClosing = false;
     documentEditorState.openTimestamp = Date.now();
+    documentEditorState.returnToFolderId = currentFolderId || null;
     documentEditorState.eventListeners = []; // Reset event listeners array
 
     currentDocId = doc ? doc.id : Date.now();
@@ -23415,9 +23486,16 @@ function closeDocEditor() {
   documentEditorState.isClosing = false;
   documentEditorState.overlayElement = null;
 
+  const folderIdToReturn = documentEditorState.returnToFolderId;
+  documentEditorState.returnToFolderId = null;
+
   // 🔄 REFRESH DASHBOARD: Update the inbox view to reflect any changes
   // Use a small delay to ensure DOM is fully cleaned up
   setTimeout(() => {
+    if (folderIdToReturn) {
+      openFolderExplorer(folderIdToReturn, 'documents');
+      return;
+    }
     if (currentView === 'inbox') {
       console.log('🔄 Refreshing dashboard after document close...');
       renderCurrentView();
@@ -25129,6 +25207,106 @@ async function deleteSpaceConfirmed(spaceId) {
   }
 }
 
+async function switchSpaceTab(tabName, spaceId) {
+  const space = getSpaceById(spaceId);
+  if (!space) return;
+
+  // Update active tab styling
+  const tabs = document.querySelectorAll('.view-tab');
+  tabs.forEach(tab => {
+    tab.classList.toggle('active', tab.textContent.toLowerCase() === tabName.toLowerCase());
+  });
+
+  const mainContent = document.querySelector('.space-main-content');
+  if (!mainContent) return;
+
+  if (tabName === 'quizzes') {
+    // Render Quizzes Tab View
+    mainContent.innerHTML = await renderSpaceQuizzesView(spaceId);
+  } else {
+    // Default to Overview (re-render the whole space view or just the content)
+    openSpaceView(spaceId);
+  }
+}
+
+async function renderSpaceQuizzesView(spaceId) {
+  let quizzes = [];
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      quizzes = await window.LayerDB.loadQuizzes();
+    }
+  } catch (error) {
+    console.error('Error loading quizzes:', error);
+  }
+
+  // Filter quizzes for this space
+  const spaceQuizzes = quizzes.filter(q => String(q.spaceId) === String(spaceId));
+
+  return `
+    <div class="space-section">
+      <div class="section-header">
+        <h2 class="section-title">Quizzes</h2>
+        <button class="btn-primary-small" onclick="createNewQuiz('${spaceId}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:6px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          New Quiz
+        </button>
+      </div>
+      
+      <div class="folder-list-container-modern">
+        <div class="folder-list-header-modern">
+          <div class="col-icon"></div>
+          <div class="col-name">QUIZ NAME</div>
+          <div class="col-stats">QUESTIONS</div>
+          <div class="col-date">UPDATED</div>
+          <div class="col-actions"></div>
+        </div>
+        <div class="folder-list-body-modern">
+          ${spaceQuizzes.length > 0 ? spaceQuizzes.map(quiz => `
+            <div class="folder-list-row-modern" onclick="openQuiz('${quiz.id}')">
+              <div class="col-icon">
+                <div class="folder-row-emoji">📝</div>
+              </div>
+              <div class="col-name">
+                <span class="folder-row-title">${quiz.title || 'Untitled Quiz'}</span>
+                <span class="folder-row-desc">${quiz.description || 'No description'}</span>
+              </div>
+              <div class="col-stats">
+                <div class="folder-stats-group">
+                  <span class="stat-pill quiz">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    ${quiz.questions ? quiz.questions.length : 0}
+                  </span>
+                </div>
+              </div>
+              <div class="col-date">
+                <span class="folder-row-date">${formatRelativeTime(quiz.updated_at || quiz.updatedAt)}</span>
+              </div>
+              <div class="col-actions">
+                <button class="row-action-btn-modern delete" onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" title="Delete Quiz">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `).join('') : `
+            <div class="empty-state-modern">
+              <div class="empty-icon-large">📝</div>
+              <h3>No quizzes yet</h3>
+              <p>Create your first quiz to start testing your knowledge.</p>
+              <button class="btn-primary-modern" onclick="createNewQuiz('${spaceId}')">Create Quiz</button>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function openSpaceView(spaceId) {
   const spaces = loadSpaces();
   // Handle both string UUIDs and numeric IDs
@@ -25223,55 +25401,10 @@ function renderSpaceDetailView(space) {
         
         <div class="space-top-center">
           <div class="space-view-tabs">
-            <button class="view-tab active">Overview</button>
-            <button class="view-tab">List</button>
-            <button class="view-tab">Board</button>
-            <button class="view-tab">Calendar</button>
-            <button class="view-tab">Gantt</button>
-            <button class="view-tab">Table</button>
+            <button class="view-tab active" onclick="switchSpaceTab('overview', '${space.id}')">Overview</button>
+            <button class="view-tab" onclick="switchSpaceTab('quizzes', '${space.id}')">Quizzes</button>
             <button class="view-tab add-view">+</button>
           </div>
-        </div>
-        
-        <div class="space-top-right">
-          <button class="space-action-btn" onclick="openSpaceAgents('${space.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M12 11v6"/><path d="M9 14l6-3"/>
-            </svg>
-            Agents
-          </button>
-          <button class="space-action-btn" onclick="openSpaceAutomation('${space.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
-            </svg>
-            Automate
-          </button>
-          <button class="space-action-btn" onclick="openSpaceAsk('${space.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            </svg>
-            Ask
-          </button>
-          <button class="space-action-btn" onclick="openSpaceShare('${space.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            Share
-          </button>
-        </div>
-      </div>
-      
-      <!-- Notification Banner -->
-      <div class="notification-banner">
-        <div class="banner-content">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          <span>Layer needs your permission to send notifications</span>
-        </div>
-        <div class="banner-actions">
-          <button class="banner-btn secondary">Remind me</button>
-          <button class="banner-btn primary">Enable</button>
         </div>
       </div>
       
@@ -25421,8 +25554,11 @@ function renderSpaceDetailView(space) {
               </svg>
             </div>
             <div class="folders-text">Add new Folder to your Space</div>
-            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-              Add Folder
+            <button class="row-action-btn-modern" onclick="openFolderDropdown(this)" title="Add Folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
             </button>
           </div>
         </div>
@@ -35024,12 +35160,11 @@ async function renderEnhancedFolderGrid(spaceId) {
             <div class="folder-total-badge">${filteredFolders.length}</div>
           </div>
           <div class="folders-header-right">
-            <button class="btn-primary-minimal" onclick="openFolderDropdown(this)">
+            <button class="row-action-btn-modern" onclick="openFolderDropdown(this)" title="Add Folder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              Add Folder
             </button>
           </div>
         </div>
@@ -35075,11 +35210,6 @@ async function renderEnhancedFolderGrid(spaceId) {
                     <span class="folder-row-date">${formatRelativeTime(folder.updated_at)}</span>
                   </div>
                   <div class="col-actions">
-                    <button class="row-action-btn-modern delete" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete Folder">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                    </button>
                     <button class="row-action-btn-modern" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)" title="Menu">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
@@ -35164,6 +35294,9 @@ async function openFolderExplorer(folderId, initialTab = 'documents') {
 
     // Load folder contents
     const docs = await loadDocsFromFolder(folderId);
+    const folderItems = (window.LayerDB && window.LayerDB.isAuthenticated() && typeof window.loadFolderItemsFromDB === 'function')
+      ? await window.loadFolderItemsFromDB(folderId)
+      : [];
     const quizzes = await loadQuizzesFromFolder(folderId);
 
     // Update active states
@@ -35177,7 +35310,7 @@ async function openFolderExplorer(folderId, initialTab = 'documents') {
     // Render folder explorer view
     const viewsContent = document.getElementById('viewsContent');
     if (viewsContent) {
-      viewsContent.innerHTML = renderFolderExplorerView(folder, docs, quizzes);
+      viewsContent.innerHTML = renderFolderExplorerView(folder, docs, folderItems, quizzes);
     }
 
     initFolderExplorerTabs(initialTab);
@@ -35189,11 +35322,17 @@ async function openFolderExplorer(folderId, initialTab = 'documents') {
   }
 }
 
-function renderFolderExplorerView(folder, docs, quizzes) {
+function renderFolderExplorerView(folder, docs, folderItems, quizzes) {
   const emoji = folder.icon || folder.emoji || '📁';
 
+  const folderSheets = (folderItems || []).filter(i => i.item_type === 'sheet');
+  const folderWhiteboards = (folderItems || []).filter(i => i.item_type === 'whiteboard');
+  const folderPdfs = (folderItems || []).filter(i => i.item_type === 'pdf');
+
+  const totalDocItems = (docs?.length || 0) + folderSheets.length + folderWhiteboards.length + folderPdfs.length;
+
   return `
-    <div class="folder-explorer-container animate-fade-in">
+    <div class="folder-explorer-container">
       <!-- Header -->
       <div class="folder-explorer-header-modern">
         <div class="folder-header-left">
@@ -35215,21 +35354,50 @@ function renderFolderExplorerView(folder, docs, quizzes) {
           <div class="folder-content-tabs-modern">
             <button class="folder-tab-modern active" data-tab="documents">
               Docs
-              <span class="tab-count-pill">${docs.length}</span>
+              <span class="tab-count-pill">${totalDocItems}</span>
             </button>
             <button class="folder-tab-modern" data-tab="quizzes">
               Quizzes
               <span class="tab-count-pill">${quizzes.length}</span>
             </button>
           </div>
-          <div class="header-divider"></div>
-          <button class="btn-primary-modern" onclick="showUploadModalForFolder('${folder.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Upload
-          </button>
+          <div class="folder-content-tabs-modern folder-actions-pills">
+            <button class="folder-tab-modern folder-action-pill" onclick="createFolderDoc('${folder.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="11" x2="12" y2="17"/>
+                <line x1="9" y1="14" x2="15" y2="14"/>
+              </svg>
+              New Doc
+            </button>
+            <button class="folder-tab-modern folder-action-pill" onclick="createFolderSheet('${folder.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="12" y1="12" x2="12" y2="18"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+              New Sheet
+            </button>
+            <button class="folder-tab-modern folder-action-pill" onclick="createFolderWhiteboard('${folder.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8"/>
+                <path d="M12 17v4"/>
+              </svg>
+              New Whiteboard
+            </button>
+            <button class="folder-tab-modern folder-action-pill" onclick="showUploadModalForFolder('${folder.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Upload PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -35244,7 +35412,8 @@ function renderFolderExplorerView(folder, docs, quizzes) {
             <div class="col-actions"></div>
           </div>
           <div class="folder-list-body">
-            ${docs.length > 0 ? docs.map(doc => `
+            ${totalDocItems > 0 ? `
+              ${(docs || []).map(doc => `
               <div class="folder-list-item" onclick="openDocEditor('${doc.id}')">
                 <div class="col-icon">
                   <div class="file-icon-mini doc">
@@ -35261,18 +35430,86 @@ function renderFolderExplorerView(folder, docs, quizzes) {
                   <span class="item-date-text">${formatRelativeTime(doc.updated_at)}</span>
                 </div>
                 <div class="col-actions">
-                  <button class="row-action-btn" onclick="event.stopPropagation(); summarizeDocument('${doc.id}')" title="Summarize">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg>
-                  </button>
-                  <button class="row-action-btn" onclick="event.stopPropagation(); generateQuizFromDoc('${doc.id}')" title="Generate Quiz">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>
+                  <button class="row-action-btn" onclick="event.stopPropagation(); showDocAiMenu('${doc.id}', event)" title="AI features">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2l1.2 3.6L17 7l-3.8 1.4L12 12l-1.2-3.6L7 7l3.8-1.4L12 2z"/>
+                      <path d="M19 12l.8 2.4L22 15l-2.2.6L19 18l-.8-2.4L16 15l2.2-.6L19 12z"/>
+                      <path d="M5 13l.8 2.4L8 16l-2.2.6L5 19l-.8-2.4L2 16l2.2-.6L5 13z"/>
+                    </svg>
                   </button>
                   <button class="row-action-btn delete" onclick="event.stopPropagation(); deleteDoc('${doc.id}')" title="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 </div>
               </div>
-            `).join('') : `
+            `).join('')}
+
+              ${folderSheets.map(item => `
+              <div class="folder-list-item" onclick="openExcelEditor('${item.item_id}')">
+                <div class="col-icon">
+                  <div class="file-icon-mini" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: white;">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <line x1="3" y1="9" x2="21" y2="9"/>
+                      <line x1="9" y1="3" x2="9" y2="21"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="col-name">
+                  <span class="item-title-text">${item.file_name || 'Untitled Spreadsheet'}</span>
+                </div>
+                <div class="col-date">
+                  <span class="item-date-text">${formatRelativeTime(item.updated_at)}</span>
+                </div>
+                <div class="col-actions"></div>
+              </div>
+              `).join('')}
+
+              ${folderWhiteboards.map(item => `
+              <div class="folder-list-item" data-folder-item-id="${item.id}" onclick="openWhiteboardFromFolderItem('${item.item_id}')">
+                <div class="col-icon">
+                  <div class="file-icon-mini" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: white;">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/>
+                      <path d="M8 21h8"/>
+                      <path d="M12 17v4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="col-name">
+                  <span class="item-title-text">${item.file_name || 'Whiteboard'}</span>
+                </div>
+                <div class="col-date">
+                  <span class="item-date-text">${formatRelativeTime(item.updated_at)}</span>
+                </div>
+                <div class="col-actions" data-actions-for-folder-item-id="${item.id}">
+                  <button class="row-action-btn delete" onclick="event.stopPropagation(); deleteFolderWhiteboardItem('${item.id}', '${item.item_id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </div>
+              `).join('')}
+
+              ${folderPdfs.map(item => `
+              <div class="folder-list-item" onclick='openPdfViewerFromFolderItem(${JSON.stringify(item.file_url || '')}, ${JSON.stringify(item.file_name || 'PDF')})'>
+                <div class="col-icon">
+                  <div class="file-icon-mini" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: white;">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="col-name">
+                  <span class="item-title-text">${item.file_name || 'PDF'}</span>
+                </div>
+                <div class="col-date">
+                  <span class="item-date-text">${formatRelativeTime(item.updated_at)}</span>
+                </div>
+                <div class="col-actions"></div>
+              </div>
+              `).join('')}
+            ` : `
               <div class="folder-empty-state-modern">
                 <div class="empty-icon-large">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -35281,7 +35518,7 @@ function renderFolderExplorerView(folder, docs, quizzes) {
                   </svg>
                 </div>
                 <p>No documents yet</p>
-                <button class="btn-text-modern" onclick="showUploadModalForFolder('${folder.id}')">Upload your first document</button>
+                <button class="btn-text-modern" onclick="createFolderDoc('${folder.id}')">Create your first doc</button>
               </div>
             `}
           </div>
@@ -35395,6 +35632,212 @@ async function extractDocxText(file) {
 
 let uploadedFileData = null;
 
+let currentPdfUrl = null;
+let currentPdfName = null;
+
+async function saveUploadedPdfToFolder() {
+  if (!uploadedFileData) {
+    showToast('Please upload a file first', 'error');
+    return;
+  }
+
+  if (!currentFolderId) {
+    showToast('Please open a folder to save PDFs', 'error');
+    return;
+  }
+
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to upload PDFs', 'error');
+    return;
+  }
+
+  const progressEl = document.getElementById('uploadProgress');
+  const progressText = document.getElementById('progressText');
+  if (progressEl) progressEl.style.display = 'flex';
+
+  try {
+    if (progressText) progressText.textContent = 'Uploading PDF...';
+    const uploadResult = await window.uploadPDFToStorage(uploadedFileData, currentFolderId);
+    if (!uploadResult?.url) {
+      throw new Error('Failed to upload PDF');
+    }
+
+    if (progressText) progressText.textContent = 'Saving to folder...';
+    await window.saveFolderItemToDB({
+      folder_id: currentFolderId,
+      item_type: 'pdf',
+      item_id: null,
+      file_name: uploadedFileData.name,
+      file_url: uploadResult.url,
+      file_size: uploadedFileData.size,
+      metadata: {
+        storage_path: uploadResult.path
+      }
+    });
+
+    if (progressEl) progressEl.style.display = 'none';
+    closeModal();
+    showToast('PDF saved to folder!', 'success');
+
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Error saving PDF to folder:', error);
+    if (progressEl) progressEl.style.display = 'none';
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+function openPdfViewerFromFolderItem(url, name) {
+  if (!url) {
+    showToast('PDF URL not found', 'error');
+    return;
+  }
+  currentPdfUrl = url;
+  currentPdfName = name || 'PDF';
+  const overlay = document.getElementById('pdfViewerOverlay');
+  const frame = document.getElementById('pdfViewerFrame');
+  const titleEl = document.getElementById('pdfViewerTitle');
+  if (titleEl) titleEl.textContent = currentPdfName;
+  if (frame) frame.src = url;
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function closePdfViewer() {
+  const overlay = document.getElementById('pdfViewerOverlay');
+  const frame = document.getElementById('pdfViewerFrame');
+  if (frame) frame.src = '';
+  if (overlay) overlay.style.display = 'none';
+  currentPdfUrl = null;
+  currentPdfName = null;
+}
+
+function downloadCurrentPdf() {
+  if (!currentPdfUrl) return;
+  window.open(currentPdfUrl, '_blank');
+}
+
+async function createFolderDoc(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create documents', 'error');
+    return;
+  }
+
+  try {
+    const selectedProjectId = typeof getSelectedProjectId === 'function' ? getSelectedProjectId() : null;
+    const savedDoc = await window.LayerDB.saveDoc({
+      title: 'Untitled',
+      content: '',
+      spaceId: currentSpaceId || null,
+      folder_id: folderId,
+      projectId: selectedProjectId || null
+    });
+
+    const docs = await window.LayerDB.loadDocs();
+    saveDocs(docs);
+
+    openDocEditor(savedDoc.id);
+    if (currentFolderId) openFolderExplorer(currentFolderId);
+  } catch (error) {
+    console.error('Error creating doc in folder:', error);
+    showToast('Failed to create doc', 'error');
+  }
+}
+
+async function createFolderSheet(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spreadsheets', 'error');
+    return;
+  }
+
+  try {
+    const savedExcel = await window.LayerDB.saveExcel({
+      title: 'Untitled Spreadsheet',
+      data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
+      spaceId: currentSpaceId || null
+    });
+
+    await window.saveFolderItemToDB({
+      folder_id: folderId,
+      item_type: 'sheet',
+      item_id: savedExcel.id,
+      file_name: savedExcel.title,
+      file_size: null,
+      file_url: null,
+      metadata: {}
+    });
+
+    const excels = await window.LayerDB.loadExcels();
+    saveExcels(excels);
+
+    openExcelEditor(savedExcel.id);
+    if (currentFolderId) openFolderExplorer(currentFolderId);
+  } catch (error) {
+    console.error('Error creating sheet in folder:', error);
+    showToast('Failed to create spreadsheet', 'error');
+  }
+}
+
+async function createFolderWhiteboard(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create whiteboards', 'error');
+    return;
+  }
+
+  try {
+    const draftProject = {
+      name: 'Untitled Whiteboard',
+      description: 'Whiteboard',
+      status: 'todo',
+      startDate: new Date().toISOString().split('T')[0],
+      targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      grip_diagram: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
+      isWhiteboard: true,
+      milestones: { folder_only: true, folder_id: folderId }
+    };
+
+    const newProject = await addProject(draftProject);
+    if (!newProject?.id) throw new Error('Failed to create whiteboard project');
+
+    await window.saveFolderItemToDB({
+      folder_id: folderId,
+      item_type: 'whiteboard',
+      item_id: newProject.id,
+      file_name: newProject.name,
+      metadata: {}
+    });
+
+    const projects = loadProjects();
+    const projectIndex = projects.findIndex(p => String(p.id) === String(newProject.id));
+    if (projectIndex !== -1) {
+      openGripDiagram(projectIndex);
+    }
+
+    if (currentFolderId) openFolderExplorer(currentFolderId);
+  } catch (error) {
+    console.error('Error creating whiteboard in folder:', error);
+    showToast('Failed to create whiteboard', 'error');
+  }
+}
+
+function openWhiteboardFromFolderItem(projectId) {
+  const projects = loadProjects();
+  const projectIndex = projects.findIndex(p => String(p.id) === String(projectId));
+  if (projectIndex === -1) {
+    showToast('Whiteboard not found', 'error');
+    return;
+  }
+  openGripDiagram(projectIndex);
+}
+
+window.openPdfViewerFromFolderItem = openPdfViewerFromFolderItem;
+window.closePdfViewer = closePdfViewer;
+window.downloadCurrentPdf = downloadCurrentPdf;
+
 function showUploadModal() {
   const targetFolderId = currentFolderId || currentSpaceId;
 
@@ -35434,6 +35877,10 @@ function showUploadModal() {
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
+        </div>
+
+        <div class="form-actions" style="margin: 12px 0 4px;">
+          <button class="btn btn-primary" id="uploadToFolderBtn" onclick="saveUploadedPdfToFolder()" disabled>Upload</button>
         </div>
 
         <div class="ai-action-cards">
@@ -35546,6 +35993,12 @@ async function handleFileSelect(file) {
   document.getElementById('previewFileSize').textContent = formatFileSize(file.size);
 
   uploadedFileData = file;
+
+  const uploadBtn = document.getElementById('uploadToFolderBtn');
+  if (uploadBtn) {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    uploadBtn.disabled = !isPdf;
+  }
 }
 
 function clearUploadedFile() {
@@ -35554,6 +36007,9 @@ function clearUploadedFile() {
   document.getElementById('uploadPreview').style.display = 'none';
   document.getElementById('quizOptionsPanel').style.display = 'none';
   document.getElementById('uploadProgress').style.display = 'none';
+
+  const uploadBtn = document.getElementById('uploadToFolderBtn');
+  if (uploadBtn) uploadBtn.disabled = true;
 }
 
 function showQuizOptions() {
@@ -36067,6 +36523,36 @@ async function processDocQuiz(docId) {
   }
 }
 
+function createNewQuiz(spaceId) {
+  // Check if there are any documents in the space to generate a quiz from
+  const docs = loadDocs().filter(d => String(d.spaceId) === String(spaceId));
+  if (docs.length === 0) {
+    showToast('Please create or upload a document first to generate a quiz.', 'info');
+    return;
+  }
+  
+  // Open the first document and show quiz options, or show a selector
+  if (docs.length === 1) {
+    openDocEditor(docs[0].id);
+    setTimeout(() => {
+      const quizCard = document.getElementById('quizCard');
+      if (quizCard) quizCard.click();
+    }, 500);
+  } else {
+    showToast('Select a document to generate a quiz from.', 'info');
+    // For now, redirect to overview to let them pick a doc
+    switchSpaceTab('overview', spaceId);
+  }
+}
+
+function openQuiz(quizId) {
+  if (typeof openQuizViewer === 'function') {
+    openQuizViewer(quizId);
+  } else {
+    showToast('Quiz viewer is not available.', 'error');
+  }
+}
+
 async function deleteQuiz(quizId) {
   if (!confirm('Are you sure you want to delete this quiz?')) return;
 
@@ -36131,6 +36617,53 @@ function closeFolderMenu() {
   document.removeEventListener('click', closeFolderMenu);
 }
 
+function showDocAiMenu(docId, event) {
+  event.stopPropagation();
+  closeDocAiMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'doc-ai-menu-dropdown';
+  menu.innerHTML = `
+    <button onclick="closeDocAiMenu(); summarizeDocument('${docId}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16v16H4z"/>
+        <path d="M7 8h10M7 12h10M7 16h6"/>
+      </svg>
+      Summarize
+    </button>
+    <button onclick="closeDocAiMenu(); generateQuizFromDoc('${docId}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Generate Quiz
+    </button>
+  `;
+
+  const rect = (event.currentTarget || event.target).getBoundingClientRect();
+  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+
+  document.body.appendChild(menu);
+
+  setTimeout(() => {
+    document.addEventListener('click', closeDocAiMenu);
+    document.addEventListener('keydown', handleDocAiMenuKeydown);
+  }, 10);
+}
+
+function handleDocAiMenuKeydown(e) {
+  if (e.key === 'Escape') closeDocAiMenu();
+}
+
+function closeDocAiMenu() {
+  const menu = document.querySelector('.doc-ai-menu-dropdown');
+  if (menu) menu.remove();
+  document.removeEventListener('click', closeDocAiMenu);
+  document.removeEventListener('keydown', handleDocAiMenuKeydown);
+}
+
 async function editFolder(folderId) {
   closeFolderMenu();
 
@@ -36143,14 +36676,6 @@ async function editFolder(folderId) {
       <div class="form-group">
         <label class="form-label">Folder Name</label>
         <input type="text" name="name" class="form-input" value="${folder.name}" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <input type="text" name="description" class="form-input" value="${folder.description || ''}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Color</label>
-        <input type="color" name="color" class="form-input color-input" value="${folder.color || '#6366f1'}">
       </div>
       <div class="form-group">
         <label class="form-label">Emoji</label>
@@ -36172,8 +36697,6 @@ async function saveFolderEdit(event, folderId) {
 
   const updates = {
     name: form.name.value.trim(),
-    description: form.description.value.trim(),
-    color: form.color.value,
     emoji: form.emoji.value || '📁',
     updated_at: new Date().toISOString()
   };

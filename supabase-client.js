@@ -1553,6 +1553,8 @@ async function loadDocsFromDB() {
     title: d.title,
     content: d.content,
     spaceId: d.space_id,
+    folder_id: d.folder_id || null,
+    folderId: d.folder_id || null,
     isFavorite: d.is_favorite || false,
     sharedWith: d.shared_with || [],
     createdAt: d.created_at,
@@ -1579,6 +1581,7 @@ async function saveDocToDB(docData) {
     title: docData.title || 'Untitled',
     content: docData.content || '',
     space_id: docData.spaceId || null,
+    folder_id: docData.folder_id || docData.folderId || null,
     project_id: docData.projectId || null,
     updated_at: new Date().toISOString()
   };
@@ -1609,6 +1612,8 @@ async function saveDocToDB(docData) {
     title: data.title,
     content: data.content,
     spaceId: data.space_id,
+    folder_id: data.folder_id || null,
+    folderId: data.folder_id || null,
     isFavorite: data.is_favorite || false,
     sharedWith: data.shared_with || [],
     createdAt: data.created_at,
@@ -1626,6 +1631,8 @@ async function updateDocInDB(docId, updates) {
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.content !== undefined) dbUpdates.content = updates.content;
   if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
+  if (updates.folder_id !== undefined) dbUpdates.folder_id = updates.folder_id;
+  if (updates.folderId !== undefined) dbUpdates.folder_id = updates.folderId;
   if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
   if (updates.shared_with !== undefined) dbUpdates.shared_with = updates.shared_with;
 
@@ -3529,6 +3536,7 @@ window.LayerDB = {
   // Folder functions
   loadFolders: loadFoldersFromDB,
   saveFolder: saveFolderToDB,
+  updateFolder: updateFolderInDB,
   deleteFolder: deleteFolderFromDB
 };
 
@@ -3647,6 +3655,32 @@ async function deleteFolderFromDB(folderId) {
   }
 }
 
+async function updateFolderInDB(folderId, updates) {
+  if (!currentUser) {
+    console.warn('No user logged in, updating in localStorage only');
+    return updateFolderInLocalStorage(folderId, updates);
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folders')
+      .update(updates)
+      .eq('id', folderId)
+      .eq('user_id', currentUser.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Folder updated in DB:', folderId, data);
+    return data;
+  } catch (error) {
+    console.error('Error updating folder in DB:', error);
+    // Fallback to localStorage
+    return updateFolderInLocalStorage(folderId, updates);
+  }
+}
+
 // LocalStorage fallback functions
 function saveFolderToLocalStorage(folderData) {
   let folders = JSON.parse(localStorage.getItem('folders') || '[]');
@@ -3671,6 +3705,21 @@ function deleteFolderFromLocalStorage(folderId) {
   folders = folders.filter(f => f.id !== folderId);
   localStorage.setItem('folders', JSON.stringify(folders));
   return true;
+}
+
+function updateFolderInLocalStorage(folderId, updates) {
+  let folders = JSON.parse(localStorage.getItem('folders') || '[]');
+  const folderIndex = folders.findIndex(f => f.id === folderId);
+  
+  if (folderIndex >= 0) {
+    folders[folderIndex] = { ...folders[folderIndex], ...updates };
+    localStorage.setItem('folders', JSON.stringify(folders));
+    console.log('Folder updated in localStorage:', folderId, folders[folderIndex]);
+    return folders[folderIndex];
+  } else {
+    console.warn('Folder not found in localStorage for update:', folderId);
+    return null;
+  }
 }
 
 // Export functions for use in other files
