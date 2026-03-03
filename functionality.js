@@ -35678,15 +35678,29 @@ async function generateAIQuiz(documentText, questionCount) {
 
 async function saveSummaryToFolder(title, content, folderId) {
   try {
+    let userId = null;
+    if (window.LayerDB && typeof window.LayerDB.isAuthenticated === 'function' && window.LayerDB.isAuthenticated()) {
+      const user = window.LayerDB.getCurrentUser ? window.LayerDB.getCurrentUser() : null;
+      if (user?.id) {
+        userId = user.id;
+      } else if (typeof window.LayerDB.refreshUser === 'function') {
+        const refreshed = await window.LayerDB.refreshUser();
+        userId = refreshed?.id || null;
+      }
+    }
+
     const docData = {
       title: title,
       content: content,
       folder_id: folderId,
       space_id: currentSpaceId || null,
-      user_id: (await window.supabase.auth.getUser()).data.user.id
+      user_id: userId
     };
 
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      if (!docData.user_id) {
+        throw new Error('Not authenticated');
+      }
       const result = await window.LayerDB.createDoc(docData);
       return result;
     } else {
@@ -35710,16 +35724,30 @@ async function saveSummaryToFolder(title, content, folderId) {
 
 async function saveQuizToFolder(title, quizData, folderId, sourceFileName) {
   try {
+    let userId = null;
+    if (window.LayerDB && typeof window.LayerDB.isAuthenticated === 'function' && window.LayerDB.isAuthenticated()) {
+      const user = window.LayerDB.getCurrentUser ? window.LayerDB.getCurrentUser() : null;
+      if (user?.id) {
+        userId = user.id;
+      } else if (typeof window.LayerDB.refreshUser === 'function') {
+        const refreshed = await window.LayerDB.refreshUser();
+        userId = refreshed?.id || null;
+      }
+    }
+
     const quizRecord = {
       title: title,
       questions: quizData.questions,
       question_count: quizData.questions.length,
       folder_id: folderId,
       source_file_name: sourceFileName,
-      user_id: (await window.supabase.auth.getUser()).data.user.id
+      user_id: userId
     };
 
     if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      if (!quizRecord.user_id) {
+        throw new Error('Not authenticated');
+      }
       const result = await window.LayerDB.createQuiz(quizRecord);
       return result;
     } else {
