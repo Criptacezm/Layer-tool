@@ -1579,6 +1579,7 @@ async function saveDocToDB(docData) {
     title: docData.title || 'Untitled',
     content: docData.content || '',
     space_id: docData.spaceId || null,
+    project_id: docData.projectId || null,
     updated_at: new Date().toISOString()
   };
 
@@ -3782,3 +3783,410 @@ window.saveBookmarkToDB = saveBookmarkToDB;
 window.loadBookmarksFromDB = loadBookmarksFromDB;
 window.updateBookmarkInDB = updateBookmarkInDB;
 window.deleteBookmarkFromDB = deleteBookmarkFromDB;
+
+// ============================================
+// Quiz Functions (Database Storage)
+// ============================================
+
+// Save quiz to database
+async function saveQuizToDB(quizData) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for quiz save');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('quizzes')
+      .insert({
+        user_id: currentUser.id,
+        folder_id: quizData.folder_id || null,
+        title: quizData.title || 'Untitled Quiz',
+        questions: quizData.questions || [],
+        source_doc_id: quizData.source_doc_id || null,
+        source_file_name: quizData.source_file_name || null,
+        question_count: quizData.question_count || quizData.questions?.length || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Quiz saved to DB:', data.id);
+    return data;
+  } catch (error) {
+    console.error('Error saving quiz to DB:', error);
+    return null;
+  }
+}
+
+// Load quizzes from database
+async function loadQuizzesFromDB(folderId = null) {
+  if (!currentUser || !currentUser.id) {
+    console.log('User not authenticated for quiz load');
+    return [];
+  }
+
+  try {
+    let query = supabaseClient
+      .from('quizzes')
+      .select('*')
+      .eq('user_id', currentUser.id);
+
+    // Filter by folder if provided
+    if (folderId) {
+      query = query.eq('folder_id', folderId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log('Quizzes loaded from DB:', data?.length || 0, 'items');
+    return data || [];
+  } catch (error) {
+    console.error('Error loading quizzes from DB:', error);
+    return [];
+  }
+}
+
+// Load a single quiz by ID
+async function loadQuizById(quizId) {
+  if (!currentUser || !currentUser.id) {
+    console.log('User not authenticated for quiz load');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('quizzes')
+      .select('*')
+      .eq('id', quizId)
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error loading quiz by ID:', error);
+    return null;
+  }
+}
+
+// Update quiz in database
+async function updateQuizInDB(quizId, updates) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for quiz update');
+    return null;
+  }
+
+  try {
+    const updateData = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
+    // Update question_count if questions changed
+    if (updates.questions) {
+      updateData.question_count = updates.questions.length;
+    }
+
+    const { data, error } = await supabaseClient
+      .from('quizzes')
+      .update(updateData)
+      .eq('id', quizId)
+      .eq('user_id', currentUser.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Quiz updated in DB:', quizId);
+    return data;
+  } catch (error) {
+    console.error('Error updating quiz in DB:', error);
+    return null;
+  }
+}
+
+// Delete quiz from database
+async function deleteQuizFromDB(quizId) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for quiz deletion');
+    return false;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('quizzes')
+      .delete()
+      .eq('id', quizId)
+      .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+    
+    console.log('Quiz deleted from DB:', quizId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting quiz from DB:', error);
+    return false;
+  }
+}
+
+// Get quiz count for a folder
+async function getQuizCountForFolder(folderId) {
+  if (!currentUser || !currentUser.id) {
+    return 0;
+  }
+
+  try {
+    const { count, error } = await supabaseClient
+      .from('quizzes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('folder_id', folderId);
+
+    if (error) throw error;
+    
+    return count || 0;
+  } catch (error) {
+    console.error('Error getting quiz count:', error);
+    return 0;
+  }
+}
+
+// Export quiz functions for use in other files
+window.saveQuizToDB = saveQuizToDB;
+window.loadQuizzesFromDB = loadQuizzesFromDB;
+window.loadQuizById = loadQuizById;
+window.updateQuizInDB = updateQuizInDB;
+window.deleteQuizFromDB = deleteQuizFromDB;
+window.getQuizCountForFolder = getQuizCountForFolder;
+
+// ============================================
+// Folder Items Functions (Database Storage)
+// ============================================
+
+// Save folder item to database
+async function saveFolderItemToDB(itemData) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for folder item save');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folder_items')
+      .insert({
+        folder_id: itemData.folder_id,
+        item_type: itemData.item_type,
+        item_id: itemData.item_id || null,
+        file_name: itemData.file_name || null,
+        file_url: itemData.file_url || null,
+        file_size: itemData.file_size || null,
+        thumbnail_url: itemData.thumbnail_url || null,
+        metadata: itemData.metadata || {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Folder item saved to DB:', data.id);
+    return data;
+  } catch (error) {
+    console.error('Error saving folder item to DB:', error);
+    return null;
+  }
+}
+
+// Load folder items from database
+async function loadFolderItemsFromDB(folderId) {
+  if (!currentUser || !currentUser.id) {
+    console.log('User not authenticated for folder items load');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folder_items')
+      .select('*')
+      .eq('folder_id', folderId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log('Folder items loaded from DB:', data?.length || 0, 'items');
+    return data || [];
+  } catch (error) {
+    console.error('Error loading folder items from DB:', error);
+    return [];
+  }
+}
+
+// Delete folder item from database
+async function deleteFolderItemFromDB(itemId) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for folder item deletion');
+    return false;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('folder_items')
+      .delete()
+      .eq('id', itemId);
+
+    if (error) throw error;
+    
+    console.log('Folder item deleted from DB:', itemId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting folder item from DB:', error);
+    return false;
+  }
+}
+
+// Delete all items for a folder
+async function deleteFolderItemsByFolderId(folderId) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for folder items deletion');
+    return false;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('folder_items')
+      .delete()
+      .eq('folder_id', folderId);
+
+    if (error) throw error;
+    
+    console.log('All folder items deleted for folder:', folderId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting folder items:', error);
+    return false;
+  }
+}
+
+// Get item counts for a folder (grouped by type)
+async function getFolderItemCounts(folderId) {
+  if (!currentUser || !currentUser.id) {
+    return {};
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folder_items')
+      .select('item_type')
+      .eq('folder_id', folderId);
+
+    if (error) throw error;
+    
+    const counts = {};
+    (data || []).forEach(item => {
+      counts[item.item_type] = (counts[item.item_type] || 0) + 1;
+    });
+    
+    return counts;
+  } catch (error) {
+    console.error('Error getting folder item counts:', error);
+    return {};
+  }
+}
+
+// Export folder items functions
+window.saveFolderItemToDB = saveFolderItemToDB;
+window.loadFolderItemsFromDB = loadFolderItemsFromDB;
+window.deleteFolderItemFromDB = deleteFolderItemFromDB;
+window.deleteFolderItemsByFolderId = deleteFolderItemsByFolderId;
+window.getFolderItemCounts = getFolderItemCounts;
+
+// ============================================
+// PDF Storage Functions (Supabase Storage)
+// ============================================
+
+// Upload PDF to Supabase Storage
+async function uploadPDFToStorage(file, folderId) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for file upload');
+    return null;
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${currentUser.id}/${folderId}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabaseClient
+      .storage
+      .from('layer-pdfs')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+    
+    // Get public URL
+    const { data: urlData } = supabaseClient
+      .storage
+      .from('layer-pdfs')
+      .getPublicUrl(fileName);
+    
+    console.log('PDF uploaded successfully:', urlData.publicUrl);
+    return {
+      path: data.path,
+      url: urlData.publicUrl
+    };
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    // Check if bucket doesn't exist
+    if (error.message?.includes('not found') || error.message?.includes('Bucket')) {
+      console.log('layer-pdfs bucket may not exist. Creating it...');
+      // Try to create bucket
+      try {
+        await supabaseClient.storage.createBucket('layer-pdfs', {
+          public: true,
+          fileSizeLimit: 52428800 // 50MB
+        });
+        // Retry upload
+        return await uploadPDFToStorage(file, folderId);
+      } catch (bucketError) {
+        console.error('Could not create bucket:', bucketError);
+      }
+    }
+    return null;
+  }
+}
+
+// Delete PDF from storage
+async function deletePDFFromStorage(path) {
+  if (!currentUser || !currentUser.id) {
+    return false;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .storage
+      .from('layer-pdfs')
+      .remove([path]);
+
+    if (error) throw error;
+    
+    console.log('PDF deleted from storage:', path);
+    return true;
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    return false;
+  }
+}
+
+// Export PDF storage functions
+window.uploadPDFToStorage = uploadPDFToStorage;
+window.deletePDFFromStorage = deletePDFFromStorage;

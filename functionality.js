@@ -13423,73 +13423,7 @@ function showToast(message) {
 let currentFolderDropdown = null;
 
 function openFolderDropdown(button) {
-  // Close any existing dropdown
-  closeFolderDropdown();
-
-  // Create dropdown container if it doesn't exist
-  let container = button.closest('.folder-dropdown-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.className = 'folder-dropdown-container';
-    button.parentNode.insertBefore(container, button);
-    container.appendChild(button);
-  }
-
-  // Create dropdown form
-  const dropdown = document.createElement('div');
-  dropdown.className = 'folder-dropdown-form';
-  dropdown.innerHTML = `
-    <div class="folder-dropdown-header">
-      <h3 class="folder-dropdown-title">Create New Folder</h3>
-      <p class="folder-dropdown-subtitle">Enter a name for your new folder</p>
-    </div>
-    <input 
-      type="text" 
-      class="folder-dropdown-input" 
-      placeholder="Folder name" 
-      id="folder-name-input"
-      autocomplete="off"
-      maxlength="100"
-    >
-    <div class="folder-dropdown-error" id="folder-dropdown-error" style="display:none;"></div>
-    <div class="folder-dropdown-actions">
-      <button type="button" class="folder-dropdown-btn cancel" onclick="closeFolderDropdown()">Cancel</button>
-      <button type="button" class="folder-dropdown-btn create" id="folder-dropdown-create-btn" onclick="createFolder()" disabled>Create</button>
-    </div>
-  `;
-
-  container.appendChild(dropdown);
-  currentFolderDropdown = dropdown;
-
-  // Focus the input
-  const input = dropdown.querySelector('#folder-name-input');
-  const createBtn = dropdown.querySelector('#folder-dropdown-create-btn');
-  const errorEl = dropdown.querySelector('#folder-dropdown-error');
-  setTimeout(() => {
-    input.focus();
-    input.select();
-  }, 10);
-
-  // Add event listeners
-  document.addEventListener('click', handleFolderDropdownOutsideClick);
-  input.addEventListener('keydown', handleFolderInputKeydown);
-
-  input.addEventListener('input', () => {
-    const name = input.value.trim();
-    if (errorEl) {
-      errorEl.style.display = 'none';
-      errorEl.textContent = '';
-    }
-    if (createBtn) createBtn.disabled = name.length === 0;
-  });
-
-  // Prevent form submission on Enter in input
-  input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      createFolder();
-    }
-  });
+  openCreateFolderModal();
 }
 
 function closeFolderDropdown() {
@@ -13567,6 +13501,9 @@ async function createFolder() {
       // Close the dropdown
       closeFolderDropdown();
 
+      // Show success message
+      showToast('Folder created successfully!');
+
       // Render folders in the placeholder
       await renderFoldersInPlaceholder();
     } else {
@@ -13582,6 +13519,145 @@ async function createFolder() {
     }
   } finally {
     if (createBtn) createBtn.disabled = input.value.trim().length === 0;
+  }
+}
+
+function openCreateFolderModal() {
+  try {
+    const palette = [
+      '#6366f1',
+      '#8b5cf6',
+      '#ec4899',
+      '#f43f5e',
+      '#f97316',
+      '#f59e0b',
+      '#84cc16',
+      '#10b981',
+      '#06b6d4',
+      '#0ea5e9'
+    ];
+
+    const iconOptions = ['📁', '📚', '🗂️', '🧠', '✨', '🔬', '🧾', '📌', '🧩', '📝', '📄', '🧷'];
+    const defaultColor = palette[0];
+    const defaultIcon = iconOptions[0];
+
+    const content = `
+      <form id="createFolderForm" class="folder-create-modal" onsubmit="createFolderFromModal(event)">
+        <div class="form-group">
+          <label class="form-label">Folder name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-input" placeholder="e.g. Research Notes" maxlength="100" required autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description <span class="muted">(optional)</span></label>
+          <textarea name="description" class="form-textarea" rows="3" placeholder="Add a short note about what lives in this folder..."></textarea>
+        </div>
+
+        <div class="folder-create-row">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Color</label>
+            <input type="hidden" name="color" id="folderColorValue" value="${defaultColor}">
+            <div class="folder-color-grid">
+              ${palette.map((c, idx) => `
+                <button type="button" class="folder-color-swatch ${idx === 0 ? 'active' : ''}" style="--swatch:${c}" onclick="selectFolderColor('${c}', this)" aria-label="Select color"></button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Icon</label>
+            <input type="hidden" name="icon" id="folderIconValue" value="${defaultIcon}">
+            <div class="folder-icon-grid">
+              ${iconOptions.map((i, idx) => `
+                <button type="button" class="folder-icon-swatch ${idx === 0 ? 'active' : ''}" onclick='selectFolderIcon(${JSON.stringify(i)}, this)' aria-label="Select icon">${i}</button>
+              `).join('')}
+            </div>
+            <div class="folder-icon-custom">
+              <input type="text" class="form-input" id="folderCustomIconInput" placeholder="Or type an emoji" maxlength="6" autocomplete="off" oninput="setCustomFolderIcon(this.value)">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create folder</button>
+        </div>
+      </form>
+    `;
+
+    openModal('Create Folder', content);
+    setTimeout(() => {
+      const input = document.querySelector('#createFolderForm input[name="name"]');
+      if (input) input.focus();
+    }, 50);
+  } catch (error) {
+    console.error('Error opening create folder modal:', error);
+    showToast('Failed to open folder modal');
+  }
+}
+
+function selectFolderColor(color, el) {
+  const colorValue = document.getElementById('folderColorValue');
+  if (colorValue) colorValue.value = color;
+  document.querySelectorAll('.folder-color-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function selectFolderIcon(icon, el) {
+  const iconValue = document.getElementById('folderIconValue');
+  if (iconValue) iconValue.value = icon;
+  const customInput = document.getElementById('folderCustomIconInput');
+  if (customInput) customInput.value = '';
+  document.querySelectorAll('.folder-icon-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function setCustomFolderIcon(val) {
+  const iconValue = document.getElementById('folderIconValue');
+  const v = String(val || '').trim();
+  if (!iconValue) return;
+  iconValue.value = v.length > 0 ? v : (iconValue.value || '📁');
+  if (v.length > 0) {
+    document.querySelectorAll('.folder-icon-swatch').forEach(s => s.classList.remove('active'));
+  }
+}
+
+async function createFolderFromModal(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const name = form?.name?.value?.trim() || '';
+  const description = form?.description?.value?.trim() || '';
+  const color = form?.color?.value || '#6366f1';
+  const icon = form?.icon?.value || '📁';
+
+  if (!name) {
+    showToast('Folder name is required');
+    return;
+  }
+
+  try {
+    const folderData = {
+      id: 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name,
+      description,
+      color,
+      icon,
+      space_id: currentSpaceId || null,
+      is_favorite: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const savedFolder = await saveFolderToDB(folderData);
+    if (!savedFolder) throw new Error('Failed to save folder');
+
+    closeModal();
+    showToast('Folder created successfully!');
+    await renderFoldersInPlaceholder();
+  } catch (error) {
+    console.error('Error creating folder from modal:', error);
+    showToast('Failed to create folder. Please try again.');
   }
 }
 
@@ -13612,81 +13688,8 @@ async function renderFoldersInPlaceholder() {
   if (!placeholder) return;
 
   try {
-    // Load folders from database
-    const folders = await loadFoldersFromDB();
-    const activeSpaceId = currentSpaceId;
-    const filteredFolders = (folders || []).filter(f => {
-      if (!activeSpaceId) return false;
-      return String(f.space_id) === String(activeSpaceId);
-    });
-
-    console.log('Folders loaded for rendering:', folders);
-
-    if (filteredFolders && filteredFolders.length > 0) {
-      // Clear the placeholder content
-      placeholder.innerHTML = '';
-
-      // Create folders container
-      const foldersContainer = document.createElement('div');
-      foldersContainer.className = 'folders-grid';
-
-      // Add each folder
-      filteredFolders.forEach(folder => {
-        const folderElement = document.createElement('div');
-        folderElement.className = 'folder-item';
-        folderElement.innerHTML = `
-          <div class="folder-icon" style="background-color: ${folder.color || '#6366f1'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <div class="folder-name">${folder.name}</div>
-          <div class="folder-actions">
-            <button class="folder-action-btn" onclick="openFolder('${folder.id}')" title="Open folder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-              </svg>
-            </button>
-            <button class="folder-action-btn delete" onclick="deleteFolder('${folder.id}')" title="Delete folder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-          </div>
-        `;
-        foldersContainer.appendChild(folderElement);
-      });
-
-      // Add the "Add Folder" button
-      const addButtonContainer = document.createElement('div');
-      addButtonContainer.className = 'folder-add-container';
-      addButtonContainer.innerHTML = `
-        <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Add Folder
-        </button>
-      `;
-      foldersContainer.appendChild(addButtonContainer);
-
-      placeholder.appendChild(foldersContainer);
-      console.log('Folders rendered successfully');
-    } else {
-      // Show empty state
-      placeholder.innerHTML = `
-        <div class="folder-icon-large">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
-        <div class="folders-text">Add new Folder to your Space</div>
-        <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-          Add Folder
-        </button>
-      `;
-      console.log('Empty state rendered');
-    }
+    const html = await renderEnhancedFolderGrid(currentSpaceId);
+    placeholder.innerHTML = html;
   } catch (error) {
     console.error('Error rendering folders:', error);
   }
@@ -21134,14 +21137,7 @@ function toggleAnimatedBg(enabled) {
   console.log('Setting animated background to:', value);
 
   if (!enabled) {
-    // 1. Cleanup drafts backgrounds
-    if (typeof window.cleanupAnimatedBackgrounds === 'function') {
-      window.cleanupAnimatedBackgrounds();
-    } else if (typeof cleanupAnimatedBackgrounds === 'function') {
-      cleanupAnimatedBackgrounds();
-    }
-
-    // 2. Cleanup login background
+    // Cleanup login background
     if (typeof window.loginPageAnimatedBg !== 'undefined' && window.loginPageAnimatedBg) {
       try {
         window.loginPageAnimatedBg.destroy();
@@ -21151,39 +21147,24 @@ function toggleAnimatedBg(enabled) {
       }
     }
 
-    // 3. Cleanup iridescence background (the one in the screenshot)
+    // Cleanup iridescence background
     const viewsBg = document.getElementById('viewsBackground');
     if (viewsBg) {
       while (viewsBg.firstChild) viewsBg.removeChild(viewsBg.firstChild);
       viewsBg.style.background = 'transparent';
     }
 
-    // 4. Force remove any remaining canvases
+    // Force remove any remaining canvases
     document.querySelectorAll('canvas').forEach(canvas => {
-      const isDraftBg = canvas.parentElement && canvas.parentElement.classList.contains('animated-background-container');
       const isLoginBg = canvas.id === 'loginPageBg' || (canvas.parentElement && canvas.parentElement.id === 'loginPageBg');
       const isViewsBg = canvas.parentElement && canvas.parentElement.id === 'viewsBackground';
 
-      if (isDraftBg || isLoginBg || isViewsBg) {
+      if (isLoginBg || isViewsBg) {
         console.log('Removing background canvas manually');
         canvas.remove();
       }
     });
-
-    // 5. Update any containers to show a static background
-    document.querySelectorAll('.animated-background-container').forEach(container => {
-      container.style.background = 'var(--surface-hover)';
-    });
   } else {
-    // Re-initialize if on drafts view
-    if (typeof currentView !== 'undefined' && currentView === 'drafts') {
-      if (typeof window.initializeAnimatedBackgrounds === 'function') {
-        window.initializeAnimatedBackgrounds();
-      } else if (typeof initializeAnimatedBackgrounds === 'function') {
-        initializeAnimatedBackgrounds();
-      }
-    }
-
     // Re-initialize iridescence background
     const initIridescence = window.initIridescenceViewsBackground;
     if (typeof initIridescence === 'function') {
@@ -22798,11 +22779,13 @@ function openDocEditor(docId = null) {
       const tempId = Date.now();
       currentDocId = tempId;
 
+      const selectedProjectId = typeof getSelectedProjectId === 'function' ? getSelectedProjectId() : null;
       const newDoc = {
         id: tempId,
         title: 'Untitled',
         content: '',
         spaceId: currentSpaceId || null,
+        projectId: selectedProjectId || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isDraft: true // Mark as draft initially
@@ -22825,7 +22808,8 @@ function openDocEditor(docId = null) {
           }
 
           // Create a draft entry for the document ONLY if it's NOT in a space or project
-          const isInSpaceOrProject = !!(newDoc.spaceId || (typeof currentProjectId !== 'undefined' && currentProjectId));
+          const selectedProjectId = typeof getSelectedProjectId === 'function' ? getSelectedProjectId() : null;
+          const isInSpaceOrProject = !!(newDoc.spaceId || selectedProjectId);
 
           if (!isInSpaceOrProject) {
             if (window.LayerDB && window.LayerDB.isAuthenticated()) {
@@ -23266,11 +23250,13 @@ async function autoSaveDoc() {
           } else {
             // Document doesn't exist in DB yet (new doc), create it
             console.log('📝 Creating new doc in DB:', currentDocId);
+            const selectedProjectId = typeof getSelectedProjectId === 'function' ? getSelectedProjectId() : null;
             const newDoc = {
               id: currentDocId,
               title,
               content,
               spaceId: currentSpaceId || null,
+              projectId: selectedProjectId || null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             };
@@ -25137,6 +25123,9 @@ function openSpaceView(spaceId) {
   }
 
   updateBreadcrumb(space.name);
+  
+  // Load folders after rendering the space view
+  setTimeout(() => renderFoldersInPlaceholder(), 100);
 }
 
 function renderSpaceDetailView(space) {
@@ -34904,5 +34893,1264 @@ function stopSharedContentPolling() {
     clearInterval(sharedContentPollingInterval);
     sharedContentPollingInterval = null;
     console.log('⏹️ Stopped shared content polling');
+  }
+}
+
+// ============================================
+// FOLDERS FEATURE WITH AI INTEGRATION
+// ============================================
+
+// State for folder feature
+let currentFolderId = null;
+let currentFolderData = null;
+
+// AI System Prompts
+const FOLDER_SUMMARY_SYSTEM_PROMPT = `You are an expert academic summarizer. Create a clean, structured, professional summary of the uploaded document.
+
+FORMAT RULES:
+- Start with a brief 2-3 sentence overview
+- Use bullet points for key concepts
+- Include a "Key Takeaways" section at the end
+- Use **bold** for important terms
+- Keep the summary comprehensive but concise
+- Format for easy reading in a document editor
+
+STRUCTURE:
+1. Overview
+2. Main Topics (with bullet points)
+3. Key Takeaways
+4. Important Definitions (if any)
+
+Make the summary useful for studying and review.`;
+
+const FOLDER_QUIZ_SYSTEM_PROMPT = `You are an expert exam creator. Generate high-quality multiple-choice questions (MCQ) from the provided document.
+
+CRITICAL OUTPUT FORMAT - Return ONLY valid JSON:
+{
+  "questions": [
+    {
+      "q": "The question text here?",
+      "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+      "answer": 0
+    }
+  ]
+}
+
+RULES:
+- Create exactly the number of questions requested
+- Each question must have exactly 4 options
+- The "answer" field is the INDEX (0-3) of the correct option
+- Questions should test understanding, not just memorization
+- Include a mix of conceptual and factual questions
+- Make distractors plausible but clearly wrong
+- Vary difficulty: some easy, some medium, some challenging
+- Cover different topics from the document
+
+Return ONLY the JSON object, no additional text or markdown.`;
+
+// ============================================
+// Enhanced Folder Grid View
+// ============================================
+
+async function renderEnhancedFolderGrid(spaceId) {
+  const placeholder = document.querySelector('.folders-placeholder');
+  if (!placeholder) return '';
+
+  try {
+    const folders = await loadFoldersFromDB();
+    const filteredFolders = (folders || []).filter(f => {
+      if (!spaceId) return false;
+      return String(f.space_id) === String(spaceId);
+    });
+
+    // Get counts for each folder
+    const folderCounts = await Promise.all(
+      filteredFolders.map(async (folder) => {
+        const docs = await loadDocsFromFolder(folder.id);
+        const quizzes = await loadQuizzesFromFolder(folder.id);
+        return {
+          folderId: folder.id,
+          docCount: docs.length,
+          quizCount: quizzes.length
+        };
+      })
+    );
+
+    const countsMap = new Map(folderCounts.map(c => [c.folderId, c]));
+
+    if (filteredFolders && filteredFolders.length > 0) {
+      return `
+        <div class="folders-section-header">
+          <h3 class="folders-section-title">Folders</h3>
+          <div class="folders-view-toggle">
+            <button class="view-toggle-btn active" onclick="toggleFolderView('grid')" title="Grid view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+            <button class="view-toggle-btn" onclick="toggleFolderView('list')" title="List view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="folders-grid enhanced">
+          ${filteredFolders.map(folder => {
+            const counts = countsMap.get(folder.id) || { docCount: 0, quizCount: 0 };
+            const emoji = folder.icon || folder.emoji || '📁';
+            return `
+              <div class="folder-card" onclick="openFolderExplorer('${folder.id}')" style="--folder-color: ${folder.color || '#6366f1'}">
+                <div class="folder-card-header">
+                  <span class="folder-emoji">${emoji}</span>
+                  <div class="folder-card-menu" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>
+                      <circle cx="5" cy="12" r="1"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="folder-card-body">
+                  <h4 class="folder-card-title">${folder.name}</h4>
+                  <p class="folder-card-description">${folder.description || 'No description'}</p>
+                </div>
+                <div class="folder-card-footer">
+                  <div class="folder-counts">
+                    <span class="folder-count docs">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                      ${counts.docCount}
+                    </span>
+                    <span class="folder-count quizzes">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      ${counts.quizCount}
+                    </span>
+                  </div>
+                  <span class="folder-updated">${formatRelativeTime(folder.updated_at)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+          <div class="folder-card add-folder-card" onclick="openFolderDropdown(this)">
+            <div class="add-folder-content">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>Add Folder</span>
+            </div>
+          </div>
+        </div>
+        <button class="folder-upload-fab" onclick="showUploadModal()" title="Upload PDF / Document">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span class="fab-text">Upload</span>
+        </button>
+      `;
+    } else {
+      return `
+        <div class="folders-empty-state">
+          <div class="folder-icon-large">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div class="folders-text">Add new Folder to your Space</div>
+          <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+            Add Folder
+          </button>
+        </div>
+        <button class="folder-upload-fab" onclick="showUploadModal()" title="Upload PDF / Document">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span class="fab-text">Upload</span>
+        </button>
+      `;
+    }
+  } catch (error) {
+    console.error('Error rendering enhanced folder grid:', error);
+    return '';
+  }
+}
+
+// ============================================
+// Folder Explorer View
+// ============================================
+
+async function openFolderExplorer(folderId) {
+  console.log('Opening folder explorer:', folderId);
+
+  try {
+    const folders = await loadFoldersFromDB();
+    const folder = folders.find(f => f.id === folderId);
+
+    if (!folder) {
+      showToast('Folder not found');
+      return;
+    }
+
+    currentFolderId = folderId;
+    currentFolderData = folder;
+
+    // Load folder contents
+    const docs = await loadDocsFromFolder(folderId);
+    const quizzes = await loadQuizzesFromFolder(folderId);
+
+    // Update active states
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.custom-space-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.folder-card').forEach(item => item.classList.remove('active'));
+
+    const folderCard = document.querySelector(`.folder-card[onclick*="${folderId}"]`);
+    if (folderCard) folderCard.classList.add('active');
+
+    // Render folder explorer view
+    const viewsContent = document.getElementById('viewsContent');
+    if (viewsContent) {
+      viewsContent.innerHTML = renderFolderExplorerView(folder, docs, quizzes);
+    }
+
+    updateBreadcrumb(folder.name);
+  } catch (error) {
+    console.error('Error opening folder explorer:', error);
+    showToast('Failed to open folder');
+  }
+}
+
+function renderFolderExplorerView(folder, docs, quizzes) {
+  const emoji = folder.icon || folder.emoji || '📁';
+
+  return `
+    <div class="folder-explorer-container">
+      <!-- Header -->
+      <div class="folder-explorer-header">
+        <div class="folder-explorer-nav">
+          <button class="back-btn" onclick="openSpaceView('${folder.space_id}')" title="Back to Space">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="folder-explorer-hero">
+            <div class="folder-hero-left">
+              <span class="folder-emoji-large">${emoji}</span>
+              <div class="folder-header-info">
+                <h2 class="folder-explorer-title">${folder.name}</h2>
+                <p class="folder-explorer-description">${folder.description || 'No description'}</p>
+              </div>
+            </div>
+            <div class="folder-hero-meta">
+              <div class="folder-stat-chip" title="Documents in this folder">
+                <span class="folder-stat-label">Docs</span>
+                <span class="folder-stat-value">${docs.length}</span>
+              </div>
+              <div class="folder-stat-chip" title="Quizzes in this folder">
+                <span class="folder-stat-label">Quizzes</span>
+                <span class="folder-stat-value">${quizzes.length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="folder-explorer-actions">
+          <button class="folder-action-btn primary" onclick="showUploadModalForFolder('${folder.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span class="folder-action-label">Upload</span>
+          </button>
+          <button class="folder-action-btn icon-only" onclick="showFolderSettings('${folder.id}')" title="Folder settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Content Tabs -->
+      <div class="folder-content-tabs">
+        <button class="folder-tab active" data-tab="documents">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Documents
+          <span class="folder-tab-count">${docs.length}</span>
+        </button>
+        <button class="folder-tab" data-tab="quizzes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Quizzes
+          <span class="folder-tab-count">${quizzes.length}</span>
+        </button>
+      </div>
+
+      <!-- Content Area -->
+      <div class="folder-content-area">
+        <!-- Documents Section -->
+        <div class="folder-section documents-section active" id="documentsSection">
+          ${docs.length > 0 ? `
+            <div class="folder-items-grid">
+              ${docs.map(doc => `
+                <div class="folder-item-card doc-item" onclick="openDocEditor('${doc.id}')">
+                  <div class="item-icon doc-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="item-info">
+                    <h4 class="item-title">${doc.title}</h4>
+                    <span class="item-meta">${formatRelativeTime(doc.updated_at)}</span>
+                  </div>
+                  <div class="item-actions">
+                    <button class="item-action-btn" onclick="event.stopPropagation(); summarizeDocument('${doc.id}')" title="Summarize">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 3v18M3 12h18"/>
+                      </svg>
+                    </button>
+                    <button class="item-action-btn" onclick="event.stopPropagation(); generateQuizFromDoc('${doc.id}')" title="Generate Quiz">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="folder-empty-content">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <p class="empty-text">No documents yet</p>
+              <p class="empty-hint">Upload a PDF or create a summary to get started</p>
+              <button class="folder-empty-cta" onclick="showUploadModalForFolder('${folder.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Upload document
+              </button>
+            </div>
+          `}
+        </div>
+
+        <!-- Quizzes Section -->
+        <div class="folder-section quizzes-section" id="quizzesSection">
+          ${quizzes.length > 0 ? `
+            <div class="folder-items-grid">
+              ${quizzes.map(quiz => `
+                <div class="folder-item-card quiz-item" onclick="openQuizViewer('${quiz.id}')">
+                  <div class="item-icon quiz-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <div class="item-info">
+                    <h4 class="item-title">${quiz.title}</h4>
+                    <span class="item-meta">${quiz.question_count} questions</span>
+                  </div>
+                  <div class="item-actions">
+                    <button class="item-action-btn" onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" title="Delete">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="folder-empty-content">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <p class="empty-text">No quizzes yet</p>
+              <p class="empty-hint">Generate a quiz from a document to get started</p>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// PDF Text Extraction
+// ============================================
+
+let pdfjsLib = null;
+
+async function initPDFJS() {
+  if (pdfjsLib) return pdfjsLib;
+
+  try {
+    // Load PDF.js from CDN if not already loaded
+    if (typeof window.pdfjsLib === 'undefined') {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    pdfjsLib = window.pdfjsLib;
+    return pdfjsLib;
+  } catch (error) {
+    console.error('Failed to load PDF.js:', error);
+    throw new Error('PDF processing library failed to load');
+  }
+}
+
+async function extractPDFText(file) {
+  try {
+    await initPDFJS();
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += pageText + '\n\n';
+    }
+
+    return fullText.trim();
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw new Error('Failed to extract text from PDF');
+  }
+}
+
+async function extractDocxText(file) {
+  // For DOCX, we would need mammoth.js
+  // For now, show a message that DOCX support is coming soon
+  throw new Error('DOCX support coming soon. Please upload a PDF file.');
+}
+
+// ============================================
+// Upload Modal with AI Action Cards
+// ============================================
+
+let uploadedFileData = null;
+
+function showUploadModal() {
+  const targetFolderId = currentFolderId || currentSpaceId;
+
+  const content = `
+    <div class="upload-modal-content">
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <h3 class="upload-title">Upload PDF / Document</h3>
+        <p class="upload-subtitle">Drag and drop or click to browse</p>
+        <input type="file" id="fileInput" accept=".pdf,.docx" hidden onchange="handleFileSelect(this.files[0])">
+        <button class="upload-browse-btn" onclick="document.getElementById('fileInput').click()">
+          Browse Files
+        </button>
+        <p class="upload-hint">Supports: PDF, DOCX (coming soon)</p>
+      </div>
+
+      <div class="upload-preview" id="uploadPreview" style="display: none;">
+        <div class="preview-header">
+          <div class="preview-file-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="preview-file-info">
+            <span class="preview-file-name" id="previewFileName">document.pdf</span>
+            <span class="preview-file-size" id="previewFileSize">2.5 MB</span>
+          </div>
+          <button class="preview-remove-btn" onclick="clearUploadedFile()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="ai-action-cards">
+          <h4 class="action-cards-title">What would you like to do?</h4>
+
+          <div class="ai-action-card" id="summaryCard" onclick="processAISummary()">
+            <div class="action-card-icon summary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <line x1="10" y1="9" x2="8" y2="9"/>
+              </svg>
+            </div>
+            <div class="action-card-content">
+              <h5 class="action-card-title">Create Smart Summary</h5>
+              <p class="action-card-description">AI reads your document and creates a professional summary as a Layer Doc</p>
+            </div>
+            <div class="action-card-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="ai-action-card" id="quizCard" onclick="showQuizOptions()">
+            <div class="action-card-icon quiz">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div class="action-card-content">
+              <h5 class="action-card-title">Generate Exam Quiz MCQ</h5>
+              <p class="action-card-description">Create interactive multiple-choice questions from your document</p>
+            </div>
+            <div class="action-card-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="quiz-options-panel" id="quizOptionsPanel" style="display: none;">
+          <h4 class="quiz-options-title">Quiz Settings</h4>
+          <div class="quiz-options-form">
+            <div class="form-group">
+              <label class="form-label">Number of Questions</label>
+              <input type="number" id="quizQuestionCount" class="form-input" value="10" min="5" max="30" placeholder="10">
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-secondary" onclick="hideQuizOptions()">Cancel</button>
+              <button class="btn btn-primary" onclick="processAIQuiz()">Generate Quiz</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-progress" id="uploadProgress" style="display: none;">
+          <div class="progress-spinner"></div>
+          <span class="progress-text" id="progressText">Processing...</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal('Upload Document', content);
+
+  // Setup drag and drop
+  setTimeout(() => {
+    const zone = document.getElementById('uploadZone');
+    if (zone) {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('drag-over');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelect(file);
+      });
+    }
+  }, 100);
+}
+
+function showUploadModalForFolder(folderId) {
+  currentFolderId = folderId;
+  showUploadModal();
+}
+
+async function handleFileSelect(file) {
+  if (!file) return;
+
+  const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  if (!validTypes.includes(file.type) && !file.name.endsWith('.pdf') && !file.name.endsWith('.docx')) {
+    showToast('Please upload a PDF or DOCX file', 'error');
+    return;
+  }
+
+  // Show preview
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('uploadPreview').style.display = 'block';
+  document.getElementById('previewFileName').textContent = file.name;
+  document.getElementById('previewFileSize').textContent = formatFileSize(file.size);
+
+  uploadedFileData = file;
+}
+
+function clearUploadedFile() {
+  uploadedFileData = null;
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('quizOptionsPanel').style.display = 'none';
+  document.getElementById('uploadProgress').style.display = 'none';
+}
+
+function showQuizOptions() {
+  document.getElementById('quizOptionsPanel').style.display = 'block';
+}
+
+function hideQuizOptions() {
+  document.getElementById('quizOptionsPanel').style.display = 'none';
+}
+
+// ============================================
+// AI Processing Functions
+// ============================================
+
+async function processAISummary() {
+  if (!uploadedFileData) {
+    showToast('Please upload a file first', 'error');
+    return;
+  }
+
+  const progressEl = document.getElementById('uploadProgress');
+  const progressText = document.getElementById('progressText');
+  progressEl.style.display = 'flex';
+
+  try {
+    progressText.textContent = 'Extracting text from document...';
+    const documentText = await extractDocumentText(uploadedFileData);
+
+    if (!documentText || documentText.length < 100) {
+      throw new Error('Could not extract enough text from the document');
+    }
+
+    progressText.textContent = 'Generating summary with AI...';
+    const summary = await generateAISummary(documentText);
+
+    progressText.textContent = 'Saving summary document...';
+    const docTitle = `Summary: ${uploadedFileData.name.replace(/\.[^/.]+$/, '')}`;
+    const savedDoc = await saveSummaryToFolder(docTitle, summary, currentFolderId);
+
+    progressEl.style.display = 'none';
+    closeModal();
+    showToast('Summary created successfully!');
+
+    // Refresh folder view
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Summary generation error:', error);
+    progressEl.style.display = 'none';
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+async function processAIQuiz() {
+  if (!uploadedFileData) {
+    showToast('Please upload a file first', 'error');
+    return;
+  }
+
+  const questionCount = parseInt(document.getElementById('quizQuestionCount').value) || 10;
+  const clampedCount = Math.min(Math.max(questionCount, 5), 30);
+
+  const progressEl = document.getElementById('uploadProgress');
+  const progressText = document.getElementById('progressText');
+  progressEl.style.display = 'flex';
+
+  try {
+    progressText.textContent = 'Extracting text from document...';
+    const documentText = await extractDocumentText(uploadedFileData);
+
+    if (!documentText || documentText.length < 100) {
+      throw new Error('Could not extract enough text from the document');
+    }
+
+    progressText.textContent = `Generating ${clampedCount} quiz questions with AI...`;
+    const quizData = await generateAIQuiz(documentText, clampedCount);
+
+    progressText.textContent = 'Saving quiz...';
+    const quizTitle = `Quiz: ${uploadedFileData.name.replace(/\.[^/.]+$/, '')}`;
+    const savedQuiz = await saveQuizToFolder(quizTitle, quizData, currentFolderId, uploadedFileData.name);
+
+    progressEl.style.display = 'none';
+    closeModal();
+    showToast('Quiz created successfully!');
+
+    // Refresh folder view
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Quiz generation error:', error);
+    progressEl.style.display = 'none';
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+async function extractDocumentText(file) {
+  const extension = file.name.split('.').pop().toLowerCase();
+
+  if (extension === 'pdf') {
+    return await extractPDFText(file);
+  } else if (extension === 'docx') {
+    return await extractDocxText(file);
+  } else {
+    throw new Error('Unsupported file format');
+  }
+}
+
+async function generateAISummary(documentText) {
+  const truncatedText = documentText.substring(0, 15000); // Limit text length
+
+  const messages = [
+    {
+      role: 'user',
+      content: `Please create a comprehensive summary of the following document:\n\n${truncatedText}`
+    }
+  ];
+
+  const summary = await callQwenAPI(messages, FOLDER_SUMMARY_SYSTEM_PROMPT);
+  return summary;
+}
+
+async function generateAIQuiz(documentText, questionCount) {
+  const truncatedText = documentText.substring(0, 15000); // Limit text length
+
+  const messages = [
+    {
+      role: 'user',
+      content: `Generate exactly ${questionCount} multiple-choice questions from this document:\n\n${truncatedText}`
+    }
+  ];
+
+  const response = await callQwenAPI(messages, FOLDER_QUIZ_SYSTEM_PROMPT);
+
+  // Parse JSON response
+  try {
+    // Try to extract JSON from the response
+    const jsonMatch = response.match(/\{[\s\S]*"questions"[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return parsed;
+    }
+    throw new Error('Invalid quiz format received');
+  } catch (e) {
+    console.error('Failed to parse quiz JSON:', e);
+    throw new Error('Failed to generate quiz. Please try again.');
+  }
+}
+
+// ============================================
+// Save Functions
+// ============================================
+
+async function saveSummaryToFolder(title, content, folderId) {
+  try {
+    const docData = {
+      title: title,
+      content: content,
+      folder_id: folderId,
+      space_id: currentSpaceId || null,
+      user_id: (await window.supabase.auth.getUser()).data.user.id
+    };
+
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const result = await window.LayerDB.createDoc(docData);
+      return result;
+    } else {
+      // Save locally
+      const docs = loadDocs();
+      const newDoc = {
+        id: 'doc-' + Date.now(),
+        ...docData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      docs.push(newDoc);
+      saveDocs(docs);
+      return newDoc;
+    }
+  } catch (error) {
+    console.error('Error saving summary:', error);
+    throw error;
+  }
+}
+
+async function saveQuizToFolder(title, quizData, folderId, sourceFileName) {
+  try {
+    const quizRecord = {
+      title: title,
+      questions: quizData.questions,
+      question_count: quizData.questions.length,
+      folder_id: folderId,
+      source_file_name: sourceFileName,
+      user_id: (await window.supabase.auth.getUser()).data.user.id
+    };
+
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const result = await window.LayerDB.createQuiz(quizRecord);
+      return result;
+    } else {
+      // Save locally (fallback)
+      const quizzes = JSON.parse(localStorage.getItem('layer_quizzes') || '[]');
+      const newQuiz = {
+        id: 'quiz-' + Date.now(),
+        ...quizRecord,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      quizzes.push(newQuiz);
+      localStorage.setItem('layer_quizzes', JSON.stringify(quizzes));
+      return newQuiz;
+    }
+  } catch (error) {
+    console.error('Error saving quiz:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// Load Functions
+// ============================================
+
+async function loadDocsFromFolder(folderId) {
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const docs = await window.LayerDB.loadDocs();
+      return docs.filter(d => String(d.folder_id) === String(folderId));
+    } else {
+      const docs = loadDocs();
+      return docs.filter(d => String(d.folderId) === String(folderId));
+    }
+  } catch (error) {
+    console.error('Error loading folder docs:', error);
+    return [];
+  }
+}
+
+async function loadQuizzesFromFolder(folderId) {
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const quizzes = await window.LayerDB.loadQuizzes();
+      return quizzes.filter(q => String(q.folder_id) === String(folderId));
+    } else {
+      const quizzes = JSON.parse(localStorage.getItem('layer_quizzes') || '[]');
+      return quizzes.filter(q => String(q.folder_id) === String(folderId));
+    }
+  } catch (error) {
+    console.error('Error loading folder quizzes:', error);
+    return [];
+  }
+}
+
+// ============================================
+// Quiz Viewer
+// ============================================
+
+async function openQuizViewer(quizId) {
+  try {
+    let quiz;
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const quizzes = await window.LayerDB.loadQuizzes();
+      quiz = quizzes.find(q => q.id === quizId);
+    } else {
+      const quizzes = JSON.parse(localStorage.getItem('layer_quizzes') || '[]');
+      quiz = quizzes.find(q => q.id === quizId);
+    }
+
+    if (!quiz) {
+      showToast('Quiz not found');
+      return;
+    }
+
+    const content = `
+      <div class="quiz-viewer">
+        <div class="quiz-header">
+          <h3 class="quiz-title">${quiz.title}</h3>
+          <span class="quiz-meta">${quiz.question_count || quiz.questions.length} questions</span>
+        </div>
+        <div class="quiz-progress">
+          <div class="quiz-progress-bar" id="quizProgressBar" style="width: 0%"></div>
+        </div>
+        <div class="quiz-questions" id="quizQuestions">
+          ${quiz.questions.map((q, idx) => `
+            <div class="quiz-question" data-question="${idx}">
+              <h4 class="question-text">${idx + 1}. ${q.q}</h4>
+              <div class="question-options">
+                ${q.options.map((opt, optIdx) => `
+                  <button class="quiz-option" data-option="${optIdx}" onclick="selectQuizOption(${idx}, ${optIdx}, ${q.answer})">
+                    <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                    <span class="option-text">${opt}</span>
+                  </button>
+                `).join('')}
+              </div>
+              <div class="question-result" id="result-${idx}" style="display: none;"></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="quiz-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+          <button class="btn btn-primary" onclick="resetQuiz()">Retry Quiz</button>
+        </div>
+        <div class="quiz-score" id="quizScore" style="display: none;">
+          <div class="score-content">
+            <span class="score-value" id="scoreValue">0/0</span>
+            <span class="score-label">Correct</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    openModal('Quiz', content);
+  } catch (error) {
+    console.error('Error opening quiz:', error);
+    showToast('Failed to open quiz');
+  }
+}
+
+let quizScore = 0;
+let quizAnswered = 0;
+
+function selectQuizOption(questionIdx, selectedIdx, correctIdx) {
+  const questionEl = document.querySelector(`[data-question="${questionIdx}"]`);
+  if (questionEl.classList.contains('answered')) return;
+
+  questionEl.classList.add('answered');
+  const options = questionEl.querySelectorAll('.quiz-option');
+
+  options.forEach((opt, idx) => {
+    opt.disabled = true;
+    if (idx === correctIdx) {
+      opt.classList.add('correct');
+    } else if (idx === selectedIdx && selectedIdx !== correctIdx) {
+      opt.classList.add('incorrect');
+    }
+  });
+
+  // Update score
+  if (selectedIdx === correctIdx) {
+    quizScore++;
+  }
+  quizAnswered++;
+
+  // Update progress
+  const totalQuestions = document.querySelectorAll('.quiz-question').length;
+  const progress = (quizAnswered / totalQuestions) * 100;
+  document.getElementById('quizProgressBar').style.width = `${progress}%`;
+
+  // Show score when complete
+  if (quizAnswered === totalQuestions) {
+    document.getElementById('quizScore').style.display = 'flex';
+    document.getElementById('scoreValue').textContent = `${quizScore}/${totalQuestions}`;
+  }
+}
+
+function resetQuiz() {
+  quizScore = 0;
+  quizAnswered = 0;
+
+  document.querySelectorAll('.quiz-question').forEach(q => {
+    q.classList.remove('answered');
+    q.querySelectorAll('.quiz-option').forEach(opt => {
+      opt.disabled = false;
+      opt.classList.remove('correct', 'incorrect');
+    });
+  });
+
+  document.getElementById('quizProgressBar').style.width = '0%';
+  document.getElementById('quizScore').style.display = 'none';
+}
+
+// ============================================
+// Utility Functions
+// ============================================
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return 'Unknown';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+// ============================================
+// Document Actions from Folder
+// ============================================
+
+async function summarizeDocument(docId) {
+  try {
+    const docs = loadDocs();
+    const doc = docs.find(d => d.id === docId);
+    if (!doc) {
+      showToast('Document not found');
+      return;
+    }
+
+    showToast('Generating summary...');
+
+    const summary = await generateAISummary(doc.content || '');
+
+    const docTitle = `Summary: ${doc.title}`;
+    await saveSummaryToFolder(docTitle, summary, currentFolderId);
+
+    showToast('Summary created!');
+
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Error summarizing document:', error);
+    showToast('Failed to generate summary', 'error');
+  }
+}
+
+async function generateQuizFromDoc(docId) {
+  const content = `
+    <div class="quiz-gen-modal">
+      <h4>Generate Quiz from Document</h4>
+      <div class="form-group">
+        <label class="form-label">Number of Questions</label>
+        <input type="number" id="docQuizCount" class="form-input" value="10" min="5" max="30">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="processDocQuiz('${docId}')">Generate</button>
+      </div>
+    </div>
+  `;
+  openModal('Generate Quiz', content);
+}
+
+async function processDocQuiz(docId) {
+  try {
+    const questionCount = parseInt(document.getElementById('docQuizCount').value) || 10;
+    const clampedCount = Math.min(Math.max(questionCount, 5), 30);
+
+    closeModal();
+    showToast('Generating quiz...');
+
+    const docs = loadDocs();
+    const doc = docs.find(d => d.id === docId);
+    if (!doc) {
+      showToast('Document not found', 'error');
+      return;
+    }
+
+    const quizData = await generateAIQuiz(doc.content || '', clampedCount);
+    const quizTitle = `Quiz: ${doc.title}`;
+    await saveQuizToFolder(quizTitle, quizData, currentFolderId, doc.title);
+
+    showToast('Quiz created!');
+
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Error generating quiz from doc:', error);
+    showToast('Failed to generate quiz', 'error');
+  }
+}
+
+async function deleteQuiz(quizId) {
+  if (!confirm('Are you sure you want to delete this quiz?')) return;
+
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.deleteQuiz(quizId);
+    } else {
+      const quizzes = JSON.parse(localStorage.getItem('layer_quizzes') || '[]');
+      const filtered = quizzes.filter(q => q.id !== quizId);
+      localStorage.setItem('layer_quizzes', JSON.stringify(filtered));
+    }
+
+    showToast('Quiz deleted');
+
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  } catch (error) {
+    console.error('Error deleting quiz:', error);
+    showToast('Failed to delete quiz', 'error');
+  }
+}
+
+function showFolderMenu(folderId, event) {
+  event.stopPropagation();
+
+  const existing = document.querySelector('.folder-menu-dropdown');
+  if (existing) existing.remove();
+
+  const menu = document.createElement('div');
+  menu.className = 'folder-menu-dropdown';
+  menu.innerHTML = `
+    <button onclick="editFolder('${folderId}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Edit
+    </button>
+    <button onclick="deleteFolder('${folderId}')" class="danger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+      Delete
+    </button>
+  `;
+
+  const rect = event.target.getBoundingClientRect();
+  menu.style.top = `${rect.bottom + 5}px`;
+  menu.style.right = `${window.innerWidth - rect.right}px`;
+
+  document.body.appendChild(menu);
+
+  setTimeout(() => {
+    document.addEventListener('click', closeFolderMenu);
+  }, 10);
+}
+
+function closeFolderMenu() {
+  const menu = document.querySelector('.folder-menu-dropdown');
+  if (menu) menu.remove();
+  document.removeEventListener('click', closeFolderMenu);
+}
+
+async function editFolder(folderId) {
+  closeFolderMenu();
+
+  const folders = await loadFoldersFromDB();
+  const folder = folders.find(f => f.id === folderId);
+  if (!folder) return;
+
+  const content = `
+    <form onsubmit="saveFolderEdit(event, '${folderId}')">
+      <div class="form-group">
+        <label class="form-label">Folder Name</label>
+        <input type="text" name="name" class="form-input" value="${folder.name}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" name="description" class="form-input" value="${folder.description || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <input type="color" name="color" class="form-input color-input" value="${folder.color || '#6366f1'}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input type="text" name="emoji" class="form-input" value="${folder.emoji || '📁'}" maxlength="2">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  `;
+
+  openModal('Edit Folder', content);
+}
+
+async function saveFolderEdit(event, folderId) {
+  event.preventDefault();
+  const form = event.target;
+
+  const updates = {
+    name: form.name.value.trim(),
+    description: form.description.value.trim(),
+    color: form.color.value,
+    emoji: form.emoji.value || '📁',
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.updateFolder(folderId, updates);
+    }
+
+    closeModal();
+    showToast('Folder updated');
+
+    // Refresh view
+    if (currentSpaceId) {
+      openSpaceView(currentSpaceId);
+    }
+  } catch (error) {
+    console.error('Error updating folder:', error);
+    showToast('Failed to update folder', 'error');
+  }
+}
+
+function showFolderSettings(folderId) {
+  editFolder(folderId);
+}
+
+function toggleFolderView(viewType) {
+  const grid = document.querySelector('.folders-grid');
+  if (!grid) return;
+
+  const buttons = document.querySelectorAll('.view-toggle-btn');
+  buttons.forEach(btn => btn.classList.remove('active'));
+  event.target.closest('.view-toggle-btn').classList.add('active');
+
+  if (viewType === 'list') {
+    grid.classList.add('list-view');
+  } else {
+    grid.classList.remove('list-view');
   }
 }

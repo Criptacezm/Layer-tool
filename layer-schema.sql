@@ -205,6 +205,13 @@
         WHEN duplicate_column THEN null;
     END $$;
 
+    -- Add project_id column for project association
+    DO $$ BEGIN
+        ALTER TABLE docs ADD COLUMN project_id UUID REFERENCES projects(id) ON DELETE SET NULL;
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+
     -- ============================================
     -- Excels/Sheets Table
     -- ============================================
@@ -1051,6 +1058,131 @@
         LIMIT p_limit;
     END;
     $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    -- ============================================
+    -- Folders Feature: Add folder_id to docs and drafts
+    -- ============================================
+    
+    -- Add folder_id to docs table
+    DO $$ BEGIN
+        ALTER TABLE docs ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL;
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+    
+    -- Add folder_id to drafts table
+    DO $$ BEGIN
+        ALTER TABLE drafts ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL;
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+    
+    -- Create indexes for folder_id lookups
+    CREATE INDEX IF NOT EXISTS idx_docs_folder_id ON docs(folder_id);
+    CREATE INDEX IF NOT EXISTS idx_drafts_folder_id ON drafts(folder_id);
+    
+    -- ============================================
+    -- Quizzes Table (for AI-generated MCQ quizzes)
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS quizzes (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
+        title TEXT NOT NULL DEFAULT 'Untitled Quiz',
+        questions JSONB NOT NULL DEFAULT '[]', -- [{q: "question", options: ["A","B","C","D"], answer: "A"}]
+        source_doc_id UUID REFERENCES docs(id) ON DELETE SET NULL,
+        source_file_name TEXT,
+        question_count INTEGER DEFAULT 10,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Add indexes for quizzes
+    CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON quizzes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_quizzes_folder_id ON quizzes(folder_id);
+    
+    -- Enable RLS on quizzes
+    ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+    
+    -- RLS policies for quizzes
+    DROP POLICY IF EXISTS "Users can view own quizzes" ON quizzes;
+    DROP POLICY IF EXISTS "Users can insert own quizzes" ON quizzes;
+    DROP POLICY IF EXISTS "Users can update own quizzes" ON quizzes;
+    DROP POLICY IF EXISTS "Users can delete own quizzes" ON quizzes;
+    CREATE POLICY "Users can view own quizzes" ON quizzes FOR SELECT USING (auth.uid() = user_id);
+    CREATE POLICY "Users can insert own quizzes" ON quizzes FOR INSERT WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users can update own quizzes" ON quizzes FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete own quizzes" ON quizzes FOR DELETE USING (auth.uid() = user_id);
+    
+    -- Trigger for auto-updating timestamps on quizzes
+    DROP TRIGGER IF EXISTS update_quizzes_updated_at ON quizzes;
+    CREATE TRIGGER update_quizzes_updated_at 
+    BEFORE UPDATE ON quizzes 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    
+    -- ============================================
+    -- Add emoji and color columns to folders for better UI
+    -- ============================================
+    DO $$ BEGIN
+        ALTER TABLE folders ADD COLUMN emoji TEXT DEFAULT '📁';
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+    
+    DO $$ BEGIN
+        ALTER TABLE folders ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE;
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+
+    -- ============================================
+    -- Folder Items Table (tracks all items within folders)
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS folder_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        folder_id TEXT NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+        item_type TEXT NOT NULL, -- 'doc', 'pdf', 'quiz', 'summary', 'sheet'
+        item_id TEXT, -- reference to the actual item (doc id, quiz id, etc.)
+        file_name TEXT,
+        file_url TEXT, -- Supabase Storage URL for PDFs
+        file_size INTEGER,
+        thumbnail_url TEXT,
+        metadata JSONB DEFAULT '{}', -- Additional metadata (page count, author, etc.)
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Add indexes for folder_items
+    CREATE INDEX IF NOT EXISTS idx_folder_items_folder_id ON folder_items(folder_id);
+    CREATE INDEX IF NOT EXISTS idx_folder_items_item_type ON folder_items(item_type);
+    CREATE INDEX IF NOT EXISTS idx_folder_items_item_id ON folder_items(item_id);
+    
+    -- Enable RLS on folder_items
+    ALTER TABLE folder_items ENABLE ROW LEVEL SECURITY;
+    
+    -- RLS policies for folder_items
+    DROP POLICY IF EXISTS "Users can view own folder_items" ON folder_items;
+    DROP POLICY IF EXISTS "Users can insert own folder_items" ON folder_items;
+    DROP POLICY IF EXISTS "Users can update own folder_items" ON folder_items;
+    DROP POLICY IF EXISTS "Users can delete own folder_items" ON folder_items;
+    CREATE POLICY "Users can view own folder_items" ON folder_items FOR SELECT USING (
+        EXISTS (SELECT 1 FROM folders WHERE folders.id = folder_items.folder_id AND folders.user_id = auth.uid())
+    );
+    CREATE POLICY "Users can insert own folder_items" ON folder_items FOR INSERT WITH CHECK (
+        EXISTS (SELECT 1 FROM folders WHERE folders.id = folder_items.folder_id AND folders.user_id = auth.uid())
+    );
+    CREATE POLICY "Users can update own folder_items" ON folder_items FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM folders WHERE folders.id = folder_items.folder_id AND folders.user_id = auth.uid())
+    );
+    CREATE POLICY "Users can delete own folder_items" ON folder_items FOR DELETE USING (
+        EXISTS (SELECT 1 FROM folders WHERE folders.id = folder_items.folder_id AND folders.user_id = auth.uid())
+    );
+    
+    -- Trigger for auto-updating timestamps on folder_items
+    DROP TRIGGER IF EXISTS update_folder_items_updated_at ON folder_items;
+    CREATE TRIGGER update_folder_items_updated_at 
+    BEFORE UPDATE ON folder_items 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
     -- ============================================
     -- SAFE SCHEMA COMPLETE!

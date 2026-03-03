@@ -2516,9 +2516,6 @@ async function renderCurrentView(preserveScroll = false) {
     stopSharedContentPolling();
   }
 
-  // Cleanup animated backgrounds when switching away from drafts
-  cleanupAnimatedBackgrounds();
-
   switch (currentView) {
     case 'inbox':
       if (viewsContent) {
@@ -2605,11 +2602,6 @@ async function renderCurrentView(preserveScroll = false) {
       }
       updateBreadcrumb('Drafts');
       window.draftsNeedRefresh = false; // Reset the flag after rendering
-      
-      // Initialize animated backgrounds for draft cards
-      setTimeout(() => {
-        initializeAnimatedBackgrounds();
-      }, 100);
       break;
     default:
       if (viewsContent) {
@@ -3338,7 +3330,6 @@ function renderDraftsView() {
             return `
               <div class="draft-card" data-draft-id="${draft.id}" data-type="${draft.type}" data-title="${displayTitle}" data-updated="${draft.updatedAt}" data-created="${draft.createdAt}">
                 <div class="draft-card-preview" onclick="${openFn}('${draft.id}')" style="--draft-accent: ${color}">
-                  <div class="animated-background-container" data-draft-type="${draft.type}"></div>
                   <div class="draft-card-icon" style="background: ${color}20; color: ${color}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
                   </div>
@@ -3429,87 +3420,6 @@ function renderDraftsView() {
       </div>
     </div>
   `;
-}
-
-// Initialize animated backgrounds for draft cards
-function initializeAnimatedBackgrounds() {
-  // Check if animated backgrounds are disabled in settings
-  if (localStorage.getItem('layerAnimatedBg') === 'false') {
-    return;
-  }
-  
-  const containers = document.querySelectorAll('.animated-background-container');
-  
-  containers.forEach(container => {
-    // Skip if already initialized
-    if (container.dataset.initialized) return;
-    
-    const draftType = container.dataset.draftType;
-    
-    // Define color schemes for different draft types
-    const colorSchemes = {
-      doc: {
-        color1: '#FF9FFC',
-        color2: '#5227FF',
-        color3: '#B19EEF',
-        timeSpeed: 0.4,
-        warpStrength: 0.8,
-        grainAmount: 0.05
-      },
-      sheet: {
-        color1: '#4ECDC4',
-        color2: '#44A08D',
-        color3: '#093637',
-        timeSpeed: 0.3,
-        warpStrength: 0.6,
-        grainAmount: 0.03
-      },
-      whiteboard: {
-        color1: '#f6d365',
-        color2: '#fda085',
-        color3: '#ffecd2',
-        timeSpeed: 0.5,
-        warpStrength: 1.0,
-        grainAmount: 0.08
-      }
-    };
-    
-    const scheme = colorSchemes[draftType] || colorSchemes.doc;
-    
-    try {
-      const animatedBg = new AnimatedBackground(container, scheme);
-      container.dataset.initialized = 'true';
-      
-      // Store reference for cleanup
-      container._animatedBackground = animatedBg;
-      
-      console.log(`🎨 Initialized animated background for ${draftType} draft`);
-    } catch (error) {
-      console.error('Failed to initialize animated background:', error);
-    }
-  });
-}
-
-// Cleanup animated backgrounds when switching views
-function cleanupAnimatedBackgrounds() {
-  const containers = document.querySelectorAll('.animated-background-container');
-  
-  containers.forEach(container => {
-    if (container._animatedBackground) {
-      try {
-        container._animatedBackground.destroy();
-      } catch (e) {
-        console.error('Error destroying background:', e);
-      }
-      delete container._animatedBackground;
-    }
-    delete container.dataset.initialized;
-  });
-
-  // Also handle any other active canvases in these containers
-  document.querySelectorAll('.animated-background-container canvas').forEach(canvas => {
-    canvas.remove();
-  });
 }
 
 // Modern filter function

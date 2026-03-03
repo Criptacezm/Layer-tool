@@ -236,33 +236,20 @@
   flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: draftFadeIn 0.4s ease;
-}
-
-@keyframes draftFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .draft-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* Card Preview Section */
 .draft-card-preview {
   position: relative;
-  height: 140px;
+  height: 100px;
   background: var(--muted);
   display: flex;
   align-items: center;
@@ -271,49 +258,38 @@
   overflow: hidden;
 }
 
-.animated-background-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
 .draft-card-icon {
-  width: 90px;
-  height: 90px;
-  border-radius: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 2;
+  transition: transform 0.2s ease;
 }
 
 .draft-card-icon svg {
-  width: 45px;
-  height: 45px;
-  color: #1a1a1a;
-  stroke: #1a1a1a;
-  stroke-width: 2.5;
+  width: 28px;
+  height: 28px;
+  color: var(--foreground);
+  stroke: var(--foreground);
+  stroke-width: 2;
 }
 
 .draft-card-preview:hover .draft-card-icon {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .draft-card-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 3;
+  transition: opacity 0.2s ease;
+  z-index: 2;
 }
 
 .draft-card-preview:hover .draft-card-overlay {
@@ -321,18 +297,12 @@
 }
 
 .draft-card-action {
-  padding: 8px 20px;
+  padding: 6px 16px;
   background: var(--primary);
   color: var(--primary-foreground);
-  border-radius: 20px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
-  transform: translateY(10px);
-  transition: transform 0.3s ease;
-}
-
-.draft-card-preview:hover .draft-card-action {
-  transform: translateY(0);
 }
 
 /* Card Info Section */
