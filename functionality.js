@@ -34980,83 +34980,74 @@ async function renderEnhancedFolderGrid(spaceId) {
 
     if (filteredFolders && filteredFolders.length > 0) {
       return `
-        <div class="folders-section-header">
-          <h3 class="folders-section-title">Folders</h3>
-          <div class="folders-view-toggle">
-            <button class="view-toggle-btn active" onclick="toggleFolderView('grid')" title="Grid view">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        <div class="folders-section-header-modern">
+          <div class="folders-header-left">
+            <h3 class="folders-section-title-modern">Folders</h3>
+            <div class="folder-total-badge">${filteredFolders.length}</div>
+          </div>
+          <div class="folders-header-right">
+            <button class="btn-primary-minimal" onclick="openFolderDropdown(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-            </button>
-            <button class="view-toggle-btn" onclick="toggleFolderView('list')" title="List view">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-              </svg>
+              Add Folder
             </button>
           </div>
         </div>
-        <div class="folders-grid enhanced">
-          ${filteredFolders.map(folder => {
-            const counts = countsMap.get(folder.id) || { docCount: 0, quizCount: 0 };
-            const emoji = folder.icon || folder.emoji || '📁';
-            return `
-              <div class="folder-card" onclick="openFolderExplorer('${folder.id}')" style="--folder-color: ${folder.color || '#6366f1'}">
-                <div class="folder-card-header">
-                  <span class="folder-emoji">${emoji}</span>
-                  <div class="folder-card-menu" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>
-                      <circle cx="5" cy="12" r="1"/>
-                    </svg>
+
+        <div class="folder-list-container-modern">
+          <div class="folder-list-header-modern">
+            <div class="col-icon"></div>
+            <div class="col-name">FOLDER NAME</div>
+            <div class="col-stats">CONTENTS</div>
+            <div class="col-date">UPDATED</div>
+            <div class="col-actions"></div>
+          </div>
+          <div class="folder-list-body-modern">
+            ${filteredFolders.map(folder => {
+              const counts = countsMap.get(folder.id) || { docCount: 0, quizCount: 0 };
+              const emoji = folder.icon || folder.emoji || '📁';
+              return `
+                <div class="folder-list-row-modern" onclick="openFolderExplorer('${folder.id}')">
+                  <div class="col-icon">
+                    <span class="folder-row-emoji">${emoji}</span>
+                  </div>
+                  <div class="col-name">
+                    <span class="folder-row-title">${folder.name}</span>
+                    ${folder.description ? `<span class="folder-row-desc">${folder.description}</span>` : ''}
+                  </div>
+                  <div class="col-stats">
+                    <div class="folder-stats-group">
+                      <span class="stat-pill doc" title="Documents">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        ${counts.docCount}
+                      </span>
+                      <span class="stat-pill quiz" title="Quizzes">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        ${counts.quizCount}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-date">
+                    <span class="folder-row-date">${formatRelativeTime(folder.updated_at)}</span>
+                  </div>
+                  <div class="col-actions">
+                    <button class="row-action-btn-modern" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)" title="Menu">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <div class="folder-card-body">
-                  <h4 class="folder-card-title">${folder.name}</h4>
-                  <p class="folder-card-description">${folder.description || 'No description'}</p>
-                </div>
-                <div class="folder-card-footer">
-                  <div class="folder-counts">
-                    <span class="folder-count docs">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                      </svg>
-                      ${counts.docCount}
-                    </span>
-                    <span class="folder-count quizzes">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                      </svg>
-                      ${counts.quizCount}
-                    </span>
-                  </div>
-                  <span class="folder-updated">${formatRelativeTime(folder.updated_at)}</span>
-                </div>
-              </div>
-            `;
-          }).join('')}
-          <div class="folder-card add-folder-card" onclick="openFolderDropdown(this)">
-            <div class="add-folder-content">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              <span>Add Folder</span>
-            </div>
+              `;
+            }).join('')}
           </div>
         </div>
-        <button class="folder-upload-fab" onclick="showUploadModal()" title="Upload PDF / Document">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <span class="fab-text">Upload</span>
-        </button>
       `;
     } else {
       return `
@@ -35071,14 +35062,6 @@ async function renderEnhancedFolderGrid(spaceId) {
             Add Folder
           </button>
         </div>
-        <button class="folder-upload-fab" onclick="showUploadModal()" title="Upload PDF / Document">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <span class="fab-text">Upload</span>
-        </button>
       `;
     }
   } catch (error) {
@@ -35095,12 +35078,12 @@ function activateFolderExplorerTab(tabName = 'documents') {
   const root = document.querySelector('.folder-explorer-container');
   if (!root) return;
 
-  const tabs = root.querySelectorAll('.folder-tab');
+  const tabs = root.querySelectorAll('.folder-tab-modern');
   const docsSection = root.querySelector('#documentsSection');
   const quizzesSection = root.querySelector('#quizzesSection');
 
   tabs.forEach(t => t.classList.remove('active'));
-  const activeTab = root.querySelector(`.folder-tab[data-tab="${tabName}"]`);
+  const activeTab = root.querySelector(`.folder-tab-modern[data-tab="${tabName}"]`);
   if (activeTab) activeTab.classList.add('active');
 
   if (docsSection) docsSection.classList.toggle('active', tabName === 'documents');
@@ -35111,7 +35094,7 @@ function initFolderExplorerTabs(defaultTab = 'documents') {
   const root = document.querySelector('.folder-explorer-container');
   if (!root) return;
 
-  root.querySelectorAll('.folder-tab').forEach(tab => {
+  root.querySelectorAll('.folder-tab-modern').forEach(tab => {
     tab.addEventListener('click', () => {
       const tabName = tab.dataset.tab;
       activateFolderExplorerTab(tabName);
@@ -35167,170 +35150,144 @@ function renderFolderExplorerView(folder, docs, quizzes) {
   const emoji = folder.icon || folder.emoji || '📁';
 
   return `
-    <div class="folder-explorer-container">
+    <div class="folder-explorer-container animate-fade-in">
       <!-- Header -->
-      <div class="folder-explorer-header">
-        <div class="folder-explorer-nav">
-          <button class="back-btn" onclick="openSpaceView('${folder.space_id}')" title="Back to Space">
+      <div class="folder-explorer-header-modern">
+        <div class="folder-header-left">
+          <button class="back-btn-minimal" onclick="openSpaceView('${folder.space_id}')" title="Back to Space">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
           </button>
-          <div class="folder-explorer-hero">
-            <div class="folder-hero-left">
-              <span class="folder-emoji-large">${emoji}</span>
-              <div class="folder-header-info">
-                <h2 class="folder-explorer-title">${folder.name}</h2>
-                <p class="folder-explorer-description">${folder.description || 'No description'}</p>
-              </div>
-            </div>
-            <div class="folder-hero-meta">
-              <div class="folder-stat-chip" title="Documents in this folder">
-                <span class="folder-stat-label">Docs</span>
-                <span class="folder-stat-value">${docs.length}</span>
-              </div>
-              <div class="folder-stat-chip" title="Quizzes in this folder">
-                <span class="folder-stat-label">Quizzes</span>
-                <span class="folder-stat-value">${quizzes.length}</span>
-              </div>
+          <div class="folder-title-area">
+            <div class="folder-title-row">
+              <span class="folder-emoji-small">${emoji}</span>
+              <h2 class="view-title">${folder.name}</h2>
+              <div class="folder-count-badge">${docs.length + quizzes.length}</div>
             </div>
           </div>
         </div>
-        <div class="folder-explorer-actions">
-          <button class="folder-action-btn primary" onclick="showUploadModalForFolder('${folder.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
+        
+        <div class="folder-header-right">
+          <div class="folder-content-tabs-modern">
+            <button class="folder-tab-modern active" data-tab="documents">
+              Docs
+              <span class="tab-count-pill">${docs.length}</span>
+            </button>
+            <button class="folder-tab-modern" data-tab="quizzes">
+              Quizzes
+              <span class="tab-count-pill">${quizzes.length}</span>
+            </button>
+          </div>
+          <div class="header-divider"></div>
+          <button class="btn-primary-modern" onclick="showUploadModalForFolder('${folder.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            <span class="folder-action-label">Upload</span>
-          </button>
-          <button class="folder-action-btn icon-only" onclick="showFolderSettings('${folder.id}')" title="Folder settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+            Upload
           </button>
         </div>
       </div>
 
-      <!-- Content Tabs -->
-      <div class="folder-content-tabs">
-        <button class="folder-tab active" data-tab="documents">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-          Documents
-          <span class="folder-tab-count">${docs.length}</span>
-        </button>
-        <button class="folder-tab" data-tab="quizzes">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          Quizzes
-          <span class="folder-tab-count">${quizzes.length}</span>
-        </button>
-      </div>
-
       <!-- Content Area -->
-      <div class="folder-content-area">
+      <div class="folder-content-wrapper-modern">
         <!-- Documents Section -->
         <div class="folder-section documents-section active" id="documentsSection">
-          ${docs.length > 0 ? `
-            <div class="folder-items-grid">
-              ${docs.map(doc => `
-                <div class="folder-item-card doc-item" onclick="openDocEditor('${doc.id}')">
-                  <div class="item-icon doc-icon">
+          <div class="folder-list-header">
+            <div class="col-icon"></div>
+            <div class="col-name">NAME</div>
+            <div class="col-date">DATE</div>
+            <div class="col-actions"></div>
+          </div>
+          <div class="folder-list-body">
+            ${docs.length > 0 ? docs.map(doc => `
+              <div class="folder-list-item" onclick="openDocEditor('${doc.id}')">
+                <div class="col-icon">
+                  <div class="file-icon-mini doc">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                       <polyline points="14 2 14 8 20 8"/>
                     </svg>
                   </div>
-                  <div class="item-info">
-                    <h4 class="item-title">${doc.title}</h4>
-                    <span class="item-meta">${formatRelativeTime(doc.updated_at)}</span>
-                  </div>
-                  <div class="item-actions">
-                    <button class="item-action-btn" onclick="event.stopPropagation(); summarizeDocument('${doc.id}')" title="Summarize">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 3v18M3 12h18"/>
-                      </svg>
-                    </button>
-                    <button class="item-action-btn" onclick="event.stopPropagation(); generateQuizFromDoc('${doc.id}')" title="Generate Quiz">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-              `).join('')}
-            </div>
-          ` : `
-            <div class="folder-empty-content">
-              <div class="empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
+                <div class="col-name">
+                  <span class="item-title-text">${doc.title}</span>
+                </div>
+                <div class="col-date">
+                  <span class="item-date-text">${formatRelativeTime(doc.updated_at)}</span>
+                </div>
+                <div class="col-actions">
+                  <button class="row-action-btn" onclick="event.stopPropagation(); summarizeDocument('${doc.id}')" title="Summarize">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg>
+                  </button>
+                  <button class="row-action-btn" onclick="event.stopPropagation(); generateQuizFromDoc('${doc.id}')" title="Generate Quiz">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>
+                  </button>
+                  <button class="row-action-btn delete" onclick="event.stopPropagation(); deleteDoc('${doc.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
               </div>
-              <p class="empty-text">No documents yet</p>
-              <p class="empty-hint">Upload a PDF or create a summary to get started</p>
-              <button class="folder-empty-cta" onclick="showUploadModalForFolder('${folder.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                Upload document
-              </button>
-            </div>
-          `}
+            `).join('') : `
+              <div class="folder-empty-state-modern">
+                <div class="empty-icon-large">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <p>No documents yet</p>
+                <button class="btn-text-modern" onclick="showUploadModalForFolder('${folder.id}')">Upload your first document</button>
+              </div>
+            `}
+          </div>
         </div>
 
         <!-- Quizzes Section -->
         <div class="folder-section quizzes-section" id="quizzesSection">
-          ${quizzes.length > 0 ? `
-            <div class="folder-items-grid">
-              ${quizzes.map(quiz => `
-                <div class="folder-item-card quiz-item" onclick="openQuizViewer('${quiz.id}')">
-                  <div class="item-icon quiz-icon">
+          <div class="folder-list-header">
+            <div class="col-icon"></div>
+            <div class="col-name">TITLE</div>
+            <div class="col-count">QUESTIONS</div>
+            <div class="col-actions"></div>
+          </div>
+          <div class="folder-list-body">
+            ${quizzes.length > 0 ? quizzes.map(quiz => `
+              <div class="folder-list-item" onclick="openQuizViewer('${quiz.id}')">
+                <div class="col-icon">
+                  <div class="file-icon-mini quiz">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"/>
                       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                       <line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
                   </div>
-                  <div class="item-info">
-                    <h4 class="item-title">${quiz.title}</h4>
-                    <span class="item-meta">${quiz.question_count} questions</span>
-                  </div>
-                  <div class="item-actions">
-                    <button class="item-action-btn" onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" title="Delete">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-              `).join('')}
-            </div>
-          ` : `
-            <div class="folder-empty-content">
-              <div class="empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <div class="col-name">
+                  <span class="item-title-text">${quiz.title}</span>
+                </div>
+                <div class="col-count">
+                  <span class="count-badge-minimal">${quiz.question_count || quiz.questions.length}</span>
+                </div>
+                <div class="col-actions">
+                  <button class="row-action-btn delete" onclick="event.stopPropagation(); deleteQuiz('${quiz.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </div>
+            `).join('') : `
+              <div class="folder-empty-state-modern">
+                <div class="empty-icon-large">
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                   <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
+                </div>
+                <p>No quizzes yet</p>
+                <p class="empty-hint-text">Generate a quiz from a document to get started</p>
               </div>
-              <p class="empty-text">No quizzes yet</p>
-              <p class="empty-hint">Generate a quiz from a document to get started</p>
-            </div>
-          `}
+            `}
+          </div>
         </div>
       </div>
     </div>
