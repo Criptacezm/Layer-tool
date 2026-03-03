@@ -2289,8 +2289,18 @@ window.LayerDB = {
   // Documents
   loadDocs: loadDocsFromDB,
   saveDoc: saveDocToDB,
+  createDoc: saveDocToDB,
   updateDoc: updateDocInDB,
   deleteDoc: deleteDocFromDB,
+
+  // Quizzes
+  loadQuizzes: loadQuizzesFromDB,
+  saveQuiz: saveQuizToDB,
+  createQuiz: saveQuizToDB,
+  loadQuizById,
+  updateQuiz: updateQuizInDB,
+  deleteQuiz: deleteQuizFromDB,
+  getQuizCountForFolder,
 
   // Excels/Spreadsheets
   loadExcels: loadExcelsFromDB,
