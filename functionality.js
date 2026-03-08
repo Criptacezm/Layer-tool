@@ -112,6 +112,24 @@ function renderInboxView() {
                   <div class="widget-stat-label">Documents</div>
                 </div>
               </div>
+              <!-- Expanded content -->
+              <div class="widget-expanded">
+                <div class="widget-expanded-title">Project Breakdown</div>
+                <div class="widget-expanded-list">
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <span>${activeProjects} Active Projects</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>${completedTasks} Tasks Completed</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>${docs.length} Documents</span>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <!-- Progress Widget - Flippable with Backlog -->
@@ -221,50 +239,6 @@ function renderInboxView() {
                 </button>
                 <button class="quick-action-btn" onclick="openCreateIssueModal()">
                   <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <style>
-                      @keyframes circlePulse {
-                        0%, 100% {
-                          transform: scale(1);
-                        }
-                        50% {
-                          transform: scale(1.1);
-                        }
-                      }
-                      
-                      @keyframes plusExpand {
-                        0% {
-                          transform: scale(0);
-                          opacity: 0;
-                        }
-                        50% {
-                          transform: scale(1.2);
-                        }
-                        100% {
-                          transform: scale(1);
-                          opacity: 1;
-                        }
-                      }
-                      
-                      @keyframes rotate {
-                        0% {
-                          transform: rotate(0deg);
-                        }
-                        100% {
-                          transform: rotate(90deg);
-                        }
-                      }
-                      
-                      .quick-action-btn:hover .plus-circle {
-                        animation: circlePulse 0.4s ease-in-out;
-                        transform-origin: center;
-                      }
-                      
-                      .quick-action-btn:hover .plus-lines {
-                        animation: plusExpand 0.4s ease-out, rotate 0.4s ease-in-out;
-                        transform-origin: center;
-                      }
-                    </style>
-                    
                     <circle class="plus-circle" cx="12" cy="12" r="10"></circle>
                     <path class="plus-lines" d="M12 8v8M8 12h8"></path>
                   </svg>
@@ -272,80 +246,12 @@ function renderInboxView() {
                 </button>
                 <button class="quick-action-btn" onclick="currentView = 'activity'; renderCurrentView();">
                   <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <style>
-                      @keyframes folderOpen {
-                        0%, 100% {
-                          transform: translateY(0) scaleY(1);
-                        }
-                        50% {
-                          transform: translateY(-3px) scaleY(1.05);
-                        }
-                      }
-                      
-                      @keyframes tabWiggle {
-                        0%, 100% {
-                          transform: translateY(0) rotate(0deg);
-                        }
-                        25% {
-                          transform: translateY(-2px) rotate(-2deg);
-                        }
-                        75% {
-                          transform: translateY(-2px) rotate(2deg);
-                        }
-                      }
-                      
-                      @keyframes pathDraw {
-                        0% {
-                          stroke-dashoffset: 100;
-                        }
-                        100% {
-                          stroke-dashoffset: 0;
-                        }
-                      }
-                      
-                      .quick-action-btn:hover .folder-path {
-                        animation: folderOpen 0.4s ease-in-out, pathDraw 0.5s ease-out;
-                        stroke-dasharray: 100;
-                        transform-origin: bottom center;
-                      }
-                    </style>
-                    
                     <path class="folder-path" d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                   </svg>
                   Projects
                 </button>
                 <button class="quick-action-btn" onclick="currentView = 'schedule'; renderCurrentView();">
                   <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <style>
-                      @keyframes calendarPop {
-                        0%, 100% {
-                          transform: scale(1);
-                        }
-                        50% {
-                          transform: scale(1.08);
-                        }
-                      }
-                      
-                      @keyframes slideDown {
-                        0% {
-                          transform: translateY(-2px);
-                          opacity: 0.5;
-                        }
-                        100% {
-                          transform: translateY(0);
-                          opacity: 1;
-                        }
-                      }
-                      
-                      .quick-action-btn:hover .icon {
-                        animation: calendarPop 0.3s ease-in-out;
-                      }
-                      
-                      .quick-action-btn:hover .icon .divider {
-                        animation: slideDown 0.3s ease-out;
-                      }
-                    </style>
-                    
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -353,6 +259,24 @@ function renderInboxView() {
                   </svg>
                   Calendar
                 </button>
+              </div>
+              <!-- Expanded content -->
+              <div class="widget-expanded">
+                <div class="widget-expanded-title">Recent Actions</div>
+                <div class="widget-expanded-list">
+                  <div class="widget-expanded-item" onclick="openDocEditor()">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Create new document</span>
+                  </div>
+                  <div class="widget-expanded-item" onclick="openCreateIssueModal()">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                    <span>Create new issue</span>
+                  </div>
+                  <div class="widget-expanded-item" onclick="currentView = 'team'; renderCurrentView();">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Invite team member</span>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -389,18 +313,49 @@ function renderInboxView() {
               <div class="widget-header">
                 <span class="widget-title">
                   <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>
                   </svg>
                   Weekly Activity
                 </span>
               </div>
-              <div class="productivity-chart">
-                ${productivityData.map(d => `
-                  <div class="chart-bar ${d.count === 0 ? 'muted' : ''}" style="height: ${Math.max(10, (d.count / maxCount) * 100)}%;" title="${d.day}: ${d.count} tasks"></div>
-                `).join('')}
+              <div class="activity-ring-container">
+                ${productivityData.map((d, i) => {
+                  const percentage = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0;
+                  const color = d.count === 0 ? 'var(--muted-foreground)' : d.count >= maxCount * 0.7 ? '#10b981' : d.count >= maxCount * 0.3 ? '#f59e0b' : '#3b82f6';
+                  const circumference = 2 * Math.PI * 18;
+                  const offset = circumference - (percentage / 100) * circumference;
+                  return `
+                    <div class="activity-ring-item">
+                      <svg class="activity-ring" viewBox="0 0 44 44">
+                        <circle class="activity-ring-bg" cx="22" cy="22" r="18"/>
+                        <circle class="activity-ring-progress" cx="22" cy="22" r="18" 
+                          style="stroke: ${color}; stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"/>
+                      </svg>
+                      <div class="activity-ring-value">${d.count}</div>
+                    </div>
+                  `;
+                }).join('')}
               </div>
-              <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--muted-foreground);">
-                ${productivityData.map(d => `<span>${d.day}</span>`).join('')}
+              <div class="activity-days-row">
+                ${productivityData.map(d => `<span class="activity-day-label">${d.day}</span>`).join('')}
+              </div>
+              <!-- Expanded content -->
+              <div class="widget-expanded">
+                <div class="widget-expanded-title">Activity Summary</div>
+                <div class="widget-expanded-list">
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <span>${totalTasks} total tasks this week</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Avg ${Math.round(totalTasks / 7)} tasks/day</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Most active: ${productivityData.reduce((a, b) => b.count > a.count ? b : a, {day: 'N/A', count: 0}).day}</span>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -423,6 +378,24 @@ function renderInboxView() {
                 <div class="streak-info">
                   <div class="streak-count">${calculateStreak(calendarEvents)} days</div>
                   <div class="streak-label">Keep it up!</div>
+                </div>
+              </div>
+              <!-- Expanded content -->
+              <div class="widget-expanded">
+                <div class="widget-expanded-title">Streak Details</div>
+                <div class="widget-expanded-list">
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                    <span>Current: ${calculateStreak(calendarEvents)} day streak</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Longest: ${Math.max(calculateStreak(calendarEvents), 7)} days</span>
+                  </div>
+                  <div class="widget-expanded-item">
+                    <svg class="widget-expanded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>${calendarEvents.filter(e => e.completed).length} tasks completed</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6081,8 +6054,9 @@ function renderProjectDetailView(projectIndex) {
 
   return `
     <div class="project-detail-advanced">
-      <!-- Advanced Header with Breadcrumb & Tabs -->
-      <header class="pd-header">
+      <div class="pd-inner-wrapper">
+        <!-- Advanced Header with Breadcrumb & Tabs -->
+        <header class="pd-header">
         <div class="pd-header-left">
           <nav class="pd-breadcrumb">
             <button class="pd-breadcrumb-btn" onclick="closeProjectDetail()" title="Back to Projects">
@@ -21311,11 +21285,73 @@ function initThemeSelector() {
   });
 }
 
+function restoreMainSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  const collapsed = localStorage.getItem('layerSidebarCollapsed') === 'true';
+  sidebar.classList.toggle('collapsed', collapsed);
+  
+  // Update main content margin on load
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    if (collapsed) {
+      mainContent.style.marginLeft = 'calc(var(--sidebar-collapsed-width) + (var(--sidebar-inset) * 2))';
+    } else {
+      mainContent.style.marginLeft = 'calc(var(--sidebar-expanded-width) + (var(--sidebar-inset) * 2))';
+    }
+  }
+}
+
+function toggleMainSidebarCollapse() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  if (isCollapsed) {
+    sidebar.classList.remove('collapsed');
+    localStorage.setItem('layerSidebarCollapsed', 'false');
+  } else {
+    sidebar.classList.add('collapsed');
+    localStorage.setItem('layerSidebarCollapsed', 'true');
+  }
+  
+  // Update main content margin if it exists
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    if (!isCollapsed) { // Now collapsed
+      mainContent.style.marginLeft = 'calc(var(--sidebar-collapsed-width) + (var(--sidebar-inset) * 2))';
+    } else { // Now expanded
+      mainContent.style.marginLeft = 'calc(var(--sidebar-expanded-width) + (var(--sidebar-inset) * 2))';
+    }
+  }
+}
+
+// Global initialization for main sidebar
+function initMainSidebar() {
+  restoreMainSidebarState();
+  const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+  if (sidebarCollapseBtn) {
+    // Remove any existing listeners by cloning
+    const newBtn = sidebarCollapseBtn.cloneNode(true);
+    sidebarCollapseBtn.parentNode.replaceChild(newBtn, sidebarCollapseBtn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMainSidebarCollapse();
+    });
+  }
+}
+
 // Apply saved theme on load
 document.addEventListener('DOMContentLoaded', async () => {
   const saved = localStorage.getItem('layerTheme') || 'rosepine';
   applyTheme(saved);
   initThemeSelector();
+
+  // Initialize main sidebar
+  initMainSidebar();
 
   // Check if focus mode was active
   const focusState = loadFocusModeState();
@@ -25386,9 +25422,10 @@ function renderSpaceDetailView(space) {
 
   return `
     <div class="space-overview-container">
-      <!-- Top Navigation Bar -->
-      <div class="space-top-bar">
-        <div class="space-top-left">
+      <div class="space-main-wrapper">
+        <!-- Top Navigation Bar -->
+        <div class="space-top-bar">
+          <div class="space-top-left">
           <div class="space-breadcrumb">
             <span class="breadcrumb-item">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
@@ -25407,10 +25444,9 @@ function renderSpaceDetailView(space) {
           </div>
         </div>
       </div>
-      
-      <!-- Main Content Area -->
-      <div class="space-main-content">
-        <!-- Top Cards Row -->
+        <!-- Main Content Area -->
+        <div class="space-main-content">
+          <!-- Top Cards Row -->
         <div class="space-cards-row">
           <!-- Sheets Card (replaced Recent) -->
           <div class="space-card sheets-card-hover">
@@ -28897,55 +28933,57 @@ function renderAIView() {
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
 
   return `
-    <div class="ai-clean-landing">
-      <div class="ai-top-bar">
-        <div class="ai-top-left"></div>
-        <div class="ai-top-right">
-          <button class="ai-history-btn-minimal" onclick="toggleAIChatHistorySidebar()" title="View Chat History">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span>History</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Clean Landing Content -->
-      <div class="ai-clean-center">
-        <h1 class="ai-clean-greeting">
-          Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},
-          <br/>
-          <span class="ai-clean-greeting-sub">What would you like to know?</span>
-        </h1>
-        <p class="ai-clean-hint">Use one of the most common prompts below or use your own to begin</p>
-
-        <!-- Prompt Cards -->
-        <div class="ai-clean-cards">
-          ${aiFeatureCards.map(card => `
-            <button class="ai-clean-card" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
-              <span class="ai-clean-card-text">${card.title}</span>
-              <span class="ai-clean-card-icon">${card.icon}</span>
+    <div class="ai-clean-chat">
+      <div class="ai-clean-chat-inner">
+        <div class="ai-top-bar">
+          <div class="ai-top-left"></div>
+          <div class="ai-top-right">
+            <button class="ai-history-btn-minimal" onclick="toggleAIChatHistorySidebar()" title="View Chat History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>History</span>
             </button>
-          `).join('')}
+          </div>
         </div>
-      </div>
 
-      <!-- Input at bottom -->
-      <div class="ai-clean-input-area">
-        <div class="ai-clean-input-box">
-          <input
-            type="text"
-            class="ai-clean-input"
-            placeholder="Ask whatever you want..."
-            id="aiAgentInput"
-            onkeydown="handleAIInputKeydown(event)"
-            autocomplete="off"
-          />
-          <button class="ai-clean-send-btn" onclick="sendAIAgentPrompt()" id="aiSendBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </button>
+        <!-- Clean Landing Content -->
+        <div class="ai-clean-center">
+          <h1 class="ai-clean-greeting">
+            Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},
+            <br/>
+            <span class="ai-clean-greeting-sub">What would you like to know?</span>
+          </h1>
+          <p class="ai-clean-hint">Use one of the most common prompts below or use your own to begin</p>
+
+          <!-- Prompt Cards -->
+          <div class="ai-clean-cards">
+            ${aiFeatureCards.map(card => `
+              <button class="ai-clean-card" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
+                <span class="ai-clean-card-text">${card.title}</span>
+                <span class="ai-clean-card-icon">${card.icon}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Input at bottom -->
+        <div class="ai-clean-input-area">
+          <div class="ai-clean-input-box">
+            <input
+              type="text"
+              class="ai-clean-input"
+              placeholder="Ask whatever you want..."
+              id="aiAgentInput"
+              onkeydown="handleAIInputKeydown(event)"
+              autocomplete="off"
+            />
+            <button class="ai-clean-send-btn" onclick="sendAIAgentPrompt()" id="aiSendBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -29008,41 +29046,58 @@ function showAIAddOptions() {
 let aiChatMessages = [];
 let aiChatIsLoading = false;
 let aiThinkingStatus = 'Thinking...';
-const thinkingStatuses = [
-  'Analysing the text...',
-  'Searching the web...',
-  'Putting things together...',
-  'Refining response...',
-  'Finalizing...'
-];
-let thinkingStatusInterval = null;
+let aiThinkingElapsedText = '0s';
+let aiThinkingStartedAt = null;
+let aiThinkingTimer = null;
 
-function startThinkingStatus() {
-  let index = 0;
-  aiThinkingStatus = thinkingStatuses[index];
+function formatElapsedMs(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+function updateThinkingDom(statusText) {
+  const statusEl = document.querySelector('.ai-thinking-text');
+  if (statusEl && typeof statusText === 'string') {
+    statusEl.classList.remove('ai-thinking-text-animate');
+    // force reflow so animation restarts
+    void statusEl.offsetWidth;
+    statusEl.textContent = statusText;
+    statusEl.classList.add('ai-thinking-text-animate');
+  }
+
+  const timeEl = document.querySelector('.ai-thinking-time');
+  if (timeEl) timeEl.textContent = aiThinkingElapsedText;
+}
+
+function setThinkingStatus(statusText) {
+  aiThinkingStatus = statusText;
+  updateThinkingDom(statusText);
+}
+
+function startThinkingStatus(initialText = 'Thinking...') {
+  aiThinkingStartedAt = Date.now();
+  aiThinkingElapsedText = '0s';
+  aiThinkingStatus = initialText;
   updateChatView();
-  
-  if (thinkingStatusInterval) clearInterval(thinkingStatusInterval);
-  
-  thinkingStatusInterval = setInterval(() => {
-    index = (index + 1) % thinkingStatuses.length;
-    aiThinkingStatus = thinkingStatuses[index];
-    
-    // Efficiently update only the thinking text if it exists
-    const statusEl = document.querySelector('.ai-thinking-text');
-    if (statusEl) {
-      statusEl.textContent = aiThinkingStatus;
-    } else {
-      updateChatView();
-    }
-  }, 3000);
+
+  if (aiThinkingTimer) clearInterval(aiThinkingTimer);
+  aiThinkingTimer = setInterval(() => {
+    if (!aiThinkingStartedAt) return;
+    aiThinkingElapsedText = formatElapsedMs(Date.now() - aiThinkingStartedAt);
+    updateThinkingDom();
+  }, 200);
 }
 
 function stopThinkingStatus() {
-  if (thinkingStatusInterval) {
-    clearInterval(thinkingStatusInterval);
-    thinkingStatusInterval = null;
+  if (aiThinkingTimer) {
+    clearInterval(aiThinkingTimer);
+    aiThinkingTimer = null;
   }
+  aiThinkingStartedAt = null;
+  aiThinkingElapsedText = '0s';
   aiThinkingStatus = 'Thinking...';
 }
 let aiGeneratedContent = null; // For Essay/Report/Code panel
@@ -29322,141 +29377,149 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <div class="ai-clean-chat ${aiCodingModeOpen ? 'ai-coding-mode' : ''}" id="aiCleanChatRoot" style="--ai-split-left:${aiCodingSplitRatio}%;">
-      <!-- Chat Header -->
-      <div class="ai-clean-chat-header">
-        <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-        </button>
-        <span class="ai-clean-chat-title">Layer Intelligence</span>
-        <div class="ai-clean-header-actions">
-          ${renderProjectContextButton()}
-          <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
+      <div class="ai-clean-chat-inner">
+        <!-- Chat Header -->
+        <div class="ai-clean-chat-header">
+          <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M16 18l6-6-6-6"/>
-              <path d="M8 6l-6 6 6 6"/>
-              <path d="M14 4l-4 16"/>
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
           </button>
-          <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="ai-clean-chat-body" id="aiCleanChatBody">
-        <div class="ai-clean-left" id="aiCleanLeft">
-          <!-- Messages -->
-          <div class="ai-clean-messages" id="aiChatMessages">
-            ${renderAIChatMessages()}
-            ${aiChatIsLoading ? `
-              <div class="ai-clean-loading">
-                <div class="ai-assistant-header">
-                  <span class="ai-assistant-name">Layer Intelligence</span>
-                </div>
-                <span class="ai-thinking-text">${aiThinkingStatus}</span>
-              </div>
-            ` : ''}
+          <span class="ai-clean-chat-title">Layer Intelligence</span>
+          <div class="ai-clean-header-actions">
+            ${renderProjectContextButton()}
+            <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M16 18l6-6-6-6"/>
+                <path d="M8 6l-6 6 6 6"/>
+                <path d="M14 4l-4 16"/>
+              </svg>
+            </button>
+            <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
           </div>
+        </div>
 
-          <!-- Attachments -->
-          <div id="aiAttachments"></div>
-
-          <!-- Input -->
-          <div class="ai-clean-chat-input-area">
-            <div class="ai-clean-input-box">
-              <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-              <input
-                type="text"
-                class="ai-clean-input"
-                id="aiChatInput"
-                placeholder="Ask anything"
-                onkeydown="handleAIChatInputKeydown(event)"
-                ${aiChatIsLoading ? 'disabled' : ''}
-              />
-              <div class="ai-input-model-selector">
-                <span>Auto</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </div>
-              <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                </svg>
-              </button>
+        <div class="ai-clean-chat-body" id="aiCleanChatBody">
+          <div class="ai-clean-left" id="aiCleanLeft">
+            <!-- Messages -->
+            <div class="ai-clean-messages" id="aiChatMessages">
+              ${renderAIChatMessages()}
+              ${aiChatIsLoading ? `
+                <div class="ai-clean-loading" role="status" aria-live="polite">
+                  <div class="ai-assistant-header">
+                    <span class="ai-assistant-name">Layer Intelligence</span>
+                    <span class="ai-thinking-meta">
+                      <span class="ai-thinking-time">${aiThinkingElapsedText}</span>
+                    </span>
+                  </div>
+                  <div class="ai-thinking-row">
+                    <span class="ai-thinking-spinner" aria-hidden="true"></span>
+                    <span class="ai-thinking-text ai-thinking-text-animate">${aiThinkingStatus}</span>
+                  </div>
+                </div>
+              ` : ''}
             </div>
-          </div>
-        </div>
 
-        ${aiCodingModeOpen ? `
-        <div class="ai-clean-splitter" id="aiCleanSplitter" onmousedown="startAICodeResize(event)" title="Drag to resize">
-          <div class="ai-clean-splitter-handle"></div>
-        </div>
+            <!-- Attachments -->
+            <div id="aiAttachments"></div>
 
-        <div class="ai-clean-right" id="aiCleanRight" aria-hidden="false">
-          <div class="ai-code-panel">
-            <div class="ai-code-panel-header">
-              <div class="ai-code-panel-title">
-                <span>Coding</span>
-                <span class="ai-code-panel-sub">AI-assisted fixes</span>
-              </div>
-              <div class="ai-code-panel-actions">
-                <div class="ai-code-lang-container" id="aiCodeLangContainer">
-                  <div class="ai-code-lang-trigger" onclick="toggleAICodeLangDropdown(event)">
-                    <span>${aiCodingLangAuto ? 'AUTO' : aiCodingDraftLanguage}</span>
-                    <i class="fas fa-chevron-down"></i>
-                  </div>
-                  <div class="ai-code-lang-dropdown">
-                    <div class="ai-code-lang-option ${aiCodingLangAuto ? 'selected' : ''}" onclick="setAICodeLanguage('auto')">AUTO</div>
-                    ${['javascript','typescript','python','html','css','json','sql','java','c','cpp','go','rust','php','bash'].map(l => `
-                      <div class="ai-code-lang-option ${(!aiCodingLangAuto && l === aiCodingDraftLanguage) ? 'selected' : ''}" onclick="setAICodeLanguage('${l}')">${l}</div>
-                    `).join('')}
-                  </div>
+            <!-- Input -->
+            <div class="ai-clean-chat-input-area">
+              <div class="ai-clean-input-box">
+                <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
+                <input
+                  type="text"
+                  class="ai-clean-input"
+                  id="aiChatInput"
+                  placeholder="Ask anything"
+                  onkeydown="handleAIChatInputKeydown(event)"
+                  ${aiChatIsLoading ? 'disabled' : ''}
+                />
+                <div class="ai-input-model-selector">
+                  <span>Auto</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
                 </div>
-                <button class="ai-code-action-btn" onclick="copyAICodeDraft()" title="Copy code">Copy</button>
-                <button class="ai-code-action-btn" onclick="runAICodeDraft()" title="Run code">Run</button>
-                <button class="ai-code-action-btn" onclick="clearAICodeOutput()" title="Clear output">Clear</button>
-                <button class="ai-code-action-btn primary" onclick="autoFixAICodeDraft()" ${aiCodingIsFixing ? 'disabled' : ''} title="Auto fix">
-                  ${aiCodingIsFixing ? 'Fixing…' : 'Auto‑Fix'}
+                <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                  </svg>
                 </button>
               </div>
             </div>
+          </div>
 
-            <div class="ai-code-panel-body">
-              <textarea class="ai-code-editor" id="aiCodeDraft" spellcheck="false" placeholder="Paste your code here…" oninput="onAICodeDraftInput(this.value)">${escapeHtml(aiCodingDraftCode)}</textarea>
-              <div class="ai-code-output ${aiCodingRunSrcdoc || (aiCodingConsoleLines && aiCodingConsoleLines.length > 0) ? 'show' : ''}">
-                <div class="ai-code-output-tabs">
-                  <button class="ai-code-tab ${aiCodingRunTab === 'preview' ? 'active' : ''}" onclick="setAICodeRunTab('preview')">Preview</button>
-                  <button class="ai-code-tab ${aiCodingRunTab === 'console' ? 'active' : ''}" onclick="setAICodeRunTab('console')">Console</button>
-                  <div class="ai-code-output-meta">Sandbox · ${escapeHtml((aiCodingDraftLanguage || 'javascript').toUpperCase())}</div>
-                  <button class="ai-code-output-close" onclick="clearAICodeOutput()" title="Close output">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          ${aiCodingModeOpen ? `
+          <div class="ai-clean-splitter" id="aiCleanSplitter" onmousedown="startAICodeResize(event)" title="Drag to resize">
+            <div class="ai-clean-splitter-handle"></div>
+          </div>
+
+          <div class="ai-clean-right" id="aiCleanRight" aria-hidden="false">
+            <div class="ai-code-panel">
+              <div class="ai-code-panel-header">
+                <div class="ai-code-panel-title">
+                  <span>Coding</span>
+                  <span class="ai-code-panel-sub">AI-assisted fixes</span>
+                </div>
+                <div class="ai-code-panel-actions">
+                  <div class="ai-code-lang-container" id="aiCodeLangContainer">
+                    <div class="ai-code-lang-trigger" onclick="toggleAICodeLangDropdown(event)">
+                      <span>${aiCodingLangAuto ? 'AUTO' : aiCodingDraftLanguage}</span>
+                      <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="ai-code-lang-dropdown">
+                      <div class="ai-code-lang-option ${aiCodingLangAuto ? 'selected' : ''}" onclick="setAICodeLanguage('auto')">AUTO</div>
+                      ${['javascript','typescript','python','html','css','json','sql','java','c','cpp','go','rust','php','bash'].map(l => `
+                        <div class="ai-code-lang-option ${(!aiCodingLangAuto && l === aiCodingDraftLanguage) ? 'selected' : ''}" onclick="setAICodeLanguage('${l}')">${l}</div>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <button class="ai-code-action-btn" onclick="copyAICodeDraft()" title="Copy code">Copy</button>
+                  <button class="ai-code-action-btn" onclick="runAICodeDraft()" title="Run code">Run</button>
+                  <button class="ai-code-action-btn" onclick="clearAICodeOutput()" title="Clear output">Clear</button>
+                  <button class="ai-code-action-btn primary" onclick="autoFixAICodeDraft()" ${aiCodingIsFixing ? 'disabled' : ''} title="Auto fix">
+                    ${aiCodingIsFixing ? 'Fixing…' : 'Auto‑Fix'}
                   </button>
                 </div>
-                <div class="ai-code-output-body">
-                  <div class="ai-code-output-view ${aiCodingRunTab === 'preview' ? 'show' : ''}">
-                    <iframe class="ai-code-iframe" id="aiCodeIframe" sandbox="allow-scripts" srcdoc="${escapeHtml(aiCodingRunSrcdoc)}"></iframe>
+              </div>
+
+              <div class="ai-code-panel-body">
+                <textarea class="ai-code-editor" id="aiCodeDraft" spellcheck="false" placeholder="Paste your code here…" oninput="onAICodeDraftInput(this.value)">${escapeHtml(aiCodingDraftCode)}</textarea>
+                <div class="ai-code-output ${aiCodingRunSrcdoc || (aiCodingConsoleLines && aiCodingConsoleLines.length > 0) ? 'show' : ''}">
+                  <div class="ai-code-output-tabs">
+                    <button class="ai-code-tab ${aiCodingRunTab === 'preview' ? 'active' : ''}" onclick="setAICodeRunTab('preview')">Preview</button>
+                    <button class="ai-code-tab ${aiCodingRunTab === 'console' ? 'active' : ''}" onclick="setAICodeRunTab('console')">Console</button>
+                    <div class="ai-code-output-meta">Sandbox · ${escapeHtml((aiCodingDraftLanguage || 'javascript').toUpperCase())}</div>
+                    <button class="ai-code-output-close" onclick="clearAICodeOutput()" title="Close output">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                   </div>
-                  <div class="ai-code-output-view ${aiCodingRunTab === 'console' ? 'show' : ''}">
-                    <div class="ai-code-console" id="aiCodeConsole">${aiCodingConsoleLines.length ? aiCodingConsoleLines.map(l => `<div class=\"ai-code-console-line\">${escapeHtml(l)}</div>`).join('') : '<div class="ai-code-console-empty">No output yet. Click Run.</div>'}</div>
+                  <div class="ai-code-output-body">
+                    <div class="ai-code-output-view ${aiCodingRunTab === 'preview' ? 'show' : ''}">
+                      <iframe class="ai-code-iframe" id="aiCodeIframe" sandbox="allow-scripts" srcdoc="${escapeHtml(aiCodingRunSrcdoc)}"></iframe>
+                    </div>
+                    <div class="ai-code-output-view ${aiCodingRunTab === 'console' ? 'show' : ''}">
+                      <div class="ai-code-console" id="aiCodeConsole">${aiCodingConsoleLines.length ? aiCodingConsoleLines.map(l => `<div class=\"ai-code-console-line\">${escapeHtml(l)}</div>`).join('') : '<div class="ai-code-console-empty">No output yet. Click Run.</div>'}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="ai-code-hint">
-                Tip: Ask the AI on the left, then paste code here and press <strong>Auto‑Fix</strong>.
+                <div class="ai-code-hint">
+                  Tip: Ask the AI on the left, then paste code here and press <strong>Auto‑Fix</strong>.
+                </div>
               </div>
             </div>
           </div>
+          ` : ''}
         </div>
-        ` : ''}
       </div>
       <input type="file" id="aiFileInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleFileSelect(event)">
     </div>
@@ -30261,7 +30324,7 @@ async function sendAIChatMessage() {
 
 async function processAIMessage(message) {
   aiChatIsLoading = true;
-  startThinkingStatus();
+  startThinkingStatus('Preparing…');
   updateChatView();
   scrollChatToBottom();
 
@@ -30270,10 +30333,15 @@ async function processAIMessage(message) {
     const isGeneration = detectContentGeneration(message);
 
     // Pass the entire message history for context
+    setThinkingStatus('Sending request…');
     const response = await window.callGeminiAPI(aiChatMessages);
+
+    setThinkingStatus('Analysing response…');
 
     // Parse the response for structured content
     const parsedResponse = parseAIResponse(response, isGeneration);
+
+    setThinkingStatus('Finalizing…');
 
     aiChatMessages.push({
       role: 'assistant',
@@ -30291,6 +30359,7 @@ async function processAIMessage(message) {
     }
 
   } catch (error) {
+    setThinkingStatus('Something went wrong…');
     aiChatMessages.push({
       role: 'assistant',
       content: 'I apologize, but I encountered an error processing your request. Please try again.',

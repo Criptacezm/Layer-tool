@@ -4,11 +4,24 @@
 
 /* Container */
 .drafts-container {
-  padding: 0 !important;
-  height: 100%;
+  padding: var(--sidebar-inset) !important;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.drafts-inner-wrapper {
+  flex: 1;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 24px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: containerFadeIn 0.4s ease-out;
 }
 
 /* Header Section */
@@ -17,9 +30,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 24px 32px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
-  gap: 20px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .drafts-header-left {

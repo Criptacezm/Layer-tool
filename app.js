@@ -304,6 +304,125 @@ function setupProjectDetailRealtime(projectId) {
   });
 }
 
+function getDashboardGridColumnCount(grid) {
+  if (!grid) return 1;
+  const computed = window.getComputedStyle(grid);
+  const cols = (computed.gridTemplateColumns || '').split(' ').filter(Boolean);
+  return Math.max(cols.length, 1);
+}
+
+function initWidgetResizeHandles() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+
+  const widgets = grid.querySelectorAll('.dashboard-widget');
+  widgets.forEach(widget => {
+    if (widget.dataset.resizeInitialized === 'true') return;
+    widget.dataset.resizeInitialized = 'true';
+
+    const handle = document.createElement('div');
+    handle.className = 'dashboard-widget-resize-handle se';
+    handle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'se'));
+    widget.appendChild(handle);
+
+    const sHandle = document.createElement('div');
+    sHandle.className = 'dashboard-widget-resize-handle s';
+    sHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 's'));
+    widget.appendChild(sHandle);
+
+    const eHandle = document.createElement('div');
+    eHandle.className = 'dashboard-widget-resize-handle e';
+    eHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'e'));
+    widget.appendChild(eHandle);
+
+    const nHandle = document.createElement('div');
+    nHandle.className = 'dashboard-widget-resize-handle n';
+    nHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'n'));
+    widget.appendChild(nHandle);
+
+    const wHandle = document.createElement('div');
+    wHandle.className = 'dashboard-widget-resize-handle w';
+    wHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'w'));
+    widget.appendChild(wHandle);
+
+    const neHandle = document.createElement('div');
+    neHandle.className = 'dashboard-widget-resize-handle ne';
+    neHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'ne'));
+    widget.appendChild(neHandle);
+
+    const nwHandle = document.createElement('div');
+    nwHandle.className = 'dashboard-widget-resize-handle nw';
+    nwHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'nw'));
+    widget.appendChild(nwHandle);
+
+    const swHandle = document.createElement('div');
+    swHandle.className = 'dashboard-widget-resize-handle sw';
+    swHandle.addEventListener('mousedown', (e) => startDashboardWidgetResize(e, widget, grid, 'sw'));
+    widget.appendChild(swHandle);
+  });
+}
+
+function startDashboardWidgetResize(e, widget, grid, direction) {
+  if (!dashboardEditMode) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startCols = getDashboardGridColumnCount(grid);
+  const gridRect = grid.getBoundingClientRect();
+  const colWidth = gridRect.width / startCols;
+  const rowHeight = 100; // Estimated row height for snapping
+
+  const currentSpan = parseInt(widget.dataset.widgetSpan || '1', 10) || 1;
+  const currentLevel = parseInt(widget.dataset.widgetLevel || '1', 10) || 1;
+
+  widget.classList.add('resizing');
+
+  const onMove = (moveEvent) => {
+    // Horizontal resizing (E, W, SE, SW, NE, NW)
+    if (direction.includes('e')) {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaCols = Math.round(deltaX / colWidth);
+      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), startCols);
+      widget.dataset.widgetSpan = String(newSpan);
+      widget.style.gridColumn = `span ${newSpan}`;
+    } else if (direction.includes('w')) {
+      const deltaX = startX - moveEvent.clientX;
+      const deltaCols = Math.round(deltaX / colWidth);
+      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), startCols);
+      widget.dataset.widgetSpan = String(newSpan);
+      widget.style.gridColumn = `span ${newSpan}`;
+    }
+    
+    // Vertical resizing (S, N, SE, SW, NE, NW)
+    if (direction.includes('s')) {
+      const deltaY = moveEvent.clientY - startY;
+      const deltaLevels = Math.round(deltaY / rowHeight);
+      const newLevel = Math.max(currentLevel + deltaLevels, 1);
+      widget.dataset.widgetLevel = String(newLevel);
+      widget.style.gridRow = `span ${newLevel}`;
+    } else if (direction.includes('n')) {
+      const deltaY = startY - moveEvent.clientY;
+      const deltaLevels = Math.round(deltaY / rowHeight);
+      const newLevel = Math.max(currentLevel + deltaLevels, 1);
+      widget.dataset.widgetLevel = String(newLevel);
+      widget.style.gridRow = `span ${newLevel}`;
+    }
+  };
+
+  const onUp = () => {
+    widget.classList.remove('resizing');
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    saveWidgetSpans();
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
 // Cleanup project detail realtime
 function cleanupProjectDetailRealtime() {
   if (window.LayerRealtime) {
@@ -2526,6 +2645,12 @@ async function renderCurrentView(preserveScroll = false) {
       updateBreadcrumb('Inbox');
       // Apply saved widget order after rendering
       initDashboardWidgetOrder();
+      // Apply saved widget spans after rendering
+      initDashboardWidgetSpans();
+      // Initialize widget resize handles (only active in edit mode)
+      initWidgetResizeHandles();
+      // Initialize dashboard drag/drop (only active in edit mode)
+      initWidgetDragDrop();
       // Restore dashboard AI sidebar state
       restoreDashboardAiSidebarState();
       // Start shared content polling for real-time updates
@@ -3179,6 +3304,62 @@ function renderDraftsView() {
   if (drafts.length === 0) {
     return `
       <div class="drafts-container">
+        <div class="drafts-inner-wrapper">
+          <div class="drafts-header-modern">
+            <div class="drafts-header-left">
+              <div class="drafts-title-group">
+                <div class="drafts-icon-large">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <div>
+                  <h1 class="drafts-title">Drafts</h1>
+                  <p class="drafts-subtitle">Work in progress saved automatically</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="drafts-empty-state">
+            <div class="empty-illustration">
+              <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="40" y="20" width="120" height="140" rx="8" stroke="var(--border)" stroke-width="2" fill="var(--card)"/>
+                <rect x="60" y="45" width="80" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+                <rect x="60" y="60" width="60" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+                <rect x="60" y="75" width="70" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
+                <rect x="60" y="100" width="80" height="40" rx="4" stroke="var(--border)" stroke-width="2" fill="var(--background)" stroke-dasharray="4 4"/>
+                <circle cx="140" cy="40" r="12" fill="var(--primary)" opacity="0.1"/>
+                <path d="M134 40L138 44L146 36" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h2 class="empty-title">No drafts yet</h2>
+            <p class="empty-description">Start creating documents, spreadsheets, or whiteboards. Your work-in-progress will be automatically saved here.</p>
+            <div class="empty-actions">
+              <button class="draft-btn draft-btn-primary" onclick="openDocEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                New Document
+              </button>
+              <button class="draft-btn draft-btn-secondary" onclick="openExcelEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                New Sheet
+              </button>
+              <button class="draft-btn draft-btn-secondary" onclick="createWhiteboardDraft().then(index => { if(index !== null) openGripDiagram(index); })">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/><line x1="6" y1="17" x2="5" y2="22"/><line x1="16" y1="17" x2="17" y2="22"/></svg>
+                New Whiteboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="drafts-container">
+      <div class="drafts-inner-wrapper">
+        <!-- Header -->
         <div class="drafts-header-modern">
           <div class="drafts-header-left">
             <div class="drafts-title-group">
@@ -3190,122 +3371,69 @@ function renderDraftsView() {
               </div>
               <div>
                 <h1 class="drafts-title">Drafts</h1>
-                <p class="drafts-subtitle">Work in progress saved automatically</p>
+                <p class="drafts-subtitle">${drafts.length} item${drafts.length !== 1 ? 's' : ''} • Work in progress</p>
               </div>
             </div>
           </div>
+          
+          <div class="drafts-header-right">
+            <div class="drafts-stats-chips">
+              ${docDrafts.length > 0 ? `<div class="stat-chip stat-chip-docs"><span class="stat-chip-dot" style="background:#6366f1"></span>${docDrafts.length} Doc${docDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+              ${sheetDrafts.length > 0 ? `<div class="stat-chip stat-chip-sheets"><span class="stat-chip-dot" style="background:#22c55e"></span>${sheetDrafts.length} Sheet${sheetDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+              ${whiteboardDrafts.length > 0 ? `<div class="stat-chip stat-chip-boards"><span class="stat-chip-dot" style="background:#f59e0b"></span>${whiteboardDrafts.length} Board${whiteboardDrafts.length !== 1 ? 's' : ''}</div>` : ''}
+            </div>
+            
+            <button class="draft-btn draft-btn-danger-outline" onclick="clearAllDrafts()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Clear All
+            </button>
+          </div>
         </div>
         
-        <div class="drafts-empty-state">
-          <div class="empty-illustration">
-            <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="40" y="20" width="120" height="140" rx="8" stroke="var(--border)" stroke-width="2" fill="var(--card)"/>
-              <rect x="60" y="45" width="80" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
-              <rect x="60" y="60" width="60" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
-              <rect x="60" y="75" width="70" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.3"/>
-              <rect x="60" y="100" width="80" height="40" rx="4" stroke="var(--border)" stroke-width="2" fill="var(--background)" stroke-dasharray="4 4"/>
-              <circle cx="140" cy="40" r="12" fill="var(--primary)" opacity="0.1"/>
-              <path d="M134 40L138 44L146 36" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h2 class="empty-title">No drafts yet</h2>
-          <p class="empty-description">Start creating documents, spreadsheets, or whiteboards. Your work-in-progress will be automatically saved here.</p>
-          <div class="empty-actions">
-            <button class="draft-btn draft-btn-primary" onclick="openDocEditor()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-              New Document
+        <!-- Toolbar -->
+        <div class="drafts-toolbar-modern">
+          <div class="drafts-filters-modern">
+            <button class="filter-chip active" data-filter="all" onclick="setDraftFilter(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              All
             </button>
-            <button class="draft-btn draft-btn-secondary" onclick="openExcelEditor()">
+            <button class="filter-chip" data-filter="doc" onclick="setDraftFilter(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Docs
+            </button>
+            <button class="filter-chip" data-filter="sheet" onclick="setDraftFilter(this)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-              New Sheet
+              Sheets
             </button>
-            <button class="draft-btn draft-btn-secondary" onclick="createWhiteboardDraft().then(index => { if(index !== null) openGripDiagram(index); })">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/><line x1="6" y1="17" x2="5" y2="22"/><line x1="16" y1="17" x2="17" y2="22"/></svg>
-              New Whiteboard
+            <button class="filter-chip" data-filter="whiteboard" onclick="setDraftFilter(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/></svg>
+              Boards
             </button>
           </div>
-        </div>
-      </div>
-    `;
-  }
-  
-  return `
-    <div class="drafts-container">
-      <!-- Header -->
-      <div class="drafts-header-modern">
-        <div class="drafts-header-left">
-          <div class="drafts-title-group">
-            <div class="drafts-icon-large">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
+          
+          <div class="drafts-toolbar-right">
+            <div class="drafts-search-modern">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="drafts-search-input" placeholder="Search drafts..." onkeyup="filterDraftsModern()" />
             </div>
-            <div>
-              <h1 class="drafts-title">Drafts</h1>
-              <p class="drafts-subtitle">${drafts.length} item${drafts.length !== 1 ? 's' : ''} • Work in progress</p>
+            
+            <div class="drafts-sort-modern">
+              <select id="drafts-sort-select" onchange="sortDraftsModern()">
+                <option value="updated-desc">Recently updated</option>
+                <option value="updated-asc">Oldest updated</option>
+                <option value="created-desc">Recently created</option>
+                <option value="created-asc">Oldest created</option>
+                <option value="title-asc">Name A-Z</option>
+                <option value="title-desc">Name Z-A</option>
+              </select>
             </div>
           </div>
         </div>
         
-        <div class="drafts-header-right">
-          <div class="drafts-stats-chips">
-            ${docDrafts.length > 0 ? `<div class="stat-chip stat-chip-docs"><span class="stat-chip-dot" style="background:#6366f1"></span>${docDrafts.length} Doc${docDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-            ${sheetDrafts.length > 0 ? `<div class="stat-chip stat-chip-sheets"><span class="stat-chip-dot" style="background:#22c55e"></span>${sheetDrafts.length} Sheet${sheetDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-            ${whiteboardDrafts.length > 0 ? `<div class="stat-chip stat-chip-boards"><span class="stat-chip-dot" style="background:#f59e0b"></span>${whiteboardDrafts.length} Board${whiteboardDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-          </div>
-          
-          <button class="draft-btn draft-btn-danger-outline" onclick="clearAllDrafts()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Clear All
-          </button>
-        </div>
-      </div>
-      
-      <!-- Toolbar -->
-      <div class="drafts-toolbar-modern">
-        <div class="drafts-filters-modern">
-          <button class="filter-chip active" data-filter="all" onclick="setDraftFilter(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-            All
-          </button>
-          <button class="filter-chip" data-filter="doc" onclick="setDraftFilter(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Docs
-          </button>
-          <button class="filter-chip" data-filter="sheet" onclick="setDraftFilter(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-            Sheets
-          </button>
-          <button class="filter-chip" data-filter="whiteboard" onclick="setDraftFilter(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/></svg>
-            Boards
-          </button>
-        </div>
-        
-        <div class="drafts-toolbar-right">
-          <div class="drafts-search-modern">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="drafts-search-input" placeholder="Search drafts..." onkeyup="filterDraftsModern()" />
-          </div>
-          
-          <div class="drafts-sort-modern">
-            <select id="drafts-sort-select" onchange="sortDraftsModern()">
-              <option value="updated-desc">Recently updated</option>
-              <option value="updated-asc">Oldest updated</option>
-              <option value="created-desc">Recently created</option>
-              <option value="created-asc">Oldest created</option>
-              <option value="title-asc">Name A-Z</option>
-              <option value="title-desc">Name Z-A</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Content Grid -->
-      <div class="drafts-content-modern">
-        <div class="drafts-grid-modern" id="drafts-grid">
-          ${drafts.map(draft => {
+        <!-- Content Grid -->
+        <div class="drafts-content-modern">
+          <div class="drafts-grid-modern" id="drafts-grid">
+            ${drafts.map(draft => {
             const icon = typeIcons[draft.type] || typeIcons.doc;
             const color = typeColors[draft.type] || typeColors.doc;
             const label = typeLabels[draft.type] || 'Draft';
@@ -4142,6 +4270,13 @@ async function initDashboardWidgetOrder() {
   }
 }
 
+async function initDashboardWidgetSpans() {
+  const spans = await loadWidgetSpans();
+  if (spans && typeof spans === 'object') {
+    applyWidgetSpans(spans);
+  }
+}
+
 // Track dashboard AI sidebar state across view switches
 let dashboardAiSidebarCollapsed = false;
 
@@ -4160,6 +4295,11 @@ function toggleDashboardEditMode() {
   btn.classList.toggle('edit-mode', dashboardEditMode);
   if (btn.querySelector('span')) {
     btn.querySelector('span').textContent = dashboardEditMode ? 'Done' : 'Edit Layout';
+  }
+
+  if (grid) {
+    const widgets = grid.querySelectorAll('.dashboard-widget');
+    widgets.forEach(w => w.setAttribute('draggable', dashboardEditMode ? 'true' : 'false'));
   }
 }
 
@@ -4226,9 +4366,19 @@ function initWidgetDragDrop() {
   let draggedWidget = null;
 
   widgets.forEach(widget => {
-    widget.setAttribute('draggable', 'true');
+    if (widget.dataset.dragDropInitialized === 'true') {
+      widget.setAttribute('draggable', dashboardEditMode ? 'true' : 'false');
+      return;
+    }
+
+    widget.dataset.dragDropInitialized = 'true';
+    widget.setAttribute('draggable', dashboardEditMode ? 'true' : 'false');
 
     widget.addEventListener('dragstart', (e) => {
+      if (!dashboardEditMode) {
+        e.preventDefault();
+        return;
+      }
       draggedWidget = widget;
       widget.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
@@ -4241,6 +4391,7 @@ function initWidgetDragDrop() {
     });
 
     widget.addEventListener('dragover', (e) => {
+      if (!dashboardEditMode) return;
       e.preventDefault();
       if (draggedWidget && draggedWidget !== widget) {
         const rect = widget.getBoundingClientRect();
@@ -4270,12 +4421,99 @@ async function saveWidgetOrder() {
   // Sync to DB if authenticated
   if (window.LayerDB && window.LayerDB.isAuthenticated()) {
     try {
-      await window.LayerDB.saveUserPreferences({ widget_order: order });
+      const spans = loadWidgetSpansFromDOM();
+      await window.LayerDB.saveUserPreferences({ widget_order: order, widget_spans: spans });
       console.log('✓ Widget order synced to DB');
     } catch (error) {
       console.error('Failed to sync widget order to DB:', error);
     }
   }
+}
+
+function loadWidgetSpansFromDOM() {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return {};
+
+  const widgets = grid.querySelectorAll('.dashboard-widget');
+  const spans = {};
+  widgets.forEach(w => {
+    const id = w.dataset.widgetId || w.querySelector('h3')?.textContent?.trim() || '';
+    if (!id) return;
+    const span = parseInt(w.dataset.widgetSpan || '1', 10);
+    const level = parseInt(w.dataset.widgetLevel || '1', 10);
+    if (!Number.isNaN(span) && span > 0) {
+      spans[id] = { span, level: level || 1 };
+    }
+  });
+  return spans;
+}
+
+async function saveWidgetSpans() {
+  const spans = loadWidgetSpansFromDOM();
+  localStorage.setItem('layerWidgetSpans', JSON.stringify(spans));
+
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      await window.LayerDB.saveUserPreferences({ widget_spans: spans });
+      console.log('✓ Widget spans synced to DB');
+    } catch (error) {
+      console.error('Failed to sync widget spans to DB:', error);
+    }
+  }
+}
+
+async function loadWidgetSpans() {
+  let spans = null;
+
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const prefs = await window.LayerDB.getUserPreferences();
+      if (prefs && prefs.widget_spans && typeof prefs.widget_spans === 'object') {
+        spans = prefs.widget_spans;
+        localStorage.setItem('layerWidgetSpans', JSON.stringify(spans));
+      }
+    } catch (error) {
+      console.error('Failed to load widget spans from DB:', error);
+    }
+  }
+
+  if (!spans) {
+    try {
+      const stored = localStorage.getItem('layerWidgetSpans');
+      if (stored) spans = JSON.parse(stored);
+    } catch (e) {
+      console.error('Failed to parse widget spans from localStorage:', e);
+    }
+  }
+
+  return spans;
+}
+
+function applyWidgetSpans(spans) {
+  const grid = document.getElementById('dashboardWidgetsGrid');
+  if (!grid) return;
+
+  const widgets = Array.from(grid.querySelectorAll('.dashboard-widget'));
+  if (widgets.length === 0) return;
+
+  widgets.forEach(w => {
+    const id = w.dataset.widgetId || w.querySelector('h3')?.textContent?.trim() || '';
+    if (!id) return;
+
+    const config = spans[id];
+    const span = typeof config === 'object' ? parseInt(config.span, 10) : parseInt(config, 10);
+    const level = typeof config === 'object' ? parseInt(config.level, 10) : 1;
+
+    if (Number.isNaN(span) || span <= 0) return;
+
+    w.dataset.widgetSpan = String(span);
+    w.style.gridColumn = `span ${span}`;
+    
+    if (!Number.isNaN(level) && level > 0) {
+      w.dataset.widgetLevel = String(level);
+      w.style.gridRow = `span ${level}`;
+    }
+  });
 }
 
 async function loadWidgetOrder() {
