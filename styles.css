@@ -12219,19 +12219,20 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 
  /* Activity Ring Widget Styles */
  .activity-ring-container {
-   display: flex;
-   justify-content: space-around;
-   align-items: center;
-   padding: 12px 0;
-   gap: 8px;
- }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  width: 100%;
+}
 
- .activity-ring-item {
-   display: flex;
-   flex-direction: column;
-   align-items: center;
-   position: relative;
- }
+.activity-ring-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
 
  .activity-ring {
    width: 44px;
@@ -12263,17 +12264,18 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
  }
 
  .activity-days-row {
-   display: flex;
-   justify-content: space-around;
-   margin-top: 4px;
- }
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+}
 
- .activity-day-label {
-   font-size: 10px;
-   color: var(--muted-foreground);
-   width: 44px;
-   text-align: center;
- }
+.activity-day-label {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  flex: 1;
+  text-align: center;
+}
 
  .dashboard-widgets-grid.edit-mode .dashboard-widget .dashboard-widget-resize-handle {
    display: block;
