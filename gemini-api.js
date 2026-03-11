@@ -15,7 +15,7 @@ const GENERAL_SYSTEM_PROMPT = `You are a highly intelligent, concise AI assistan
 RESPONSE RULES:
 - Keep responses under 150 words unless specifically asked for detail
 - Get straight to the point - no filler phrases like "Great question!" or "I'd be happy to help"
-- Prefer short paragraphs. Only use lists if the user explicitly asks for a list.
+- Use bullet points (•) for lists - max 5 items
 - For code: wrap in triple backticks with language name
 - Use **bold** sparingly for key terms only
 - One paragraph max for explanations unless complex
@@ -30,24 +30,6 @@ Format code blocks like:
 \`\`\`
 
 Be helpful, precise, and brief.`;
-
-// System prompt when a project is selected - more directive
-const PROJECT_CONTEXT_SYSTEM_PROMPT = `You are a highly intelligent AI assistant helping with a specific project.
-
-CRITICAL: You have been given detailed context about the user's current project above. You MUST:
-1. ALWAYS acknowledge which project you are discussing when asked
-2. Answer questions BASED ON the project context provided
-3. Reference specific tasks, dates, documents, or team members from the context when relevant
-4. If asked about project details, use ONLY the information from the project context
-5. Never say you don't know about the project - the context contains everything you need
-
-RESPONSE RULES:
-- Be concise but thorough when discussing project specifics
-- Reference specific items from the context (e.g., "In your Website Redesign project...", "The task 'Design homepage' is in To Do column")
-- If the user asks about something not in the project context, say "Based on the current project context, I don't see information about that"
-- For code: wrap in triple backticks with language name
-
-Be helpful, precise, and project-focused.`;
 
 const CODE_ANALYSIS_SYSTEM_PROMPT = `You are an expert code analyzer. When given code, analyze it thoroughly for:
 1. Syntax errors - missing brackets, semicolons, typos
@@ -71,34 +53,32 @@ If no errors are found, return: {"errors": []}
 Only return valid JSON, no other text or explanation.`;
 
 /**
- * Core API Call to NVIDIA Qwen API with support for message history
+ * Core API Call to NVIDIA Qwen API
  */
-async function callQwenAPI(messages, systemPrompt) {
+async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
-        const payload = {
-            "model": MODEL_NAME,
-            "messages": [
-                { "role": "system", "content": systemPrompt },
-                ...messages
-            ],
-            "max_tokens": 4096,
-            "temperature": 0.60,
-            "top_p": 0.95,
-            "top_k": 20,
-            "presence_penalty": 0,
-            "repetition_penalty": 1,
-            "stream": false
-        };
+        const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
 
-        console.log('Final Payload to Proxy:', JSON.stringify(payload, null, 2));
-
-        // Use relative URL for Vercel deployment and local proxy compatibility
-        const response = await fetch("/api/ai", {
+        // Always use absolute URL for the proxy to support Live Server (port 5500)
+        const response = await fetch("http://localhost:3001/api/ai", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                "model": MODEL_NAME,
+                "messages": [
+                    { "role": "system", "content": systemPrompt },
+                    { "role": "user", "content": fullPrompt }
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.60,
+                "top_p": 0.95,
+                "top_k": 20,
+                "presence_penalty": 0,
+                "repetition_penalty": 1,
+                "stream": false
+            })
         });
 
         console.log('Proxy response status:', response.status);
@@ -139,41 +119,9 @@ async function callQwenAPI(messages, systemPrompt) {
 
 /**
  * Compatibility wrapper for the original callGeminiAPI
- * Now supports full message history and project context injection
  */
-async function callGeminiAPI(messages) {
-    // If messages is just a string (legacy support), wrap it in an array
-    const messageHistory = Array.isArray(messages) 
-        ? messages
-            .filter(msg => msg && msg.content && String(msg.content).trim() !== '')
-            .map(msg => ({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: String(msg.content)
-            }))
-        : [{ role: 'user', content: String(messages) }];
-
-    // Build system prompt with optional project context
-    let systemPrompt = GENERAL_SYSTEM_PROMPT;
-    let hasProjectContext = false;
-    
-    // Check for project context and inject it
-    if (typeof window !== 'undefined' && window.ProjectContext) {
-        const projectContextPrompt = window.ProjectContext.buildProjectContextPrompt();
-        if (projectContextPrompt && projectContextPrompt.trim().length > 0) {
-            // Use project-specific system prompt when context is available
-            systemPrompt = `${projectContextPrompt}\n\n${PROJECT_CONTEXT_SYSTEM_PROMPT}`;
-            hasProjectContext = true;
-            console.log('✅ Project context injected into system prompt');
-            console.log('Project context preview:', projectContextPrompt.substring(0, 200) + '...');
-        } else {
-            console.log('⚠️ No project context available (no project selected)');
-        }
-    } else {
-        console.log('⚠️ ProjectContext module not available');
-    }
-
-    console.log('Sending message history to API:', JSON.stringify(messageHistory, null, 2));
-    return await callQwenAPI(messageHistory, systemPrompt);
+async function callGeminiAPI(userPrompt, context = '') {
+    return await callQwenAPI(userPrompt, GENERAL_SYSTEM_PROMPT, context);
 }
 
 /**
@@ -182,7 +130,7 @@ async function callGeminiAPI(messages) {
 async function analyzeCodeErrors(code, language = 'javascript') {
     try {
         const prompt = `Analyze this ${language} code for errors:\n\`\`\`${language}\n${code}\n\`\`\``;
-        const text = await callQwenAPI([{ role: 'user', content: prompt }], CODE_ANALYSIS_SYSTEM_PROMPT);
+        const text = await callQwenAPI(prompt, CODE_ANALYSIS_SYSTEM_PROMPT);
 
         // Parse JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -246,6 +194,14 @@ function formatAIResponse(text) {
     html = html.replace(/^## (.+)$/gm, '<h3 class="ai-heading">$1</h3>');
     html = html.replace(/^# (.+)$/gm, '<h2 class="ai-heading">$1</h2>');
 
+    // Bullet points - multiple formats
+    html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ai-list-item">$1</li>');
+    html = html.replace(/(<li class="ai-list-item">.*<\/li>\n?)+/g, '<ul class="ai-list">$&</ul>');
+
+    // Numbered lists
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ai-numbered-item">$1</li>');
+    html = html.replace(/(<li class="ai-numbered-item">.*<\/li>\n?)+/g, '<ol class="ai-numbered-list">$&</ol>');
+
     // Paragraphs - split by double newlines
     html = html.split('\n\n').map(p => {
         p = p.trim();
@@ -254,23 +210,15 @@ function formatAIResponse(text) {
             p.startsWith('<h2') || p.startsWith('<h3') || p.startsWith('<h4')) {
             return p;
         }
-        const withBreaks = p.replace(/\n/g, '<br>');
-        return `<p class="ai-text">${withBreaks}</p>`;
+        return `<p class="ai-text">${p}</p>`;
     }).join('');
 
-    // Remove excessive breaks (only those introduced inside paragraphs)
+    // Clean up line breaks
+    html = html.replace(/\n/g, '<br>');
+    // Remove excessive breaks
     html = html.replace(/(<br>){3,}/g, '<br><br>');
 
     return html;
-}
-
-/**
- * Apply subtle, professional animations + post processing to formatted AI HTML.
- */
-function postProcessAIContent(container) {
-    if (!container) return;
-
-    container.classList.add('ai-content-ready');
 }
 
 /**
@@ -298,7 +246,6 @@ async function revealWordsAnimated(container, formattedHtml, speed = 10) {
                 container.style.opacity = '0';
                 setTimeout(() => {
                     container.innerHTML = formattedHtml;
-                    postProcessAIContent(container);
                     container.style.opacity = '1';
                     container.style.transition = 'opacity 0.15s ease';
                     container.scrollTop = container.scrollHeight;
@@ -398,7 +345,6 @@ async function appendAiMessageEnhanced(containerId, role, text, animate = true) 
             await revealWordsAnimated(contentDiv, formattedHtml, 8);
         } else {
             contentDiv.innerHTML = formattedHtml;
-            postProcessAIContent(contentDiv);
         }
         container.scrollTop = container.scrollHeight;
     }

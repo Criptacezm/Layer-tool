@@ -2955,7 +2955,7 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
     }
 }
 
-function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
+async function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
   // Prevent event bubbling that could trigger tab switches
   if (event) {
     event.stopPropagation();
@@ -2969,7 +2969,7 @@ function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
     const input = event.target;
     const title = input.value.trim();
     if (title) {
-      addTaskToColumn(projectIndex, columnIndex, title);
+      await addTaskToColumn(projectIndex, columnIndex, title);
       input.value = '';
       renderCurrentView();
 
@@ -3018,11 +3018,11 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   inputField.focus();
   
   // Handle input submission
-  inputField.addEventListener('keypress', function(e) {
+  inputField.addEventListener('keypress', async function(e) {
     if (e.key === 'Enter') {
       const title = inputField.value;
       if (title && title.trim()) {
-        addTaskToColumn(projectIndex, columnIndex, title.trim());
+        await addTaskToColumn(projectIndex, columnIndex, title.trim());
         renderCurrentView();
         
         // Restore the active tab if we're in project detail view and timeline was active

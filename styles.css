@@ -486,7 +486,8 @@
 }
 
 /* Light Theme */
-.light {
+.light,
+[data-mode="light"] {
   --background: hsl(0 0% 100%);
   --foreground: hsl(224 71% 4%);
 
@@ -496,8 +497,9 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(224 71% 4%);
 
-  --primary: #141415;
+  --primary: #6366f1;
   --primary-foreground: hsl(0 0% 100%);
+  --primary-rgb: 99, 102, 241;
 
   --secondary: hsl(220 14% 96%);
   --secondary-foreground: hsl(224 71% 4%);
@@ -1227,6 +1229,14 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item.active svg:not
 /* Dark theme: active nav items should be white */
 html:not([data-mode="light"]) body:not(.light) .nav-item.active {
   color: hsl(0 0% 100%);
+}
+
+/* Light theme: active nav items should be primary color */
+html[data-mode="light"] .nav-item.active,
+body.light .nav-item.active,
+html[data-mode="light"] .nav-item.active .icon,
+body.light .nav-item.active .icon {
+  color: var(--primary) !important;
 }
 
 /* Dark theme: nav item hover should be white */

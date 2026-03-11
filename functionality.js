@@ -7322,7 +7322,7 @@ function openAddProjectBacklogTaskModal(projectIndex) {
   openModal('Add Backlog Task', content);
 }
 
-function handleAddProjectBacklogTaskForm(event, projectIndex) {
+async function handleAddProjectBacklogTaskForm(event, projectIndex) {
   event.preventDefault();
   const formData = new FormData(event.target);
 
@@ -7345,6 +7345,7 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     project.columns.push(backlogColumn);
   }
 
+  const currentUser = window.LayerDB?.getCurrentUser();
   const newTask = {
     id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: formData.get('title'),
@@ -7353,11 +7354,26 @@ function handleAddProjectBacklogTaskForm(event, projectIndex) {
     dueDate: formData.get('dueDate'),
     done: false,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    created_by: currentUser?.id || null
   };
 
   backlogColumn.tasks.push(newTask);
-  saveProjects(projects);
+  
+  // Optimistic update to cache
+  saveProjectsToCache(projects);
+  
+  // Sync to DB
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, {
+        columns: project.columns
+      });
+    } catch (error) {
+      console.error('Failed to sync backlog task to database:', error);
+    }
+  }
+  
   closeModal();
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
 }
@@ -7378,7 +7394,7 @@ function sortProjectBacklogTasks(projectIndex, value) {
   }
 }
 
-function quickAddProjectBacklogTask(projectIndex, title) {
+async function quickAddProjectBacklogTask(projectIndex, title) {
   const projects = loadProjects();
   const project = projects[projectIndex];
   if (!project) return;
@@ -7398,6 +7414,7 @@ function quickAddProjectBacklogTask(projectIndex, title) {
     project.columns.push(backlogColumn);
   }
 
+  const currentUser = window.LayerDB?.getCurrentUser();
   const newTask = {
     id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title,
@@ -7406,11 +7423,26 @@ function quickAddProjectBacklogTask(projectIndex, title) {
     dueDate: '',
     done: false,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    created_by: currentUser?.id || null
   };
 
   backlogColumn.tasks.push(newTask);
-  saveProjects(projects);
+  
+  // Optimistic update to cache
+  saveProjectsToCache(projects);
+  
+  // Sync to DB
+  if (window.LayerDB && window.LayerDB.isAuthenticated() && project.id) {
+    try {
+      await window.LayerDB.updateProject(project.id, {
+        columns: project.columns
+      });
+    } catch (error) {
+      console.error('Failed to sync quick backlog task to database:', error);
+    }
+  }
+  
   renderBacklogTab(projectIndex, document.querySelector('.pd-content-scroll'));
 }
 
@@ -15684,7 +15716,7 @@ function handleDeleteProjectTask(projectIndex, columnIndex, taskIndex, event) {
   }
 }
 
-function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
+async function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
   // Prevent event bubbling that could trigger tab switches
   if (event) {
     event.stopPropagation();
@@ -15699,7 +15731,7 @@ function handleAddProjectTaskKeypress(event, projectIndex, columnIndex) {
     const title = input.value.trim();
     if (title) {
       const scrollPos = saveKanbanScrollPosition();
-      addTaskToColumn(projectIndex, columnIndex, title);
+      await addTaskToColumn(projectIndex, columnIndex, title);
       input.value = '';
       renderCurrentView();
       restoreKanbanScrollPosition(scrollPos);
@@ -15749,12 +15781,12 @@ function handleAddTaskToColumn(projectIndex, columnIndex, event) {
   inputField.focus();
 
   // Handle input submission
-  inputField.addEventListener('keypress', function (e) {
+  inputField.addEventListener('keypress', async function (e) {
     if (e.key === 'Enter') {
       const title = inputField.value;
       if (title && title.trim()) {
         const scrollPos = saveKanbanScrollPosition ? saveKanbanScrollPosition() : null;
-        addTaskToColumn(projectIndex, columnIndex, title.trim());
+        await addTaskToColumn(projectIndex, columnIndex, title.trim());
         renderCurrentView();
         if (scrollPos && restoreKanbanScrollPosition) {
           restoreKanbanScrollPosition(scrollPos);
