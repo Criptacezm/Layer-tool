@@ -61,16 +61,25 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
 
         // Always use absolute URL for the proxy to support Live Server (port 5500)
         const response = await fetch("http://localhost:3001/api/ai", {
+            mode: 'cors',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 "model": MODEL_NAME,
-                "messages": [
-                    { "role": "system", "content": systemPrompt },
-                    { "role": "user", "content": fullPrompt }
-                ],
+                "messages": Array.isArray(userPrompt) 
+                    ? [
+                        { "role": "system", "content": systemPrompt },
+                        ...userPrompt.map(msg => ({
+                            role: msg.role,
+                            content: typeof msg.content === 'string' ? msg.content : String(msg.content)
+                        }))
+                      ]
+                    : [
+                        { "role": "system", "content": systemPrompt },
+                        { "role": "user", "content": fullPrompt }
+                    ],
                 "max_tokens": 4096,
                 "temperature": 0.60,
                 "top_p": 0.95,

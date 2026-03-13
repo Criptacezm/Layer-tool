@@ -16,7 +16,11 @@ const INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 app.post('/api/ai', async (req, res) => {
     try {
-        console.log('Received AI request:', req.body.messages?.[req.body.messages.length - 1]?.content?.substring(0, 50) + '...');
+        const messages = req.body.messages || [];
+        const lastMessage = messages[messages.length - 1];
+        const content = lastMessage ? lastMessage.content : '';
+        const logContent = typeof content === 'string' ? content.substring(0, 50) : '[Non-string content]';
+        console.log('Received AI request:', logContent + '...');
 
         const response = await fetch(INVOKE_URL, {
             method: 'POST',
@@ -52,6 +56,6 @@ app.get('/', (req, res) => {
 });
 
 module.exports = app;
-// app.listen(port, () => {
-//     console.log(`Server running at http://localhost:${port}`);
-// });
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
