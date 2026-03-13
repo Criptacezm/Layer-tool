@@ -59,8 +59,12 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
         const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
 
-        // Always use absolute URL for the proxy to support Live Server (port 5500)
-        const response = await fetch("http://localhost:3001/api/ai", {
+        // Use relative URL for production, fallback to localhost for development
+        const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? "http://localhost:3001/api/ai" 
+            : "/api/ai";
+        
+        const response = await fetch(apiUrl, {
             mode: 'cors',
             method: 'POST',
             headers: {
