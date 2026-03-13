@@ -541,15 +541,7 @@ function renderInboxView() {
         const text = msgEl.dataset.fullMessage;
         const typingEl = msgEl.querySelector('.ai-typing-text');
         const cursorEl = msgEl.querySelector('.ai-cursor');
-        
-        // Process markers into HTML tags
-        let processedHTML = text
-          .replace(/\[Tasks\]/g, '<span class="ai-insight-tag tasks">📋 Today\'s Tasks</span>')
-          .replace(/\[Calendar\]/g, '<span class="ai-insight-tag calendar">📅 Coming Up</span>')
-          .replace(/\[Projects\]/g, '<span class="ai-insight-tag projects">🚀 Projects</span>')
-          .replace(/\[Tip\]/g, '<span class="ai-insight-tag tip">💡 Quick Tip</span>');
-        
-        if (typingEl) typingEl.innerHTML = processedHTML;
+        if (typingEl) typingEl.textContent = text;
         if (cursorEl) cursorEl.style.display = 'none';
       }
     }

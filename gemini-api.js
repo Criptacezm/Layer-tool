@@ -59,8 +59,9 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
         const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
 
-        // Always use absolute URL for the proxy to support Live Server (port 5500)
-        const response = await fetch("http://localhost:3001/api/ai", {
+        // Prefer same-origin API route (works on Vercel). Optionally override via window.LAYER_API_BASE_URL.
+        const apiBaseUrl = (typeof window !== 'undefined' && window.LAYER_API_BASE_URL) ? String(window.LAYER_API_BASE_URL).replace(/\/$/, '') : '';
+        const response = await fetch(`${apiBaseUrl}${INVOKE_URL}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
