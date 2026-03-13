@@ -14,89 +14,28 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const HARDCODED_NVIDIA_API_KEY = '';
-        const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || HARDCODED_NVIDIA_API_KEY;
+        const NVIDIA_API_KEY = "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";
         const INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
-        const wantsStream = !!req.body?.stream;
 
-        if (!NVIDIA_API_KEY) {
-            return res.status(500).json({
-                error: {
-                    message: 'Missing NVIDIA_API_KEY. Set NVIDIA_API_KEY env var, or fill HARDCODED_NVIDIA_API_KEY in api/ai.js.'
-                }
-            });
-        }
-
-        const upstreamResponse = await fetch(INVOKE_URL, {
+        const response = await fetch(INVOKE_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${NVIDIA_API_KEY}`,
                 'Content-Type': 'application/json',
-                'Accept': wantsStream ? 'text/event-stream' : 'application/json'
+                'Accept': 'application/json'
             },
             body: JSON.stringify(req.body)
         });
 
-        if (!upstreamResponse.ok) {
-            const contentType = upstreamResponse.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                const data = await upstreamResponse.json();
-                return res.status(upstreamResponse.status).json(data);
-            }
-            const text = await upstreamResponse.text();
-            return res.status(upstreamResponse.status).json({
-                error: {
-                    message: 'NVIDIA API request failed',
-                    details: text
-                }
-            });
-        }
-
-        if (wantsStream) {
-            res.status(200);
-            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-cache, no-transform');
-            res.setHeader('Connection', 'keep-alive');
-
-            const abortController = new AbortController();
-            req.on('close', () => {
-                try {
-                    abortController.abort();
-                } catch (e) {}
-            });
-
-            if (!upstreamResponse.body) {
-                res.write('event: error\n');
-                res.write('data: {"error":{"message":"Upstream response had no body"}}\n\n');
-                return res.end();
-            }
-
-            try {
-                for await (const chunk of upstreamResponse.body) {
-                    res.write(chunk);
-                }
-            } catch (error) {
-                if (!res.headersSent) {
-                    res.status(500);
-                }
-                try {
-                    res.write('event: error\n');
-                    res.write(`data: ${JSON.stringify({ error: { message: error.message || String(error) } })}\n\n`);
-                } catch (e) {}
-            }
-
-            return res.end();
-        }
-
-        const contentType = upstreamResponse.headers.get('content-type');
+        const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
-            const data = await upstreamResponse.json();
-            return res.status(200).json(data);
+            const data = await response.json();
+            res.status(response.status).json(data);
+        } else {
+            const text = await response.text();
+            res.status(response.status).json({ error: { message: 'NVIDIA API returned non-JSON response', details: text } });
         }
-
-        const text = await upstreamResponse.text();
-        return res.status(200).json({ error: { message: 'NVIDIA API returned non-JSON response', details: text } });
     } catch (error) {
-        return res.status(500).json({ error: { message: error.message } });
+        res.status(500).json({ error: { message: error.message } });
     }
 };

@@ -12227,64 +12227,91 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
    color: var(--muted-foreground);
  }
 
- /* Activity Ring Widget Styles */
- .activity-ring-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  width: 100%;
+/* ============================================
+   Weekly Activity Widget - Bar Chart
+   ============================================ */
+
+.widget-stat-mini {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: 12px;
 }
 
-.activity-ring-item {
+.activity-chart-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 6px;
+  height: 100px;
+  padding: 8px 0;
+}
+
+.activity-bar-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
-  flex: 1;
+  gap: 8px;
+  height: 100%;
 }
 
- .activity-ring {
-   width: 44px;
-   height: 44px;
-   transform: rotate(-90deg);
- }
-
- .activity-ring-bg {
-   fill: none;
-   stroke: var(--border);
-   stroke-width: 3;
- }
-
- .activity-ring-progress {
-   fill: none;
-   stroke-width: 3;
-   stroke-linecap: round;
-   transition: stroke-dashoffset 0.5s ease;
- }
-
- .activity-ring-value {
-   position: absolute;
-   top: 50%;
-   left: 50%;
-   transform: translate(-50%, -50%);
-   font-size: 11px;
-   font-weight: 600;
-   color: var(--foreground);
- }
-
- .activity-days-row {
-  display: flex;
-  justify-content: space-between;
+.activity-bar-track {
+  flex: 1;
   width: 100%;
-  margin-top: 4px;
+  max-width: 28px;
+  background: var(--surface);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
 }
 
-.activity-day-label {
+.activity-bar-fill {
+  width: 100%;
+  border-radius: 6px;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 4px;
+}
+
+.activity-bar-fill.today {
+  background: linear-gradient(180deg, var(--primary), color-mix(in hsl, var(--primary) 70%, black)) !important;
+}
+
+.activity-bar-value {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.activity-bar-day {
+  font-size: 10px;
+  font-weight: 500;
   color: var(--muted-foreground);
-  flex: 1;
-  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activity-bar-day.today {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Dark mode adjustments */
+[data-mode="dark"] .activity-bar-track {
+  background: color-mix(in hsl, var(--surface) 60%, transparent);
+}
+
+[data-mode="dark"] .activity-bar-fill:not(.today) {
+  background: var(--accent-foreground);
 }
 
  .dashboard-widgets-grid.edit-mode .dashboard-widget .dashboard-widget-resize-handle {
@@ -12525,6 +12552,153 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 .streak-label {
   font-size: 13px;
   color: var(--muted-foreground);
+}
+
+/* ============================================
+   AI Summary Widget - Personal Assistant
+   ============================================ */
+
+.ai-summary-widget {
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-summary-widget::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #3b82f6, #06b6d4);
+  background-size: 300% 100%;
+  animation: gradientShift 8s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.ai-widget-avatar {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-widget-date {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.ai-widget-content {
+  min-height: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.ai-widget-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ai-widget-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-widget-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.ai-widget-content .ai-message {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--foreground);
+  white-space: pre-wrap;
+}
+
+.ai-widget-content .ai-typing-text {
+  display: inline;
+}
+
+.ai-widget-content .ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%));
+  margin-left: 2px;
+  animation: cursorBlink 1s infinite;
+  vertical-align: middle;
+}
+
+@keyframes cursorBlink {
+  0%, 40% { opacity: 1; }
+  50%, 90% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.ai-insight-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.ai-widget-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-quick-insights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-insight-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground);
+  transition: all 0.2s;
+}
+
+.ai-insight-pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+}
+
+.ai-insight-pill svg {
+  color: var(--muted-foreground);
+}
+
+/* Responsive: Single column on smaller screens */
+@media (max-width: 900px) {
+  .ai-summary-widget {
+    grid-column: span 1;
+  }
 }
 
 .goals-list {
