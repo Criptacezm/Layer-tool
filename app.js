@@ -2651,8 +2651,6 @@ async function renderCurrentView(preserveScroll = false) {
       initWidgetResizeHandles();
       // Initialize dashboard drag/drop (only active in edit mode)
       initWidgetDragDrop();
-      // Restore dashboard AI sidebar state
-      restoreDashboardAiSidebarState();
       // Start shared content polling for real-time updates
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
