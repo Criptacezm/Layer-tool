@@ -11,11 +11,19 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const NVIDIA_API_KEY = "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";
 const INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 app.post('/api/ai', async (req, res) => {
     try {
+        const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
+        if (!NVIDIA_API_KEY) {
+            return res.status(500).json({
+                error: {
+                    message: 'Missing NVIDIA_API_KEY environment variable. Set it before starting the server.'
+                }
+            });
+        }
+
         console.log('Received AI request:', req.body.messages?.[req.body.messages.length - 1]?.content?.substring(0, 50) + '...');
 
         const response = await fetch(INVOKE_URL, {
