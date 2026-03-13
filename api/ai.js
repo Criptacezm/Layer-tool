@@ -14,14 +14,15 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
+        const HARDCODED_NVIDIA_API_KEY = '';
+        const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || HARDCODED_NVIDIA_API_KEY;
         const INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
         const wantsStream = !!req.body?.stream;
 
         if (!NVIDIA_API_KEY) {
             return res.status(500).json({
                 error: {
-                    message: 'Missing NVIDIA_API_KEY environment variable. Configure it in your deployment environment.'
+                    message: 'Missing NVIDIA_API_KEY. Set NVIDIA_API_KEY env var, or fill HARDCODED_NVIDIA_API_KEY in api/ai.js.'
                 }
             });
         }
