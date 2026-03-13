@@ -30576,6 +30576,9 @@ function typeHTML(element, html, speed, callback) {
 
       setTimeout(revealNext, speed);
     } else {
+      // Restore original HTML to avoid the per-character span wrapping causing
+      // unnatural spacing/kerning in the final rendered message.
+      element.innerHTML = html;
       if (callback) callback();
     }
   }
