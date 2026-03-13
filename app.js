@@ -2183,7 +2183,7 @@ async function checkExistingSession() {
         }
 
         const userInfo = document.getElementById('userInfo');
-        if (userInfo) {
+        if (userInfo && userInfo.parentNode) {
           userInfo.outerHTML = `
             <button class="sign-in-btn" id="signInBtn" onclick="openAuthModal()">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2652,7 +2652,9 @@ async function renderCurrentView(preserveScroll = false) {
       // Initialize dashboard drag/drop (only active in edit mode)
       initWidgetDragDrop();
       // Restore dashboard AI sidebar state
-      restoreDashboardAiSidebarState();
+      if (typeof restoreDashboardAiSidebarState === 'function') {
+        restoreDashboardAiSidebarState();
+      }
       // Start shared content polling for real-time updates
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
