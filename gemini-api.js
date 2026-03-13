@@ -5,8 +5,9 @@
    ============================================ */
 
 // API CONFIGURATION
+const NVIDIA_API_KEY = "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";
 const INVOKE_URL = "/api/ai";
-const MODEL_NAME = "moonshotai/kimi-k2.5";
+const MODEL_NAME = "qwen/qwen3.5-397b-a17b";
 
 // System instructions
 const GENERAL_SYSTEM_PROMPT = `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
@@ -56,41 +57,26 @@ Only return valid JSON, no other text or explanation.`;
  */
 async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
-        const isMessagesArray = Array.isArray(userPrompt);
-        const fullPrompt = (!isMessagesArray && context) ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
+        const fullPrompt = context ? `Context: ${context}\n\nUser: ${userPrompt}` : userPrompt;
 
-        // Prefer same-origin API route (works on Vercel). Optionally override via window.LAYER_API_BASE_URL.
-        const apiBaseUrl = (typeof window !== 'undefined' && window.LAYER_API_BASE_URL) ? String(window.LAYER_API_BASE_URL).replace(/\/$/, '') : '';
-        const messages = isMessagesArray
-            ? (() => {
-                const cleaned = userPrompt
-                    .filter(m => m && typeof m === 'object')
-                    .map(m => ({
-                        role: String(m.role || 'user'),
-                        content: typeof m.content === 'string' ? m.content : String(m.content ?? '')
-                    }))
-                    .filter(m => m.role && typeof m.content === 'string');
-
-                const hasSystem = cleaned.some(m => m.role === 'system');
-                if (hasSystem) return cleaned;
-                return [{ role: 'system', content: systemPrompt }, ...cleaned];
-            })()
-            : [
-                { "role": "system", "content": systemPrompt },
-                { "role": "user", "content": String(fullPrompt) }
-            ];
-
-        const response = await fetch(`${apiBaseUrl}${INVOKE_URL}`, {
+        // Always use absolute URL for the proxy to support Live Server (port 5500)
+        const response = await fetch("http://localhost:3001/api/ai", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 "model": MODEL_NAME,
-                "messages": messages,
-                "max_tokens": 16384,
-                "temperature": 1.00,
-                "top_p": 1.00,
+                "messages": [
+                    { "role": "system", "content": systemPrompt },
+                    { "role": "user", "content": fullPrompt }
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.60,
+                "top_p": 0.95,
+                "top_k": 20,
+                "presence_penalty": 0,
+                "repetition_penalty": 1,
                 "stream": false
             })
         });
@@ -134,16 +120,8 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
 /**
  * Compatibility wrapper for the original callGeminiAPI
  */
-async function callGeminiAPI(userPromptOrMessages, maybeSystemPromptOrContext = '', maybeContext = '') {
-    if (Array.isArray(userPromptOrMessages)) {
-        return await callQwenAPI(userPromptOrMessages, GENERAL_SYSTEM_PROMPT, '');
-    }
-
-    const hasExplicitSystemPrompt = typeof maybeContext === 'string' && maybeContext.length > 0;
-    const systemPrompt = hasExplicitSystemPrompt ? maybeSystemPromptOrContext : GENERAL_SYSTEM_PROMPT;
-    const context = hasExplicitSystemPrompt ? maybeContext : maybeSystemPromptOrContext;
-
-    return await callQwenAPI(userPromptOrMessages, systemPrompt, context);
+async function callGeminiAPI(userPrompt, context = '') {
+    return await callQwenAPI(userPrompt, GENERAL_SYSTEM_PROMPT, context);
 }
 
 /**

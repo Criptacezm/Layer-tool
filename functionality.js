@@ -67,6 +67,15 @@ function renderInboxView() {
           <div class="dashboard-header-row">
             <h2 class="view-title" style="margin-bottom: 0; font-size: 28px; font-weight: 700;">Dashboard</h2>
             <div class="dashboard-header-actions">
+              <button class="dashboard-ai-sidebar-toggle" id="dashboardAiSidebarToggle" onclick="toggleDashboardAiSidebar()" title="Toggle AI Sidebar">
+                <svg class="icon collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                <svg class="icon expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+                <span class="toggle-text">Hide AI</span>
+              </button>
               <button class="dashboard-edit-toggle" id="dashboardEditToggle" onclick="toggleDashboardEditMode()" title="Customize widget layout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
                   <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -79,56 +88,6 @@ function renderInboxView() {
           
           <!-- Enhanced Dashboard Widgets Grid -->
           <div class="dashboard-widgets-grid" id="dashboardWidgetsGrid">
-            <!-- AI Summary Widget - Personal Assistant -->
-            <div class="dashboard-widget ai-summary-widget" data-widget-id="ai-summary">
-              <div class="widget-header">
-                <span class="widget-title">
-                  <div class="ai-widget-avatar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="url(#aiWidgetGradient)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-                      <defs>
-                        <linearGradient id="aiWidgetGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stop-color="#6366f1">
-                            <animate attributeName="stop-color" values="#6366f1;#8b5cf6;#3b82f6;#06b6d4;#6366f1" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                          <stop offset="50%" stop-color="#a855f7">
-                            <animate attributeName="stop-color" values="#a855f7;#ec4899;#8b5cf6;#3b82f6;#a855f7" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                          <stop offset="100%" stop-color="#3b82f6">
-                            <animate attributeName="stop-color" values="#3b82f6;#06b6d4;#6366f1;#8b5cf6;#3b82f6" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                        </linearGradient>
-                      </defs>
-                      <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z" />
-                    </svg>
-                  </div>
-                  AI Assistant
-                </span>
-                <span class="ai-widget-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-              </div>
-              <div class="ai-widget-content">
-                <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
-                  <span class="ai-typing-text"></span>
-                  <span class="ai-cursor"></span>
-                </div>
-              </div>
-              <div class="ai-widget-footer">
-                <div class="ai-quick-insights">
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    <span>${todayTasks.length} tasks today</span>
-                  </div>
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    <span>${completionRate}% done</span>
-                  </div>
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-                    <span>${calculateStreak(calendarEvents)} day streak</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
             <!-- Stats Widget -->
             <div class="dashboard-widget" data-widget-id="overview">
               <div class="widget-header">
@@ -349,7 +308,7 @@ function renderInboxView() {
               </div>
             </div>
             
-            <!-- Weekly Activity Widget -->
+            <!-- Productivity Chart -->
             <div class="dashboard-widget" data-widget-id="weekly-activity">
               <div class="widget-header">
                 <span class="widget-title">
@@ -358,24 +317,27 @@ function renderInboxView() {
                   </svg>
                   Weekly Activity
                 </span>
-                <span class="widget-stat-mini">${totalTasks} tasks</span>
               </div>
-              <div class="activity-chart-container">
+              <div class="activity-ring-container">
                 ${productivityData.map((d, i) => {
                   const percentage = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0;
-                  const isToday = i === productivityData.length - 1;
-                  const barColor = isToday ? 'var(--primary)' : d.count === 0 ? 'var(--border)' : 'var(--accent-foreground)';
+                  const color = d.count === 0 ? 'var(--muted-foreground)' : d.count >= maxCount * 0.7 ? '#10b981' : d.count >= maxCount * 0.3 ? '#f59e0b' : '#3b82f6';
+                  const circumference = 2 * Math.PI * 18;
+                  const offset = circumference - (percentage / 100) * circumference;
                   return `
-                    <div class="activity-bar-wrapper">
-                      <div class="activity-bar-track">
-                        <div class="activity-bar-fill ${isToday ? 'today' : ''}" style="height: ${percentage}%; background: ${barColor};">
-                          ${d.count > 0 ? `<span class="activity-bar-value">${d.count}</span>` : ''}
-                        </div>
-                      </div>
-                      <span class="activity-bar-day ${isToday ? 'today' : ''}">${d.day}</span>
+                    <div class="activity-ring-item">
+                      <svg class="activity-ring" viewBox="0 0 44 44">
+                        <circle class="activity-ring-bg" cx="22" cy="22" r="18"/>
+                        <circle class="activity-ring-progress" cx="22" cy="22" r="18" 
+                          style="stroke: ${color}; stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"/>
+                      </svg>
+                      <div class="activity-ring-value">${d.count}</div>
                     </div>
                   `;
                 }).join('')}
+              </div>
+              <div class="activity-days-row">
+                ${productivityData.map(d => `<span class="activity-day-label">${d.day}</span>`).join('')}
               </div>
               <!-- Expanded content -->
               <div class="widget-expanded">
@@ -526,6 +488,44 @@ function renderInboxView() {
   content += `
         </div>
       </div>
+      
+      <!-- Summary of Today Sidebar (Right) -->
+      <aside class="dashboard-ai-sidebar">
+        <div class="ai-sidebar-header">
+          <div class="ai-header-top">
+            <div class="ai-sparkle-container">
+              <svg class="icon ai-icon-glasses" viewBox="0 0 24 24" fill="none" stroke="url(#aiSidebarGradient)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                <defs>
+                  <linearGradient id="aiSidebarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#6366f1">
+                      <animate attributeName="stop-color" values="#6366f1;#8b5cf6;#3b82f6;#06b6d4;#6366f1" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="50%" stop-color="#a855f7">
+                      <animate attributeName="stop-color" values="#a855f7;#ec4899;#8b5cf6;#3b82f6;#a855f7" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="100%" stop-color="#3b82f6">
+                      <animate attributeName="stop-color" values="#3b82f6;#06b6d4;#6366f1;#8b5cf6;#3b82f6" dur="6s" repeatCount="indefinite"/>
+                    </stop>
+                  </linearGradient>
+                </defs>
+                <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z" />
+              </svg>
+            </div>
+            <span class="ai-title">Layer Intelligence</span>
+          </div>
+          <span class="ai-subtitle">Summary of Today • ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+        
+        <div class="ai-content-area">
+          <div class="ai-summary-card">
+            <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
+              <span class="ai-typing-text"></span>
+              <span class="ai-cursor"></span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
     </div>
   `;
 
@@ -653,100 +653,58 @@ async function deleteFolderWhiteboardItem(folderItemId, projectId) {
 
 function generateAIGreeting(todayTasks, upcomingEvents, projects) {
   const hour = new Date().getHours();
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dayName = days[new Date().getDay()];
-  
-  // Personal, friend-like greetings based on time
-  let greeting = '';
-  if (hour < 6) {
-    greeting = `Hey, you're up early! 🌅`;
-  } else if (hour < 12) {
-    greeting = `Good morning! ☀️`;
-  } else if (hour < 17) {
-    greeting = `Hey there! 👋`;
-  } else if (hour < 21) {
-    greeting = `Good evening! 🌆`;
-  } else {
-    greeting = `Burning the midnight oil? 🌙`;
-  }
+  let greeting = 'Hello';
+  if (hour < 12) greeting = 'Good morning';
+  else if (hour < 18) greeting = 'Good afternoon';
+  else greeting = 'Good evening';
 
-  let message = `${greeting} It's ${dayName} and I've got your day mapped out.\n\n`;
+  let message = `${greeting}. I've prepared your daily intelligence summary.\n\n`;
 
-  // Today's Tasks - conversational style
-  message += `[Tasks] Here's what's on your plate:\n`;
+  // Today's Tasks
+  message += `[Tasks] Focus for today:\n`;
   if (todayTasks.length === 0) {
-    message += `Your schedule is wide open today! Perfect time to tackle that project you've been putting off, or maybe just breathe. 😌\n\n`;
-  } else if (todayTasks.length === 1) {
-    const task = todayTasks[0];
-    const timeStr = task.time ? ` (scheduled for ${task.time})` : '';
-    message += `Just one thing today${timeStr}: "${task.title}" — you've got this! 💪\n\n`;
+    message += `Your schedule is clear for today. It's a perfect opportunity for deep work or planning.\n\n`;
   } else {
-    message += `You have ${todayTasks.length} tasks lined up. Here's the rundown:\n`;
-    todayTasks.slice(0, 4).forEach((task, i) => {
-      const timeStr = task.time ? ` ⏰ ${task.time}` : '';
-      const emoji = task.completed ? '✅' : '○';
-      message += `${emoji} ${task.title}${timeStr}\n`;
+    todayTasks.slice(0, 4).forEach(task => {
+      const timeStr = task.time ? ` at ${task.time}` : '';
+      message += `• ${task.title}${timeStr}\n`;
     });
     if (todayTasks.length > 4) {
-      message += `...plus ${todayTasks.length - 4} more. Pace yourself! 🎯\n`;
+      message += `• ...and ${todayTasks.length - 4} other items\n`;
     }
     message += `\n`;
   }
 
-  // Upcoming This Week - friendly reminders
-  const todayStr = new Date().toISOString().split('T')[0];
-  const futureTasks = upcomingEvents.filter(e => e.date !== todayStr);
-  message += `[Calendar] Coming up soon:\n`;
+  // Upcoming This Week
+  const futureTasks = upcomingEvents.filter(e => e.date !== new Date().toISOString().split('T')[0]);
+  message += `[Calendar] Coming up this week:\n`;
   if (futureTasks.length === 0) {
-    message += `Nothing urgent on the horizon. Enjoy the calm before the storm! 🌤️\n\n`;
+    message += `No immediate deadlines ahead. Stay proactive with your current projects.\n\n`;
   } else {
-    const urgentTask = futureTasks[0];
-    const urgentDate = new Date(urgentTask.date);
-    const isTomorrow = urgentDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
-    
-    if (isTomorrow) {
-      message += `Tomorrow: "${urgentTask.title}" — just a heads up! 📅\n`;
-    } else {
-      futureTasks.slice(0, 3).forEach(task => {
-        const eventDate = new Date(task.date);
-        const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        message += `• ${task.title} — ${dayLabel}\n`;
-      });
-    }
+    futureTasks.slice(0, 3).forEach(task => {
+      const eventDate = new Date(task.date);
+      const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      message += `• ${task.title} — ${dayLabel}\n`;
+    });
     message += `\n`;
   }
 
-  // Projects - encouraging update
-  message += `[Projects] Your workspace:\n`;
+  // Projects Overview
+  message += `[Projects] Current momentum:\n`;
   if (projects.length === 0) {
-    message += `No active projects right now. Sometimes a clean slate is exactly what you need. Ready to start something new? 🚀\n\n`;
-  } else if (projects.length === 1) {
-    message += `You're focused on "${projects[0].name || 'your project'}" — love the dedication! Keep that momentum going. 🎯\n\n`;
+    message += `No active projects detected. Start one to track your milestones.\n\n`;
   } else {
-    message += `Juggling ${projects.length} projects — you're staying busy! Remember, progress over perfection. 💪\n\n`;
+    message += `You are currently managing ${projects.length} active project${projects.length > 1 ? 's' : ''}.\n\n`;
   }
 
-  // Personalized Tip - friend advice
-  message += `[Tip] My two cents:\n`;
-  
-  // More varied and personal tips
-  const tips = [
-    `Remember to take breaks — your brain needs rest to do its best work. 🧠`,
-    `You're doing great. Seriously. Every small step counts. 🌟`,
-    `Don't forget to hydrate and stretch! Your future self will thank you. 💧`,
-    `Focus on one thing at a time. Multitasking is overrated. 🎯`,
-    `Celebrate small wins today — they add up to big victories. 🎉`,
-    `Trust the process. You've handled tough days before, you'll handle this one too. 💪`
-  ];
-  
-  if (todayTasks.length > 5) {
-    message += `That's a packed day! Start with your most important task and let the rest follow. You've got this. 🔥`;
+  // Priority Tips
+  message += `[Tip] Insight:\n`;
+  if (todayTasks.length > 3) {
+    message += `With a busy day ahead, focus on your high-impact tasks first to maintain momentum.`;
   } else if (todayTasks.length === 0 && futureTasks.length > 0) {
-    message += `A quiet day with big things ahead. Use this time wisely — maybe prep for what's coming? 📋`;
-  } else if (todayTasks.length === 0) {
-    message += tips[Math.floor(Math.random() * tips.length)];
+    message += `A quiet start to the day. Use this time to prepare for your upcoming milestones.`;
   } else {
-    message += tips[Math.floor(Math.random() * tips.length)];
+    message += `Maintain focus and tackle your goals one step at a time. Quality over quantity today.`;
   }
 
   return message;
@@ -763,28 +721,31 @@ function startAITypingAnimation() {
   if (!typingEl || !fullText) return;
 
   let charIndex = 0;
-  const typingSpeed = 12; // Smooth, natural typing speed
+  const typingSpeed = 10; // Slightly faster for premium feel
 
   function typeChar() {
     if (charIndex < fullText.length) {
       let currentText = fullText.substring(0, charIndex + 1);
+
+      // Handle formatting markers during typing or after?
+      // For now, let's type the raw text and replace markers at the end
       typingEl.textContent = currentText;
       charIndex++;
       setTimeout(typeChar, typingSpeed);
     } else {
       // Done typing, process markers into beautiful tags
       let finalHTML = typingEl.textContent
-        .replace(/\[Tasks\]/g, '<span class="ai-insight-tag tasks">📋 Today\'s Tasks</span>')
-        .replace(/\[Calendar\]/g, '<span class="ai-insight-tag calendar">📅 Coming Up</span>')
-        .replace(/\[Projects\]/g, '<span class="ai-insight-tag projects">🚀 Projects</span>')
-        .replace(/\[Tip\]/g, '<span class="ai-insight-tag tip">💡 Quick Tip</span>');
+        .replace(/\[Tasks\]/g, '<span class="ai-insight-tag">Today\'s Tasks</span>')
+        .replace(/\[Calendar\]/g, '<span class="ai-insight-tag">Upcoming</span>')
+        .replace(/\[Projects\]/g, '<span class="ai-insight-tag">Active Projects</span>')
+        .replace(/\[Tip\]/g, '<span class="ai-insight-tag">Focus Tip</span>');
 
       typingEl.innerHTML = finalHTML;
 
       // Hide cursor after a moment
       setTimeout(() => {
         if (cursorEl) cursorEl.style.display = 'none';
-      }, 600);
+      }, 800);
     }
   }
 

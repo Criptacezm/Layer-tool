@@ -381,32 +381,32 @@ function startDashboardWidgetResize(e, widget, grid, direction) {
   widget.classList.add('resizing');
 
   const onMove = (moveEvent) => {
-    // Horizontal resizing (E, W, SE, SW, NE, NW) - max span of 2
+    // Horizontal resizing (E, W, SE, SW, NE, NW)
     if (direction.includes('e')) {
       const deltaX = moveEvent.clientX - startX;
       const deltaCols = Math.round(deltaX / colWidth);
-      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), 2);
+      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), startCols);
       widget.dataset.widgetSpan = String(newSpan);
       widget.style.gridColumn = `span ${newSpan}`;
     } else if (direction.includes('w')) {
       const deltaX = startX - moveEvent.clientX;
       const deltaCols = Math.round(deltaX / colWidth);
-      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), 2);
+      const newSpan = Math.min(Math.max(currentSpan + deltaCols, 1), startCols);
       widget.dataset.widgetSpan = String(newSpan);
       widget.style.gridColumn = `span ${newSpan}`;
     }
     
-    // Vertical resizing (S, N, SE, SW, NE, NW) - max level of 2
+    // Vertical resizing (S, N, SE, SW, NE, NW)
     if (direction.includes('s')) {
       const deltaY = moveEvent.clientY - startY;
       const deltaLevels = Math.round(deltaY / rowHeight);
-      const newLevel = Math.min(Math.max(currentLevel + deltaLevels, 1), 2);
+      const newLevel = Math.max(currentLevel + deltaLevels, 1);
       widget.dataset.widgetLevel = String(newLevel);
       widget.style.gridRow = `span ${newLevel}`;
     } else if (direction.includes('n')) {
       const deltaY = startY - moveEvent.clientY;
       const deltaLevels = Math.round(deltaY / rowHeight);
-      const newLevel = Math.min(Math.max(currentLevel + deltaLevels, 1), 2);
+      const newLevel = Math.max(currentLevel + deltaLevels, 1);
       widget.dataset.widgetLevel = String(newLevel);
       widget.style.gridRow = `span ${newLevel}`;
     }
@@ -2652,11 +2652,7 @@ async function renderCurrentView(preserveScroll = false) {
       // Initialize dashboard drag/drop (only active in edit mode)
       initWidgetDragDrop();
       // Restore dashboard AI sidebar state
-      if (typeof restoreDashboardAiSidebarState === 'function') {
-        restoreDashboardAiSidebarState();
-      } else if (typeof restoreDashboardAISidebarState === 'function') {
-        restoreDashboardAISidebarState();
-      }
+      restoreDashboardAiSidebarState();
       // Start shared content polling for real-time updates
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
@@ -4281,6 +4277,9 @@ async function initDashboardWidgetSpans() {
   }
 }
 
+// Track dashboard AI sidebar state across view switches
+let dashboardAiSidebarCollapsed = false;
+
 function toggleDashboardEditMode() {
   const btn = document.getElementById('dashboardEditToggle');
   if (!btn) return;
@@ -4301,6 +4300,61 @@ function toggleDashboardEditMode() {
   if (grid) {
     const widgets = grid.querySelectorAll('.dashboard-widget');
     widgets.forEach(w => w.setAttribute('draggable', dashboardEditMode ? 'true' : 'false'));
+  }
+}
+
+function toggleDashboardAiSidebar() {
+  const sidebar = document.querySelector('.dashboard-ai-sidebar');
+  const btn = document.getElementById('dashboardAiSidebarToggle');
+  const toggleText = btn.querySelector('.toggle-text');
+  const collapseIcon = btn.querySelector('.collapse-icon');
+  const expandIcon = btn.querySelector('.expand-icon');
+  
+  if (!sidebar) return;
+  
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  
+  // Update global state
+  dashboardAiSidebarCollapsed = !isCollapsed;
+  
+  if (isCollapsed) {
+    sidebar.classList.remove('collapsed');
+    btn.classList.remove('sidebar-collapsed');
+    toggleText.textContent = 'Hide AI';
+    collapseIcon.style.display = 'block';
+    expandIcon.style.display = 'none';
+  } else {
+    sidebar.classList.add('collapsed');
+    btn.classList.add('sidebar-collapsed');
+    toggleText.textContent = 'Show AI';
+    collapseIcon.style.display = 'none';
+    expandIcon.style.display = 'block';
+  }
+}
+
+// Restore dashboard AI sidebar state after view rendering
+function restoreDashboardAiSidebarState() {
+  const sidebar = document.querySelector('.dashboard-ai-sidebar');
+  const btn = document.getElementById('dashboardAiSidebarToggle');
+  
+  if (!sidebar || !btn) return;
+  
+  const toggleText = btn.querySelector('.toggle-text');
+  const collapseIcon = btn.querySelector('.collapse-icon');
+  const expandIcon = btn.querySelector('.expand-icon');
+  
+  if (dashboardAiSidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    btn.classList.add('sidebar-collapsed');
+    if (toggleText) toggleText.textContent = 'Show AI';
+    if (collapseIcon) collapseIcon.style.display = 'none';
+    if (expandIcon) expandIcon.style.display = 'block';
+  } else {
+    sidebar.classList.remove('collapsed');
+    btn.classList.remove('sidebar-collapsed');
+    if (toggleText) toggleText.textContent = 'Hide AI';
+    if (collapseIcon) collapseIcon.style.display = 'block';
+    if (expandIcon) expandIcon.style.display = 'none';
   }
 }
 
