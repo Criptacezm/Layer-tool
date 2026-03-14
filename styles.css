@@ -1542,19 +1542,6 @@ html:not([data-mode="light"]) body:not(.light) .nav-item:hover {
   margin-top: 4px;
 }
 
-/* Focus mode expandable when sidebar is collapsed */
-.sidebar.collapsed .focus-mode-expandable {
-  position: fixed;
-  left: 60px;
-  top: auto;
-  width: 200px;
-  max-height: 0;
-}
-
-.sidebar.collapsed .focus-mode-expandable.expanded {
-  max-height: 250px;
-}
-
 .focus-mode-content {
   background: var(--surface);
   border: 1px solid var(--border);

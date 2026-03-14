@@ -499,12 +499,9 @@ function init() {
   initAIIconMorph();
 
   // Generate AI summary on page load (cached for tab switches)
-  // Use setTimeout to ensure DOM is fully rendered
-  setTimeout(() => {
-    if (typeof generateDashboardAISummary === 'function') {
-      generateDashboardAISummary();
-    }
-  }, 100);
+  if (typeof generateDashboardAISummary === 'function') {
+    generateDashboardAISummary();
+  }
 }
 
 function showLoadingScreen() {
