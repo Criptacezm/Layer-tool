@@ -702,6 +702,13 @@ Keep it personal and encouraging. No bullet points or formatting - just natural 
     // Check if AI API is available
     if (typeof window.callGeminiAPI === 'function') {
       const response = await window.callGeminiAPI(prompt);
+      
+      // Check if response contains an error
+      if (response && (response.startsWith('❌') || response.startsWith('⚠️'))) {
+        console.warn('AI API returned error, using fallback:', response);
+        throw new Error(response);
+      }
+      
       contentEl.innerHTML = `<p class="ai-summary-text">${response}</p>`;
       
       // Cache the summary for today
@@ -711,25 +718,26 @@ Keep it personal and encouraging. No bullet points or formatting - just natural 
       }));
     } else {
       // Fallback to simple message
-      const hour = today.getHours();
-      let greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-      const taskSummary = todayTasks.length > 0 
-        ? `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today.`
-        : 'Your schedule is clear today.';
-      
-      const fallbackSummary = `${greeting}! ${taskSummary} Stay focused and productive.`;
-      contentEl.innerHTML = `<p class="ai-summary-text">${fallbackSummary}</p>`;
-      
-      // Cache fallback too
-      localStorage.setItem('layerDashboardAISummary', JSON.stringify({
-        date: todayStr,
-        summary: fallbackSummary
-      }));
+      throw new Error('AI API not available');
     }
   } catch (error) {
-    console.error('AI summary error:', error);
-    const errorMsg = 'Ready to tackle your day. Check your tasks and stay productive!';
-    contentEl.innerHTML = `<p class="ai-summary-text">${errorMsg}</p>`;
+    console.warn('AI summary error, using fallback:', error);
+    
+    // Fallback to simple message
+    const hour = today.getHours();
+    let greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const taskSummary = todayTasks.length > 0 
+      ? `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today.`
+      : 'Your schedule is clear today.';
+    
+    const fallbackSummary = `${greeting}! ${taskSummary} Stay focused and productive.`;
+    contentEl.innerHTML = `<p class="ai-summary-text">${fallbackSummary}</p>`;
+    
+    // Cache fallback too
+    localStorage.setItem('layerDashboardAISummary', JSON.stringify({
+      date: todayStr,
+      summary: fallbackSummary
+    }));
   }
 }
 
@@ -21413,6 +21421,8 @@ function clearFocusModeState() {
 function toggleFocusModeExpand() {
   const expandable = document.getElementById('focusModeExpandable');
   const projectSelect = document.getElementById('focusProjectSelect');
+  const btn = document.querySelector('.focus-toggle-btn');
+  const sidebar = document.querySelector('.sidebar');
 
   if (!expandable.classList.contains('expanded')) {
     // Populate projects when expanding
@@ -21421,6 +21431,26 @@ function toggleFocusModeExpand() {
       projectSelect.innerHTML = '<option value="">No projects available</option>';
     } else {
       projectSelect.innerHTML = projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+    }
+
+    // Position dropdown next to button when sidebar is collapsed
+    const isCollapsed = sidebar && sidebar.classList.contains('collapsed');
+    if (isCollapsed && btn) {
+      const btnRect = btn.getBoundingClientRect();
+      const dropdownHeight = 250; // Approximate height of expanded dropdown
+      const windowHeight = window.innerHeight;
+      
+      // Calculate position, ensuring it stays within viewport
+      let topPos = btnRect.top;
+      
+      // If dropdown would go below viewport, position it above the button instead
+      if (topPos + dropdownHeight > windowHeight) {
+        topPos = Math.max(10, windowHeight - dropdownHeight - 10);
+      }
+      
+      expandable.style.top = `${topPos}px`;
+    } else {
+      expandable.style.top = '';
     }
 
     expandable.classList.add('expanded');
@@ -22286,7 +22316,18 @@ function toggleSidebarCreateDropdown() {
     // Position dropdown next to button when sidebar is collapsed
     if (isCollapsed) {
       const btnRect = btn.getBoundingClientRect();
-      dropdown.style.top = `${btnRect.top}px`;
+      const dropdownHeight = 160; // Approximate height of dropdown
+      const windowHeight = window.innerHeight;
+      
+      // Calculate position, ensuring it stays within viewport
+      let topPos = btnRect.top;
+      
+      // If dropdown would go below viewport, adjust position
+      if (topPos + dropdownHeight > windowHeight) {
+        topPos = Math.max(10, windowHeight - dropdownHeight - 10);
+      }
+      
+      dropdown.style.top = `${topPos}px`;
     } else {
       dropdown.style.top = '';
     }
