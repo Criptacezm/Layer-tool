@@ -3,45 +3,49 @@
 /* All colors in HSL for consistency           */
 /* ============================================ */
 
-/* Pink Theme - soft feminine palette with glass */
+/* Hello Kitty Theme - cute kawaii palette with playful accents */
 [data-theme="pink"] {
-  --background: hsl(345, 80%, 97%);
-  --foreground: hsl(335, 30%, 24%);
-  --card: hsl(345, 100%, 98%);
-  --card-foreground: hsl(335, 30%, 24%);
-  --popover: hsl(345, 100%, 98%);
-  --popover-foreground: hsl(335, 30%, 24%);
+  --background: hsl(350, 100%, 98%);
+  --foreground: hsl(350, 40%, 25%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(350, 40%, 25%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(350, 40%, 25%);
 
-  --primary: hsl(340, 82%, 76%);
+  /* Hello Kitty signature pink */
+  --primary: hsl(340, 80%, 65%);
   --primary-foreground: hsl(0, 0%, 100%);
 
-  --secondary: hsl(340, 80%, 95%);
-  --secondary-foreground: hsl(335, 30%, 24%);
+  /* Soft blush pink */
+  --secondary: hsl(350, 70%, 94%);
+  --secondary-foreground: hsl(350, 40%, 25%);
 
-  --muted: hsl(340, 60%, 85%);
-  --muted-foreground: hsl(335, 20%, 41%);
+  /* Light pink muted */
+  --muted: hsl(350, 60%, 92%);
+  --muted-foreground: hsl(350, 30%, 45%);
 
-  --accent: hsl(340, 82%, 66%);
+  /* Hello Kitty red bow accent */
+  --accent: hsl(350, 85%, 55%);
   --accent-foreground: hsl(0, 0%, 100%);
 
-  --destructive: hsl(0, 65%, 67%);
+  --destructive: hsl(0, 70%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
 
-  --border: hsl(340, 60%, 85%);
-  --border-strong: hsl(340, 82%, 76%);
-  --input: hsl(345, 100%, 98%);
-  --ring: hsl(340, 82%, 76%);
+  --border: hsl(350, 50%, 88%);
+  --border-strong: hsl(340, 80%, 65%);
+  --input: hsl(0, 0%, 100%);
+  --ring: hsl(340, 80%, 65%);
 
-  --surface: hsl(345, 100%, 98%);
-  --surface-hover: hsl(340, 80%, 95%);
+  --surface: hsl(350, 100%, 99%);
+  --surface-hover: hsl(350, 70%, 94%);
 
-  --glass-bg: hsla(345, 100%, 98%, 0.7);
-  --glass-border: hsla(340, 82%, 76%, 0.25);
-  --glass-shadow: 0 8px 32px hsla(340, 82%, 76%, 0.15);
+  --glass-bg: hsla(0, 0%, 100%, 0.85);
+  --glass-border: hsla(340, 80%, 65%, 0.3);
+  --glass-shadow: 0 8px 32px hsla(340, 80%, 65%, 0.12);
 }
 
 [data-theme="pink"] body {
-  background: linear-gradient(135deg, hsl(345, 80%, 97%) 0%, hsl(340, 80%, 95%) 50%, hsl(345, 100%, 98%) 100%);
+  background: linear-gradient(135deg, hsl(350, 100%, 98%) 0%, hsl(340, 80%, 96%) 50%, hsl(350, 90%, 99%) 100%);
   background-attachment: fixed;
 }
 
@@ -53,8 +57,62 @@
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 20% 30%, hsla(340, 82%, 76%, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, hsla(340, 82%, 66%, 0.1) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 25%, hsla(340, 80%, 65%, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, hsla(350, 85%, 55%, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, hsla(350, 70%, 94%, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hello Kitty Dark Mode - with Hello Kitty background image */
+[data-theme="pink"][data-mode="dark"] {
+  --background: hsl(280, 20%, 8%);
+  --foreground: hsl(340, 30%, 95%);
+  --card: hsla(280, 15%, 12%, 0.85);
+  --card-foreground: hsl(340, 30%, 95%);
+  --popover: hsla(280, 15%, 12%, 0.9);
+  --popover-foreground: hsl(340, 30%, 95%);
+
+  /* Hello Kitty pink */
+  --primary: hsl(340, 80%, 70%);
+  --primary-foreground: hsl(0, 0%, 100%);
+
+  --secondary: hsla(280, 15%, 18%, 0.8);
+  --secondary-foreground: hsl(340, 30%, 95%);
+
+  --muted: hsla(280, 15%, 25%, 0.7);
+  --muted-foreground: hsl(340, 25%, 70%);
+
+  /* Hello Kitty red bow */
+  --accent: hsl(350, 85%, 60%);
+  --accent-foreground: hsl(0, 0%, 100%);
+
+  --GanttRows: hsla(280, 15%, 12%, 0.8);
+  --border: hsla(280, 15%, 20%, 0.6);
+  --border-strong: hsl(340, 80%, 70%);
+  --input: hsla(280, 15%, 15%, 0.8);
+  --ring: hsl(340, 80%, 70%);
+
+  --surface: hsla(280, 15%, 14%, 0.85);
+  --surface-hover: hsla(280, 15%, 20%, 0.85);
+
+  --glass-bg: hsla(280, 15%, 12%, 0.75);
+  --glass-border: hsla(340, 80%, 70%, 0.25);
+  --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.4);
+}
+
+[data-theme="pink"][data-mode="dark"] body {
+  background: url('./images/hello-kitty-BG.png') center center / cover no-repeat fixed;
+}
+
+[data-theme="pink"][data-mode="dark"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, hsla(280, 20%, 8%, 0.3) 0%, hsla(280, 20%, 8%, 0.1) 50%, hsla(280, 20%, 8%, 0.4) 100%);
   pointer-events: none;
   z-index: -1;
 }
@@ -528,118 +586,77 @@
    ============================================ */
 
 /* ----------------------------------------
-   PINK THEME - LIGHT MODE (Premium)
+   HELLO KITTY THEME - LIGHT MODE (Kawaii)
    ---------------------------------------- */
 [data-theme="pink"][data-mode="light"] {
-  /* Core Backgrounds - Soft warm whites */
-  --background: hsl(350, 100%, 99%);
-  --foreground: hsl(335, 45%, 18%);
+  /* Core Backgrounds - Pure white like Hello Kitty */
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(350, 50%, 20%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(335, 45%, 18%);
+  --card-foreground: hsl(350, 50%, 20%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(335, 45%, 18%);
+  --popover-foreground: hsl(350, 50%, 20%);
 
-  /* Primary - Rich pink with high contrast */
-  --primary: hsl(340, 75%, 55%);
+  /* Hello Kitty signature pink */
+  --primary: hsl(340, 80%, 65%);
   --primary-foreground: hsl(0, 0%, 100%);
 
-  /* Secondary - Delicate pink tint */
-  --secondary: hsl(345, 60%, 95%);
-  --secondary-foreground: hsl(335, 40%, 25%);
+  /* Soft pastel pink */
+  --secondary: hsl(350, 100%, 96%);
+  --secondary-foreground: hsl(350, 50%, 25%);
 
-  /* Muted - Soft pink undertones */
-  --muted: hsl(345, 45%, 92%);
-  --muted-foreground: hsl(335, 25%, 45%);
+  /* Light blush pink */
+  --muted: hsl(350, 80%, 94%);
+  --muted-foreground: hsl(350, 40%, 50%);
 
-  /* Accent - Vibrant for highlights */
-  --accent: hsl(340, 80%, 65%);
+  /* Hello Kitty red bow */
+  --accent: hsl(350, 90%, 50%);
   --accent-foreground: hsl(0, 0%, 100%);
 
-  /* Borders - Visible but elegant */
-  --border: hsl(345, 35%, 88%);
-  --border-strong: hsl(340, 75%, 55%);
+  /* Borders - soft pink */
+  --border: hsl(350, 60%, 90%);
+  --border-strong: hsl(340, 80%, 65%);
   --input: hsl(0, 0%, 100%);
-  --ring: hsl(340, 75%, 55%);
+  --ring: hsl(340, 80%, 65%);
 
   /* Surfaces */
-  --surface: hsl(350, 50%, 98%);
-  --surface-hover: hsl(345, 55%, 95%);
+  --surface: hsl(0, 0%, 100%);
+  --surface-hover: hsl(350, 100%, 97%);
 
   /* Glass effects */
-  --glass-bg: hsla(0, 0%, 100%, 0.92);
-  --glass-border: hsla(340, 75%, 55%, 0.18);
-  --glass-shadow: 0 8px 32px hsla(340, 75%, 55%, 0.08);
+  --glass-bg: hsla(0, 0%, 100%, 0.95);
+  --glass-border: hsla(340, 80%, 65%, 0.25);
+  --glass-shadow: 0 8px 32px hsla(340, 80%, 65%, 0.1);
 
   /* Schedule/Calendar Variables */
   --schedule-bg: hsl(0, 0%, 100%);
-  --schedule-surface: hsl(350, 50%, 98%);
-  --schedule-surface-hover: hsl(345, 55%, 95%);
-  --schedule-border: hsl(345, 35%, 88%);
-  --schedule-border-subtle: hsl(345, 40%, 93%);
+  --schedule-surface: hsl(350, 100%, 98%);
+  --schedule-surface-hover: hsl(350, 100%, 96%);
+  --schedule-border: hsl(350, 60%, 90%);
+  --schedule-border-subtle: hsl(350, 80%, 95%);
   --schedule-card: hsl(0, 0%, 100%);
-  --schedule-muted: hsl(335, 25%, 45%);
-  --schedule-text: hsl(335, 45%, 18%);
-  --schedule-shadow: 0 1px 3px hsla(340, 75%, 55%, 0.08), 0 1px 2px hsla(340, 75%, 55%, 0.04);
-  --schedule-shadow-lg: 0 4px 12px hsla(340, 75%, 55%, 0.12), 0 2px 4px hsla(340, 75%, 55%, 0.06);
-  --timeline-grid-line: hsl(345, 30%, 92%);
-  --timeline-hour-line: hsl(345, 25%, 88%);
+  --schedule-muted: hsl(350, 40%, 50%);
+  --schedule-text: hsl(350, 50%, 20%);
+  --schedule-shadow: 0 1px 3px hsla(340, 80%, 65%, 0.1), 0 1px 2px hsla(340, 80%, 65%, 0.05);
+  --schedule-shadow-lg: 0 4px 12px hsla(340, 80%, 65%, 0.15), 0 2px 4px hsla(340, 80%, 65%, 0.08);
+  --timeline-grid-line: hsl(350, 60%, 92%);
+  --timeline-hour-line: hsl(350, 50%, 88%);
 }
 
 [data-theme="pink"][data-mode="light"] body {
-  background: linear-gradient(145deg, hsl(350, 100%, 99%) 0%, hsl(345, 60%, 97%) 50%, hsl(350, 100%, 99%) 100%);
-  background-attachment: fixed;
+  background: url('./images/hello-kitty-light-BG.png') center center / cover no-repeat fixed;
 }
 
 [data-theme="pink"][data-mode="light"] body::before {
-  background:
-    radial-gradient(ellipse at 20% 30%, hsla(340, 75%, 55%, 0.06) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 70%, hsla(340, 80%, 65%, 0.04) 0%, transparent 55%);
-}
-
-/* Pink Dark Mode */
-[data-theme="pink"][data-mode="dark"] {
-  --background: hsl(345, 25%, 12%);
-  --foreground: hsl(340, 30%, 95%);
-  --card: hsl(345, 22%, 16%);
-  --card-foreground: hsl(340, 30%, 95%);
-  --popover: hsl(345, 22%, 16%);
-  --popover-foreground: hsl(340, 30%, 95%);
-
-  --primary: hsl(340, 82%, 70%);
-  --primary-foreground: hsl(345, 25%, 12%);
-
-  --secondary: hsl(345, 18%, 22%);
-  --secondary-foreground: hsl(340, 30%, 95%);
-
-  --muted: hsl(345, 15%, 28%);
-  --muted-foreground: hsl(340, 25%, 68%);
-
-  --accent: hsl(340, 82%, 66%);
-  --accent-foreground: hsl(0, 0%, 100%);
-
-  --GanttRows: hsl(349, 26%, 12%);
-  --border: hsl(350, 22%, 21%);
-  --border-strong: hsl(340, 82%, 70%);
-  --input: hsl(345, 22%, 16%);
-  --ring: hsl(340, 82%, 70%);
-
-  --surface: hsl(345, 22%, 16%);
-  --surface-hover: hsl(345, 18%, 22%);
-
-  --glass-bg: hsla(345, 22%, 16%, 0.8);
-  --glass-border: hsla(340, 82%, 70%, 0.18);
-  --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.3);
-}
-
-[data-theme="pink"][data-mode="dark"] body {
-  background: linear-gradient(145deg, hsl(345, 25%, 12%) 0%, hsl(345, 30%, 8%) 50%, hsl(345, 25%, 12%) 100%);
-  background-attachment: fixed;
-}
-
-[data-theme="pink"][data-mode="dark"] body::before {
-  background:
-    radial-gradient(ellipse at 20% 30%, hsla(340, 82%, 70%, 0.1) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 70%, hsla(340, 82%, 66%, 0.06) 0%, transparent 55%);
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, hsla(0, 0%, 100%, 0.1) 0%, hsla(0, 0%, 100%, 0.05) 50%, hsla(0, 0%, 100%, 0.15) 100%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* ----------------------------------------
