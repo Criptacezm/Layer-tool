@@ -1021,10 +1021,12 @@ body {
 }
 
 .sidebar.collapsed .sidebar-create-dropdown {
-  left: 48px;
+  position: fixed;
+  left: 60px;
   right: auto;
-  width: 140px;
-  top: 0;
+  width: 160px;
+  top: auto;
+  margin-top: 0;
 }
 
 .sidebar-create-item {
@@ -1538,6 +1540,19 @@ html:not([data-mode="light"]) body:not(.light) .nav-item:hover {
   max-height: 200px;
   opacity: 1;
   margin-top: 4px;
+}
+
+/* Focus mode expandable when sidebar is collapsed */
+.sidebar.collapsed .focus-mode-expandable {
+  position: fixed;
+  left: 60px;
+  top: auto;
+  width: 200px;
+  max-height: 0;
+}
+
+.sidebar.collapsed .focus-mode-expandable.expanded {
+  max-height: 250px;
 }
 
 .focus-mode-content {
