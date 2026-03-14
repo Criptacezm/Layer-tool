@@ -15870,6 +15870,13 @@ let teamFollowers = [
 ];
 let pendingFollowRequests = [];
 
+let teamMobileChatOpen = false;
+
+function closeTeamMobileChat() {
+  teamMobileChatOpen = false;
+  updateTeamChatArea();
+}
+
 function renderTeamView() {
   // Clean up any existing subscriptions first (in case view is re-rendered)
   if (window.cleanupTeamMembersSubscription) {
@@ -15878,7 +15885,7 @@ function renderTeamView() {
 
   // Render immediately with default/cached data for instant loading
   const initialHTML = `
-    <div class="team-chat-layout">
+    <div class="team-chat-layout" id="teamChatLayout">
       <!-- Chat Sidebar -->
       <aside class="team-chat-sidebar">
         <div class="team-chat-sidebar-header">
@@ -16197,9 +16204,37 @@ function renderTeamChatHeader() {
   const channelName = channel ? channel.name : 'General';
   const isChannel = channel?.type === 'channel';
 
+  const isDM = channel?.type === 'dm' || teamCurrentChannel?.startsWith('dm-');
+  const dmStatus = isDM ? (channel?.status || 'offline') : '';
+  const dmAvatar = isDM ? (channel?.avatar || channelName.charAt(0)) : '';
+  const dmAvatarIsImg = isDM ? (typeof dmAvatar === 'string' && dmAvatar.includes('/')) : false;
+
   return `
     <header class="team-chat-header">
       <div class="team-chat-header-left">
+        <button class="team-mobile-back" type="button" onclick="closeTeamMobileChat()" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div class="team-chat-header-identity">
+          ${isDM ? `
+            <div class="team-chat-header-avatar ${dmStatus}">
+              ${dmAvatarIsImg
+        ? `<img src="${dmAvatar}" alt="${channelName}" />`
+        : `<span>${String(dmAvatar).charAt(0)}</span>`}
+              <span class="team-chat-header-status-dot"></span>
+            </div>
+          ` : `
+            <div class="team-chat-header-avatar channel">
+              <span>${isChannel ? '#' : '@'}</span>
+            </div>
+          `}
+          <div class="team-chat-header-titleblock">
+            <div class="team-channel-name">${isChannel ? '#' : ''} ${channelName}</div>
+            <div class="team-chat-header-subtitle">${isDM ? (dmStatus === 'online' ? 'Online' : dmStatus === 'away' ? 'Away' : 'Offline') : 'Channel'}</div>
+          </div>
+        </div>
         <div class="team-channel-name">
           ${isChannel ? '#' : ''} ${channelName}
         </div>
@@ -18130,6 +18165,11 @@ function updateTeamChatArea() {
     chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' ? renderTeamMessageInput() : '');
   }
 
+  const layout = document.getElementById('teamChatLayout');
+  if (layout) {
+    layout.classList.toggle('mobile-chat-open', !!teamMobileChatOpen);
+  }
+
   // Update sidebar active states
   document.querySelectorAll('.team-chat-item').forEach(item => {
     item.classList.remove('active');
@@ -18184,6 +18224,10 @@ async function selectTeamChannel(channelId) {
 
   // Load messages from database FIRST before updating UI
   await loadTeamMessages(channelId, channelType);
+
+  if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+    teamMobileChatOpen = true;
+  }
 
   // Update chat area AFTER messages are loaded (prevents welcome screen flash)
   updateTeamChatArea();
