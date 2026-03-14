@@ -499,9 +499,12 @@ function init() {
   initAIIconMorph();
 
   // Generate AI summary on page load (cached for tab switches)
-  if (typeof generateDashboardAISummary === 'function') {
-    generateDashboardAISummary();
-  }
+  // Use setTimeout to ensure DOM is fully rendered
+  setTimeout(() => {
+    if (typeof generateDashboardAISummary === 'function') {
+      generateDashboardAISummary();
+    }
+  }, 100);
 }
 
 function showLoadingScreen() {

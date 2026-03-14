@@ -704,7 +704,7 @@ Keep it personal and encouraging. No bullet points or formatting - just natural 
       const response = await window.callGeminiAPI(prompt);
       
       // Check if response contains an error
-      if (response && response.startsWith('❌') || response.startsWith('⚠️')) {
+      if (response && (response.startsWith('❌') || response.startsWith('⚠️'))) {
         console.warn('AI API returned error, using fallback:', response);
         throw new Error(response);
       }
