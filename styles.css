@@ -12563,7 +12563,7 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 }
 
 /* ============================================
-   AI Summary Widget - Personal Assistant
+   AI Summary Widget - Minimalist Clean Style
    ============================================ */
 
 .ai-summary-widget {
@@ -12571,48 +12571,34 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   overflow: hidden;
 }
 
-.ai-summary-widget::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #6366f1, #a855f7, #3b82f6, #06b6d4);
-  background-size: 300% 100%;
-  animation: gradientShift 8s ease infinite;
-}
-
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-.ai-widget-avatar {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%));
-  border-radius: 8px;
+.ai-summary-widget .widget-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.ai-summary-widget .widget-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .ai-widget-date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted-foreground);
   font-weight: 500;
 }
 
 .ai-widget-content {
-  min-height: 120px;
-  max-height: 200px;
+  min-height: 60px;
+  max-height: 150px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 4px 0;
 }
 
 .ai-widget-content::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .ai-widget-content::-webkit-scrollbar-track {
@@ -12624,82 +12610,33 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   border-radius: 2px;
 }
 
-.ai-widget-content .ai-message {
-  font-size: 14px;
-  line-height: 1.5;
+.ai-summary-text {
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--foreground);
-  white-space: pre-wrap;
+  margin: 0;
 }
 
-.ai-widget-content .ai-typing-text {
-  display: inline;
-}
-
-.ai-widget-content .ai-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 16px;
-  background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(271, 91%, 65%));
-  margin-left: 2px;
-  animation: cursorBlink 1s infinite;
-  vertical-align: middle;
-}
-
-@keyframes cursorBlink {
-  0%, 40% { opacity: 1; }
-  50%, 90% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.ai-insight-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--foreground);
-  margin-bottom: 8px;
-}
-
-.ai-widget-footer {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.ai-quick-insights {
+/* Loading indicator */
+.ai-loading-indicator {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ai-insight-pill {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--foreground);
-  transition: all 0.2s;
-}
-
-.ai-insight-pill:hover {
-  background: var(--surface-hover);
-  border-color: var(--primary);
-}
-
-.ai-insight-pill svg {
+  gap: 10px;
   color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.ai-loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Responsive: Single column on smaller screens */

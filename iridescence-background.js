@@ -357,8 +357,15 @@ void main() {
 
   window.IridescenceBackground = IridescenceBackground;
   window.initIridescenceViewsBackground = initIridescenceViewsBackground;
+  
+  // Function to reinitialize background when theme changes
+  window.reinitViewsBackground = function() {
+    initIridescenceViewsBackground();
+  };
 
   let instance = null;
+  let faultyTerminalInstance = null;
+  
   function initIridescenceViewsBackground() {
     // Check if animated backgrounds are disabled in settings
     if (localStorage.getItem('layerAnimatedBg') === 'false') {
@@ -367,6 +374,57 @@ void main() {
 
     const bg = document.getElementById('viewsBackground');
     if (!bg) return;
+
+    // Get current theme
+    const currentTheme = localStorage.getItem('layerTheme') || 'dark';
+    
+    // Check if darklime theme is active - use FaultyTerminal instead
+    if (currentTheme === 'darklime' && typeof window.FaultyTerminal !== 'undefined') {
+      // Clean up iridescence instance if exists
+      if (instance) {
+        instance.destroy();
+        instance = null;
+      }
+      
+      // Clean up existing faulty terminal instance
+      if (faultyTerminalInstance) {
+        faultyTerminalInstance.destroy();
+        faultyTerminalInstance = null;
+      }
+      
+      // Ensure the background layer is empty
+      while (bg.firstChild) bg.removeChild(bg.firstChild);
+      
+      // Create FaultyTerminal background with lime green tint
+      faultyTerminalInstance = new window.FaultyTerminal(bg, {
+        scale: 1,
+        gridMul: [2, 1],
+        digitSize: 1.5,
+        timeScale: 0.3,
+        scanlineIntensity: 0.3,
+        glitchAmount: 1,
+        flickerAmount: 1,
+        noiseAmp: 0,
+        chromaticAberration: 0,
+        dither: 0,
+        curvature: 0.2,
+        tint: '#00ff00', // Lime green
+        mouseReact: true,
+        mouseStrength: 0.2,
+        pageLoadAnimation: true,
+        brightness: 1
+      });
+      
+      return;
+    }
+
+    // For non-darklime themes, use IridescenceBackground
+    
+    // Clean up faulty terminal instance if exists
+    if (faultyTerminalInstance) {
+      faultyTerminalInstance.destroy();
+      faultyTerminalInstance = null;
+    }
 
     if (instance) {
       instance.destroy();

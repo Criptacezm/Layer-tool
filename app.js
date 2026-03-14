@@ -2659,6 +2659,10 @@ async function renderCurrentView(preserveScroll = false) {
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
       }
+      // Generate AI summary for dashboard widget
+      if (typeof generateDashboardAISummary === 'function') {
+        generateDashboardAISummary();
+      }
       break;
     case 'my-issues':
       if (viewsContent) {

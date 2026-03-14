@@ -44,9 +44,6 @@ function renderInboxView() {
   const openIssues = issues.filter(i => i.status !== 'done').length;
   const activeProjects = projects.length;
 
-  // Generate AI greeting message
-  const aiMessage = generateAIGreeting(todayTasks, upcomingEvents, projects);
-
   // Calculate daily productivity (last 7 days)
   const productivityData = [];
   for (let i = 6; i >= 0; i--) {
@@ -79,52 +76,16 @@ function renderInboxView() {
           
           <!-- Enhanced Dashboard Widgets Grid -->
           <div class="dashboard-widgets-grid" id="dashboardWidgetsGrid">
-            <!-- AI Summary Widget - Personal Assistant -->
+            <!-- AI Summary Widget - Minimalist -->
             <div class="dashboard-widget ai-summary-widget" data-widget-id="ai-summary">
               <div class="widget-header">
-                <span class="widget-title">
-                  <div class="ai-widget-avatar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="url(#aiWidgetGradient)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-                      <defs>
-                        <linearGradient id="aiWidgetGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stop-color="#6366f1">
-                            <animate attributeName="stop-color" values="#6366f1;#8b5cf6;#3b82f6;#06b6d4;#6366f1" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                          <stop offset="50%" stop-color="#a855f7">
-                            <animate attributeName="stop-color" values="#a855f7;#ec4899;#8b5cf6;#3b82f6;#a855f7" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                          <stop offset="100%" stop-color="#3b82f6">
-                            <animate attributeName="stop-color" values="#3b82f6;#06b6d4;#6366f1;#8b5cf6;#3b82f6" dur="6s" repeatCount="indefinite"/>
-                          </stop>
-                        </linearGradient>
-                      </defs>
-                      <path d="M12 3L14.5 9L21 11.5L14.5 14L12 20L9.5 14L3 11.5L9.5 9L12 3Z" />
-                    </svg>
-                  </div>
-                  AI Assistant
-                </span>
+                <span class="widget-title">Daily Summary</span>
                 <span class="ai-widget-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
               </div>
-              <div class="ai-widget-content">
-                <div class="ai-message" id="aiGreetingMessage" data-full-message="${aiMessage.replace(/"/g, '&quot;')}">
-                  <span class="ai-typing-text"></span>
-                  <span class="ai-cursor"></span>
-                </div>
-              </div>
-              <div class="ai-widget-footer">
-                <div class="ai-quick-insights">
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    <span>${todayTasks.length} tasks today</span>
-                  </div>
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    <span>${completionRate}% done</span>
-                  </div>
-                  <div class="ai-insight-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-                    <span>${calculateStreak(calendarEvents)} day streak</span>
-                  </div>
+              <div class="ai-widget-content" id="aiSummaryContent">
+                <div class="ai-loading-indicator">
+                  <div class="ai-loading-spinner"></div>
+                  <span>Generating summary...</span>
                 </div>
               </div>
             </div>
@@ -651,144 +612,68 @@ async function deleteFolderWhiteboardItem(folderItemId, projectId) {
   }
 }
 
-function generateAIGreeting(todayTasks, upcomingEvents, projects) {
-  const hour = new Date().getHours();
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dayName = days[new Date().getDay()];
-  
-  // Personal, friend-like greetings based on time
-  let greeting = '';
-  if (hour < 6) {
-    greeting = `Hey, you're up early! 🌅`;
-  } else if (hour < 12) {
-    greeting = `Good morning! ☀️`;
-  } else if (hour < 17) {
-    greeting = `Hey there! 👋`;
-  } else if (hour < 21) {
-    greeting = `Good evening! 🌆`;
-  } else {
-    greeting = `Burning the midnight oil? 🌙`;
-  }
+/**
+ * Generate AI-powered daily summary using real API
+ */
+async function generateDashboardAISummary() {
+  const contentEl = document.getElementById('aiSummaryContent');
+  if (!contentEl) return;
 
-  let message = `${greeting} It's ${dayName} and I've got your day mapped out.\n\n`;
+  // Gather context data
+  const projects = loadProjects();
+  const calendarEvents = loadCalendarEvents();
+  const issues = loadIssues();
 
-  // Today's Tasks - conversational style
-  message += `[Tasks] Here's what's on your plate:\n`;
-  if (todayTasks.length === 0) {
-    message += `Your schedule is wide open today! Perfect time to tackle that project you've been putting off, or maybe just breathe. 😌\n\n`;
-  } else if (todayTasks.length === 1) {
-    const task = todayTasks[0];
-    const timeStr = task.time ? ` (scheduled for ${task.time})` : '';
-    message += `Just one thing today${timeStr}: "${task.title}" — you've got this! 💪\n\n`;
-  } else {
-    message += `You have ${todayTasks.length} tasks lined up. Here's the rundown:\n`;
-    todayTasks.slice(0, 4).forEach((task, i) => {
-      const timeStr = task.time ? ` ⏰ ${task.time}` : '';
-      const emoji = task.completed ? '✅' : '○';
-      message += `${emoji} ${task.title}${timeStr}\n`;
-    });
-    if (todayTasks.length > 4) {
-      message += `...plus ${todayTasks.length - 4} more. Pace yourself! 🎯\n`;
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const todayTasks = calendarEvents.filter(e => e.date === todayStr);
+  const completedTasks = calendarEvents.filter(e => e.completed).length;
+  const totalTasks = calendarEvents.length;
+
+  // Build context for AI
+  const context = {
+    date: today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+    projects: projects.slice(0, 5).map(p => ({ name: p.name, status: p.status || 'active' })),
+    todayTasks: todayTasks.slice(0, 5).map(t => ({ title: t.title, completed: t.completed, time: t.time })),
+    stats: {
+      totalProjects: projects.length,
+      totalTasks,
+      completedTasks,
+      pendingTasks: totalTasks - completedTasks,
+      todayTaskCount: todayTasks.length
     }
-    message += `\n`;
-  }
+  };
 
-  // Upcoming This Week - friendly reminders
-  const todayStr = new Date().toISOString().split('T')[0];
-  const futureTasks = upcomingEvents.filter(e => e.date !== todayStr);
-  message += `[Calendar] Coming up soon:\n`;
-  if (futureTasks.length === 0) {
-    message += `Nothing urgent on the horizon. Enjoy the calm before the storm! 🌤️\n\n`;
-  } else {
-    const urgentTask = futureTasks[0];
-    const urgentDate = new Date(urgentTask.date);
-    const isTomorrow = urgentDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
-    
-    if (isTomorrow) {
-      message += `Tomorrow: "${urgentTask.title}" — just a heads up! 📅\n`;
+  const prompt = `Generate a brief, friendly daily summary for a project management app. Be concise (2-3 sentences max).
+
+Context: ${JSON.stringify(context)}
+
+Include:
+- A quick greeting based on time of day
+- Key focus items for today (if any tasks)
+- One actionable suggestion
+
+Keep it personal and encouraging. No bullet points or formatting - just natural text.`;
+
+  try {
+    // Check if AI API is available
+    if (typeof window.callGeminiAPI === 'function') {
+      const response = await window.callGeminiAPI(prompt);
+      contentEl.innerHTML = `<p class="ai-summary-text">${response}</p>`;
     } else {
-      futureTasks.slice(0, 3).forEach(task => {
-        const eventDate = new Date(task.date);
-        const dayLabel = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        message += `• ${task.title} — ${dayLabel}\n`;
-      });
+      // Fallback to simple message
+      const hour = today.getHours();
+      let greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+      const taskSummary = todayTasks.length > 0 
+        ? `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today.`
+        : 'Your schedule is clear today.';
+      
+      contentEl.innerHTML = `<p class="ai-summary-text">${greeting}! ${taskSummary} Stay focused and productive.</p>`;
     }
-    message += `\n`;
+  } catch (error) {
+    console.error('AI summary error:', error);
+    contentEl.innerHTML = `<p class="ai-summary-text">Ready to tackle your day. Check your tasks and stay productive!</p>`;
   }
-
-  // Projects - encouraging update
-  message += `[Projects] Your workspace:\n`;
-  if (projects.length === 0) {
-    message += `No active projects right now. Sometimes a clean slate is exactly what you need. Ready to start something new? 🚀\n\n`;
-  } else if (projects.length === 1) {
-    message += `You're focused on "${projects[0].name || 'your project'}" — love the dedication! Keep that momentum going. 🎯\n\n`;
-  } else {
-    message += `Juggling ${projects.length} projects — you're staying busy! Remember, progress over perfection. 💪\n\n`;
-  }
-
-  // Personalized Tip - friend advice
-  message += `[Tip] My two cents:\n`;
-  
-  // More varied and personal tips
-  const tips = [
-    `Remember to take breaks — your brain needs rest to do its best work. 🧠`,
-    `You're doing great. Seriously. Every small step counts. 🌟`,
-    `Don't forget to hydrate and stretch! Your future self will thank you. 💧`,
-    `Focus on one thing at a time. Multitasking is overrated. 🎯`,
-    `Celebrate small wins today — they add up to big victories. 🎉`,
-    `Trust the process. You've handled tough days before, you'll handle this one too. 💪`
-  ];
-  
-  if (todayTasks.length > 5) {
-    message += `That's a packed day! Start with your most important task and let the rest follow. You've got this. 🔥`;
-  } else if (todayTasks.length === 0 && futureTasks.length > 0) {
-    message += `A quiet day with big things ahead. Use this time wisely — maybe prep for what's coming? 📋`;
-  } else if (todayTasks.length === 0) {
-    message += tips[Math.floor(Math.random() * tips.length)];
-  } else {
-    message += tips[Math.floor(Math.random() * tips.length)];
-  }
-
-  return message;
-}
-
-function startAITypingAnimation() {
-  const msgEl = document.getElementById('aiGreetingMessage');
-  if (!msgEl) return;
-
-  const fullText = msgEl.dataset.fullMessage;
-  const typingEl = msgEl.querySelector('.ai-typing-text');
-  const cursorEl = msgEl.querySelector('.ai-cursor');
-
-  if (!typingEl || !fullText) return;
-
-  let charIndex = 0;
-  const typingSpeed = 12; // Smooth, natural typing speed
-
-  function typeChar() {
-    if (charIndex < fullText.length) {
-      let currentText = fullText.substring(0, charIndex + 1);
-      typingEl.textContent = currentText;
-      charIndex++;
-      setTimeout(typeChar, typingSpeed);
-    } else {
-      // Done typing, process markers into beautiful tags
-      let finalHTML = typingEl.textContent
-        .replace(/\[Tasks\]/g, '<span class="ai-insight-tag tasks">📋 Today\'s Tasks</span>')
-        .replace(/\[Calendar\]/g, '<span class="ai-insight-tag calendar">📅 Coming Up</span>')
-        .replace(/\[Projects\]/g, '<span class="ai-insight-tag projects">🚀 Projects</span>')
-        .replace(/\[Tip\]/g, '<span class="ai-insight-tag tip">💡 Quick Tip</span>');
-
-      typingEl.innerHTML = finalHTML;
-
-      // Hide cursor after a moment
-      setTimeout(() => {
-        if (cursorEl) cursorEl.style.display = 'none';
-      }, 600);
-    }
-  }
-
-  typeChar();
 }
 
 function getEventColor(color) {
@@ -21273,6 +21158,11 @@ function applyTheme(theme) {
   }
 
   localStorage.setItem('layerTheme', theme);
+  
+  // Reinitialize background when theme changes (for darklime terminal effect)
+  if (typeof window.reinitViewsBackground === 'function') {
+    window.reinitViewsBackground();
+  }
 }
 
 function toggleThemeModeFromSettings(isLight) {
