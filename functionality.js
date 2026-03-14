@@ -613,19 +613,62 @@ async function deleteFolderWhiteboardItem(folderItemId, projectId) {
 }
 
 /**
- * Generate AI-powered daily summary using real API
+ * Display cached AI summary (used when switching to dashboard tab)
+ */
+function displayCachedAISummary() {
+  const contentEl = document.getElementById('aiSummaryContent');
+  if (!contentEl) return;
+  
+  const cached = localStorage.getItem('layerDashboardAISummary');
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      contentEl.innerHTML = `<p class="ai-summary-text">${data.summary}</p>`;
+      return;
+    } catch (e) {
+      // Invalid cache, continue to show loading
+    }
+  }
+  
+  // No cache yet, show loading indicator
+  contentEl.innerHTML = `
+    <div class="ai-loading-indicator">
+      <div class="ai-loading-spinner"></div>
+      <span>Loading summary...</span>
+    </div>
+  `;
+}
+
+/**
+ * Generate AI-powered daily summary using real API (only on page load/refresh)
  */
 async function generateDashboardAISummary() {
   const contentEl = document.getElementById('aiSummaryContent');
   if (!contentEl) return;
+
+  // Check if we already have a cached summary for today
+  const cached = localStorage.getItem('layerDashboardAISummary');
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      // If cache is from today, use it
+      if (data.date === todayStr) {
+        contentEl.innerHTML = `<p class="ai-summary-text">${data.summary}</p>`;
+        return;
+      }
+    } catch (e) {
+      // Invalid cache, regenerate
+    }
+  }
 
   // Gather context data
   const projects = loadProjects();
   const calendarEvents = loadCalendarEvents();
   const issues = loadIssues();
 
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
   const todayTasks = calendarEvents.filter(e => e.date === todayStr);
   const completedTasks = calendarEvents.filter(e => e.completed).length;
   const totalTasks = calendarEvents.length;
@@ -660,6 +703,12 @@ Keep it personal and encouraging. No bullet points or formatting - just natural 
     if (typeof window.callGeminiAPI === 'function') {
       const response = await window.callGeminiAPI(prompt);
       contentEl.innerHTML = `<p class="ai-summary-text">${response}</p>`;
+      
+      // Cache the summary for today
+      localStorage.setItem('layerDashboardAISummary', JSON.stringify({
+        date: todayStr,
+        summary: response
+      }));
     } else {
       // Fallback to simple message
       const hour = today.getHours();
@@ -668,11 +717,19 @@ Keep it personal and encouraging. No bullet points or formatting - just natural 
         ? `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today.`
         : 'Your schedule is clear today.';
       
-      contentEl.innerHTML = `<p class="ai-summary-text">${greeting}! ${taskSummary} Stay focused and productive.</p>`;
+      const fallbackSummary = `${greeting}! ${taskSummary} Stay focused and productive.`;
+      contentEl.innerHTML = `<p class="ai-summary-text">${fallbackSummary}</p>`;
+      
+      // Cache fallback too
+      localStorage.setItem('layerDashboardAISummary', JSON.stringify({
+        date: todayStr,
+        summary: fallbackSummary
+      }));
     }
   } catch (error) {
     console.error('AI summary error:', error);
-    contentEl.innerHTML = `<p class="ai-summary-text">Ready to tackle your day. Check your tasks and stay productive!</p>`;
+    const errorMsg = 'Ready to tackle your day. Check your tasks and stay productive!';
+    contentEl.innerHTML = `<p class="ai-summary-text">${errorMsg}</p>`;
   }
 }
 

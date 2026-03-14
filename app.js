@@ -497,6 +497,11 @@ function init() {
 
   // Initialize AI icon morphing animation
   initAIIconMorph();
+
+  // Generate AI summary on page load (cached for tab switches)
+  if (typeof generateDashboardAISummary === 'function') {
+    generateDashboardAISummary();
+  }
 }
 
 function showLoadingScreen() {
@@ -2659,9 +2664,9 @@ async function renderCurrentView(preserveScroll = false) {
       if (typeof initializeSharedContentWidget === 'function') {
         initializeSharedContentWidget();
       }
-      // Generate AI summary for dashboard widget
-      if (typeof generateDashboardAISummary === 'function') {
-        generateDashboardAISummary();
+      // Display cached AI summary (don't regenerate on tab switch)
+      if (typeof displayCachedAISummary === 'function') {
+        displayCachedAISummary();
       }
       break;
     case 'my-issues':
