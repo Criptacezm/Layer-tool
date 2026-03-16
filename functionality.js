@@ -5,6 +5,184 @@
 // Track if dashboard AI greeting has been shown this session
 let dashboardAIShown = false;
 
+function loadQuickAccessWebsites() {
+  try {
+    const raw = localStorage.getItem('layer_quick_access_websites');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveQuickAccessWebsites(items) {
+  try {
+    localStorage.setItem('layer_quick_access_websites', JSON.stringify(items || []));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function normalizeQuickAccessUrl(input) {
+  const trimmed = String(input || '').trim();
+  if (!trimmed) return null;
+
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed);
+  const urlStr = hasScheme ? trimmed : `https://${trimmed}`;
+
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getQuickAccessSiteMeta(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    const host = url.hostname.replace(/^www\./, '');
+    const name = host || urlStr;
+    // Use Google's favicon service for higher quality/original logos
+    const icon = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`;
+    return { name, icon, host };
+  } catch {
+    return { name: urlStr, icon: '', host: '' };
+  }
+}
+
+function formatQuickAccessDisplayName(host) {
+  const raw = String(host || '').replace(/^www\./, '').trim();
+  if (!raw) return 'Website';
+  
+  // Handle common sites with specific branding
+  const lowerRaw = raw.toLowerCase();
+  if (lowerRaw.includes('youtube.com')) return 'YouTube';
+  if (lowerRaw.includes('gmail.com') || lowerRaw.includes('mail.google.com')) return 'Gmail';
+  if (lowerRaw.includes('classroom.google.com')) return 'Classroom';
+  if (lowerRaw.includes('github.com')) return 'GitHub';
+  
+  const words = raw
+    .split('.')
+    .filter(Boolean)
+    .filter(part => !['com', 'net', 'org', 'io', 'app', 'co', 'dev', 'ai', 'edu', 'gov'].includes(part.toLowerCase()));
+  
+  const base = (words.length > 0 ? words : raw.split('.')).join(' ');
+  // Capitalize first letter only for a cleaner look
+  return base.charAt(0).toUpperCase() + base.slice(1).replace(/[-_]+/g, ' ').trim();
+}
+
+function renderQuickAccessWebsitesList() {
+  const items = loadQuickAccessWebsites();
+  if (items.length === 0) {
+    return `
+      <div class="quick-access-empty">
+        Add a website URL to create a shortcut.
+      </div>
+    `;
+  }
+
+  return `
+    <div class="quick-access-sites">
+      ${items.map(item => {
+    const safeId = String(item.id || '');
+    const safeUrl = String(item.url || '');
+    const meta = getQuickAccessSiteMeta(safeUrl);
+    const safeName = String(item.name || formatQuickAccessDisplayName(meta.host) || 'WEBSITE');
+    const safeIcon = String(item.icon || meta.icon || '');
+    const fallbackLetter = (safeName || 'W').trim().charAt(0).toUpperCase();
+
+    return `
+        <div class="quick-access-site" title="${safeName}">
+          <button class="quick-access-site-btn" onclick="openQuickAccessWebsite('${safeId}')" type="button">
+            <div class="quick-access-site-icon">
+              <img src="${safeIcon}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+              <span class="quick-access-site-fallback" style="display:none;">${fallbackLetter}</span>
+            </div>
+            <span class="quick-access-site-name">${safeName}</span>
+          </button>
+          <button class="quick-access-site-remove" onclick="removeQuickAccessWebsite('${safeId}')" type="button" title="Remove">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      `;
+  }).join('')}
+    </div>
+  `;
+}
+
+function refreshQuickAccessWebsitesWidget() {
+  const list = document.getElementById('quickAccessWebsitesList');
+  if (!list) return;
+  list.innerHTML = renderQuickAccessWebsitesList();
+}
+
+function addQuickAccessWebsite() {
+  const input = document.getElementById('quickAccessUrlInput');
+  if (!input) return;
+
+  const normalized = normalizeQuickAccessUrl(input.value);
+  if (!normalized) {
+    if (typeof showToast === 'function') {
+      showToast('Please enter a valid website URL');
+    }
+    return;
+  }
+
+  const meta = getQuickAccessSiteMeta(normalized);
+  const items = loadQuickAccessWebsites();
+  const existing = items.find(i => String(i.url || '') === normalized);
+  if (existing) {
+    if (typeof showToast === 'function') {
+      showToast('Website already added');
+    }
+    input.value = '';
+    return;
+  }
+
+  const newItem = {
+    id: `qa-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    url: normalized,
+    name: formatQuickAccessDisplayName(meta.host),
+    icon: meta.icon
+  };
+
+  items.unshift(newItem);
+  saveQuickAccessWebsites(items.slice(0, 24));
+  input.value = '';
+  refreshQuickAccessWebsitesWidget();
+}
+
+function removeQuickAccessWebsite(id) {
+  const items = loadQuickAccessWebsites();
+  const next = items.filter(i => String(i.id) !== String(id));
+  saveQuickAccessWebsites(next);
+  refreshQuickAccessWebsitesWidget();
+}
+
+function openQuickAccessWebsite(id) {
+  const items = loadQuickAccessWebsites();
+  const item = items.find(i => String(i.id) === String(id));
+  if (!item?.url) return;
+  window.open(String(item.url), '_blank', 'noopener');
+}
+
+function initQuickAccessWebsitesWidget() {
+  const input = document.getElementById('quickAccessUrlInput');
+  if (input && input.dataset.qaInitialized !== 'true') {
+    input.dataset.qaInitialized = 'true';
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addQuickAccessWebsite();
+      }
+    });
+  }
+  refreshQuickAccessWebsitesWidget();
+}
+
 function renderInboxView() {
   const projects = loadProjects();
   const calendarEvents = loadCalendarEvents();
@@ -279,6 +457,28 @@ function renderInboxView() {
                     <span>Invite team member</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div class="dashboard-widget" data-widget-id="quick-access-websites">
+              <div class="widget-header">
+                <span class="widget-title">
+                  <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 0 1 0 7.07 5 5 0 0 1-7.07 0l-1.06-1.06"/>
+                    <path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 0 1 0-7.07 5 5 0 0 1 7.07 0l1.06 1.06"/>
+                    <path d="M8 12h8"/>
+                  </svg>
+                  Quick Access
+                </span>
+              </div>
+
+              <div class="quick-access-form" onsubmit="return false;">
+                <input id="quickAccessUrlInput" class="quick-access-input" type="text" placeholder="Paste a website URL (e.g. https://github.com)" />
+                <button class="quick-access-add-btn" type="button" onclick="addQuickAccessWebsite()">Add</button>
+              </div>
+
+              <div id="quickAccessWebsitesList">
+                ${renderQuickAccessWebsitesList()}
               </div>
             </div>
             
@@ -16235,32 +16435,31 @@ function renderTeamChatHeader() {
             <div class="team-chat-header-subtitle">${isDM ? (dmStatus === 'online' ? 'Online' : dmStatus === 'away' ? 'Away' : 'Offline') : 'Channel'}</div>
           </div>
         </div>
-        <div class="team-channel-name">
-          ${isChannel ? '#' : ''} ${channelName}
-        </div>
         <button class="team-header-action-btn" title="More options">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
             <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
           </svg>
         </button>
       </div>
-      
-      <nav class="team-chat-tabs">
-        <button class="team-tab ${teamCurrentTab === 'chat' ? 'active' : ''}" onclick="setTeamTab('chat')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
-          </svg>
-          Channel
-        </button>
-        <button class="team-tab ${teamCurrentTab === 'list' ? 'active' : ''}" onclick="setTeamTab('list')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
-          List
-        </button>
-      </nav>
-      
+
+      <div class="team-chat-header-center">
+        <nav class="team-chat-tabs" aria-label="Chat views">
+          <button class="team-tab ${teamCurrentTab === 'chat' ? 'active' : ''}" onclick="setTeamTab('chat')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
+            </svg>
+            Channel
+          </button>
+          <button class="team-tab ${teamCurrentTab === 'list' ? 'active' : ''}" onclick="setTeamTab('list')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            List
+          </button>
+        </nav>
+      </div>
+
       <div class="team-chat-header-right">
         <button class="team-icon-btn" onclick="toggleTeamMembersPanel()" title="Toggle members panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">

@@ -12039,6 +12039,189 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
+.quick-access-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.quick-access-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-primary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--foreground);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.quick-access-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.quick-access-input:focus {
+  box-shadow: 0 0 0 3px hsl(217 91% 60% / 0.18);
+  border-color: hsl(217 91% 60% / 0.45);
+}
+
+.quick-access-add-btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.quick-access-add-btn:hover {
+  background: var(--glass-bg-primary);
+  border-color: var(--primary);
+}
+
+.quick-access-empty {
+  padding: 14px 12px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  background: color-mix(in hsl, var(--glass-bg) 60%, transparent);
+}
+
+.quick-access-sites {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quick-access-site {
+  position: relative;
+}
+
+.quick-access-site-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 10px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.quick-access-site-btn:hover {
+  background: color-mix(in hsl, var(--glass-bg) 55%, transparent);
+  border-color: var(--glass-border);
+  transform: translateY(-1px);
+}
+
+.quick-access-site-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(217 91% 60% / 0.22);
+  border-color: hsl(217 91% 60% / 0.45);
+}
+
+.quick-access-site-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quick-access-site-icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.quick-access-site-fallback {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--foreground);
+}
+
+.quick-access-site-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.quick-access-site-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: color-mix(in hsl, var(--glass-bg) 65%, transparent);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.quick-access-site:hover .quick-access-site-remove {
+  opacity: 1;
+}
+
+.quick-access-site-remove:hover {
+  background: color-mix(in hsl, var(--glass-bg) 85%, transparent);
+  color: var(--foreground);
+  border-color: var(--glass-border);
+}
+
+@media (max-width: 480px) {
+  .quick-access-sites {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-access-sites {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Dark mode: 60% opacity for glass background */
 [data-mode="dark"] .dashboard-widget {
   background: color-mix(in hsl, var(--glass-bg) 60%, transparent);

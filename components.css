@@ -1427,13 +1427,114 @@
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  background: var(--card);
 }
 
 .team-chat-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.team-mobile-back {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s ease;
+}
+
+.team-mobile-back:hover {
+  background: var(--surface-hover);
+}
+
+.team-mobile-back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(217 91% 60% / 0.25);
+  border-color: hsl(217 91% 60% / 0.35);
+}
+
+.team-chat-header-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.team-chat-header-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.team-chat-header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-chat-header-status-dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--card);
+  background: var(--muted-foreground);
+}
+
+.team-chat-header-avatar.online .team-chat-header-status-dot {
+  background: hsl(142 71% 45%);
+}
+
+.team-chat-header-avatar.away .team-chat-header-status-dot {
+  background: hsl(48 96% 53%);
+}
+
+.team-chat-header-titleblock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.team-chat-header-titleblock .team-channel-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-chat-header-subtitle {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 1px;
+}
+
+.team-chat-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .team-channel-name {
@@ -1470,9 +1571,13 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: 1;
+  justify-content: center;
   overflow-x: auto;
-  padding: 0 8px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  max-width: 100%;
 }
 
 .team-tab {
@@ -1515,6 +1620,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .team-header-btn {

@@ -2701,6 +2701,9 @@ async function renderCurrentView(preserveScroll = false) {
       initWidgetResizeHandles();
       // Initialize dashboard drag/drop (only active in edit mode)
       initWidgetDragDrop();
+      if (typeof initQuickAccessWebsitesWidget === 'function') {
+        initQuickAccessWebsitesWidget();
+      }
       // Restore dashboard AI sidebar state
       if (typeof restoreDashboardAiSidebarState === 'function') {
         restoreDashboardAiSidebarState();
