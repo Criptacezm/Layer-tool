@@ -1420,7 +1420,7 @@ async function loadCalendarEventsFromDB() {
     attachments: [],
     created: e.created_at,
     updated: e.updated_at,
-    conferenceLink: '',
+    conferenceLink: e.conference_link || '',
     guestsCanModify: false,
     priority: e.priority || 'medium',
     duration: e.duration,
@@ -1457,7 +1457,8 @@ async function saveCalendarEventToDB(eventData) {
       project_id: eventData.projectId || null,
       space_id: eventData.spaceId || null,
       assignment_id: eventData.assignmentId || null,
-      location: eventData.location || null
+      location: eventData.location || null,
+      conference_link: eventData.conferenceLink || null
     })
     .select()
     .single();
@@ -1490,6 +1491,7 @@ async function updateCalendarEventInDB(eventId, updates) {
   if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
   if (updates.assignmentId !== undefined) dbUpdates.assignment_id = updates.assignmentId;
   if (updates.location !== undefined) dbUpdates.location = updates.location;
+  if (updates.conferenceLink !== undefined) dbUpdates.conference_link = updates.conferenceLink;
 
   const { error } = await supabaseClient
     .from('calendar_events')
