@@ -952,12 +952,47 @@ function getEventColor(color) {
   return colors[color] || colors.blue;
 }
 
+function normalizeMeetingLink(input) {
+  const trimmed = String(input || '').trim();
+  if (!trimmed) return null;
+
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed);
+  const urlStr = hasScheme ? trimmed : `https://${trimmed}`;
+
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getEventMeetingLink(ev) {
+  const conf = String(ev?.conferenceLink || '').trim();
+  const normalizedConf = normalizeMeetingLink(conf);
+  if (normalizedConf) return normalizedConf;
+
+  const loc = String(ev?.location || '').trim();
+  const normalizedLoc = normalizeMeetingLink(loc);
+  if (normalizedLoc) return normalizedLoc;
+
+  return null;
+}
+
+function openEventMeetingLink(url) {
+  const normalized = normalizeMeetingLink(url);
+  if (!normalized) return;
+  window.open(normalized, '_blank', 'noopener');
+}
+
 // Helper function to get linked info display for events (project, assignment, space)
 function getEventLinkedInfo(ev) {
   const links = [];
 
   // Add location first if exists
-  if (ev.location) {
+  // If location is a URL, treat it as a meeting link instead and don't show it as a badge
+  if (ev.location && !normalizeMeetingLink(ev.location)) {
     links.push(`<span class="event-link-badge location-link" title="Location: ${ev.location}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;">
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -2410,7 +2445,9 @@ function openEditTaskModal(eventId) {
   const endTime = task.endTime || '';
   const duration = calculateDuration(startTime, endTime);
   const locationValue = task.location || '';
+  const meetingLinkValue = task.conferenceLink || '';
   const dateValue = task.date || new Date().toISOString().split('T')[0];
+  const meetingLinkInputId = `editMeetingLink_${String(eventId).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
   const content = `
     <div class="event-dropdown-form" id="eventDropdownForm">
@@ -2441,6 +2478,22 @@ function openEditTaskModal(eventId) {
           Location
         </label>
         <input type="text" name="location" class="form-input" value="${locationValue}" placeholder="Add location...">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2"/>
+          </svg>
+          Meeting link
+        </label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="${meetingLinkInputId}" type="url" name="conferenceLink" class="form-input" value="${meetingLinkValue}" placeholder="https://meet.google.com/..." style="flex:1;">
+          <button type="button" class="btn btn-secondary" onclick="event.stopPropagation(); openEventMeetingLink(document.getElementById('${meetingLinkInputId}')?.value)">
+            Join
+          </button>
+        </div>
       </div>
       
       <div class="time-picker-group">
@@ -2580,6 +2633,8 @@ async function handleEditEventSubmit(e, eventId) {
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
+  const conferenceLinkRaw = data.get('conferenceLink')?.trim() || null;
+  const conferenceLink = conferenceLinkRaw ? normalizeMeetingLink(conferenceLinkRaw) : null;
 
   // Handle project/assignment/space IDs - convert empty strings to null
   const projectIdValue = data.get('projectId');
@@ -2600,6 +2655,7 @@ async function handleEditEventSubmit(e, eventId) {
     endTime: endTime || null,
     color,
     location,
+    conferenceLink,
     projectId,
     assignmentId,
     spaceId
@@ -3943,6 +3999,7 @@ function renderWeekView(events, today) {
           const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
           const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
           const linkedInfo = getEventLinkedInfo(ev);
+          const meetingLink = getEventMeetingLink(ev);
 
           return `
                       <div class="week-event-card" 
@@ -3963,6 +4020,15 @@ function renderWeekView(events, today) {
                             ${timeRange}
                           </div>
                           ${linkedInfo}
+                          ${meetingLink ? `
+                            <button class="event-join-btn" type="button" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/>
+                                <rect x="3" y="7" width="12" height="10" rx="2" ry="2"/>
+                              </svg>
+                              Join
+                            </button>
+                          ` : ''}
                         </div>
                         <div class="event-resize-handle" 
                              onmousedown="event.stopPropagation(); handleEventResizeStart(event, '${ev.id}', '${dateStr}')">
@@ -4026,6 +4092,7 @@ function renderDayView(events, today) {
         const endTimeStr = ev.endTime ? formatTime12h(ev.endTime) : '';
         const timeRange = endTimeStr ? `${timeStr} - ${endTimeStr}` : timeStr;
         const linkedInfo = getEventLinkedInfo(ev);
+        const meetingLink = getEventMeetingLink(ev);
 
         return `
                   <div class="week-event-card day-event-card"
@@ -4046,6 +4113,15 @@ function renderDayView(events, today) {
                         ${timeRange}
                       </div>
                       ${linkedInfo}
+                      ${meetingLink ? `
+                        <button class="event-join-btn" type="button" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/>
+                            <rect x="3" y="7" width="12" height="10" rx="2" ry="2"/>
+                          </svg>
+                          Join
+                        </button>
+                      ` : ''}
                     </div>
                     <div class="event-resize-handle" 
                          onmousedown="event.stopPropagation(); handleEventResizeStart(event, '${ev.id}', '${dateStr}')">
@@ -4827,6 +4903,7 @@ function renderAgendaView(events, today) {
       const color = getCategoryColor(category);
       const timeStr = event.time ? formatTime12h(event.time) : 'All day';
       const endTimeStr = event.endTime ? ` - ${formatTime12h(event.endTime)}` : '';
+      const meetingLink = getEventMeetingLink(event);
 
       return `
                     <div class="agenda-event-card" 
@@ -4839,7 +4916,7 @@ function renderAgendaView(events, today) {
                       <div class="agenda-event-color-bar" style="background: ${color};"></div>
                       <div class="agenda-event-content">
                         <div class="agenda-event-title">${event.title}</div>
-                        ${event.location ? `
+                        ${event.location && !normalizeMeetingLink(event.location) ? `
                           <div class="agenda-event-location">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -4851,6 +4928,11 @@ function renderAgendaView(events, today) {
                         ${event.description ? `<div class="agenda-event-description">${event.description.substring(0, 80)}${event.description.length > 80 ? '...' : ''}</div>` : ''}
                       </div>
                       <div class="agenda-event-actions">
+                        ${meetingLink ? `
+                          <button class="agenda-action-btn" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')" title="Join meeting">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/><rect x="3" y="7" width="12" height="10" rx="2" ry="2"/></svg>
+                          </button>
+                        ` : ''}
                         <button class="agenda-action-btn" onclick="event.stopPropagation(); openEditTaskModal('${event.id}')" title="Edit">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
