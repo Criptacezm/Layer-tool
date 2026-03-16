@@ -986,6 +986,51 @@ function openEventMeetingLink(url) {
   window.open(normalized, '_blank', 'noopener');
 }
 
+function getMeetingProvider(url) {
+  const normalized = normalizeMeetingLink(url);
+  if (!normalized) return null;
+
+  try {
+    const { hostname, pathname } = new URL(normalized);
+    const host = hostname.toLowerCase();
+    const path = (pathname || '').toLowerCase();
+
+    if (host.includes('teams.microsoft.com') || (host.includes('microsoft.com') && path.includes('meetup-join'))) {
+      return 'teams';
+    }
+    if (host.includes('zoom.us') || host.includes('zoom.com')) {
+      return 'zoom';
+    }
+    if (host.includes('meet.google.com')) {
+      return 'meet';
+    }
+
+    return 'generic';
+  } catch {
+    return null;
+  }
+}
+
+function getMeetingProviderIconHtml(url) {
+  const provider = getMeetingProvider(url);
+  if (provider === 'teams') {
+    return '<img class="meeting-provider-icon" src="https://www.google.com/s2/favicons?domain=teams.microsoft.com&sz=64" alt="Microsoft Teams">';
+  }
+  if (provider === 'zoom') {
+    return '<img class="meeting-provider-icon" src="https://www.google.com/s2/favicons?domain=zoom.us&sz=64" alt="Zoom">';
+  }
+  if (provider === 'meet') {
+    return '<img class="meeting-provider-icon" src="https://www.google.com/s2/favicons?domain=meet.google.com&sz=64" alt="Google Meet">';
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="meeting-provider-icon" aria-hidden="true">
+      <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/>
+      <rect x="3" y="7" width="12" height="10" rx="2" ry="2"/>
+    </svg>
+  `;
+}
+
 // Helper function to get linked info display for events (project, assignment, space)
 function getEventLinkedInfo(ev) {
   const links = [];
@@ -2491,6 +2536,7 @@ function openEditTaskModal(eventId) {
         <div style="display:flex; gap:10px; align-items:center;">
           <input id="${meetingLinkInputId}" type="url" name="conferenceLink" class="form-input" value="${meetingLinkValue}" placeholder="https://meet.google.com/..." style="flex:1;">
           <button type="button" class="btn btn-secondary" onclick="event.stopPropagation(); openEventMeetingLink(document.getElementById('${meetingLinkInputId}')?.value)">
+            ${getMeetingProviderIconHtml(meetingLinkValue || locationValue)}
             Join
           </button>
         </div>
@@ -4022,10 +4068,7 @@ function renderWeekView(events, today) {
                           ${linkedInfo}
                           ${meetingLink ? `
                             <button class="event-join-btn" type="button" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/>
-                                <rect x="3" y="7" width="12" height="10" rx="2" ry="2"/>
-                              </svg>
+                              ${getMeetingProviderIconHtml(meetingLink)}
                               Join
                             </button>
                           ` : ''}
@@ -4115,10 +4158,7 @@ function renderDayView(events, today) {
                       ${linkedInfo}
                       ${meetingLink ? `
                         <button class="event-join-btn" type="button" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/>
-                            <rect x="3" y="7" width="12" height="10" rx="2" ry="2"/>
-                          </svg>
+                          ${getMeetingProviderIconHtml(meetingLink)}
                           Join
                         </button>
                       ` : ''}
@@ -4930,7 +4970,7 @@ function renderAgendaView(events, today) {
                       <div class="agenda-event-actions">
                         ${meetingLink ? `
                           <button class="agenda-action-btn" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')" title="Join meeting">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14"/><rect x="3" y="7" width="12" height="10" rx="2" ry="2"/></svg>
+                            ${getMeetingProviderIconHtml(meetingLink)}
                           </button>
                         ` : ''}
                         <button class="agenda-action-btn" onclick="event.stopPropagation(); openEditTaskModal('${event.id}')" title="Edit">
