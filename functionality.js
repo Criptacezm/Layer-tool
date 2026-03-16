@@ -25414,12 +25414,12 @@ function renderSpacesInSidebar() {
     const spaceItem = document.createElement('div');
     spaceItem.className = 'workspace-space-item';
     spaceItem.innerHTML = `
-      <div class="custom-space-item-wrapper workspace-nested" ${space.colorTag && space.colorTag !== 'none' ? `style="--space-accent: var(--event-${space.colorTag});"` : ''}>
+        <div class="custom-space-item-wrapper workspace-nested" ${space.colorTag && space.colorTag !== 'none' ? `style="--space-accent: var(--event-${space.colorTag});"` : ''}>
         <button class="custom-space-item workspace-space ${space.colorTag && space.colorTag !== 'none' ? 'has-color' : ''}" data-space-id="${space.id}" onclick="openSpaceView('${space.id}')">
           <span class="space-icon-svg">${getSpaceIconSVG(space.icon)}</span>
           <span class="space-name-text">${space.name}</span>
         </button>
-        <button class="delete-item-btn" onclick="confirmDeleteSpace('${space.id}', '${space.name.replace(/'/g, "\\'")}')" title="Delete space">
+        <button class="delete-item-btn" onclick="confirmDeleteSpace('${space.id}', '${space.name.replace(/'/g, "\\'")}')">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
