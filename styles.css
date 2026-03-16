@@ -487,6 +487,11 @@
   --event-purple: hsl(271, 91%, 65%);
   --event-orange: hsl(24, 90%, 60%);
   --event-red: hsl(0, 84%, 60%);
+  --event-teal: hsl(173, 80%, 40%);
+  --event-yellow: hsl(45, 93%, 47%);
+  --event-pink: hsl(330, 85%, 60%);
+  --event-cyan: hsl(190, 90%, 45%);
+  --event-gray: hsl(215, 14%, 55%);
 
   /* Event colors RGB for gradients */
   --event-blue-rgb: 59, 130, 246;
@@ -494,6 +499,11 @@
   --event-purple-rgb: 147, 51, 234;
   --event-orange-rgb: 249, 115, 22;
   --event-red-rgb: 239, 68, 68;
+  --event-teal-rgb: 16, 185, 170;
+  --event-yellow-rgb: 234, 179, 8;
+  --event-pink-rgb: 236, 72, 153;
+  --event-cyan-rgb: 6, 182, 212;
+  --event-gray-rgb: 100, 116, 139;
 
   /* Glass effect variables */
   --glass-blur: 16px;
@@ -2759,7 +2769,7 @@ body.light .views-background,
 }
 
 .modal-content {
-  padding: 20px;
+  padding: 16px 20px;
 }
 
 /* ============================================
@@ -5854,10 +5864,12 @@ body.light .views-background,
   align-items: center;
   gap: 3px;
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--event-color, var(--primary)) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--event-color, var(--primary)) 32%, transparent);
   border-radius: 4px;
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.9);
+  color: color-mix(in srgb, var(--foreground) 88%, transparent);
+  font-weight: 600;
   white-space: nowrap;
   max-width: 100px;
   overflow: hidden;
@@ -25517,7 +25529,7 @@ html:not([data-mode="light"]) body:not(.light) .custom-space-item:hover {
 }
 
 .event-dropdown-form .modal-content {
-  padding: 16px;
+  padding: 12px;
 }
 
 .event-dropdown-form .form-group {

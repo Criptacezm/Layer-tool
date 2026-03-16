@@ -947,7 +947,12 @@ function getEventColor(color) {
     green: 'hsl(142, 71%, 45%)',
     purple: 'hsl(271, 91%, 65%)',
     orange: 'hsl(24, 90%, 60%)',
-    red: 'hsl(0, 84%, 60%)'
+    red: 'hsl(0, 84%, 60%)',
+    teal: 'hsl(173, 80%, 40%)',
+    yellow: 'hsl(45, 93%, 47%)',
+    pink: 'hsl(330, 85%, 60%)',
+    cyan: 'hsl(190, 90%, 45%)',
+    gray: 'hsl(215, 14%, 55%)'
   };
   return colors[color] || colors.blue;
 }
@@ -957,11 +962,20 @@ function normalizeMeetingLink(input) {
   if (!trimmed) return null;
 
   const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed);
+  if (!hasScheme) {
+    // Avoid treating plain location text like "Office" or "Room 12" as a URL.
+    // Only allow scheme-less inputs that look like a real domain.
+    if (/\s/.test(trimmed)) return null;
+    if (!trimmed.includes('.')) return null;
+  }
+
   const urlStr = hasScheme ? trimmed : `https://${trimmed}`;
 
   try {
     const url = new URL(urlStr);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    // Guard against links like https://office (no real TLD)
+    if (!url.hostname || (!url.hostname.includes('.') && url.hostname !== 'localhost')) return null;
     return url.toString();
   } catch {
     return null;
@@ -2573,14 +2587,6 @@ function openEditTaskModal(eventId) {
           </svg>
           <span>${duration ? `Duration: ${duration}` : 'Select time'}</span>
         </div>
-        
-        <div class="quick-duration-btns">
-          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(30)">30 min</button>
-          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(60)">1 hour</button>
-          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(90)">1.5 hours</button>
-          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(120)">2 hours</button>
-          <button type="button" class="quick-duration-btn" onclick="updateEndTimeFromDuration(180)">3 hours</button>
-        </div>
       </div>
       
       <div class="form-group">
@@ -2591,6 +2597,11 @@ function openEditTaskModal(eventId) {
           <option value="purple" ${task.color === 'purple' ? 'selected' : ''}>Purple</option>
           <option value="orange" ${task.color === 'orange' ? 'selected' : ''}>Orange</option>
           <option value="red" ${task.color === 'red' ? 'selected' : ''}>Red</option>
+          <option value="teal" ${task.color === 'teal' ? 'selected' : ''}>Teal</option>
+          <option value="yellow" ${task.color === 'yellow' ? 'selected' : ''}>Yellow</option>
+          <option value="pink" ${task.color === 'pink' ? 'selected' : ''}>Pink</option>
+          <option value="cyan" ${task.color === 'cyan' ? 'selected' : ''}>Cyan</option>
+          <option value="gray" ${task.color === 'gray' ? 'selected' : ''}>Gray</option>
         </select>
       </div>
       
@@ -2831,6 +2842,11 @@ function openAddRecurringModal() {
           <option value="purple">Purple</option>
           <option value="orange">Orange</option>
           <option value="red">Red</option>
+          <option value="teal">Teal</option>
+          <option value="yellow">Yellow</option>
+          <option value="pink">Pink</option>
+          <option value="cyan">Cyan</option>
+          <option value="gray">Gray</option>
         </select>
       </div>
       <div class="form-actions">
@@ -3292,6 +3308,11 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
               <option value="purple">Purple</option>
               <option value="orange">Orange</option>
               <option value="red">Red</option>
+              <option value="teal">Teal</option>
+              <option value="yellow">Yellow</option>
+              <option value="pink">Pink</option>
+              <option value="cyan">Cyan</option>
+              <option value="gray">Gray</option>
             </select>
           </div>
           
@@ -3520,6 +3541,11 @@ function openCreateEventModalWithTime(date, startTime, endTime) {
           <option value="purple">Purple</option>
           <option value="orange">Orange</option>
           <option value="red">Red</option>
+          <option value="teal">Teal</option>
+          <option value="yellow">Yellow</option>
+          <option value="pink">Pink</option>
+          <option value="cyan">Cyan</option>
+          <option value="gray">Gray</option>
         </select>
       </div>
       
@@ -5727,6 +5753,11 @@ function openCreateEventModal(defaultDate = null) {
           <option value="purple">Purple</option>
           <option value="orange">Orange</option>
           <option value="red">Red</option>
+          <option value="teal">Teal</option>
+          <option value="yellow">Yellow</option>
+          <option value="pink">Pink</option>
+          <option value="cyan">Cyan</option>
+          <option value="gray">Gray</option>
         </select>
       </div>
       

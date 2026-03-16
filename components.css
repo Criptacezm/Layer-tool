@@ -3729,33 +3729,39 @@
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
+  display: block;
   font-size: 11px;
-  font-weight: 500;
-  color: var(--foreground);
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .form-input,
-.form-textarea {
-  padding: 6px 8px;
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--background);
+  border-radius: 8px;
+  font-size: 13px;
   color: var(--foreground);
-  font-size: 12px;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .form-input:focus,
-.form-textarea:focus {
+.form-textarea:focus,
+.form-select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background: var(--background);
+  box-shadow: 0 0 0 3px hsla(239, 84%, 67%, 0.1);
 }
 
 .form-textarea {
@@ -10997,18 +11003,18 @@ h4.ai-heading {
    Collapsible Form Sections
    ============================================ */
 .form-group-collapsible {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .form-collapsible-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 10px 14px;
   cursor: pointer;
   transition: background 0.15s;
   user-select: none;
@@ -11025,17 +11031,21 @@ h4.ai-heading {
 
 .form-collapsible-header svg:first-child {
   color: var(--muted-foreground);
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
 .form-collapsible-header span {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--foreground);
 }
 
 .form-collapsible-chevron {
+  width: 12px;
+  height: 12px;
   color: var(--muted-foreground);
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -11046,7 +11056,7 @@ h4.ai-heading {
 }
 
 .form-collapsible-content {
-  padding: 16px;
+  padding: 12px;
 }
 
 .form-collapsible-content.collapsed {
@@ -11146,8 +11156,12 @@ h4.ai-heading {
 
 .form-row-triple {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
+}
+
+.form-row-triple > * {
+  min-width: 0;
 }
 
 @media (max-width: 500px) {
