@@ -21061,7 +21061,6 @@ async function rejectFollowRequest(requestId, followerId) {
 
 async function renderSettingsView() {
   const currentTheme = localStorage.getItem('layerTheme') || 'rosepine';
-  const animatedBgEnabled = localStorage.getItem('layerAnimatedBg') !== 'false';
   const appVersion = '0.3.3';
   const lastSync = new Date().toLocaleString();
 
@@ -21254,16 +21253,6 @@ async function renderSettingsView() {
             </label>
             <span style="font-size: 13px; color: var(--muted-foreground);">Light</span>
           </div>
-        </div>
-        <div class="settings-item">
-          <div class="settings-label">
-            <span>Animated Backgrounds</span>
-            <p class="settings-description">Enable or disable WebGL animations to save RAM and power</p>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="animatedBgToggle" ${animatedBgEnabled ? 'checked' : ''} onchange="toggleAnimatedBg(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
         </div>
       </div>
 
@@ -21686,63 +21675,12 @@ function applyTheme(theme) {
   }
 
   localStorage.setItem('layerTheme', theme);
-  
-  // Reinitialize background when theme changes (for darklime terminal effect)
-  if (typeof window.reinitViewsBackground === 'function') {
-    window.reinitViewsBackground();
-  }
 }
 
 function toggleThemeModeFromSettings(isLight) {
   const newMode = isLight ? 'light' : 'dark';
   localStorage.setItem('layerThemeMode', newMode);
   document.documentElement.setAttribute('data-mode', newMode);
-}
-
-function toggleAnimatedBg(enabled) {
-  // Convert to string to ensure consistency with how we check it elsewhere
-  const value = enabled ? 'true' : 'false';
-  localStorage.setItem('layerAnimatedBg', value);
-
-  console.log('Setting animated background to:', value);
-
-  if (!enabled) {
-    // Cleanup login background
-    if (typeof window.loginPageAnimatedBg !== 'undefined' && window.loginPageAnimatedBg) {
-      try {
-        window.loginPageAnimatedBg.destroy();
-        window.loginPageAnimatedBg = null;
-      } catch (e) {
-        console.error('Error destroying login bg:', e);
-      }
-    }
-
-    // Cleanup iridescence background
-    const viewsBg = document.getElementById('viewsBackground');
-    if (viewsBg) {
-      while (viewsBg.firstChild) viewsBg.removeChild(viewsBg.firstChild);
-      viewsBg.style.background = 'transparent';
-    }
-
-    // Force remove any remaining canvases
-    document.querySelectorAll('canvas').forEach(canvas => {
-      const isLoginBg = canvas.id === 'loginPageBg' || (canvas.parentElement && canvas.parentElement.id === 'loginPageBg');
-      const isViewsBg = canvas.parentElement && canvas.parentElement.id === 'viewsBackground';
-
-      if (isLoginBg || isViewsBg) {
-        console.log('Removing background canvas manually');
-        canvas.remove();
-      }
-    });
-  } else {
-    // Re-initialize iridescence background
-    const initIridescence = window.initIridescenceViewsBackground;
-    if (typeof initIridescence === 'function') {
-      initIridescence();
-    }
-  }
-
-  showNotification(enabled ? 'Animated backgrounds enabled' : 'Animated backgrounds disabled', 'info');
 }
 
 function initThemeSelector() {

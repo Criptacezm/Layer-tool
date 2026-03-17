@@ -2,7 +2,7 @@
   "name": "layer-tool-main---backup-3---testing",
   "version": "1.0.0",
   "description": "",
-  "main": "animated-background.js",
+  "main": "layer.html",
   "dependencies": {
     "accepts": "^1.3.8",
     "anymatch": "^3.1.3",

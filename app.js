@@ -1026,32 +1026,9 @@ function showLoginPage() {
     loginOverlay.style.display = 'flex';
   }
 
-  if (loginBgContainer && window.ColorBendsBackground) {
-    // Check if animated backgrounds are disabled in settings
-    if (localStorage.getItem('layerAnimatedBg') === 'false') {
-      loginBgContainer.style.background = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
-      return;
-    }
-
-    try {
-      if (!loginPageAnimatedBg) {
-        loginPageAnimatedBg = new window.ColorBendsBackground(loginBgContainer, {
-          rotation: 0,
-          speed: 0.2,
-          colors: ["#d54444","#ff9500","#742afe"],
-          transparent: true,
-          autoRotate: 0,
-          scale: 1,
-          frequency: 1,
-          warpStrength: 1,
-          mouseInfluence: 1,
-          parallax: 0.5,
-          noise: 0.1
-        });
-      }
-    } catch (e) {
-      console.error('Failed to initialize login background:', e);
-    }
+  if (loginBgContainer) {
+    // Set static gradient background
+    loginBgContainer.style.background = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
   }
   
   if (appContainer) {
@@ -1068,21 +1045,12 @@ function hideLoginPage() {
     loginOverlay.style.display = 'none';
   }
 
-  if (loginPageAnimatedBg) {
-    try {
-      loginPageAnimatedBg.destroy();
-    } catch (e) {
-      console.error('Failed to cleanup login background:', e);
-    }
-    loginPageAnimatedBg = null;
-  }
-
   if (loginBgContainer) {
     loginBgContainer.innerHTML = '';
   }
   
   if (appContainer) {
-    appContainer.style.display = 'block';
+    appContainer.style.display = 'flex';
   }
 }
 
