@@ -17689,13 +17689,14 @@ async function initializePresenceSystem() {
     window.LayerDB.updatePresence(true);
   }, 30000);
 
-  // 3. Start UI Update Loop (Every 1s as requested)
+  // 3. Start UI Update Loop (reduced frequency for performance)
   // This checks for stale last_seen and updates avatars
   if (presenceUpdateInterval) clearInterval(presenceUpdateInterval);
 
+  const presenceInterval = window.isPerformanceMode && window.isPerformanceMode() ? 5000 : 3000;
   presenceUpdateInterval = setInterval(() => {
     updateAllPresenceUI();
-  }, 1000);
+  }, presenceInterval);
 }
 
 // Update specific user UI
@@ -18375,10 +18376,15 @@ function showNotification(message, type = 'info') {
 // ============================================
 let activeMessageNotifications = [];
 
-function showMessagePopupNotification(senderName, message, avatarUrl, onClick) {
-  // Don't show notification if user is already in the chat view with this sender
-  if (document.visibilityState === 'hidden') {
-    // Page is hidden, show notification
+function showMessagePopupNotification(senderName, message, avatarUrl, onClick, channelId) {
+  // Don't show notification if user is already viewing this channel in team view
+  const isOnTeamView = typeof currentView !== 'undefined' && currentView === 'team';
+  const isViewingThisChannel = channelId && teamCurrentChannel && 
+    teamCurrentChannel.toLowerCase() === channelId.toLowerCase();
+  
+  if (isOnTeamView && isViewingThisChannel) {
+    console.log('⏭️ Skipping popup - user is viewing this channel');
+    return;
   }
 
   // Create notification container if it doesn't exist
@@ -18512,6 +18518,13 @@ function searchTeamMembers(query) {
 // Team View Helper Functions
 // Helper to update just the chat area without full re-render
 function updateTeamChatArea() {
+  // PRESERVE: Save input state before re-rendering
+  const inputEl = document.getElementById('teamMessageInput');
+  const savedInputValue = inputEl ? inputEl.value : '';
+  const savedSelectionStart = inputEl ? inputEl.selectionStart : 0;
+  const savedSelectionEnd = inputEl ? inputEl.selectionEnd : 0;
+  const wasFocused = inputEl && document.activeElement === inputEl;
+
   const chatMain = document.querySelector('.team-chat-main');
   if (chatMain) {
     chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' ? renderTeamMessageInput() : '');
@@ -18542,6 +18555,58 @@ function updateTeamChatArea() {
 
   // Initialize enhanced scroll manager
   initChatScrollManager();
+
+  // Auto-focus input when typing (global keyboard capture)
+  initTeamInputAutoFocus();
+
+  // RESTORE: Restore input text and focus state after re-render
+  const newInputEl = document.getElementById('teamMessageInput');
+  if (newInputEl && savedInputValue) {
+    newInputEl.value = savedInputValue;
+    if (wasFocused) {
+      newInputEl.focus();
+      // Restore cursor position
+      newInputEl.setSelectionRange(savedSelectionStart, savedSelectionEnd);
+    }
+  }
+}
+
+// Global auto-focus for team message input
+let teamInputAutoFocusInitialized = false;
+
+function initTeamInputAutoFocus() {
+  if (teamInputAutoFocusInitialized) return;
+  teamInputAutoFocusInitialized = true;
+
+  document.addEventListener('keydown', (e) => {
+    // Only activate when on team view with a channel selected
+    if (typeof currentView === 'undefined' || currentView !== 'team') return;
+    if (!teamCurrentChannel) return;
+    if (teamCurrentTab !== 'chat') return;
+
+    // Skip if user is already focused on an input, textarea, or contenteditable
+    const activeEl = document.activeElement;
+    if (activeEl && (
+      activeEl.tagName === 'INPUT' ||
+      activeEl.tagName === 'TEXTAREA' ||
+      activeEl.isContentEditable ||
+      activeEl.classList.contains('team-message-input')
+    )) {
+      return;
+    }
+
+    // Skip modifier keys, function keys, navigation keys, etc.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length > 1 && !e.key.match(/^[\w\s]$/)) return; // Allow letters, numbers, spaces
+    if (e.key === 'Escape' || e.key === 'Tab') return;
+
+    // Focus the input and let the keystroke through
+    const input = document.getElementById('teamMessageInput');
+    if (input) {
+      input.focus();
+      // The key will naturally be typed into the now-focused input
+    }
+  });
 }
 
 async function selectTeamChannel(channelId) {
@@ -18605,7 +18670,9 @@ async function selectTeamChannel(channelId) {
     clearInterval(window.teamChatPollInterval);
   }
 
-  // Poll every 500ms for truly real-time updates (reduced from 1000ms)
+  // Poll interval based on performance mode (2s normal, 5s performance mode)
+  const pollInterval = window.isPerformanceMode && window.isPerformanceMode() ? 5000 : 2000;
+  
   window.teamChatPollInterval = setInterval(async () => {
     // Only poll if we are viewing this channel
     if (teamCurrentChannel === channelId) {
@@ -19437,6 +19504,9 @@ async function startGlobalDMPolling() {
 
   console.log('🌐 Starting global DM polling for all conversations...');
 
+  // Use longer interval for performance mode
+  const pollInterval = window.isPerformanceMode && window.isPerformanceMode() ? 10000 : 5000;
+
   globalDMPollInterval = setInterval(async () => {
     if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
       return;
@@ -19615,10 +19685,10 @@ async function setupGlobalDMListener() {
 
           showNotification(`New message from ${profile.name}`, 'info');
 
-          // Show popup notification for new DM
+          // Show popup notification for new DM (only if not viewing this channel)
           showMessagePopupNotification(profile.name, newRecord.message, profile.avatar_url, () => {
             selectTeamChannel(newDM.id);
-          });
+          }, newDM.id);
 
           // Play notification sound if we had one
         }
@@ -19642,10 +19712,10 @@ async function setupGlobalDMListener() {
         updateTeamChatArea(); // Update badges
         updateTeamSidebar(); // Update sidebar badges
 
-        // Show popup notification for new message
+        // Show popup notification for new message (only if not viewing this channel)
         showMessagePopupNotification(existingDM.name, newRecord.message, existingDM.avatarUrl, () => {
           selectTeamChannel(existingDM.id);
-        });
+        }, existingDM.id);
       } else {
         // We ARE in this channel.
         // Ensure the message is in our local state for the ACTIVE channel
@@ -19966,6 +20036,11 @@ async function handleTeamChatRealtimeUpdate(payload, subscriptionChannelId) {
         // Update sidebar to show unread badge
         updateTeamSidebar();
 
+        // Show popup notification bubble (bottom right) when not viewing this channel
+        showMessagePopupNotification(userName, newRecord.message, avatarUrl, () => {
+          selectTeamChannel(channelId);
+        }, channelId);
+
         // Show notification
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(`New message from ${userName}`, {
@@ -19973,14 +20048,6 @@ async function handleTeamChatRealtimeUpdate(payload, subscriptionChannelId) {
             icon: avatarUrl || '/default-avatar.png',
             tag: channelId
           });
-        } else {
-          try {
-            // Only show toast if not visible to avoid spam
-            const existingToast = document.querySelector(`.notification[data-channel="${channelId}"]`);
-            if (!existingToast) {
-              showNotification(`New message from ${userName}`, 'info');
-            }
-          } catch (e) { }
         }
 
         // Play notification sound (optional)

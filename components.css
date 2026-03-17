@@ -2315,13 +2315,7 @@
   min-width: 0;
   max-width: 72%;
   align-items: flex-end;
-  animation: msgSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 2px 0;
-}
-
-@keyframes msgSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Consecutive messages from same user - tighter spacing */

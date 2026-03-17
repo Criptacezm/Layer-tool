@@ -1,0 +1,134 @@
+/* ============================================
+   Performance Mode CSS
+   Reduces heavy effects for low-end devices
+   ============================================ */
+
+/* Performance mode - disable heavy effects */
+.performance-mode,
+.performance-mode * {
+  /* Disable backdrop-filter (very GPU intensive) */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  
+  /* Reduce shadows */
+  box-shadow: none !important;
+  text-shadow: none !important;
+  
+  /* Disable complex animations */
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Keep essential transitions for usability */
+.performance-mode .nav-item,
+.performance-mode .btn,
+.performance-mode button:not(.no-transition),
+.performance-mode input,
+.performance-mode select,
+.performance-mode textarea {
+  transition-duration: 0.1s !important;
+}
+
+/* Disable glow effects */
+.performance-mode .superagents-glow,
+.performance-mode .superagents-glow-2,
+.performance-mode .superagents-glow-3,
+.performance-mode [class*="glow"],
+.performance-mode [class*="blur-bg"] {
+  display: none !important;
+}
+
+/* Disable animated backgrounds */
+.performance-mode .animated-bg,
+.performance-mode #animated-bg,
+.performance-mode .iridescence-bg,
+.performance-mode canvas[id*="background"],
+.performance-mode .particle-container {
+  display: none !important;
+}
+
+/* Simplify glass effects */
+.performance-mode .glass,
+.performance-mode [class*="glass-"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Reduce gradient complexity */
+.performance-mode [style*="gradient"],
+.performance-mode [class*="gradient"] {
+  background: var(--surface) !important;
+}
+
+/* Disable hover transforms */
+.performance-mode .card:hover,
+.performance-mode .nav-item:hover,
+.performance-mode .btn:hover {
+  transform: none !important;
+}
+
+/* Disable 3D transforms */
+.performance-mode * {
+  transform-style: flat !important;
+  perspective: none !important;
+}
+
+/* Hide tab-hidden animations completely */
+.tab-hidden .animated-bg,
+.tab-hidden canvas[id*="background"],
+.tab-hidden .iridescence-bg,
+.tab-hidden [class*="animation"],
+.tab-hidden [class*="animate"] {
+  animation-play-state: paused !important;
+}
+
+/* Reduce message list animations */
+.performance-mode .team-message,
+.performance-mode .ai-sidebar-message,
+.performance-mode .ai-chat-message {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Simplify modals */
+.performance-mode .modal,
+.performance-mode .modal-overlay {
+  animation: none !important;
+}
+
+/* Disable loading spinners animation */
+.performance-mode .spinner,
+.performance-mode .loader,
+.performance-mode [class*="loading"] {
+  animation: none !important;
+}
+
+/* Fix scrolling performance */
+.performance-mode .team-messages-list,
+.performance-mode .main-content,
+.performance-mode .views-content {
+  will-change: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: auto !important;
+}
+
+/* Reduce paint operations */
+.performance-mode .card,
+.performance-mode .nav-item,
+.performance-mode .team-chat-item {
+  contain: layout style !important;
+}
+
+/* Disable expensive pseudo-elements */
+.performance-mode *::before,
+.performance-mode *::after {
+  animation: none !important;
+}
+
+/* Keep only essential animations for feedback */
+.performance-mode .showing,
+.performance-mode .hiding {
+  transition: opacity 0.15s ease !important;
+}

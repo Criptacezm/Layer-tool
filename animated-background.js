@@ -59,6 +59,12 @@ class AnimatedBackground {
   init() {
     if (!this.container) return;
     
+    // Skip in performance mode
+    if (window.isPerformanceMode && window.isPerformanceMode()) {
+      console.log('🚀 Skipping animated background in performance mode');
+      return;
+    }
+    
     // Create canvas
     this.canvas = document.createElement('canvas');
     this.canvas.style.width = '100%';

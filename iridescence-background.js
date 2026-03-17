@@ -372,6 +372,12 @@ void main() {
       return;
     }
 
+    // Skip in performance mode - animated backgrounds are GPU intensive
+    if (window.isPerformanceMode && window.isPerformanceMode()) {
+      console.log('🚀 Skipping iridescence background in performance mode');
+      return;
+    }
+
     const bg = document.getElementById('viewsBackground');
     if (!bg) return;
 
