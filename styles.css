@@ -5930,6 +5930,125 @@ body.light .views-background,
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-height: 28px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Agenda action buttons styles */
+.agenda-event-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.agenda-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in hsl, var(--primary) 25%, var(--glass-border));
+  background: color-mix(in hsl, var(--primary) 10%, transparent);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.agenda-action-btn:hover {
+  background: color-mix(in hsl, var(--primary) 20%, transparent);
+  border-color: color-mix(in hsl, var(--primary) 40%, var(--glass-border));
+  transform: translateY(-1px);
+}
+
+.agenda-action-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Join meeting button - uses event's theme color */
+.agenda-join-btn {
+  background: color-mix(in srgb, var(--event-color, var(--primary)) 15%, transparent) !important;
+  border-color: color-mix(in srgb, var(--event-color, var(--primary)) 35%, var(--glass-border)) !important;
+  color: var(--event-color, var(--primary));
+}
+
+.agenda-join-btn:hover {
+  background: color-mix(in srgb, var(--event-color, var(--primary)) 25%, transparent) !important;
+  border-color: var(--event-color, var(--primary)) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--event-color, var(--primary)) 30%, transparent);
+}
+
+.agenda-join-btn svg {
+  color: var(--event-color, var(--primary));
+}
+
+/* Responsive adjustments for agenda-action-btn */
+@media (max-width: 768px) {
+  .agenda-action-btn {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .agenda-action-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .agenda-action-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .agenda-action-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Responsive adjustments for event-join-btn */
+@media (max-width: 768px) {
+  .event-join-btn {
+    font-size: 11px;
+    padding: 5px 8px;
+    gap: 4px;
+    min-height: 26px;
+  }
+  
+  .event-join-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .meeting-provider-icon {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .event-join-btn {
+    font-size: 10px;
+    padding: 4px 6px;
+    gap: 3px;
+    min-height: 24px;
+  }
+  
+  .event-join-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .meeting-provider-icon {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 .event-join-btn svg {
@@ -25545,75 +25664,184 @@ body.light .custom-space-item.active {
   box-shadow: 0 4px 16px hsla(217, 91%, 60%, 0.35);
 }
 
-/* Dropdown Event Creation Form - Appears under cursor */
+/* Dropdown Event Creation Form - Minimalistic & Compact */
 .event-dropdown-form {
   position: fixed;
   z-index: 10000;
-  background: var(--glass-bg);
-  backdrop-filter: blur(64px);
-  -webkit-backdrop-filter: blur(64px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  width: 320px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  animation: slideInFromTop 0.2s ease-out;
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 260px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: slideInFromTop 0.15s ease-out;
+}
+
+[data-mode="light"] .event-dropdown-form,
+.light .event-dropdown-form {
+  background: var(--card);
 }
 
 @keyframes slideInFromTop {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .event-dropdown-form .modal-content {
-  padding: 12px;
+  padding: 10px;
 }
 
 .event-dropdown-form .form-group {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.event-dropdown-form .form-group:last-child {
+  margin-bottom: 0;
 }
 
 .event-dropdown-form .form-group label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--muted-foreground);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.event-dropdown-form .form-input {
+.event-dropdown-form .form-input,
+.event-dropdown-form .form-select {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--input-bg);
-  font-size: 14px;
+  font-size: 13px;
+  color: var(--foreground);
+  transition: border-color 0.15s;
+}
+
+.event-dropdown-form .form-input:focus,
+.event-dropdown-form .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .event-dropdown-form .time-picker-group {
-  margin: 12px 0;
+  margin: 8px 0;
+  padding: 8px;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+  border-radius: 6px;
+}
+
+.event-dropdown-form .time-picker-group-header {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.event-dropdown-form .time-picker-group-header svg {
+  display: none;
+}
+
+.event-dropdown-form .time-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-dropdown-form .time-picker-label {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  min-width: 32px;
+}
+
+.event-dropdown-form .time-picker-select {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--foreground);
+}
+
+.event-dropdown-form .time-picker-divider {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.event-dropdown-form .time-duration-hint {
+  display: none;
+}
+
+.event-dropdown-form .quick-duration-btns {
+  display: none;
+}
+
+.event-dropdown-form .form-group-collapsible {
+  margin-top: 8px;
+}
+
+.event-dropdown-form .form-collapsible-header {
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.event-dropdown-form .form-collapsible-header:hover {
+  background: var(--surface-hover);
+}
+
+.event-dropdown-form .form-collapsible-header svg {
+  display: none;
+}
+
+.event-dropdown-form .form-collapsible-content {
+  padding: 6px 0;
+}
+
+.event-dropdown-form .form-row-triple {
+  display: flex;
+  gap: 6px;
+}
+
+.event-dropdown-form .form-group-inline {
+  flex: 1;
+}
+
+.event-dropdown-form .form-group-inline label {
+  font-size: 10px;
+}
+
+.event-dropdown-form .form-group-inline .form-select {
+  padding: 4px 6px;
+  font-size: 11px;
 }
 
 .event-dropdown-form .form-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
 .event-dropdown-form .btn {
   flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
 .event-dropdown-form .btn-primary {
@@ -25622,10 +25850,37 @@ body.light .custom-space-item.active {
   border: none;
 }
 
+.event-dropdown-form .btn-primary:hover {
+  filter: brightness(1.1);
+}
+
 .event-dropdown-form .btn-secondary {
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   border: 1px solid var(--border);
+}
+
+.event-dropdown-form .btn-secondary:hover {
+  background: var(--surface-hover);
+}
+
+.event-dropdown-form .required {
+  color: var(--destructive);
+  font-size: 10px;
+}
+
+/* Hide meeting link join button in compact form */
+.event-dropdown-form .form-group .btn-secondary:not(.form-actions .btn-secondary) {
+  display: none;
+}
+
+.event-dropdown-form .form-group div[style*="flex"] {
+  flex-direction: column;
+  gap: 4px !important;
+}
+
+.event-dropdown-form .form-group div[style*="flex"] .form-input {
+  width: 100% !important;
 }
 
 /* Schedule Header Light Mode */
@@ -28569,6 +28824,126 @@ body.light .custom-space-item.active {
    Login Page Overlay Styles
    ============================================ */
 
+.light .login-page-overlay,
+[data-mode="light"] .login-page-overlay {
+  background: #f8fafc;
+}
+
+.light .login-page-container,
+[data-mode="light"] .login-page-container {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+.light .login-page-left,
+[data-mode="light"] .login-page-left {
+  background: rgba(0, 0, 0, 0.02);
+  border-right-color: rgba(0, 0, 0, 0.05);
+}
+
+.light .login-title,
+[data-mode="light"] .login-title {
+  color: #1e293b;
+}
+
+.light .login-subtitle,
+[data-mode="light"] .login-subtitle {
+  color: #64748b;
+}
+
+.light .login-form-header h2,
+[data-mode="light"] .login-form-header h2 {
+  color: #1e293b;
+}
+
+.light .login-form-header p,
+[data-mode="light"] .login-form-header p {
+  color: #64748b;
+}
+
+.light .login-tabs,
+[data-mode="light"] .login-tabs {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.light .login-tab,
+[data-mode="light"] .login-tab {
+  color: #64748b;
+}
+
+.light .login-tab.active,
+[data-mode="light"] .login-tab.active {
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.light .login-form-label,
+[data-mode="light"] .login-form-label {
+  color: #475569;
+}
+
+.light .login-input-icon,
+[data-mode="light"] .login-input-icon {
+  color: #94a3b8;
+}
+
+.light .login-form-input,
+[data-mode="light"] .login-form-input {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.light .login-form-input::placeholder,
+[data-mode="light"] .login-form-input::placeholder {
+  color: #94a3b8;
+}
+
+.light .login-form-input:focus,
+[data-mode="light"] .login-form-input:focus {
+  border-color: #7c3aed;
+  background: #ffffff;
+}
+
+.light .login-submit-btn,
+[data-mode="light"] .login-submit-btn {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.light .login-submit-btn:hover,
+[data-mode="light"] .login-submit-btn:hover {
+  background: #6d28d9;
+}
+
+.light .login-divider::before,
+.light .login-divider::after,
+[data-mode="light"] .login-divider::before,
+[data-mode="light"] .login-divider::after {
+  background: #e2e8f0;
+}
+
+.light .login-divider span,
+[data-mode="light"] .login-divider span {
+  color: #94a3b8;
+}
+
+.light .google-login-btn,
+[data-mode="light"] .google-login-btn {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.light .google-login-btn:hover,
+[data-mode="light"] .google-login-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
 .login-page-overlay {
   position: fixed;
   inset: 0;
@@ -28580,6 +28955,7 @@ body.light .custom-space-item.active {
   opacity: 0;
   animation: loginFadeIn 0.6s ease-out forwards;
 }
+
 
 .login-page-bg {
   position: absolute;

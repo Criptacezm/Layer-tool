@@ -2494,11 +2494,17 @@ async function confirmDeleteTaskSeries(recurringId) {
 }
 
 // NEW: Edit task modal
-function openEditTaskModal(eventId) {
+function openEditTaskModal(eventId, anchorElement = null) {
   const events = loadCalendarEvents();
   // Use == for type coercion (eventId may be string or number)
   const task = events.find(e => e.id == eventId);
   if (!task) return;
+
+  // Remove any existing dropdown
+  const existingDropdown = document.getElementById('eventDropdownForm');
+  if (existingDropdown) {
+    existingDropdown.remove();
+  }
 
   const startTime = task.time || '';
   const endTime = task.endTime || '';
@@ -2512,140 +2518,91 @@ function openEditTaskModal(eventId) {
     <div class="event-dropdown-form" id="eventDropdownForm">
       <div class="modal-content">
         <form id="editEventForm">
-      <div class="form-group">
-        <label>Title <span class="required">*</span></label>
-        <input type="text" name="title" class="form-input" value="${task.title}" required>
-      </div>
-      
-      <div class="form-group">
-        <label>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <path d="M16 2v4M8 2v4M3 10h18"/>
-          </svg>
-          Date <span class="required">*</span>
-        </label>
-        <input type="date" name="date" class="form-input" value="${dateValue}" required>
-      </div>
-      
-      <div class="form-group">
-        <label>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-          Location
-        </label>
-        <input type="text" name="location" class="form-input" value="${locationValue}" placeholder="Add location...">
-      </div>
+          <div class="form-group">
+            <label>Title <span class="required">*</span></label>
+            <input type="text" name="title" class="form-input" value="${task.title}" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Date <span class="required">*</span></label>
+            <input type="date" name="date" class="form-input" value="${dateValue}" required>
+          </div>
+          
+          <div class="time-picker-group">
+            <div class="time-picker-group-header">Time</div>
+            <div class="time-picker-row">
+              <span class="time-picker-label">From</span>
+              <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+                <option value="">—</option>
+                ${generateTimeOptions(startTime)}
+              </select>
+              <span class="time-picker-divider">→</span>
+              <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+                <option value="">—</option>
+                ${generateTimeOptions(endTime)}
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" name="location" class="form-input" value="${locationValue}" placeholder="Add location...">
+          </div>
 
-      <div class="form-group">
-        <label>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
-            <polygon points="23 7 16 12 23 17 23 7"/>
-            <rect x="1" y="5" width="15" height="14" rx="2"/>
-          </svg>
-          Meeting link
-        </label>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <input id="${meetingLinkInputId}" type="url" name="conferenceLink" class="form-input" value="${meetingLinkValue}" placeholder="https://meet.google.com/..." style="flex:1;">
-          <button type="button" class="btn btn-secondary" onclick="event.stopPropagation(); openEventMeetingLink(document.getElementById('${meetingLinkInputId}')?.value)">
-            ${getMeetingProviderIconHtml(meetingLinkValue || locationValue)}
-            Join
-          </button>
-        </div>
-      </div>
-      
-      <div class="time-picker-group">
-        <div class="time-picker-group-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-          </svg>
-          Time
-        </div>
-        
-        <div class="time-picker-row">
-          <span class="time-picker-label">From</span>
-          <div class="time-picker-select-wrapper">
-            <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
-              <option value="">No time</option>
-              ${generateTimeOptions(startTime)}
+          <div class="form-group">
+            <label>Meeting link</label>
+            <input id="${meetingLinkInputId}" type="url" name="conferenceLink" class="form-input" value="${meetingLinkValue}" placeholder="https://...">
+          </div>
+          
+          <div class="form-group">
+            <label>Color</label>
+            <select name="color" class="form-select">
+              <option value="blue" ${task.color === 'blue' ? 'selected' : ''}>Blue</option>
+              <option value="green" ${task.color === 'green' ? 'selected' : ''}>Green</option>
+              <option value="purple" ${task.color === 'purple' ? 'selected' : ''}>Purple</option>
+              <option value="orange" ${task.color === 'orange' ? 'selected' : ''}>Orange</option>
+              <option value="red" ${task.color === 'red' ? 'selected' : ''}>Red</option>
+              <option value="teal" ${task.color === 'teal' ? 'selected' : ''}>Teal</option>
+              <option value="yellow" ${task.color === 'yellow' ? 'selected' : ''}>Yellow</option>
+              <option value="pink" ${task.color === 'pink' ? 'selected' : ''}>Pink</option>
+              <option value="cyan" ${task.color === 'cyan' ? 'selected' : ''}>Cyan</option>
+              <option value="gray" ${task.color === 'gray' ? 'selected' : ''}>Gray</option>
             </select>
           </div>
-          <span class="time-picker-divider">→</span>
-          <div class="time-picker-select-wrapper">
-            <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
-              <option value="">No time</option>
-              ${generateTimeOptions(endTime)}
-            </select>
-          </div>
-        </div>
-        
-        <div class="time-duration-hint" id="durationHint">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-          </svg>
-          <span>${duration ? `Duration: ${duration}` : 'Select time'}</span>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label>Color</label>
-        <select name="color" class="form-select">
-          <option value="blue" ${task.color === 'blue' ? 'selected' : ''}>Blue</option>
-          <option value="green" ${task.color === 'green' ? 'selected' : ''}>Green</option>
-          <option value="purple" ${task.color === 'purple' ? 'selected' : ''}>Purple</option>
-          <option value="orange" ${task.color === 'orange' ? 'selected' : ''}>Orange</option>
-          <option value="red" ${task.color === 'red' ? 'selected' : ''}>Red</option>
-          <option value="teal" ${task.color === 'teal' ? 'selected' : ''}>Teal</option>
-          <option value="yellow" ${task.color === 'yellow' ? 'selected' : ''}>Yellow</option>
-          <option value="pink" ${task.color === 'pink' ? 'selected' : ''}>Pink</option>
-          <option value="cyan" ${task.color === 'cyan' ? 'selected' : ''}>Cyan</option>
-          <option value="gray" ${task.color === 'gray' ? 'selected' : ''}>Gray</option>
-        </select>
-      </div>
-      
-      <!-- Link to Project, Assignment, or Space -->
-      <div class="form-group-collapsible">
-        <div class="form-collapsible-header collapsed" onclick="toggleEventLinksSection()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
-          <span>Link to Project / Assignment / Space</span>
-          <svg class="form-collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        </div>
-        <div class="form-collapsible-content collapsed" id="eventLinksSection">
-          <div class="form-row-triple">
-            <div class="form-group-inline">
-              <label>Project</label>
-              <select name="projectId" class="form-select form-select-sm">
-                ${generateProjectOptions(task.projectId)}
-              </select>
+          
+          <div class="form-group-collapsible">
+            <div class="form-collapsible-header collapsed" onclick="toggleEventLinksSection()">
+              <span>Link to Project / Assignment / Space</span>
             </div>
-            <div class="form-group-inline">
-              <label>Assignment</label>
-              <select name="assignmentId" class="form-select form-select-sm">
-                ${generateAssignmentOptions(task.assignmentId)}
-              </select>
-            </div>
-            <div class="form-group-inline">
-              <label>Space</label>
-              <select name="spaceId" class="form-select form-select-sm">
-                ${generateSpaceOptions(task.spaceId)}
-              </select>
+            <div class="form-collapsible-content collapsed" id="eventLinksSection">
+              <div class="form-row-triple">
+                <div class="form-group-inline">
+                  <label>Project</label>
+                  <select name="projectId" class="form-select form-select-sm">
+                    ${generateProjectOptions(task.projectId)}
+                  </select>
+                </div>
+                <div class="form-group-inline">
+                  <label>Assignment</label>
+                  <select name="assignmentId" class="form-select form-select-sm">
+                    ${generateAssignmentOptions(task.assignmentId)}
+                  </select>
+                </div>
+                <div class="form-group-inline">
+                  <label>Space</label>
+                  <select name="spaceId" class="form-select form-select-sm">
+                    ${generateSpaceOptions(task.spaceId)}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeEventDropdown()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-      </div>
-    </form>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeEventDropdown()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
       </div>
     </div>
   `;
@@ -2653,14 +2610,64 @@ function openEditTaskModal(eventId) {
   // Add dropdown to body
   document.body.insertAdjacentHTML('beforeend', content);
 
-  // Position the dropdown in the center of the screen
+  // Position the dropdown next to the clicked event (prefer right side)
   const dropdown = document.getElementById('eventDropdownForm');
   if (dropdown) {
     dropdown.style.position = 'fixed';
-    dropdown.style.left = '50%';
-    dropdown.style.top = '50%';
-    dropdown.style.transform = 'translate(-50%, -50%)';
     dropdown.style.zIndex = '10000';
+
+    let anchorRect = null;
+
+    if (anchorElement && typeof anchorElement.getBoundingClientRect === 'function') {
+      anchorRect = anchorElement.getBoundingClientRect();
+    }
+
+    if (!anchorRect) {
+      const fallbackEl = document.querySelector(`[data-event-id="${eventId}"]`) ||
+        document.querySelector(`[onclick*="openEditTaskModal('${eventId}')"]:not(button)`);
+      if (fallbackEl && typeof fallbackEl.getBoundingClientRect === 'function') {
+        anchorRect = fallbackEl.getBoundingClientRect();
+      }
+    }
+
+    // Default to centered if we cannot find an anchor
+    if (!anchorRect) {
+      dropdown.style.left = '50%';
+      dropdown.style.top = '50%';
+      dropdown.style.transform = 'translate(-50%, -50%)';
+    } else {
+      // Clear any previous transform when anchoring
+      dropdown.style.transform = '';
+
+      // Measure after insert
+      const rect = dropdown.getBoundingClientRect();
+      const offset = 10;
+      const viewportPadding = 10;
+
+      // Prefer opening to the right of the anchor
+      let posX = anchorRect.right + offset;
+      let posY = anchorRect.top;
+
+      // If off-screen to the right, open to the left
+      if (posX + rect.width > window.innerWidth - viewportPadding) {
+        posX = anchorRect.left - rect.width - offset;
+      }
+
+      // Clamp horizontally
+      if (posX < viewportPadding) posX = viewportPadding;
+      if (posX + rect.width > window.innerWidth - viewportPadding) {
+        posX = window.innerWidth - rect.width - viewportPadding;
+      }
+
+      // Clamp vertically
+      if (posY + rect.height > window.innerHeight - viewportPadding) {
+        posY = window.innerHeight - rect.height - viewportPadding;
+      }
+      if (posY < viewportPadding) posY = viewportPadding;
+
+      dropdown.style.left = `${posX}px`;
+      dropdown.style.top = `${posY}px`;
+    }
   }
 
   // Add click listener to close dropdown when clicking outside
@@ -4080,7 +4087,7 @@ function renderWeekView(events, today) {
                            data-event-id="${ev.id}"
                            data-date="${dateStr}"
                            ondragstart="handleDragStart(event, '${ev.id}', '${dateStr}')"
-                           onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')"
+                           onclick="event.stopPropagation(); openEditTaskModal('${ev.id}', this)"
                            oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, '${ev.id}')">
                         <div class="week-event-color-bar" style="background: ${color};"></div>
                         <div class="week-event-content">
@@ -4170,7 +4177,7 @@ function renderDayView(events, today) {
                        data-event-id="${ev.id}"
                        data-date="${dateStr}"
                        ondragstart="handleDragStart(event, '${ev.id}', '${dateStr}')"
-                       onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')"
+                       onclick="event.stopPropagation(); openEditTaskModal('${ev.id}', this)"
                        oncontextmenu="event.preventDefault(); event.stopPropagation(); showTaskContextMenu(event, '${ev.id}')">
                     <div class="week-event-color-bar" style="background: ${color};"></div>
                     <div class="week-event-content">
@@ -4241,7 +4248,7 @@ function renderMonthViewAdvanced(events, today) {
       const color = getEventColor(ev.color || 'blue');
       return `
               <div class="month-event" style="--event-color: ${color};"
-                   onclick="event.stopPropagation(); openEditTaskModal('${ev.id}')">
+                   onclick="event.stopPropagation(); openEditTaskModal('${ev.id}', this)">
                 <span class="month-event-dot" style="background: ${color};"></span>
                 <span class="month-event-title">${ev.title.length > 12 ? ev.title.substring(0, 10) + '...' : ev.title}</span>
               </div>
@@ -4321,6 +4328,9 @@ function showTaskContextMenu(event, eventId) {
   const existingMenu = document.getElementById('taskContextMenu');
   if (existingMenu) existingMenu.remove();
 
+  // Store anchor element so actions (like Edit) can open near the task card
+  window.taskContextMenuAnchorEl = event?.currentTarget || event?.target || null;
+
   const menu = document.createElement('div');
   menu.id = 'taskContextMenu';
   menu.className = 'task-context-menu';
@@ -4332,7 +4342,7 @@ function showTaskContextMenu(event, eventId) {
       </svg>
       Duplicate
     </button>
-    <button class="context-menu-item" onclick="openEditTaskModal('${eventId}'); hideTaskContextMenu();">
+    <button class="context-menu-item" onclick="openEditTaskModal('${eventId}', window.taskContextMenuAnchorEl); hideTaskContextMenu();">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -4361,6 +4371,8 @@ function showTaskContextMenu(event, eventId) {
 function hideTaskContextMenu() {
   const menu = document.getElementById('taskContextMenu');
   if (menu) menu.remove();
+
+  window.taskContextMenuAnchorEl = null;
 }
 
 // Drag handlers
@@ -4973,7 +4985,7 @@ function renderAgendaView(events, today) {
 
       return `
                     <div class="agenda-event-card" 
-                         onclick="openEditTaskModal('${event.id}')"
+                         onclick="openEditTaskModal('${event.id}', this)"
                          oncontextmenu="showTaskContextMenu(event, '${event.id}'); return false;">
                       <div class="agenda-event-time-block">
                         <span class="agenda-event-time">${timeStr}</span>
@@ -4995,11 +5007,11 @@ function renderAgendaView(events, today) {
                       </div>
                       <div class="agenda-event-actions">
                         ${meetingLink ? `
-                          <button class="agenda-action-btn" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')" title="Join meeting">
+                          <button class="agenda-action-btn agenda-join-btn" style="--event-color: ${color};" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')" title="Join meeting">
                             ${getMeetingProviderIconHtml(meetingLink)}
                           </button>
                         ` : ''}
-                        <button class="agenda-action-btn" onclick="event.stopPropagation(); openEditTaskModal('${event.id}')" title="Edit">
+                        <button class="agenda-action-btn" onclick="event.stopPropagation(); openEditTaskModal('${event.id}', this.closest('.agenda-event-card') || this)" title="Edit">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                         <button class="agenda-action-btn delete" onclick="event.stopPropagation(); deleteTask('${event.id}')" title="Delete">
