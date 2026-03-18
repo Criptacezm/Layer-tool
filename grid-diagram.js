@@ -67,7 +67,21 @@ const GripState = {
   GRID_SIZE: 20,
   SNAP_TO_GRID: true,
   MIN_SCALE: 0.1,
-  MAX_SCALE: 5
+  MAX_SCALE: 5,
+
+  // Touch State (Tablet/iPad Support)
+  lastTouchX: 0,
+  lastTouchY: 0,
+  touchStartPos: null,
+  isTwoFingerTouch: false,
+  lastPinchDistance: null,
+  lastPinchCenter: null,
+
+  // Pen/Stylus State
+  isPenDown: false,
+  lastPenX: 0,
+  lastPenY: 0,
+  penPressure: 0.5
 };
 
 // ============================================
@@ -820,6 +834,23 @@ function renderGripOverlay() {
   window.addEventListener('mouseup', handleMouseUp);
   container.addEventListener('wheel', handleWheel, { passive: false });
   document.addEventListener('keydown', handleKeyDown);
+  
+  // Touch and Pointer Events for Tablet/iPad/Pen Support
+  container.addEventListener('touchstart', handleTouchStart, { passive: false });
+  container.addEventListener('touchmove', handleTouchMove, { passive: false });
+  container.addEventListener('touchend', handleTouchEnd, { passive: false });
+  container.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+  
+  // Pointer Events for Pen/Stylus Support (pressure sensitivity)
+  container.addEventListener('pointerdown', handlePointerDown, { passive: false });
+  container.addEventListener('pointermove', handlePointerMove, { passive: false });
+  container.addEventListener('pointerup', handlePointerUp, { passive: false });
+  container.addEventListener('pointercancel', handlePointerUp, { passive: false });
+  
+  // Prevent default touch behaviors that interfere with drawing
+  container.addEventListener('gesturestart', (e) => e.preventDefault());
+  container.addEventListener('gesturechange', (e) => e.preventDefault());
+  container.addEventListener('gestureend', (e) => e.preventDefault());
   
   // Drag-and-drop from circuit panel
   container.addEventListener('dragover', (e) => {
@@ -1621,6 +1652,220 @@ window.addEventListener('keyup', (e) => {
     updateCursor();
   }
 });
+
+
+// ============================================
+// Touch Event Handlers (Tablet/iPad Support)
+// ============================================
+
+function handleTouchStart(e) {
+  // Prevent default to avoid scrolling/zooming
+  e.preventDefault();
+  
+  const touch = e.touches[0];
+  if (!touch) return;
+  
+  // Store touch start position
+  GripState.lastTouchX = touch.clientX;
+  GripState.lastTouchY = touch.clientY;
+  GripState.touchStartPos = { x: touch.clientX, y: touch.clientY };
+  
+  // Check for two-finger gesture (pinch zoom or pan)
+  if (e.touches.length === 2) {
+    GripState.isTwoFingerTouch = true;
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    GripState.lastPinchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    GripState.lastPinchCenter = {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2
+    };
+    return;
+  }
+  
+  // Single finger - delegate to mouse-like handling
+  const fakeEvent = {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    target: document.elementFromPoint(touch.clientX, touch.clientY),
+    shiftKey: false,
+    button: 0,
+    preventDefault: () => {},
+    stopPropagation: () => {}
+  };
+  
+  handleMouseDown(fakeEvent);
+}
+
+function handleTouchMove(e) {
+  e.preventDefault();
+  
+  const touch = e.touches[0];
+  if (!touch) return;
+  
+  // Handle two-finger gestures
+  if (e.touches.length === 2 && GripState.isTwoFingerTouch) {
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    
+    // Calculate pinch zoom
+    const currentDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const currentCenter = {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2
+    };
+    
+    if (GripState.lastPinchDistance && GripState.lastPinchCenter) {
+      // Zoom
+      const zoomDelta = currentDistance / GripState.lastPinchDistance;
+      const newScale = Math.min(Math.max(GripState.scale * zoomDelta, GripState.MIN_SCALE), GripState.MAX_SCALE);
+      
+      // Zoom towards pinch center
+      const rect = document.getElementById('gripCanvasContainer').getBoundingClientRect();
+      const centerX = currentCenter.x - rect.left;
+      const centerY = currentCenter.y - rect.top;
+      
+      const worldX = (centerX - GripState.offsetX) / GripState.scale;
+      const worldY = (centerY - GripState.offsetY) / GripState.scale;
+      
+      GripState.scale = newScale;
+      GripState.offsetX = centerX - worldX * GripState.scale;
+      GripState.offsetY = centerY - worldY * GripState.scale;
+      
+      // Pan with two fingers
+      const dx = currentCenter.x - GripState.lastPinchCenter.x;
+      const dy = currentCenter.y - GripState.lastPinchCenter.y;
+      GripState.offsetX += dx;
+      GripState.offsetY += dy;
+      
+      GripState.targetScale = GripState.scale;
+      GripState.targetOffsetX = GripState.offsetX;
+      GripState.targetOffsetY = GripState.offsetY;
+      
+      renderCanvasTransform();
+      updateZoomDisplay();
+    }
+    
+    GripState.lastPinchDistance = currentDistance;
+    GripState.lastPinchCenter = currentCenter;
+    return;
+  }
+  
+  // Single finger move
+  const dx = touch.clientX - (GripState.lastTouchX || touch.clientX);
+  const dy = touch.clientY - (GripState.lastTouchY || touch.clientY);
+  GripState.lastTouchX = touch.clientX;
+  GripState.lastTouchY = touch.clientY;
+  
+  // Update lastMouse for consistency
+  GripState.lastMouseX = touch.clientX;
+  GripState.lastMouseY = touch.clientY;
+  
+  const fakeEvent = {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    dx: dx,
+    dy: dy
+  };
+  
+  handleMouseMove(fakeEvent);
+}
+
+function handleTouchEnd(e) {
+  if (GripState.isTwoFingerTouch && e.touches.length < 2) {
+    GripState.isTwoFingerTouch = false;
+    GripState.lastPinchDistance = null;
+    GripState.lastPinchCenter = null;
+  }
+  
+  if (e.touches.length === 0) {
+    // All fingers lifted - finish any ongoing operations
+    const fakeEvent = {
+      clientX: GripState.lastTouchX || 0,
+      clientY: GripState.lastTouchY || 0
+    };
+    handleMouseUp(fakeEvent);
+    saveGripData();
+  }
+}
+
+
+// ============================================
+// Pointer Event Handlers (Pen/Stylus Support)
+// ============================================
+
+function handlePointerDown(e) {
+  // Only handle pen/stylus input (pointerType === 'pen')
+  // Touch is handled by touch events, mouse by mouse events
+  if (e.pointerType !== 'pen') return;
+  
+  e.preventDefault();
+  
+  // Store pen state
+  GripState.isPenDown = true;
+  GripState.lastPenX = e.clientX;
+  GripState.lastPenY = e.clientY;
+  GripState.penPressure = e.pressure || 0.5;
+  
+  // Delegate to mouse handler with pressure info
+  const fakeEvent = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    target: document.elementFromPoint(e.clientX, e.clientY),
+    shiftKey: false,
+    button: 0,
+    pressure: e.pressure || 0.5,
+    tiltX: e.tiltX || 0,
+    tiltY: e.tiltY || 0,
+    preventDefault: () => {},
+    stopPropagation: () => {}
+  };
+  
+  handleMouseDown(fakeEvent);
+}
+
+function handlePointerMove(e) {
+  if (e.pointerType !== 'pen' || !GripState.isPenDown) return;
+  
+  e.preventDefault();
+  
+  const dx = e.clientX - (GripState.lastPenX || e.clientX);
+  const dy = e.clientY - (GripState.lastPenY || e.clientY);
+  GripState.lastPenX = e.clientX;
+  GripState.lastPenY = e.clientY;
+  GripState.penPressure = e.pressure || 0.5;
+  
+  // Update lastMouse for consistency
+  GripState.lastMouseX = e.clientX;
+  GripState.lastMouseY = e.clientY;
+  
+  const fakeEvent = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    dx: dx,
+    dy: dy,
+    pressure: e.pressure || 0.5,
+    tiltX: e.tiltX || 0,
+    tiltY: e.tiltY || 0
+  };
+  
+  handleMouseMove(fakeEvent);
+}
+
+function handlePointerUp(e) {
+  if (e.pointerType !== 'pen') return;
+  
+  GripState.isPenDown = false;
+  
+  const fakeEvent = {
+    clientX: GripState.lastPenX || e.clientX,
+    clientY: GripState.lastPenY || e.clientY,
+    pressure: e.pressure || 0
+  };
+  
+  handleMouseUp(fakeEvent);
+  saveGripData();
+}
 
 
 // ============================================

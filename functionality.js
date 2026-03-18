@@ -15,6 +15,50 @@ function loadQuickAccessWebsites() {
   }
 }
 
+let activeSpaceHeaderMenuId = null;
+
+function toggleSpaceHeaderMenu(spaceId, spaceName, buttonEl) {
+  const dropdown = document.getElementById(`spaceHeaderMenuDropdown-${spaceId}`);
+  if (!dropdown) return;
+
+  if (activeSpaceHeaderMenuId && activeSpaceHeaderMenuId !== spaceId) {
+    closeSpaceHeaderMenu();
+  }
+
+  const isOpen = dropdown.classList.contains('show');
+  if (isOpen) {
+    closeSpaceHeaderMenu();
+    return;
+  }
+
+  dropdown.classList.add('show');
+  dropdown.setAttribute('aria-hidden', 'false');
+  activeSpaceHeaderMenuId = spaceId;
+
+  setTimeout(() => {
+    document.addEventListener('click', handleSpaceHeaderMenuClickOutside);
+  }, 0);
+}
+
+function closeSpaceHeaderMenu() {
+  if (!activeSpaceHeaderMenuId) return;
+  const dropdown = document.getElementById(`spaceHeaderMenuDropdown-${activeSpaceHeaderMenuId}`);
+  if (dropdown) {
+    dropdown.classList.remove('show');
+    dropdown.setAttribute('aria-hidden', 'true');
+  }
+  activeSpaceHeaderMenuId = null;
+  document.removeEventListener('click', handleSpaceHeaderMenuClickOutside);
+}
+
+function handleSpaceHeaderMenuClickOutside(e) {
+  if (!activeSpaceHeaderMenuId) return;
+  const menu = document.getElementById(`spaceHeaderMenu-${activeSpaceHeaderMenuId}`);
+  if (menu && !menu.contains(e.target)) {
+    closeSpaceHeaderMenu();
+  }
+}
+
 function saveQuickAccessWebsites(items) {
   try {
     localStorage.setItem('layer_quick_access_websites', JSON.stringify(items || []));
@@ -2894,13 +2938,68 @@ let scheduleViewMode = 'week'; // 'day', 'week', 'month', 'agenda', 'year'
 let scheduleCurrentDate = new Date();
 let scheduleSelectedDate = new Date();
 let scheduleFilters = {
-  mySchedule: ['daily-standup', 'weekly-review', 'team-meeting', 'lunch-break', 'client-meeting', 'other'],
+  categories: ['work', 'personal', 'meeting', 'reminder', 'travel'],
   searchQuery: '',
-  showCancelled: false
+  showCompleted: true,
+  mySchedule: ['daily-standup', 'weekly-review', 'team-meeting', 'lunch-break', 'client-meeting', 'other']
 };
 let scheduleMyScheduleCollapsed = false;
 let calendarQuickAddOpen = false;
 let calendarKeyboardShortcutsEnabled = true;
+
+function parseScheduleEventStart(event) {
+  if (!event || !event.date) return null;
+  const time = event.time || '00:00';
+  const dt = new Date(`${event.date}T${time}`);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
+}
+
+function getNextUpcomingScheduleEvent(events) {
+  const now = new Date();
+  const list = Array.isArray(events) ? events : [];
+
+  const upcoming = list
+    .map(ev => ({ ev, start: parseScheduleEventStart(ev) }))
+    .filter(x => x.start && x.start.getTime() >= now.getTime())
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  return upcoming.length ? upcoming[0].ev : null;
+}
+
+function renderUpcomingEventCard(events) {
+  const nextEvent = getNextUpcomingScheduleEvent(events);
+  if (!nextEvent) {
+    return `
+      <div class="upcoming-event-empty">
+        <div class="upcoming-event-empty-title">No upcoming events</div>
+        <div class="upcoming-event-empty-sub">You're all caught up.</div>
+      </div>
+    `;
+  }
+
+  const start = parseScheduleEventStart(nextEvent);
+  const dateLabel = start ? start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+  const timeLabel = nextEvent.time ? (typeof formatTime12h === 'function' ? formatTime12h(nextEvent.time) : nextEvent.time) : 'All day';
+  const endLabel = nextEvent.endTime ? ` - ${typeof formatTime12h === 'function' ? formatTime12h(nextEvent.endTime) : nextEvent.endTime}` : '';
+
+  const meetingLink = (typeof getEventMeetingLink === 'function') ? getEventMeetingLink(nextEvent) : null;
+  const category = (typeof getEventCategory === 'function') ? getEventCategory(nextEvent) : null;
+  const color = (typeof getCategoryColor === 'function' && category) ? getCategoryColor(category) : (nextEvent.color || 'var(--primary)');
+
+  return `
+    <div class="upcoming-event-card" onclick="openEditTaskModal('${nextEvent.id}', this)">
+      <div class="upcoming-event-accent" style="background: ${color};"></div>
+      <div class="upcoming-event-main">
+        <div class="upcoming-event-title">${nextEvent.title || 'Untitled event'}</div>
+        <div class="upcoming-event-meta">${dateLabel}${dateLabel && timeLabel ? ' • ' : ''}${timeLabel}${endLabel}</div>
+        ${meetingLink ? `
+          <button class="upcoming-event-join" onclick="event.stopPropagation(); openEventMeetingLink('${meetingLink.replace(/'/g, "\\'")}')">Join</button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
 
 // My Schedule presets
 const MY_SCHEDULE_PRESETS = [
@@ -2913,9 +3012,10 @@ const MY_SCHEDULE_PRESETS = [
 ];
 
 // Time slots for week view (6 AM to 6 AM - full 24 hours)
+const SCHEDULE_START_HOUR = 1;
 const TIME_SLOTS = [];
 for (let i = 0; i < 24; i++) {
-  const h = (i + 6) % 24; // Start at 6 AM, wrap around
+  const h = (i + SCHEDULE_START_HOUR) % 24;
   const hour12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
   const ampm = h >= 12 ? 'PM' : 'AM';
   TIME_SLOTS.push({ hour: h, label: `${hour12.toString().padStart(2, '0')} ${ampm}` });
@@ -3065,11 +3165,9 @@ function yPositionToTime(clientY, columnElement) {
   // Snap to 15-minute intervals (20px = 15 minutes)
   const snappedY = Math.round(clampedY / 20) * 20;
 
-  // Calculate total minutes from 6 AM (6 AM is at Y=0)
-  const totalMinutesFrom6AM = (snappedY / 80) * 60;
+  const totalMinutesFromStart = (snappedY / 80) * 60;
 
-  // Convert to actual time (6 AM = 0 minutes offset)
-  let totalMinutes = (6 * 60) + totalMinutesFrom6AM;
+  let totalMinutes = (SCHEDULE_START_HOUR * 60) + totalMinutesFromStart;
 
   // Handle wrap around to next day (after midnight)
   if (totalMinutes >= 24 * 60) {
@@ -3095,7 +3193,7 @@ function timeToYPosition(time) {
   if (!time) return 0;
   const [h, m] = time.split(':').map(Number);
   // Calculate slot index: hours before 6 are treated as next day (add 24)
-  let slotIndex = h - 6;
+  let slotIndex = h - SCHEDULE_START_HOUR;
   if (slotIndex < 0) slotIndex += 24; // Wrap around for hours 0-5 (after midnight)
   return (slotIndex * 80) + (m / 60 * 80);
 }
@@ -3672,7 +3770,7 @@ function getEventPosition(startTime, endTime) {
 
   // Calculate slot index from 6 AM baseline (0-23 range for 24 hour display)
   // Hours 6-23 are slots 0-17, hours 0-5 are slots 18-23
-  let slotIndex = startH - 6;
+  let slotIndex = startH - SCHEDULE_START_HOUR;
   if (slotIndex < 0) slotIndex += 24; // Wrap around for hours before 6 AM
 
   const startMinutes = slotIndex * 60 + startM;
@@ -3681,16 +3779,16 @@ function getEventPosition(startTime, endTime) {
   let height = 60; // Default height
   if (endTime) {
     const [endH, endM] = endTime.split(':').map(Number);
-    let endSlotIndex = endH - 6;
+    let endSlotIndex = endH - SCHEDULE_START_HOUR;
     if (endSlotIndex < 0) endSlotIndex += 24;
 
     const endMinutes = endSlotIndex * 60 + endM;
-    let duration = endMinutes - startMinutes;
+    const durationMinutes = endMinutes - startMinutes;
 
     // Handle events that span midnight
-    if (duration <= 0) duration += 24 * 60;
+    if (durationMinutes < 0) durationMinutes += 24 * 60;
 
-    height = Math.max(40, (duration / 60) * 80);
+    height = Math.max(40, (durationMinutes / 60) * 80);
   }
 
   return { top, height };
@@ -3701,7 +3799,7 @@ function timeToMinutes(timeStr) {
   if (!timeStr) return 0;
   const [h, m] = timeStr.split(':').map(Number);
   // Adjust for 6 AM baseline
-  let slotIndex = h - 6;
+  let slotIndex = h - SCHEDULE_START_HOUR;
   if (slotIndex < 0) slotIndex += 24;
   return slotIndex * 60 + m;
 }
@@ -3820,6 +3918,16 @@ function renderScheduleView() {
     initCalendarSwipe();
   }, 100);
 
+  // Initial scroll: position 6 AM at top on first load
+  setTimeout(() => {
+    const scrollContainer = document.querySelector('.week-grid-scroll, .day-view-grid-scroll');
+    if (scrollContainer) {
+      // 6 AM is at Y position (6 - SCHEDULE_START_HOUR) * 80 = 400px when start hour is 1
+      const scrollTo6AM = (6 - SCHEDULE_START_HOUR) * 80;
+      scrollContainer.scrollTop = Math.max(0, scrollTo6AM);
+    }
+  }, 100);
+
   return `
     <div class="advanced-schedule-container">
       <!-- Left Sidebar -->
@@ -3858,24 +3966,13 @@ function renderScheduleView() {
           ${renderMiniCalendar(scheduleCurrentDate, scheduleSelectedDate, today, events)}
         </div>
         
-        <!-- My Schedule Filter -->
+        <!-- Upcoming Event -->
         <div class="schedule-filter-section">
-          <div class="filter-section-header" onclick="toggleMyScheduleSection()">
-            <span class="filter-section-title">My Schedule</span>
-            <svg class="filter-section-chevron ${scheduleMyScheduleCollapsed ? 'collapsed' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
+          <div class="filter-section-header">
+            <span class="filter-section-title">Upcoming</span>
           </div>
-          <div class="filter-section-content ${scheduleMyScheduleCollapsed ? 'collapsed' : ''}">
-            ${MY_SCHEDULE_PRESETS.map(preset => `
-              <label class="schedule-filter-item">
-                <input type="checkbox" 
-                       ${scheduleFilters.mySchedule.includes(preset.id) ? 'checked' : ''} 
-                       onchange="toggleScheduleFilter('${preset.id}')">
-                <span class="filter-checkbox"></span>
-                <span class="filter-label">${preset.name}</span>
-              </label>
-            `).join('')}
+          <div class="filter-section-content">
+            ${renderUpcomingEventCard(events)}
           </div>
         </div>
       </aside>
@@ -4854,7 +4951,7 @@ function updateCurrentTimeIndicator() {
   const minutes = now.getMinutes();
 
   // Calculate position (80px per hour, starting at 6 AM with 24-hour wrap)
-  let slotIndex = hours - 6;
+  let slotIndex = hours - SCHEDULE_START_HOUR;
   if (slotIndex < 0) slotIndex += 24; // Wrap for times 0-5 (after midnight)
 
   const position = (slotIndex * 80) + (minutes / 60 * 80);
@@ -14112,6 +14209,7 @@ async function renderFoldersInPlaceholder() {
   try {
     const html = await renderEnhancedFolderGrid(currentSpaceId);
     placeholder.innerHTML = html;
+    placeholder.classList.toggle('has-folders', html.includes('folder-pill-list') || html.includes('folder-list-container-modern'));
   } catch (error) {
     console.error('Error rendering folders:', error);
   }
@@ -16212,24 +16310,12 @@ function showComingSoonToast() {
    ============================================ */
 
 // Team View State
-let teamCurrentChannel = 'general';
+let teamCurrentChannel = null;
 let teamCurrentTab = 'chat';
-let teamChannels = [
-  { id: 'general', name: 'General', type: 'channel', unread: 0, icon: 'hash' },
-  { id: 'welcome', name: 'Welcome', type: 'channel', unread: 2, icon: 'hash' },
-  { id: 'announcements', name: 'Announcements', type: 'channel', unread: 0, icon: 'megaphone' }
-];
+let teamChannels = [];
 let teamDirectMessages = [];
 let teamGroups = [];
-let teamMessages = {
-  'general': [
-    { id: 1, user: 'System', avatar: 'S', content: 'Welcome to #General! This is the main channel for team discussions.', time: '10:00 AM', isSystem: true }
-  ],
-  'welcome': [
-    { id: 1, user: 'System', avatar: 'S', content: 'Welcome to Layer! Start chatting with your team.', time: '9:00 AM', isSystem: true }
-  ],
-  'announcements': []
-};
+let teamMessages = {};
 let teamFollowers = [
   { id: 'f-1', name: 'You', avatar: 'YU', isOwner: true }
 ];
@@ -22565,6 +22651,44 @@ async function createWhiteboardDraft() {
   }
 }
 
+async function markDraftViewed(draftId) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    return;
+  }
+
+  try {
+    const drafts = loadDrafts();
+    const draft = drafts.find(d => String(d.id) === String(draftId)
+      || (d.metadata && (String(d.metadata.docId) === String(draftId)
+        || String(d.metadata.excelId) === String(draftId)
+        || String(d.metadata.projectId) === String(draftId))));
+
+    if (!draft) return;
+
+    const viewedAt = new Date().toISOString();
+    const newMetadata = {
+      ...(draft.metadata || {}),
+      lastViewedAt: viewedAt
+    };
+
+    await window.LayerDB.updateDraft(draft.id, { metadata: newMetadata });
+
+    if (window.cachedDrafts) {
+      const idx = window.cachedDrafts.findIndex(d => String(d.id) === String(draft.id));
+      if (idx !== -1) {
+        window.cachedDrafts[idx] = {
+          ...window.cachedDrafts[idx],
+          metadata: newMetadata
+        };
+      }
+    }
+
+    window.draftsNeedRefresh = true;
+  } catch (error) {
+    console.error('Failed to mark draft viewed:', error);
+  }
+}
+
 // Function to open a doc draft
 function openDocEditorForDraft(draftId) {
   const drafts = loadDrafts();
@@ -22572,6 +22696,7 @@ function openDocEditorForDraft(draftId) {
   const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.docId) === String(draftId)));
 
   if (draft && draft.type === 'doc') {
+    markDraftViewed(draft.id);
     // Pass the actual document ID from metadata if it exists, otherwise use draft ID
     const targetDocId = draft.metadata?.docId || draft.id;
     openDocEditor(targetDocId);
@@ -22588,6 +22713,7 @@ function openExcelEditorForDraft(draftId) {
   const draft = drafts.find(d => String(d.id) === String(draftId) || (d.metadata && String(d.metadata.excelId) === String(draftId)));
 
   if (draft && draft.type === 'sheet') {
+    markDraftViewed(draft.id);
     // Pass the actual spreadsheet ID from metadata if it exists, otherwise use draft ID
     const targetExcelId = draft.metadata?.excelId || draft.id;
     openExcelEditor(targetExcelId);
@@ -22603,6 +22729,7 @@ function openGripDiagramForDraft(draftId) {
   const draft = drafts.find(d => String(d.id) === String(draftId));
 
   if (draft && draft.type === 'whiteboard') {
+    markDraftViewed(draft.id);
     const projects = loadProjects();
     // Check both draft.id and draft.metadata.projectId for the project link
     const targetProjectId = draft.metadata?.projectId || draft.id;
@@ -25406,52 +25533,63 @@ async function handleCreateSpace(event) {
 
 function renderSpacesInSidebar() {
   const spaces = loadSpaces();
+  const sidebarNav = document.querySelector('.sidebar-nav');
   const workspaceSection = document.querySelector('.workspace-section');
 
-  if (!workspaceSection) return;
+  if (!sidebarNav || !workspaceSection) return;
 
   // Remove existing spaces from workspace section
   const existingSpaces = workspaceSection.querySelectorAll('.workspace-space-item');
   existingSpaces.forEach(space => space.remove());
+
+  // Also clear any spaces that might have been added to the main nav as nav-items
+  const existingNavSpaces = sidebarNav.querySelectorAll('.nav-item[data-space-id]');
+  existingNavSpaces.forEach(item => item.remove());
 
   if (spaces.length === 0) return;
 
   // Helper function to get SVG icon by id
   function getSpaceIconSVG(iconId) {
     const iconData = SPACE_ICON_SVGS.find(i => i.id === iconId);
-    if (iconData) return iconData.svg;
-    // Fallback for old emoji-based icons
+    if (iconData) {
+      if (iconData.svg.includes('<svg')) {
+        return iconData.svg.replace('<svg', '<svg class="icon" width="24" height="24" style="display: block;"');
+      }
+      return iconData.svg;
+    }
     return `<span style="font-size:16px;">${iconId}</span>`;
   }
 
-  // Create space items and append to workspace section (after Projects button)
-  const projectsButton = workspaceSection.querySelector('[data-view="activity"]');
+  // Find the Projects button (activity view) to insert after it
+  const projectsButton = sidebarNav.querySelector('[data-view="activity"]');
 
+  let insertAfterEl = projectsButton;
   spaces.forEach(space => {
-    const spaceItem = document.createElement('div');
-    spaceItem.className = 'workspace-space-item';
-    spaceItem.innerHTML = `
-        <div class="custom-space-item-wrapper workspace-nested" ${space.colorTag && space.colorTag !== 'none' ? `style="--space-accent: var(--event-${space.colorTag});"` : ''}>
-        <button class="custom-space-item workspace-space ${space.colorTag && space.colorTag !== 'none' ? 'has-color' : ''}" data-space-id="${space.id}" onclick="openSpaceView('${space.id}')">
-          <span class="space-icon-svg">${getSpaceIconSVG(space.icon)}</span>
-          <span class="space-name-text">${space.name}</span>
-        </button>
-        <button class="delete-item-btn" onclick="confirmDeleteSpace('${space.id}', '${space.name.replace(/'/g, "\\'")}')">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-          </svg>
-        </button>
-      </div>
+    const spaceNavItem = document.createElement('button');
+    spaceNavItem.className = 'nav-item nav-item-space';
+    spaceNavItem.setAttribute('data-view', `space-${space.id}`);
+    spaceNavItem.setAttribute('data-space-id', space.id);
+    spaceNavItem.style.position = 'relative';
+
+    if (space.colorTag && space.colorTag !== 'none') {
+      spaceNavItem.style.setProperty('--space-accent', `var(--event-${space.colorTag})`);
+    }
+
+    spaceNavItem.onclick = () => openSpaceView(space.id);
+
+    spaceNavItem.innerHTML = `
+      ${getSpaceIconSVG(space.icon)}
+      <span>${space.name}</span>
     `;
 
-    // Insert after the Projects button
-    if (projectsButton) {
-      projectsButton.parentNode.insertBefore(spaceItem, projectsButton.nextSibling);
+    if (insertAfterEl) {
+      insertAfterEl.insertAdjacentElement('afterend', spaceNavItem);
+      insertAfterEl = spaceNavItem;
     } else {
-      workspaceSection.appendChild(spaceItem);
+      sidebarNav.appendChild(spaceNavItem);
     }
   });
+
 
   // Also render favorites section
   renderFavoritesInSidebar();
@@ -25842,12 +25980,18 @@ function openSpaceView(spaceId) {
     item.classList.remove('active');
   });
 
-  document.querySelectorAll('.custom-space-item').forEach(item => {
-    item.classList.remove('active');
-  });
-
-  const spaceBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
-  if (spaceBtn) spaceBtn.classList.add('active');
+  // Handle both the new nav-item format and any legacy custom-space items
+  const spaceNavItem = document.querySelector(`.nav-item[data-space-id="${spaceId}"]`);
+  if (spaceNavItem) {
+    spaceNavItem.classList.add('active');
+  } else {
+    const legacyBtn = document.querySelector(`[data-space-id="${spaceId}"]`);
+    if (legacyBtn) {
+      const parentWrapper = legacyBtn.closest('.custom-space-item-wrapper');
+      if (parentWrapper) parentWrapper.classList.add('active');
+      legacyBtn.classList.add('active');
+    }
+  }
 
   // Render space view
   const viewsContainer = document.getElementById('viewsContainer');
@@ -25908,26 +26052,113 @@ function renderSpaceDetailView(space) {
     <div class="space-overview-container">
       <div class="space-main-wrapper">
         <!-- Top Navigation Bar -->
-        <div class="space-top-bar">
-          <div class="space-top-left">
-          <div class="space-breadcrumb">
-            <span class="breadcrumb-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
-              ${space.name}
-            </span>
+        <div class="space-top-bar-modern">
+          <div class="space-top-left-modern">
+            <div class="space-breadcrumb-modern">
+              <span class="breadcrumb-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </span>
+              <span class="breadcrumb-text">${space.name}</span>
+              <span class="breadcrumb-star">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </span>
+            </div>
+            
+            <div class="space-header-tabs">
+              <button class="header-tab-item add-channel-btn">
+                Add Channel
+              </button>
+              <button class="header-tab-item active">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                </span>
+                Overview
+              </button>
+              <button class="header-tab-item">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                </span>
+                List
+              </button>
+              <button class="header-tab-item">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+                  </svg>
+                </span>
+                Board
+              </button>
+              <button class="header-tab-item">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </span>
+                Calendar
+              </button>
+              <button class="header-tab-item">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>
+                  </svg>
+                </span>
+                Gantt
+              </button>
+              <button class="header-tab-item">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"/><path d="M7 16h10"/><path d="M7 11h10"/><path d="M7 6h10"/>
+                  </svg>
+                </span>
+                Table
+              </button>
+              <button class="header-tab-item add-view-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                View
+              </button>
+            </div>
+          </div>
+          
+          <div class="space-top-right-modern">
+            <div class="header-actions-group">
+              <button class="header-action-icon-btn" title="Agents">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+                </svg>
+                <span>Agents</span>
+              </button>
+              <button class="header-action-icon-btn" title="Automate">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                <span>Automate</span>
+              </button>
+              <button class="header-action-icon-btn highlight" title="Ask AI">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Ask AI</span>
+              </button>
+              <button class="header-action-icon-btn" title="Share">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                <span>Share</span>
+              </button>
+            </div>
           </div>
         </div>
-        
-        <div class="space-top-center">
-          <div class="space-view-tabs">
-            <button class="view-tab active" onclick="switchSpaceTab('overview', '${space.id}')">Overview</button>
-            <button class="view-tab" onclick="switchSpaceTab('quizzes', '${space.id}')">Quizzes</button>
-            <button class="view-tab add-view">+</button>
-          </div>
-        </div>
-      </div>
+
         <!-- Main Content Area -->
         <div class="space-main-content">
           <!-- Top Cards Row -->
@@ -31673,7 +31904,7 @@ function goToScheduleToday() {
 
     if (scrollContainer) {
       // Each hour is 80px, starting from 6 AM
-      const hourOffset = currentHour >= 6 ? currentHour - 6 : currentHour + 18;
+      const hourOffset = currentHour >= SCHEDULE_START_HOUR ? currentHour - SCHEDULE_START_HOUR : currentHour + (24 - SCHEDULE_START_HOUR);
       const scrollPosition = Math.max(0, (hourOffset * 80) - 100);
       scrollContainer.scrollTo({ top: scrollPosition, behavior: 'smooth' });
     }
@@ -35725,57 +35956,17 @@ async function renderEnhancedFolderGrid(spaceId) {
           </div>
         </div>
 
-        <div class="folder-list-container-modern">
-          <div class="folder-list-header-modern">
-            <div class="col-icon"></div>
-            <div class="col-name">FOLDER NAME</div>
-            <div class="col-stats">CONTENTS</div>
-            <div class="col-date">UPDATED</div>
-            <div class="col-actions"></div>
-          </div>
-          <div class="folder-list-body-modern">
-            ${filteredFolders.map(folder => {
-              const counts = countsMap.get(folder.id) || { docCount: 0, quizCount: 0 };
-              const emoji = folder.icon || folder.emoji || '📁';
-              return `
-                <div class="folder-list-row-modern" onclick="openFolderExplorer('${folder.id}')">
-                  <div class="col-icon">
-                    <span class="folder-row-emoji">${emoji}</span>
-                  </div>
-                  <div class="col-name">
-                    <span class="folder-row-title">${folder.name}</span>
-                    ${folder.description ? `<span class="folder-row-desc">${folder.description}</span>` : ''}
-                  </div>
-                  <div class="col-stats">
-                    <div class="folder-stats-group">
-                      <span class="stat-pill doc" title="Documents">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        ${counts.docCount}
-                      </span>
-                      <span class="stat-pill quiz" title="Quizzes">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                        ${counts.quizCount}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="col-date">
-                    <span class="folder-row-date">${formatRelativeTime(folder.updated_at)}</span>
-                  </div>
-                  <div class="col-actions">
-                    <button class="row-action-btn-modern" onclick="event.stopPropagation(); showFolderMenu('${folder.id}', event)" title="Menu">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
+        <div class="folder-pill-list">
+          ${filteredFolders.map(folder => {
+            return `
+              <button class="folder-pill-item" onclick="openFolderExplorer('${folder.id}')" type="button">
+                <svg class="folder-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span class="folder-pill-name" title="${folder.name}">${folder.name}</span>
+              </button>
+            `;
+          }).join('')}
         </div>
       `;
     } else {

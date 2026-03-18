@@ -3335,15 +3335,9 @@ function renderDraftsView() {
           <div class="drafts-header-modern">
             <div class="drafts-header-left">
               <div class="drafts-title-group">
-                <div class="drafts-icon-large">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
                 <div>
                   <h1 class="drafts-title">Drafts</h1>
-                  <p class="drafts-subtitle">Work in progress saved automatically</p>
+                  <p class="drafts-subtitle">Work in progress</p>
                 </div>
               </div>
             </div>
@@ -3390,26 +3384,14 @@ function renderDraftsView() {
         <div class="drafts-header-modern">
           <div class="drafts-header-left">
             <div class="drafts-title-group">
-              <div class="drafts-icon-large">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-              </div>
               <div>
                 <h1 class="drafts-title">Drafts</h1>
-                <p class="drafts-subtitle">${drafts.length} item${drafts.length !== 1 ? 's' : ''} • Work in progress</p>
+                <p class="drafts-subtitle">${drafts.length} item${drafts.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
           
           <div class="drafts-header-right">
-            <div class="drafts-stats-chips">
-              ${docDrafts.length > 0 ? `<div class="stat-chip stat-chip-docs"><span class="stat-chip-dot" style="background:#6366f1"></span>${docDrafts.length} Doc${docDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-              ${sheetDrafts.length > 0 ? `<div class="stat-chip stat-chip-sheets"><span class="stat-chip-dot" style="background:#22c55e"></span>${sheetDrafts.length} Sheet${sheetDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-              ${whiteboardDrafts.length > 0 ? `<div class="stat-chip stat-chip-boards"><span class="stat-chip-dot" style="background:#f59e0b"></span>${whiteboardDrafts.length} Board${whiteboardDrafts.length !== 1 ? 's' : ''}</div>` : ''}
-            </div>
-            
             <button class="draft-btn draft-btn-danger-outline" onclick="clearAllDrafts()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Clear All
@@ -3457,120 +3439,162 @@ function renderDraftsView() {
           </div>
         </div>
         
-        <!-- Content Grid -->
-        <div class="drafts-content-modern">
-          <div class="drafts-grid-modern" id="drafts-grid">
-            ${drafts.map(draft => {
-            const icon = typeIcons[draft.type] || typeIcons.doc;
-            const color = typeColors[draft.type] || typeColors.doc;
-            const label = typeLabels[draft.type] || 'Draft';
-            const openFn = draft.type === 'doc' ? 'openDocEditorForDraft' : draft.type === 'sheet' ? 'openExcelEditorForDraft' : 'openGripDiagramForDraft';
+        <!-- Content Table -->
+        <div class="drafts-content-modern drafts-content-table">
+          <div class="drafts-table-modern">
+            <div class="drafts-table-scroll">
+              <div class="drafts-table-header">
+                <div class="drafts-th drafts-th-name">Name</div>
+                <div class="drafts-th drafts-th-location">Location</div>
+                <div class="drafts-th drafts-th-tags">Tags</div>
+                <div class="drafts-th drafts-th-updated">Date updated</div>
+                <div class="drafts-th drafts-th-viewed">Date viewed</div>
+                <div class="drafts-th drafts-th-sharing">Sharing</div>
+                <div class="drafts-th drafts-th-actions"></div>
+                <div class="drafts-th drafts-th-menu"></div>
+              </div>
 
-            // Use the latest title from the underlying content when possible
-            let displayTitle = draft.title || 'Untitled';
-            try {
-              if (draft.type === 'doc') {
-                const docId = draft?.metadata?.docId;
-                const doc = docId ? (loadDocs() || []).find(d => String(d.id) === String(docId)) : null;
-                if (doc?.title) displayTitle = doc.title;
-              } else if (draft.type === 'sheet') {
-                const excelId = draft?.metadata?.excelId;
-                const excel = excelId ? (loadExcels() || []).find(e => String(e.id) === String(excelId)) : null;
-                if (excel?.title) displayTitle = excel.title;
-              }
-            } catch (e) {
-              // Keep fallback title
-            }
-            
-            return `
-              <div class="draft-card" data-draft-id="${draft.id}" data-type="${draft.type}" data-title="${displayTitle}" data-updated="${draft.updatedAt}" data-created="${draft.createdAt}">
-                <div class="draft-card-preview" onclick="${openFn}('${draft.id}')" style="--draft-accent: ${color}">
-                  <div class="draft-card-icon" style="background: ${color}20; color: ${color}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
-                  </div>
-                  <div class="draft-card-overlay">
-                    <span class="draft-card-action">Open</span>
-                  </div>
-                </div>
-                
-                <div class="draft-card-info">
-                  <div class="draft-card-header">
-                    <span class="draft-card-type" style="color: ${color}">${label}</span>
-                    <button class="draft-card-delete" onclick="showDeleteConfirm('${draft.id}', '${draft.type}')" title="Delete draft">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    </button>
-                  </div>
-                  
-                  <h3 class="draft-card-title" onclick="${openFn}('${draft.id}')">${displayTitle}</h3>
-                  
-                  <div class="draft-card-meta">
-                    <span class="draft-card-date" title="Updated: ${new Date(draft.updatedAt).toLocaleString()}">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      ${formatTimeAgo(draft.updatedAt)}
-                    </span>
-                    
-                    <!-- Save Button with Dropdown -->
-                    <div class="draft-card-save-container">
-                      <button class="draft-card-save-btn" onclick="toggleSaveDropdown('${draft.id}', event)" title="Save to Project or Space">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                          <polyline points="17 21 17 13 7 13 7 21"/>
-                          <polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        <span>Save</span>
-                        <svg class="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                      </button>
-                      
-                      <!-- Save Dropdown Menu -->
-                      <div class="draft-save-dropdown" id="save-dropdown-${draft.id}" style="display: none;">
-                        <div class="save-dropdown-header">
+              <div class="drafts-table-body" id="drafts-grid">
+                ${drafts.map(draft => {
+                const icon = typeIcons[draft.type] || typeIcons.doc;
+                const color = typeColors[draft.type] || typeColors.doc;
+                const label = typeLabels[draft.type] || 'Draft';
+                const openFn = draft.type === 'doc' ? 'openDocEditorForDraft' : draft.type === 'sheet' ? 'openExcelEditorForDraft' : 'openGripDiagramForDraft';
+                const spaces = (typeof loadSpaces === 'function') ? (loadSpaces() || []) : [];
+                const spaceName = draft.spaceId ? (spaces.find(s => String(s.id) === String(draft.spaceId))?.name || '—') : '—';
+                const tagList = Array.isArray(draft.tags) ? draft.tags : [];
+                const lastViewedAt = draft?.metadata?.lastViewedAt;
+                const viewedText = lastViewedAt ? formatTimeAgo(lastViewedAt) : '—';
+                const currentUser = window.LayerDB?.getCurrentUser?.() || {};
+                const sharingInitial = (currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email || 'U')
+                  .toString()
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase();
+                const isShared = Array.isArray(draft.sharedWith) && draft.sharedWith.length > 0;
+
+                // Use the latest title from the underlying content when possible
+                let displayTitle = draft.title || 'Untitled';
+                try {
+                  if (draft.type === 'doc') {
+                    const docId = draft?.metadata?.docId;
+                    const doc = docId ? (loadDocs() || []).find(d => String(d.id) === String(docId)) : null;
+                    if (doc?.title) displayTitle = doc.title;
+                  } else if (draft.type === 'sheet') {
+                    const excelId = draft?.metadata?.excelId;
+                    const excel = excelId ? (loadExcels() || []).find(e => String(e.id) === String(excelId)) : null;
+                    if (excel?.title) displayTitle = excel.title;
+                  }
+                } catch (e) {
+                  // Keep fallback title
+                }
+
+                return `
+                  <div class="draft-card draft-row" data-draft-id="${draft.id}" data-type="${draft.type}" data-title="${displayTitle}" data-updated="${draft.updatedAt}" data-created="${draft.createdAt}" onclick="${openFn}('${draft.id}')">
+                    <div class="draft-cell draft-cell-name">
+                      <span class="draft-row-icon" style="background: ${color}1f; color: ${color}" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
+                      </span>
+                      <span class="draft-row-title" title="${displayTitle}">${displayTitle}</span>
+                    </div>
+
+                    <div class="draft-cell draft-cell-location" title="${spaceName}">
+                      <span class="draft-row-location">${spaceName}</span>
+                    </div>
+
+                    <div class="draft-cell draft-cell-tags">
+                      <div class="draft-tags">
+                        ${tagList.length ? tagList.slice(0, 2).map(t => `<span class=\"draft-tag\">${t}</span>`).join('') : '<span class="draft-dash">—</span>'}
+                        ${tagList.length > 2 ? `<span class=\"draft-tag draft-tag-muted\">+${tagList.length - 2}</span>` : ''}
+                      </div>
+                    </div>
+
+                    <div class="draft-cell draft-cell-updated" title="Updated: ${new Date(draft.updatedAt).toLocaleString()}">
+                      <span class="draft-row-updated">${formatTimeAgo(draft.updatedAt)}</span>
+                    </div>
+
+                    <div class="draft-cell draft-cell-viewed" title="${lastViewedAt ? `Viewed: ${new Date(lastViewedAt).toLocaleString()}` : ''}">
+                      <span class="draft-row-viewed">${viewedText}</span>
+                    </div>
+
+                    <div class="draft-cell draft-cell-sharing" title="${isShared ? `${draft.sharedWith.length} shared` : 'Not shared'}">
+                      <span class="draft-sharing-badge${isShared ? ' is-shared' : ''}">${sharingInitial}</span>
+                    </div>
+
+                    <div class="draft-cell draft-cell-actions" onclick="event.stopPropagation()">
+                      <div class="draft-card-save-container">
+                        <button class="draft-card-save-btn draft-card-save-btn-row" onclick="toggleSaveDropdown('${draft.id}', event)" title="Save to Project or Space">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
                           </svg>
-                          <span>Move to...</span>
-                        </div>
-                        
-                        <div class="save-dropdown-section">
-                          <div class="save-dropdown-label">Projects</div>
-                          <div class="save-dropdown-projects" id="save-projects-${draft.id}">
-                            <!-- Projects loaded dynamically -->
-                          </div>
-                        </div>
-                        
-                        <div class="save-dropdown-section">
-                          <div class="save-dropdown-label">Spaces</div>
-                          <div class="save-dropdown-spaces" id="save-spaces-${draft.id}">
-                            <!-- Spaces loaded dynamically -->
-                          </div>
-                        </div>
-                        
-                        <div class="save-dropdown-footer">
-                          <button class="save-dropdown-new-btn" onclick="showCreateSpaceFromDraft('${draft.id}', '${draft.type}')">
+                          <span>Save</span>
+                          <svg class="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                          </svg>
+                        </button>
+
+                        <div class="draft-save-dropdown" id="save-dropdown-${draft.id}" style="display: none;">
+                          <div class="save-dropdown-header">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <line x1="12" y1="5" x2="12" y2="19"/>
-                              <line x1="5" y1="12" x2="19" y2="12"/>
+                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                             </svg>
-                            Create New Space
-                          </button>
+                            <span>Move to...</span>
+                          </div>
+
+                          <div class="save-dropdown-section">
+                            <div class="save-dropdown-label">Projects</div>
+                            <div class="save-dropdown-projects" id="save-projects-${draft.id}">
+                            </div>
+                          </div>
+
+                          <div class="save-dropdown-section">
+                            <div class="save-dropdown-label">Spaces</div>
+                            <div class="save-dropdown-spaces" id="save-spaces-${draft.id}">
+                            </div>
+                          </div>
+
+                          <div class="save-dropdown-footer">
+                            <button class="save-dropdown-new-btn" onclick="showCreateSpaceFromDraft('${draft.id}', '${draft.type}')">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                              </svg>
+                              Create New Space
+                            </button>
+                          </div>
                         </div>
+                      </div>
+
+                      <button class="draft-card-delete" onclick="showDeleteConfirm('${draft.id}', '${draft.type}'); event.stopPropagation();" title="Delete draft">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    </div>
+
+                    <div class="draft-cell draft-cell-menu" onclick="event.stopPropagation()">
+                      <button class="draft-row-menu" title="More">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="1" />
+                          <circle cx="19" cy="12" r="1" />
+                          <circle cx="5" cy="12" r="1" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div class="draft-delete-confirm" id="delete-confirm-${draft.id}" style="display: none;" onclick="event.stopPropagation()">
+                      <div class="draft-delete-confirm-text">Delete this draft permanently?</div>
+                      <div class="draft-delete-confirm-actions">
+                        <button class="draft-delete-btn draft-delete-btn-cancel" onclick="hideDeleteConfirm('${draft.id}')">Cancel</button>
+                        <button class="draft-delete-btn draft-delete-btn-confirm" onclick="confirmDeleteDraft('${draft.id}', '${draft.type}')">Delete</button>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <!-- Inline Delete Confirmation -->
-                <div class="draft-delete-confirm" id="delete-confirm-${draft.id}" style="display: none;">
-                  <div class="draft-delete-confirm-text">Delete this draft permanently?</div>
-                  <div class="draft-delete-confirm-actions">
-                    <button class="draft-delete-btn draft-delete-btn-cancel" onclick="hideDeleteConfirm('${draft.id}')">Cancel</button>
-                    <button class="draft-delete-btn draft-delete-btn-confirm" onclick="confirmDeleteDraft('${draft.id}', '${draft.type}')">Delete</button>
-                  </div>
-                </div>
+                `;
+              }).join('')}
               </div>
-            `;
-          }).join('')}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -3596,7 +3620,7 @@ function filterDraftsModern() {
     const matchesSearch = !searchTerm || title.includes(searchTerm);
     const matchesFilter = activeFilter === 'all' || type === activeFilter;
     
-    card.style.display = matchesSearch && matchesFilter ? 'flex' : 'none';
+    card.style.display = matchesSearch && matchesFilter ? 'grid' : 'none';
     card.style.animation = matchesSearch && matchesFilter ? 'draftFadeIn 0.3s ease' : 'none';
   });
 }
