@@ -1037,54 +1037,63 @@
   padding: 24px;
 }
 
-/* Team Chat Layout - Glassmorphism Floating Container */
-.team-chat-layout {
+ /* Team Chat Layout - Glassmorphism Floating Container */
+ .team-chat-layout {
   display: flex;
   height: 100vh;
   padding: var(--sidebar-inset);
   background: transparent;
   gap: 0;
-}
+ }
 
-.team-chat-sidebar {
+ .team-chat-inner {
+  flex: 1;
+  display: flex;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  animation: containerFadeIn 0.4s ease-out;
+ }
+
+ .team-chat-sidebar {
   width: 260px;
   min-width: 260px;
-  background: var(--card);
-  border-right: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
+ }
 
-.team-chat-main {
+ .team-chat-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--background);
-  border-left: 1px solid var(--border);
+  background: transparent;
+  border-left: 1px solid var(--glass-border);
   overflow: hidden;
-}
+ }
 
-.team-chat-layout:has(.team-members-panel.collapsed) .team-chat-main {
-  border-radius: 0 24px 24px 0;
-  border-right: 1px solid var(--glass-border);
-}
-
-.team-members-panel {
+ .team-members-panel {
   width: 300px;
   min-width: 300px;
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-left: none;
-  border-radius: 0 24px 24px 0;
+  border: none;
+  border-left: 1px solid var(--glass-border);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--glass-shadow);
+  box-shadow: none;
   transition: all 0.3s ease;
-}
+ }
 
 .team-members-panel.collapsed {
   width: 0;
