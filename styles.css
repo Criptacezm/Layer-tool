@@ -12770,11 +12770,15 @@ body.light .custom-space-item.active {
   gap: 4px;
   opacity: 0;
   transition: opacity 0.2s;
- }
+}
 
- .dashboard-spaces-row-main:hover .dashboard-spaces-row-actions {
+.dashboard-spaces-row-main:hover .dashboard-spaces-row-actions {
   opacity: 1;
- }
+}
+
+.dashboard-spaces-row-main.menu-open .dashboard-spaces-row-actions {
+  opacity: 1;
+}
 
  .dashboard-spaces-action-btn {
   width: 24px;
@@ -12787,7 +12791,7 @@ body.light .custom-space-item.active {
   border-radius: 4px;
   color: var(--muted-foreground);
   cursor: pointer;
- }
+}
 
  .dashboard-spaces-action-btn:hover {
   background: var(--accent);
@@ -12924,12 +12928,25 @@ body.light .custom-space-item.active {
 
  .ds-danger {
   color: var(--danger);
- }
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
 
- .ds-danger:hover {
+.ds-danger:hover {
   background: var(--danger);
   color: var(--foreground);
- }
+  border-color: var(--danger);
+}
+
+.ds-danger svg {
+  opacity: 1;
+  color: var(--danger);
+  transition: color 0.2s;
+}
+
+.ds-danger:hover svg {
+  color: var(--foreground);
+}
 
  .ds-sharing-btn {
   margin-top: 4px;

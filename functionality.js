@@ -91,7 +91,7 @@ function renderDashboardSpacesWidget() {
           const taskCount = p.columns ? p.columns.reduce((sum, col) => sum + (col.tasks ? col.tasks.length : 0), 0) : Math.floor(Math.random() * 5);
 
           return `
-            <div class="dashboard-spaces-child-row" onclick="openProjectDetail(${projectIndex})">
+            <div class="dashboard-spaces-child-row" onclick="openProjectDetailById('${p.id}')">
               <span class="dashboard-spaces-child-icon">${icon}</span>
               <span class="dashboard-spaces-child-name">${p.name}</span>
               ${taskCount > 0 ? `<span class="dashboard-spaces-child-count">${taskCount}</span>` : ''}
@@ -119,66 +119,16 @@ function renderDashboardSpacesWidget() {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                       <span>Rename</span>
                     </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/></svg>
-                      <span>Copy link</span>
-                    </div>
-                    <div class="ds-divider"></div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                      <span>Create new</span>
-                      <svg class="ds-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                    </div>
                     <div class="ds-menu-item" onclick="event.stopPropagation(); openDashboardSpaceIconPicker('${space.id}', this)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
                       <span>Color & Icon</span>
                       <svg class="ds-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                     </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                      <span>Templates</span>
-                      <svg class="ds-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                    </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                      <span>Automations</span>
-                    </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      <span>Custom Fields</span>
-                    </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/></svg>
-                      <span>Task statuses</span>
-                    </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                      <span>More</span>
-                      <svg class="ds-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                    </div>
                     <div class="ds-divider"></div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      <div class="ds-text-group">
-                        <span>Hide Space</span>
-                        <span class="ds-subtext">You'll retain access, but it won't show in sidebar</span>
-                      </div>
-                    </div>
-                    <div class="ds-divider"></div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      <span>Duplicate</span>
-                    </div>
-                    <div class="ds-menu-item">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                      <span>Archive</span>
-                    </div>
-                    <div class="ds-menu-item ds-danger" onclick="event.stopPropagation(); deleteSpace('${space.id}')">
+                    <div class="ds-menu-item ds-danger" onclick="event.stopPropagation(); confirmDeleteSpace('${space.id}', '${space.name.replace(/'/g, "\\'")}')">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                       <span>Delete</span>
                     </div>
-                    <div class="ds-divider"></div>
-                    <button class="ds-sharing-btn">Sharing & Permissions</button>
                   </div>
                 </div>
                 <button class="dashboard-spaces-action-btn" onclick="event.stopPropagation(); openNewProjectModal('${space.id}')">
@@ -205,6 +155,7 @@ let activeDashboardSpaceMenuId = null;
 function toggleDashboardSpaceMenu(spaceId, spaceName, buttonEl) {
   const dropdown = document.getElementById(`dashboardSpaceDropdown-${spaceId}`);
   if (!dropdown) return;
+  const row = document.getElementById(`dashboardSpaceRow-${spaceId}`);
 
   if (activeDashboardSpaceMenuId && activeDashboardSpaceMenuId !== spaceId) {
     closeDashboardSpaceMenu();
@@ -221,6 +172,7 @@ function toggleDashboardSpaceMenu(spaceId, spaceName, buttonEl) {
 
   dropdown.classList.add('show');
   activeDashboardSpaceMenuId = spaceId;
+  if (row) row.classList.add('menu-open');
 
   setTimeout(() => {
     document.addEventListener('click', handleDashboardSpaceMenuClickOutside);
@@ -230,9 +182,11 @@ function toggleDashboardSpaceMenu(spaceId, spaceName, buttonEl) {
 function closeDashboardSpaceMenu() {
   if (!activeDashboardSpaceMenuId) return;
   const dropdown = document.getElementById(`dashboardSpaceDropdown-${activeDashboardSpaceMenuId}`);
+  const row = document.getElementById(`dashboardSpaceRow-${activeDashboardSpaceMenuId}`);
   if (dropdown) {
     dropdown.classList.remove('show');
   }
+  if (row) row.classList.remove('menu-open');
   activeDashboardSpaceMenuId = null;
   document.removeEventListener('click', handleDashboardSpaceMenuClickOutside);
 }
@@ -6758,7 +6712,7 @@ function renderActivityView(searchQuery = '') {
     const spaceExcels = linkedSpace ? loadExcels().filter(e => e.spaceId === linkedSpace.id) : [];
 
     return `
-            <div class="workspace-project-card" onclick="openProjectDetail(${index})">
+            <div class="workspace-project-card" onclick="openProjectDetailById('${project.id}')">
               <!-- Card Header -->
               <div class="workspace-card-header">
                 <div class="workspace-card-icon">
@@ -16194,6 +16148,16 @@ function openProjectIconPicker(event, projectIndex) {
   setTimeout(() => {
     document.addEventListener('click', closeProjectIconPicker, { once: true });
   }, 10);
+}
+
+async function openProjectDetailById(projectId) {
+  const projects = loadProjects();
+  const index = projects.findIndex(p => p.id === projectId);
+  if (index !== -1) {
+    await openProjectDetail(index);
+  } else {
+    showToast('Project not found', 'error');
+  }
 }
 
 async function openProjectDetail(index) {
@@ -26293,6 +26257,7 @@ async function deleteSpaceConfirmed(spaceId) {
   }
 
   renderSpacesInSidebar();
+  renderDashboardSpacesWidget();
   showToast('Space deleted successfully!');
 
   // Navigate to home if viewing deleted space
