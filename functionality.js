@@ -3900,6 +3900,146 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
   }, 10);
 }
 
+function closeDocIconPicker() {
+  const existing = document.getElementById('docIconPicker');
+  if (existing) existing.remove();
+}
+
+function ensureDocIconInDom(emoji) {
+  const pageContainer = document.querySelector('.notion-page-container');
+  if (!pageContainer) return;
+
+  const existingIcon = pageContainer.querySelector('.notion-doc-icon');
+
+  if (!emoji || emoji === '◇') {
+    if (existingIcon) existingIcon.remove();
+    return;
+  }
+
+  if (existingIcon) {
+    const span = existingIcon.querySelector('span');
+    if (span) span.textContent = emoji;
+    return;
+  }
+
+  const titleInput = pageContainer.querySelector('#docTitleInput');
+  if (!titleInput) return;
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'notion-doc-icon emoji-only';
+  iconEl.title = 'Change icon';
+  iconEl.innerHTML = `<span>${emoji}</span>`;
+  iconEl.addEventListener('click', (e) => openDocIconPicker(e));
+
+  pageContainer.insertBefore(iconEl, titleInput);
+}
+
+function ensureDocHeaderIconInDom(emoji) {
+  const breadcrumbIcon = document.querySelector('.doc-breadcrumb .breadcrumb-icon');
+  if (!breadcrumbIcon) return;
+
+  if (!emoji || emoji === '◇') {
+    breadcrumbIcon.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+    `;
+    return;
+  }
+
+  breadcrumbIcon.innerHTML = `<span class="breadcrumb-emoji">${emoji}</span>`;
+}
+
+function updateDocIconsEverywhere(docId, emoji) {
+  if (!docId) return;
+
+  const normalizedId = String(docId);
+  document.querySelectorAll('[data-doc-icon-for-id]').forEach((el) => {
+    if (String(el.getAttribute('data-doc-icon-for-id')) !== normalizedId) return;
+
+    if (!emoji || emoji === '◇') {
+      el.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      `;
+    } else {
+      el.innerHTML = `<span class="doc-emoji-small">${emoji}</span>`;
+    }
+  });
+}
+
+async function setDocIconEmoji(emoji) {
+  if (!currentDocId) return;
+
+  documentEditorState.iconEmoji = emoji;
+  ensureDocIconInDom(emoji);
+  ensureDocHeaderIconInDom(emoji);
+  updateDocIconsEverywhere(currentDocId, emoji);
+  if (typeof autoSaveDoc === 'function') {
+    autoSaveDoc();
+  }
+
+  try {
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const isUUID = currentDocId && typeof currentDocId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentDocId);
+
+      if (isUUID) {
+        await window.LayerDB.updateDoc(currentDocId, { iconEmoji: emoji });
+      } else {
+        const docs = await window.LayerDB.loadDocs();
+        const existingDoc = docs.find(d => String(d.id) === String(currentDocId));
+        if (existingDoc) {
+          await window.LayerDB.updateDoc(existingDoc.id, { iconEmoji: emoji });
+          currentDocId = existingDoc.id;
+          documentEditorState.currentDocId = currentDocId;
+        }
+      }
+
+      const updatedDocs = await window.LayerDB.loadDocs();
+      saveDocs(updatedDocs);
+    }
+  } catch (error) {
+    console.error('Failed to set doc icon emoji:', error);
+  }
+}
+
+function openDocIconPicker(event) {
+  event.stopPropagation();
+  closeDocIconPicker();
+
+  const anchor = event.currentTarget;
+  const rect = anchor.getBoundingClientRect();
+
+  const pickerContainer = document.createElement('div');
+  pickerContainer.id = 'docIconPicker';
+  pickerContainer.className = 'pd-icon-picker';
+  pickerContainer.style.top = `${Math.min(window.innerHeight - 440, rect.bottom + 8)}px`;
+  pickerContainer.style.left = `${Math.min(window.innerWidth - 360, rect.left)}px`;
+  pickerContainer.innerHTML = `<emoji-picker class="pd-emoji-picker"></emoji-picker>`;
+  pickerContainer.addEventListener('click', (e) => e.stopPropagation());
+
+  document.body.appendChild(pickerContainer);
+
+  const pickerEl = pickerContainer.querySelector('emoji-picker');
+  if (pickerEl) {
+    pickerEl.addEventListener('emoji-click', (e) => {
+      const unicode = e?.detail?.unicode;
+      if (unicode) {
+        setDocIconEmoji(unicode);
+      }
+      closeDocIconPicker();
+    });
+  }
+
+  setTimeout(() => {
+    document.addEventListener('click', closeDocIconPicker, { once: true });
+  }, 10);
+}
+
 // Function to close the event dropdown
 function closeEventDropdown() {
   const dropdown = document.getElementById('eventDropdownForm');
@@ -22950,56 +23090,35 @@ async function createWhiteboardDraft() {
   }
 
   try {
-    // Create a draft project for the whiteboard
-    const draftProject = {
+    // Create a standalone whiteboard (not a project)
+    const whiteboardData = {
       name: 'Untitled Whiteboard',
-      description: 'Whiteboard draft',
-      status: 'todo',
-      startDate: new Date().toISOString().split('T')[0],
-      targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-      grip_diagram: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 }, // Empty whiteboard
-      isDraft: true, // Mark as draft
-      isWhiteboard: true // Specific marker for whiteboard
+      data: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
+      is_draft: true
     };
 
-    // Create the project
-    const newProject = await addProject(draftProject);
+    // Save to whiteboards table
+    const newWhiteboard = await window.LayerDB.saveWhiteboard(whiteboardData);
 
-    if (newProject) {
+    if (newWhiteboard && newWhiteboard.id) {
+      console.log('✅ Whiteboard created:', newWhiteboard.id);
+
       // Create a draft entry for the whiteboard
-      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-        try {
-          const draftEntry = {
-            title: newProject.name,
-            content: '', // Whiteboards don't have content in the traditional sense
-            type: 'whiteboard',
-            metadata: { projectId: newProject.id },
-            createdAt: newProject.createdAt || new Date().toISOString(),
-            updatedAt: newProject.updatedAt || newProject.createdAt || new Date().toISOString()
-          };
+      const draftEntry = {
+        title: newWhiteboard.name,
+        content: '',
+        type: 'whiteboard',
+        metadata: { whiteboardId: newWhiteboard.id },
+        createdAt: newWhiteboard.created_at || new Date().toISOString(),
+        updatedAt: newWhiteboard.updated_at || new Date().toISOString()
+      };
 
-          const savedDraft = await window.LayerDB.saveDraft(draftEntry);
-          console.log('✅ Whiteboard draft saved to DB:', savedDraft.id);
+      const savedDraft = await window.LayerDB.saveDraft(draftEntry);
+      console.log('✅ Whiteboard draft saved to DB:', savedDraft.id);
 
-          // Update cache
-          if (window.cachedDrafts) {
-            window.cachedDrafts.unshift(savedDraft);
-          }
-        } catch (error) {
-          console.error('❌ Failed to save whiteboard draft to DB:', error);
-        }
-      } else {
-        // Fallback to localStorage for unauthenticated users
-        const drafts = loadDrafts();
-        const draftEntry = {
-          id: newProject.id,
-          title: newProject.name,
-          type: 'whiteboard',
-          createdAt: newProject.createdAt || new Date().toISOString(),
-          updatedAt: newProject.updatedAt || newProject.createdAt || new Date().toISOString()
-        };
-        drafts.push(draftEntry);
-        saveDrafts(drafts);
+      // Update cache
+      if (window.cachedDrafts) {
+        window.cachedDrafts.unshift(savedDraft);
       }
 
       // Mark drafts view for refresh
@@ -23007,10 +23126,8 @@ async function createWhiteboardDraft() {
 
       showToast('Whiteboard created and saved as draft', 'success');
 
-      // Return the project index for the newly created project
-      const projects = loadProjects();
-      const projectIndex = projects.findIndex(p => p.id === newProject.id);
-      return projectIndex;
+      // Return the whiteboard ID (to be opened with openGripDiagram(whiteboardId, true))
+      return newWhiteboard.id;
     }
 
     return null;
@@ -23100,16 +23217,15 @@ function openGripDiagramForDraft(draftId) {
 
   if (draft && draft.type === 'whiteboard') {
     markDraftViewed(draft.id);
-    const projects = loadProjects();
-    // Check both draft.id and draft.metadata.projectId for the project link
-    const targetProjectId = draft.metadata?.projectId || draft.id;
-    const projectIndex = projects.findIndex(p => String(p.id) === String(targetProjectId));
-
-    if (projectIndex !== -1) {
-      openGripDiagram(projectIndex);
+    // Get the whiteboard ID from metadata
+    const whiteboardId = draft.metadata?.whiteboardId;
+    
+    if (whiteboardId) {
+      // Open as standalone whiteboard (isStandalone = true)
+      openGripDiagram(whiteboardId, true);
     } else {
-      console.error('Draft project not found for whiteboard draft:', draft.id, 'Project ID:', targetProjectId);
-      showToast('Draft project not found', 'error');
+      console.error('Whiteboard ID not found in draft metadata:', draft.id);
+      showToast('Whiteboard not found', 'error');
     }
   } else {
     console.error('Whiteboard draft not found:', draftId);
@@ -23122,11 +23238,18 @@ async function deleteDraft(draftId, draftType) {
   try {
     // Delete from database based on type
     if (draftType === 'whiteboard') {
-      // For whiteboards, delete the associated project
-      const projects = loadProjects();
-      const projectIndex = projects.findIndex(p => p.id === draftId);
-      if (projectIndex !== -1) {
-        await deleteProject(projectIndex);
+      // For whiteboards, delete from whiteboards table
+      const drafts = loadDrafts();
+      const draft = drafts.find(d => d.id === draftId);
+      const whiteboardId = draft?.metadata?.whiteboardId || draftId;
+      
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        // Delete from whiteboards table
+        const { data, error } = await window.LayerDB.supabase
+          .from('whiteboards')
+          .delete()
+          .eq('id', whiteboardId);
+        if (error) console.error('Error deleting whiteboard:', error);
       }
     } else if (draftType === 'doc') {
       // For documents, delete from docs table
@@ -23647,8 +23770,13 @@ function openDocEditor(docId = null) {
     let doc = null;
     if (docId) {
       const docs = loadDocs();
-      doc = docs.find(d => d.id === docId);
+      doc = docs.find(d => String(d.id) === String(docId));
     }
+
+    const existingStateIcon = documentEditorState?.iconEmoji;
+    const docIconEmoji = (existingStateIcon && existingStateIcon !== '◇')
+      ? existingStateIcon
+      : (doc?.iconEmoji || doc?.icon_emoji || '◇');
 
     // 🔄 UPDATE STATE: Mark editor as opening
     documentEditorState.isOpen = true;
@@ -23657,6 +23785,7 @@ function openDocEditor(docId = null) {
     documentEditorState.openTimestamp = Date.now();
     documentEditorState.returnToFolderId = currentFolderId || null;
     documentEditorState.eventListeners = []; // Reset event listeners array
+    documentEditorState.iconEmoji = docIconEmoji;
 
     currentDocId = doc ? doc.id : Date.now();
     const isFavorited = doc ? isDocFavorited(doc.id) : false;
@@ -23696,10 +23825,12 @@ function openDocEditor(docId = null) {
             <span class="breadcrumb-item" onclick="closeDocEditor()">Docs</span>
             <span class="breadcrumb-separator">/</span>
             <span class="breadcrumb-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
+              ${docIconEmoji && docIconEmoji !== '◇' ? `<span class="breadcrumb-emoji">${docIconEmoji}</span>` : `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              `}
             </span>
             <span class="breadcrumb-current">Doc</span>
             <button class="doc-favorite-btn-mini ${isFavorited ? 'is-favorite' : ''}" data-favorite-doc="${currentDocId}" onclick="toggleDocFavorite('${currentDocId}')" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
@@ -23854,14 +23985,26 @@ function openDocEditor(docId = null) {
       <!-- Document Content Area - Notion Style -->
       <div class="doc-content-area notion-content-area">
         <div class="notion-page-container">
-          <!-- Link Task or Doc -->
-          <div class="notion-link-task" onclick="showComingSoonToast()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-            Link Task or Doc
+          <div class="notion-top-row">
+            <div class="notion-link-task" onclick="showComingSoonToast()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              Link Task or Doc
+            </div>
+            <button class="notion-add-icon-btn" onclick="openDocIconPicker(event)" title="Add icon" aria-label="Add icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
           </div>
+
+          ${docIconEmoji && docIconEmoji !== '◇' ? `
+            <div class="notion-doc-icon" onclick="openDocIconPicker(event)" title="Change icon">
+              <span>${docIconEmoji}</span>
+            </div>
+          ` : ''}
           
           <!-- Title Input - Large like Notion -->
           <input type="text" class="notion-title-input" id="docTitleInput" 
@@ -23910,6 +24053,7 @@ function openDocEditor(docId = null) {
         id: tempId,
         title: 'Untitled',
         content: '',
+        iconEmoji: documentEditorState.iconEmoji || '◇',
         spaceId: currentSpaceId || null,
         projectId: selectedProjectId || null,
         createdAt: new Date().toISOString(),
@@ -24336,6 +24480,7 @@ async function autoSaveDoc() {
 
   let title = titleInput.value.trim() || 'Untitled';
   const content = contentDiv.innerHTML;
+  const iconEmoji = documentEditorState.iconEmoji || '◇';
 
   // If title is still "Untitled", try to generate one from content
   if (title === 'Untitled') {
@@ -24361,7 +24506,7 @@ async function autoSaveDoc() {
         if (isUUID) {
           // If we have a UUID, this is an existing doc - update it directly
           console.log('📝 Updating existing doc by UUID:', currentDocId);
-          await window.LayerDB.updateDoc(currentDocId, { title, content });
+          await window.LayerDB.updateDoc(currentDocId, { title, content, iconEmoji });
           console.log('✅ Doc updated successfully:', currentDocId);
         } else {
           // This might be a new doc with temp ID - check if it exists
@@ -24371,7 +24516,7 @@ async function autoSaveDoc() {
           if (existingDoc) {
             // Document exists, update it
             console.log('📝 Updating existing doc:', existingDoc.id);
-            await window.LayerDB.updateDoc(existingDoc.id, { title, content });
+            await window.LayerDB.updateDoc(existingDoc.id, { title, content, iconEmoji });
             currentDocId = existingDoc.id;
           } else {
             // Document doesn't exist in DB yet (new doc), create it
@@ -24381,6 +24526,7 @@ async function autoSaveDoc() {
               id: currentDocId,
               title,
               content,
+              iconEmoji,
               spaceId: currentSpaceId || null,
               projectId: selectedProjectId || null,
               createdAt: new Date().toISOString(),
@@ -24431,6 +24577,7 @@ async function autoSaveDoc() {
         ...originalDoc,
         title,
         content,
+        iconEmoji: originalDoc.iconEmoji || iconEmoji,
         updatedAt: new Date().toISOString()
       };
       saveDocs(docs);
@@ -24444,6 +24591,7 @@ async function autoSaveDoc() {
         id: newId,
         title,
         content,
+        iconEmoji,
         spaceId: currentSpaceId || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -25923,7 +26071,18 @@ async function handleCreateSpace(event) {
     const spaces = await window.LayerDB.loadSpaces();
     saveSpaces(spaces);
     closeModal();
-    renderSpacesInSidebar();
+    
+    // Refresh sidebar
+    if (typeof renderSpacesInSidebar === 'function') {
+      renderSpacesInSidebar();
+    }
+    
+    // NEW: Refresh Dashboard Spaces Widget instantly
+    const spacesWidget = document.querySelector('[data-widget-id="spaces"]');
+    if (spacesWidget && typeof renderDashboardSpacesWidget === 'function') {
+      spacesWidget.innerHTML = renderDashboardSpacesWidget();
+    }
+    
     showToast(`Space "${name}" created!`);
   } catch (error) {
     console.error('Failed to save space to database:', error);
@@ -26545,7 +26704,7 @@ function renderSpaceDetailView(space) {
                 </svg>
                 <span>Automate</span>
               </button>
-              <button class="header-action-icon-btn highlight" title="Ask AI">
+              <button class="header-action-icon-btn highlight" title="Ask AI" onclick="openAIChatDrawer(); return false;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
@@ -26623,11 +26782,15 @@ function renderSpaceDetailView(space) {
             <div class="card-content">
               ${docs.length > 0 ? docs.slice(0, 3).map(doc => `
                 <div class="card-item" data-item-id="${doc.id}" data-item-type="doc" onclick="openDocEditor('${doc.id}')">
-                  <div class="item-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                    </svg>
+                  <div class="item-icon ${(doc.iconEmoji && doc.iconEmoji !== '◇') ? 'emoji-only' : ''}">
+                    <div class="doc-icon-inline" data-doc-icon-for-id="${doc.id}">
+                      ${(doc.iconEmoji && doc.iconEmoji !== '◇') ? `<span class="doc-emoji-small">${doc.iconEmoji}</span>` : `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      `}
+                    </div>
                   </div>
                   <div class="item-info">
                     <div class="item-title">${doc.title}</div>
@@ -26899,6 +27062,11 @@ function openSpaceAutomation(spaceId) {
 function openSpaceAsk(spaceId) {
   const space = getSpaceById(spaceId);
   if (!space) return;
+
+  if (typeof openAIChatDrawer === 'function') {
+    openAIChatDrawer();
+    return;
+  }
 
   const content = `
     <div class="space-ask-container">
@@ -30164,6 +30332,62 @@ let aiThinkingElapsedText = '0s';
 let aiThinkingStartedAt = null;
 let aiThinkingTimer = null;
 
+let aiChatDrawerOpen = false;
+
+function ensureAIChatDrawer() {
+  let drawer = document.getElementById('aiChatDrawer');
+
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'aiChatDrawer';
+    drawer.className = 'ai-chat-drawer';
+    drawer.innerHTML = `<div class="ai-chat-drawer-body" id="aiChatDrawerContent"></div>`;
+    document.body.appendChild(drawer);
+  }
+
+  return { drawer };
+}
+
+function openAIChatDrawer(initialMessage) {
+  const { drawer } = ensureAIChatDrawer();
+  aiChatDrawerOpen = true;
+  drawer.classList.add('open');
+  document.body.classList.add('ai-chat-drawer-open');
+
+  isAiChatActive = true;
+  const mount = getAIChatMountElement();
+  if (mount) {
+    mount.innerHTML = renderAIChatView();
+    const chatInput = document.getElementById('aiChatInput');
+    if (chatInput) chatInput.focus();
+    if (initialMessage) processAIMessage(initialMessage);
+  }
+
+  if (!window._aiChatDrawerEscHandler) {
+    window._aiChatDrawerEscHandler = (e) => {
+      if (!aiChatDrawerOpen) return;
+      if (e.key === 'Escape') closeAIChatDrawer();
+    };
+    document.addEventListener('keydown', window._aiChatDrawerEscHandler);
+  }
+}
+
+function closeAIChatDrawer() {
+  const drawer = document.getElementById('aiChatDrawer');
+  aiChatDrawerOpen = false;
+  if (drawer) drawer.classList.remove('open');
+  document.body.classList.remove('ai-chat-drawer-open');
+}
+
+function getAIChatMountElement() {
+  // Drawer mode: return drawer mount
+  if (aiChatDrawerOpen) {
+    return document.getElementById('aiChatDrawerContent');
+  }
+  // Standalone AI tab mode: return main content mount
+  return document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+}
+
 function formatElapsedMs(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -30393,17 +30617,20 @@ function loadConversation(conversationId) {
     const overlay = document.getElementById('aiHistoryOverlay');
     if (overlay) overlay.classList.remove('show');
 
-    const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
-    if (viewsContent) {
-      viewsContent.innerHTML = renderAIChatView();
-      
-      // Auto-scroll to the last message after rendering
-      setTimeout(() => {
-        const messagesContainer = document.getElementById('aiChatMessages');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-      }, 100);
+    // If drawer is already open, render there. Otherwise render in main content (AI tab)
+    const drawer = document.getElementById('aiChatDrawer');
+    if (drawer && drawer.classList.contains('open')) {
+      // Drawer mode: re-render in drawer
+      const mount = document.getElementById('aiChatDrawerContent');
+      if (mount) {
+        mount.innerHTML = renderAIChatView();
+      }
+    } else {
+      // AI tab mode: render in main content
+      const mount = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+      if (mount) {
+        mount.innerHTML = renderAIChatView();
+      }
     }
   }
 }
@@ -30455,9 +30682,9 @@ function openAIChatView(initialMessage) {
   }
 
   // Render the chat view
-  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
-  if (viewsContent) {
-    viewsContent.innerHTML = renderAIChatView();
+  const mountEl = getAIChatMountElement();
+  if (mountEl) {
+    mountEl.innerHTML = renderAIChatView();
 
     // Focus the input
     const chatInput = document.getElementById('aiChatInput');
@@ -30490,9 +30717,53 @@ function renderAIChatView() {
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/2.16.105/pdf.worker.min.js';
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <div class="ai-clean-chat ${aiCodingModeOpen ? 'ai-coding-mode' : ''}" id="aiCleanChatRoot" style="--ai-split-left:${aiCodingSplitRatio}%;">
+    <div class="ai-clean-chat ${aiCodingModeOpen ? 'ai-coding-mode' : ''} ${aiChatDrawerOpen ? 'ai-clean-chat-drawer' : ''}" id="aiCleanChatRoot" style="--ai-split-left:${aiCodingSplitRatio}%;">
       <div class="ai-clean-chat-inner">
         <!-- Chat Header -->
+        ${aiChatDrawerOpen ? `
+        <div class="ai-drawer-topbar">
+          <div class="ai-drawer-topbar-left">
+            <button class="ai-drawer-icon-btn" onclick="goBackToAILanding()" title="New chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            <button class="ai-drawer-icon-btn" onclick="toggleAIChatHistorySidebar()" title="History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
+          </div>
+          <button class="ai-drawer-model-pill" type="button" title="Model">
+            <span class="ai-drawer-model-dot"></span>
+            <span class="ai-drawer-model-text">Claude Haiku 4.5</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+          <div class="ai-drawer-topbar-right">
+            <button class="ai-drawer-icon-btn" onclick="toggleAICodingMode()" title="Code">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M16 18l6-6-6-6"/>
+                <path d="M8 6l-6 6 6 6"/>
+                <path d="M14 4l-4 16"/>
+              </svg>
+            </button>
+            <button class="ai-drawer-icon-btn" title="More">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="1"/>
+                <circle cx="19" cy="12" r="1"/>
+                <circle cx="5" cy="12" r="1"/>
+              </svg>
+            </button>
+            <button class="ai-drawer-icon-btn" onclick="closeAIChatDrawer()" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        ` : `
         <div class="ai-clean-chat-header">
           <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -30516,6 +30787,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             </button>
           </div>
         </div>
+        `}
 
         <div class="ai-clean-chat-body" id="aiCleanChatBody">
           <div class="ai-clean-left" id="aiCleanLeft">
@@ -30526,13 +30798,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
                 <div class="ai-clean-loading" role="status" aria-live="polite">
                   <div class="ai-assistant-header">
                     <span class="ai-assistant-name">Layer Intelligence</span>
-                    <span class="ai-thinking-meta">
-                      <span class="ai-thinking-time">${aiThinkingElapsedText}</span>
-                    </span>
                   </div>
-                  <div class="ai-thinking-row">
-                    <span class="ai-thinking-spinner" aria-hidden="true"></span>
-                    <span class="ai-thinking-text ai-thinking-text-animate">${aiThinkingStatus}</span>
+                  <div class="ai-thinking-bubble">
+                    <span class="ai-thinking-text">${aiThinkingStatus}</span>
+                    <span class="ai-thinking-timer">${aiThinkingElapsedText}</span>
                   </div>
                 </div>
               ` : ''}
@@ -30549,25 +30818,26 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
                     <path d="M12 5v14M5 12h14"/>
                   </svg>
                 </button>
-                <input
-                  type="text"
-                  class="ai-clean-input"
-                  id="aiChatInput"
+                <textarea 
+                  class="ai-clean-input" 
+                  id="aiChatInput" 
                   placeholder="Ask anything"
-                  onkeydown="handleAIChatInputKeydown(event)"
-                  ${aiChatIsLoading ? 'disabled' : ''}
-                />
-                <div class="ai-input-model-selector">
-                  <span>Auto</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
+                  onkeydown="handleAIChatKeydown(event)"
+                  rows="1"
+                ></textarea>
+                <div class="ai-input-actions">
+                  <button class="ai-input-model-selector">
+                    <span>${aiChatDrawerOpen ? "All Sources" : "Auto"}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </button>
+                  <button class="ai-clean-send-btn" id="aiSendBtn" onclick="sendAIChatMessage()" title="Send message" ${aiChatIsLoading ? 'disabled' : ''}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                  </button>
                 </div>
-                <button class="ai-clean-send-btn" onclick="sendAIChatMessage()" ${aiChatIsLoading ? 'disabled' : ''}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                  </svg>
-                </button>
               </div>
             </div>
           </div>
@@ -31206,8 +31476,12 @@ if (typeof window !== 'undefined' && window.ProjectContext) {
 function renderAIChatMessages() {
   if (aiChatMessages.length === 0) {
     return `
-      <div class="ai-clean-empty">
-        <p>Start a conversation</p>
+      <div class="ai-clean-empty ai-clean-empty-hero">
+        <div class="ai-empty-hero-icon" aria-hidden="true">
+          <span class="ai-empty-hero-spark"></span>
+        </div>
+        <div class="ai-empty-hero-title">Hi there! How can I help you today?</div>
+        <div class="ai-empty-hero-subtitle">Lightning fast speed.</div>
       </div>
     `;
   }
@@ -31525,7 +31799,7 @@ function parseAIResponse(response, isGeneration) {
 }
 
 function updateChatView() {
-  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+  const viewsContent = getAIChatMountElement();
   if (viewsContent) {
     // Save current scroll position
     const messagesContainer = document.getElementById('aiChatMessages');
@@ -31641,7 +31915,7 @@ function goBackToAILanding() {
   aiChatIsLoading = false;
   isAiChatActive = false; // Reset flag when going back to landing
 
-  const viewsContent = document.getElementById('viewsContent') || document.getElementById('viewsContainer');
+  const viewsContent = getAIChatMountElement();
   if (viewsContent) {
     viewsContent.innerHTML = renderAIView();
   }
@@ -31791,6 +32065,8 @@ window.setAiChatActive = (val) => isAiChatActive = val;
 window.renderAIView = renderAIView;
 window.renderAIChatView = renderAIChatView;
 window.openAIChatView = openAIChatView;
+window.openAIChatDrawer = openAIChatDrawer;
+window.closeAIChatDrawer = closeAIChatDrawer;
 window.goBackToAILanding = goBackToAILanding;
 window.sendAIAgentPrompt = sendAIAgentPrompt;
 window.sendAIChatMessage = sendAIChatMessage;
@@ -36562,11 +36838,15 @@ function renderFolderExplorerView(folder, docs, folderItems, quizzes) {
               ${(docs || []).map(doc => `
               <div class="folder-list-item" onclick="openDocEditor('${doc.id}')">
                 <div class="col-icon">
-                  <div class="file-icon-mini doc">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                    </svg>
+                  <div class="file-icon-mini doc ${(doc.iconEmoji && doc.iconEmoji !== '◇') ? 'emoji-only' : ''}">
+                    <div class="doc-icon-inline" data-doc-icon-for-id="${doc.id}">
+                      ${(doc.iconEmoji && doc.iconEmoji !== '◇') ? `<span class="doc-emoji-small">${doc.iconEmoji}</span>` : `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      `}
+                    </div>
                   </div>
                 </div>
                 <div class="col-name">
@@ -36935,33 +37215,25 @@ async function createFolderWhiteboard(folderId) {
   }
 
   try {
-    const draftProject = {
+    const draftWhiteboard = {
       name: 'Untitled Whiteboard',
-      description: 'Whiteboard',
-      status: 'todo',
-      startDate: new Date().toISOString().split('T')[0],
-      targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      grip_diagram: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
-      isWhiteboard: true,
-      milestones: { folder_only: true, folder_id: folderId }
+      data: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
+      folder_id: folderId
     };
 
-    const newProject = await addProject(draftProject);
-    if (!newProject?.id) throw new Error('Failed to create whiteboard project');
+    // Save to dedicated whiteboard table instead of projects
+    const newWhiteboard = await window.LayerDB.saveWhiteboard(draftWhiteboard);
+    if (!newWhiteboard?.id) throw new Error('Failed to create whiteboard');
 
     await window.saveFolderItemToDB({
       folder_id: folderId,
       item_type: 'whiteboard',
-      item_id: newProject.id,
-      file_name: newProject.name,
+      item_id: newWhiteboard.id,
+      file_name: newWhiteboard.name,
       metadata: {}
     });
 
-    const projects = loadProjects();
-    const projectIndex = projects.findIndex(p => String(p.id) === String(newProject.id));
-    if (projectIndex !== -1) {
-      openGripDiagram(projectIndex);
-    }
+    openGripDiagram(newWhiteboard.id, true);
 
     if (currentFolderId) openFolderExplorer(currentFolderId);
   } catch (error) {
@@ -36970,14 +37242,8 @@ async function createFolderWhiteboard(folderId) {
   }
 }
 
-function openWhiteboardFromFolderItem(projectId) {
-  const projects = loadProjects();
-  const projectIndex = projects.findIndex(p => String(p.id) === String(projectId));
-  if (projectIndex === -1) {
-    showToast('Whiteboard not found', 'error');
-    return;
-  }
-  openGripDiagram(projectIndex);
+function openWhiteboardFromFolderItem(whiteboardId) {
+  openGripDiagram(whiteboardId, true);
 }
 
 window.openPdfViewerFromFolderItem = openPdfViewerFromFolderItem;

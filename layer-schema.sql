@@ -212,6 +212,13 @@
         WHEN duplicate_column THEN null;
     END $$;
 
+    -- Add icon_emoji column for document icon
+    DO $$ BEGIN
+        ALTER TABLE docs ADD COLUMN icon_emoji TEXT DEFAULT '◇';
+    EXCEPTION
+        WHEN duplicate_column THEN null;
+    END $$;
+
     -- ============================================
     -- Excels/Sheets Table
     -- ============================================
@@ -1182,6 +1189,46 @@
     DROP TRIGGER IF EXISTS update_folder_items_updated_at ON folder_items;
     CREATE TRIGGER update_folder_items_updated_at 
     BEFORE UPDATE ON folder_items 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+    -- ============================================
+    -- Whiteboards Table (Standalone whiteboards)
+    -- ============================================
+    CREATE TABLE IF NOT EXISTS whiteboards (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL DEFAULT 'Untitled Whiteboard',
+        data JSONB DEFAULT '{"nodes": [], "edges": [], "offsetX": 0, "offsetY": 0, "scale": 1}',
+        folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
+        space_id UUID REFERENCES spaces(id) ON DELETE SET NULL,
+        is_draft BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Add indexes for whiteboards
+    CREATE INDEX IF NOT EXISTS idx_whiteboards_user_id ON whiteboards(user_id);
+    CREATE INDEX IF NOT EXISTS idx_whiteboards_folder_id ON whiteboards(folder_id);
+    CREATE INDEX IF NOT EXISTS idx_whiteboards_space_id ON whiteboards(space_id);
+    CREATE INDEX IF NOT EXISTS idx_whiteboards_is_draft ON whiteboards(is_draft);
+    
+    -- Enable RLS on whiteboards
+    ALTER TABLE whiteboards ENABLE ROW LEVEL SECURITY;
+    
+    -- RLS policies for whiteboards
+    DROP POLICY IF EXISTS "Users can view own whiteboards" ON whiteboards;
+    DROP POLICY IF EXISTS "Users can insert own whiteboards" ON whiteboards;
+    DROP POLICY IF EXISTS "Users can update own whiteboards" ON whiteboards;
+    DROP POLICY IF EXISTS "Users can delete own whiteboards" ON whiteboards;
+    CREATE POLICY "Users can view own whiteboards" ON whiteboards FOR SELECT USING (auth.uid() = user_id);
+    CREATE POLICY "Users can insert own whiteboards" ON whiteboards FOR INSERT WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users can update own whiteboards" ON whiteboards FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete own whiteboards" ON whiteboards FOR DELETE USING (auth.uid() = user_id);
+    
+    -- Trigger for auto-updating timestamps on whiteboards
+    DROP TRIGGER IF EXISTS update_whiteboards_updated_at ON whiteboards;
+    CREATE TRIGGER update_whiteboards_updated_at 
+    BEFORE UPDATE ON whiteboards 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
     -- ============================================

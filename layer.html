@@ -418,7 +418,7 @@
             </svg>
             <span>Space</span>
           </button>
-          <button class="sidebar-create-item" onclick="createWhiteboardDraft().then(index => { if(index !== null) openGripDiagram(index); }); closeSidebarCreateDropdown();">
+          <button class="sidebar-create-item" onclick="createWhiteboardDraft().then(whiteboardId => { if(whiteboardId !== null) openGripDiagram(whiteboardId, true); }); closeSidebarCreateDropdown();">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <style>

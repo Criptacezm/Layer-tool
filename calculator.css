@@ -9,9 +9,9 @@
     z-index: 10000;
     
     /* Theme Integration */
-    background: var(--glass-bg, rgba(20, 20, 24, 0.95));
-    backdrop-filter: blur(24px);
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+    background: var(--card, #1c1c1f); /* Solid background */
+    backdrop-filter: none;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
     box-shadow: var(--glass-shadow, 0 24px 48px rgba(0, 0, 0, 0.2));
     
     border-radius: 28px;

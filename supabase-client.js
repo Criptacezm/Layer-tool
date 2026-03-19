@@ -1164,6 +1164,80 @@ async function deleteProjectFromDB(projectId) {
   return await loadProjectsFromDB();
 }
 
+// ============================================
+// Whiteboards (Standalone)
+// ============================================
+
+async function saveWhiteboardToDB(whiteboardData) {
+  if (!currentUser) return null;
+  
+  // Prepare the object for Supabase
+  const wbObj = {
+    user_id: currentUser.id,
+    name: whiteboardData.name || 'Untitled Whiteboard',
+    data: whiteboardData.data || { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
+    folder_id: whiteboardData.folder_id || null,
+    space_id: whiteboardData.space_id || null,
+    is_draft: whiteboardData.is_draft !== undefined ? whiteboardData.is_draft : true,
+    updated_at: new Date().toISOString()
+  };
+
+  // If we have an ID, it's an update (upsert), otherwise it's a new insert
+  if (whiteboardData.id) {
+    wbObj.id = whiteboardData.id;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('whiteboards')
+    .upsert(wbObj)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function loadWhiteboardsFromDB() {
+  if (!currentUser) return [];
+  
+  const { data, error } = await supabaseClient
+    .from('whiteboards')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+async function loadWhiteboardFromDB(whiteboardId) {
+  if (!currentUser) return null;
+  const { data, error } = await supabaseClient
+    .from('whiteboards')
+    .select('*')
+    .eq('id', whiteboardId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function updateWhiteboardInDB(whiteboardId, updates) {
+  if (!currentUser) return null;
+  const { data, error } = await supabaseClient
+    .from('whiteboards')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', whiteboardId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 // Get profile by user ID (for displaying who completed tasks, etc.)
 async function getProfileById(userId) {
   if (!userId) return null;
@@ -1561,6 +1635,7 @@ async function loadDocsFromDB() {
     id: d.id,
     title: d.title,
     content: d.content,
+    iconEmoji: d.icon_emoji || '◇',
     spaceId: d.space_id,
     folder_id: d.folder_id || null,
     folderId: d.folder_id || null,
@@ -1589,6 +1664,7 @@ async function saveDocToDB(docData) {
     user_id: currentUser.id,
     title: docData.title || 'Untitled',
     content: docData.content || '',
+    icon_emoji: docData.iconEmoji || docData.icon_emoji || '◇',
     space_id: docData.spaceId || null,
     folder_id: docData.folder_id || docData.folderId || null,
     project_id: docData.projectId || null,
@@ -1620,6 +1696,7 @@ async function saveDocToDB(docData) {
     id: data.id,
     title: data.title,
     content: data.content,
+    iconEmoji: data.icon_emoji || '◇',
     spaceId: data.space_id,
     folder_id: data.folder_id || null,
     folderId: data.folder_id || null,
@@ -1639,6 +1716,8 @@ async function updateDocInDB(docId, updates) {
   const dbUpdates = { updated_at: new Date().toISOString() };
   if (updates.title !== undefined) dbUpdates.title = updates.title;
   if (updates.content !== undefined) dbUpdates.content = updates.content;
+  if (updates.iconEmoji !== undefined) dbUpdates.icon_emoji = updates.iconEmoji;
+  if (updates.icon_emoji !== undefined) dbUpdates.icon_emoji = updates.icon_emoji;
   if (updates.spaceId !== undefined) dbUpdates.space_id = updates.spaceId;
   if (updates.folder_id !== undefined) dbUpdates.folder_id = updates.folder_id;
   if (updates.folderId !== undefined) dbUpdates.folder_id = updates.folderId;
@@ -2329,6 +2408,12 @@ window.LayerDB = {
   saveDraft: saveDraftToDB,
   updateDraft: updateDraftInDB,
   deleteDraft: deleteDraftFromDB,
+
+  // Whiteboards
+  saveWhiteboard: saveWhiteboardToDB,
+  loadWhiteboard: loadWhiteboardFromDB,
+  loadWhiteboards: loadWhiteboardsFromDB,
+  updateWhiteboard: updateWhiteboardInDB,
 
   // Shared Content
   loadSharedDocs: loadSharedDocsFromDB,

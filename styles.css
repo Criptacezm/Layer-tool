@@ -9639,6 +9639,10 @@ body.light .custom-space-item.active {
   color: var(--muted-foreground);
 }
 
+.item-icon.emoji-only {
+  background: transparent;
+}
+
 .item-icon svg {
   width: 16px;
   height: 16px;
@@ -11324,6 +11328,13 @@ body.light .custom-space-item.active {
   max-width: 720px;
 }
 
+.notion-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .notion-link-task {
   display: inline-flex;
   align-items: center;
@@ -11335,11 +11346,79 @@ body.light .custom-space-item.active {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
-  margin-bottom: 16px;
 }
 
 .notion-link-task:hover {
   color: var(--foreground);
+}
+
+.notion-add-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notion-add-icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+
+.breadcrumb-emoji {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-icon-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-emoji-small {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.notion-doc-icon {
+  width: 72px;
+  height: 72px;
+  background: var(--surface);
+  border: 3px solid var(--background);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notion-doc-icon.emoji-only {
+  background: transparent;
+  border-color: transparent;
+}
+
+.notion-doc-icon:hover {
+  background: var(--surface-hover);
+}
+
+.notion-doc-icon.emoji-only:hover {
+  background: transparent;
+  border-color: var(--border);
 }
 
 .notion-title-input {
@@ -30600,6 +30679,11 @@ body.light .custom-space-item.active {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.file-icon-mini.emoji-only {
+  background: transparent !important;
+  color: var(--foreground) !important;
 }
 
 .file-icon-mini.doc { background: rgba(99, 102, 241, 0.15); color: #818cf8; }

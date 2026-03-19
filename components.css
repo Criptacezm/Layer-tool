@@ -5917,7 +5917,8 @@
 }
 
 .ai-input-container input,
-.ai-input-container textarea {
+.ai-input-container textarea,
+.ai-input-container .ai-clean-input {
   flex: 1;
   background: transparent;
   border: none;
@@ -19383,22 +19384,50 @@ h4.ai-heading {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: var(--glass-bg);
+  padding: 12px 14px;
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.86);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  transition: border-color 0.2s ease;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  transition: box-shadow 0.18s ease;
+  position: relative;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 /* Dark mode: 60% opacity for glass background */
 [data-mode="dark"] .ai-clean-input-box {
-  background: color-mix(in hsl, var(--glass-bg) 60%, transparent);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.86);
+}
+
+.ai-clean-input-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 19px;
+  padding: 1px;
+  margin: -1px;
+  background: linear-gradient(90deg, rgba(255, 107, 107, 0.55), rgba(168, 85, 247, 0.55), rgba(59, 130, 246, 0.45));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: -1;
 }
 
 .ai-clean-input-box:focus-within {
-  border-color: var(--border-strong);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.32),
+    0 0 0 3px rgba(var(--primary-rgb), 0.16);
 }
 
 .ai-clean-input {
@@ -19439,6 +19468,272 @@ h4.ai-heading {
 .ai-clean-send-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.ai-chat-drawer {
+  position: fixed;
+  top: var(--sidebar-inset);
+  right: var(--sidebar-inset);
+  bottom: var(--sidebar-inset);
+  width: min(420px, 92vw);
+  transform: translateX(calc(100% + var(--sidebar-inset) + 20px));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.ai-chat-drawer.open {
+  transform: translateX(0);
+}
+
+body.ai-chat-drawer-open .main-content {
+  margin-right: calc(min(420px, 92vw) + (var(--sidebar-inset) * 2));
+  transition: margin-right 0.28s cubic-bezier(0.22, 1, 0.36, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ai-drawer-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-drawer-topbar-left,
+.ai-drawer-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-drawer-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.14);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.32);
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.ai-drawer-icon-btn:hover {
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.45);
+  border-color: rgba(var(--border-rgb, 255, 255, 255), 0.22);
+  transform: translateY(-1px);
+}
+
+.ai-drawer-model-pill {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.18);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.35);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ai-drawer-model-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffedd5 0%, #fb7185 35%, #a855f7 70%, #3b82f6 100%);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.ai-drawer-model-text {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-messages {
+  padding: 26px 18px 160px;
+  max-width: none;
+  margin: 0;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-empty-hero-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-empty-hero-subtitle {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 6px;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-chat-input-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  padding: 0 14px;
+  background: transparent;
+  border: none;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-input-box {
+  max-width: none;
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.82);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 10px 12px;
+  position: relative;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(var(--foreground-rgb, 255, 255, 255), 0.04);
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-input-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 17px;
+  padding: 1px;
+  margin: -1px;
+  background: linear-gradient(90deg, rgba(255, 107, 107, 0.55), rgba(168, 85, 247, 0.55), rgba(59, 130, 246, 0.45));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.45;
+  z-index: -1;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-input {
+  background: transparent;
+  color: var(--foreground);
+  font-size: 13px;
+  resize: none;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-input::placeholder {
+  color: rgba(var(--foreground-rgb, 255, 255, 255), 0.45);
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-input-plus-btn {
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.38);
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.14);
+  border-radius: 12px;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-input-model-selector {
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.32);
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.14);
+  color: var(--muted-foreground);
+  border-radius: 12px;
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-send-btn {
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.38);
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.16);
+  color: var(--foreground);
+}
+
+.ai-clean-chat.ai-clean-chat-drawer .ai-clean-send-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.52);
+}
+
+.ai-chat-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.12);
+}
+
+.ai-chat-drawer-title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.ai-chat-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.18);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.35);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.ai-chat-drawer-close:hover {
+  transform: translateY(-1px);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.55);
+  border-color: rgba(var(--border-rgb, 255, 255, 255), 0.26);
+}
+
+.ai-chat-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.ai-chat-drawer-open {
+  overflow: hidden;
+}
+
+body.ai-chat-drawer-open .main-content {
+  margin-right: calc(min(420px, 92vw) + (var(--sidebar-inset) * 2));
+  transition: margin-right 0.28s cubic-bezier(0.22, 1, 0.36, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 768px) {
+  body.ai-chat-drawer-open .main-content {
+    margin-right: 0;
+  }
+}
+
+body.ai-chat-drawer-open .ai-clean-chat {
+  padding: 0;
+  height: 100%;
+}
+
+body.ai-chat-drawer-open .ai-clean-chat-inner {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ---- Chat View - Glassmorphism Floating Container ---- */
@@ -20523,9 +20818,10 @@ h4.ai-heading {
 }
 
 .ai-clean-input-box:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 10px 40px rgba(var(--primary-rgb), 0.15);
-  transform: translateY(-2px);
+  border-color: rgba(var(--primary-rgb), 0.55);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.22),
+    0 0 0 3px rgba(var(--primary-rgb), 0.16);
 }
 
 .ai-input-plus-btn {
@@ -20550,6 +20846,7 @@ h4.ai-heading {
   color: var(--foreground);
   font-size: 15px;
   outline: none;
+  resize: none;
 }
 
 .ai-input-model-selector {
@@ -20569,20 +20866,24 @@ h4.ai-heading {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--foreground);
-  color: var(--background);
-  border: none;
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.38);
+  color: var(--foreground);
+  border: 1px solid rgba(var(--border-rgb, 255, 255, 255), 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.18s ease, filter 0.18s ease, opacity 0.18s ease;
 }
 
 .ai-clean-send-btn:hover {
-  transform: scale(1.05);
-  filter: brightness(1.1);
+  background: rgba(var(--surface-rgb, 20, 20, 30), 0.52);
 }
+
+ .ai-clean-send-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
+ }
 
 .ai-clean-send-btn:disabled {
   opacity: 0.5;

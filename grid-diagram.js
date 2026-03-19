@@ -119,49 +119,77 @@ function generateEdgeId() {
 // Initialization & Lifecycle
 // ============================================
 
-async function openGripDiagram(projectIndex) {
-  GripState.projectIndex = projectIndex;
-
-  // Load project details
-  const projects = loadProjects();
-  const project = projects[projectIndex];
-  if (project) {
-    GripState.projectName = project.name || 'Untitled Project';
-    GripState.teamMembers = []; // Reset
-
-    // Initial team members from local project data (names only usually)
-    if (project.teamMembers) {
-      const currentUser = window.LayerDB?.getCurrentUser();
-      GripState.teamMembers = project.teamMembers.map(m => {
-        const isYou = m === 'You' || (currentUser && m === currentUser.email);
-        return {
-          name: isYou ? (currentUser?.user_metadata?.name || 'You') : m,
-          email: m,
-          avatarUrl: isYou ? currentUser?.user_metadata?.avatar_url : null
-        };
-      });
-    }
-
-    // Try to fetch detailed member info from Supabase if available
-    if (window.LayerDB && project.id) {
+async function openGripDiagram(id, isStandalone = false) {
+  if (isStandalone) {
+    GripState.whiteboardId = id;
+    GripState.projectIndex = -1;
+    
+    // Load standalone whiteboard details
+    if (window.LayerDB) {
       try {
-        const members = await window.LayerDB.getProjectMembers(project.id);
-        if (members && members.length > 0) {
-          GripState.teamMembers = members.map(m => ({
-            name: m.name || m.email?.split('@')[0] || 'Member',
-            email: m.email,
-            avatarUrl: m.avatarUrl
-          }));
-          // Re-render header if overlay is already shown
-          updateGripHeader();
+        const whiteboard = await window.LayerDB.loadWhiteboard(id);
+        if (whiteboard) {
+          GripState.projectName = whiteboard.name || 'Untitled Whiteboard';
+          GripState.nodes = whiteboard.data?.nodes || [];
+          GripState.edges = whiteboard.data?.edges || [];
+          GripState.offsetX = whiteboard.data?.offsetX || window.innerWidth / 2;
+          GripState.offsetY = whiteboard.data?.offsetY || window.innerHeight / 2;
+          GripState.scale = whiteboard.data?.scale || 1;
         }
       } catch (err) {
-        console.warn('Failed to fetch project members for whiteboard:', err);
+        console.error('Failed to load standalone whiteboard:', err);
+        showToast('Failed to load whiteboard', 'error');
+        return;
+      }
+    }
+  } else {
+    GripState.projectIndex = id;
+    GripState.whiteboardId = null;
+
+    // Load project details
+    const projects = loadProjects();
+    const project = projects[id];
+    if (project) {
+      GripState.projectName = project.name || 'Untitled Project';
+      GripState.teamMembers = []; // Reset
+
+      // Initial team members from local project data (names only usually)
+      if (project.teamMembers) {
+        const currentUser = window.LayerDB?.getCurrentUser();
+        GripState.teamMembers = project.teamMembers.map(m => {
+          const isYou = m === 'You' || (currentUser && m === currentUser.email);
+          return {
+            name: isYou ? (currentUser?.user_metadata?.name || 'You') : m,
+            email: m,
+            avatarUrl: isYou ? currentUser?.user_metadata?.avatar_url : null
+          };
+        });
+      }
+
+      // Try to fetch detailed member info from Supabase if available
+      if (window.LayerDB && project.id) {
+        try {
+          const members = await window.LayerDB.getProjectMembers(project.id);
+          if (members && members.length > 0) {
+            GripState.teamMembers = members.map(m => ({
+              name: m.name || m.email?.split('@')[0] || 'Member',
+              email: m.email,
+              avatarUrl: m.avatarUrl
+            }));
+            // Re-render header if overlay is already shown
+            updateGripHeader();
+          }
+        } catch (err) {
+          console.warn('Failed to fetch project members for whiteboard:', err);
+        }
       }
     }
   }
 
-  await loadGripData(projectIndex);
+  // Load data logic below updated to handle both
+  if (!isStandalone) {
+    await loadGripData(id);
+  }
 
   // Reset View for good UX if it's the first open or empty
   if (GripState.nodes.length === 0) {
@@ -173,14 +201,18 @@ async function openGripDiagram(projectIndex) {
   renderGripOverlay();
   requestAnimationFrame(gripGameLoop);
 
-  // Setup real-time subscription for whiteboard changes
-  subscribeToGripDiagramChanges(projectIndex);
+  // Setup real-time subscription
+  if (isStandalone) {
+    // subscribeToWhiteboardChanges(id); // To be implemented
+  } else {
+    subscribeToGripDiagramChanges(id);
+  }
 }
 
 function updateGripHeader() {
-  const filenameEl = document.querySelector('.grip-filename');
+  const filenameEl = document.querySelector('.grip-filename-input');
   if (filenameEl) {
-    filenameEl.textContent = GripState.projectName;
+    filenameEl.value = GripState.projectName;
   }
 
   const avatarListEl = document.getElementById('gripTeamAvatars');
@@ -353,9 +385,29 @@ function throttleSaveGripData() {
 }
 
 function saveGripDataToLocalStorage() {
-  console.log('💾 saveGripDataToLocalStorage called - bypassing data change check');
+  console.log('💾 saveGripDataToLocalStorage called');
 
-  if (!GripState.projectIndex === undefined || GripState.projectIndex === null) {
+  if (GripState.whiteboardId) {
+    // Standalone whiteboard
+    const currentGripData = {
+      nodes: GripState.nodes,
+      edges: GripState.edges,
+      offsetX: GripState.offsetX,
+      offsetY: GripState.offsetY,
+      scale: GripState.scale
+    };
+    
+    const whiteboards = loadWhiteboards();
+    const index = whiteboards.findIndex(w => String(w.id) === String(GripState.whiteboardId));
+    if (index !== -1) {
+      whiteboards[index].data = currentGripData;
+      localStorage.setItem('layer_whiteboards', JSON.stringify(whiteboards));
+      console.log('✅ Standalone whiteboard localStorage updated');
+    }
+    return;
+  }
+
+  if (GripState.projectIndex === undefined || GripState.projectIndex === null || GripState.projectIndex === -1) {
     console.log('No project selected, skipping localStorage save');
     return;
   }
@@ -368,125 +420,29 @@ function saveGripDataToLocalStorage() {
     scale: GripState.scale
   };
 
-  console.log('Saving to localStorage immediately:', {
-    nodes: currentGripData.nodes?.length || 0,
-    edges: currentGripData.edges?.length || 0,
-    projectIndex: GripState.projectIndex
-  });
-
   try {
-    // Save to localStorage
     const projects = loadProjects();
     if (projects[GripState.projectIndex]) {
       projects[GripState.projectIndex].gripDiagram = currentGripData;
       localStorage.setItem('layer_projects', JSON.stringify(projects));
-      console.log('✅ localStorage updated successfully');
+      console.log('✅ Project localStorage updated successfully');
     }
   } catch (error) {
     console.error('❌ localStorage save failed:', error);
   }
 }
 
-function saveGripDataToSupabase() {
-  console.log('🔄 saveGripDataToSupabase called');
-  console.log('GripState at save:', {
-    nodes: GripState.nodes?.length || 0,
-    edges: GripState.edges?.length || 0,
-    projectIndex: GripState.projectIndex
-  });
-
-  if (!window.LayerDB?.getCurrentUser?.()) {
-    console.log('User not authenticated, skipping Supabase save');
-    return;
-  }
-
-  const currentGripData = {
-    nodes: GripState.nodes,
-    edges: GripState.edges,
-    offsetX: GripState.offsetX,
-    offsetY: GripState.offsetY,
-    scale: GripState.scale
-  };
-
-  console.log('Current grip data:', currentGripData);
-  console.log('Last grip data:', lastGripData);
-
-  // Check if data actually changed
-  const dataChanged = !lastGripData || JSON.stringify(currentGripData) !== JSON.stringify(lastGripData);
-  console.log('Data changed:', dataChanged);
-  if (!dataChanged) {
-    console.log('⏭️ No data change detected, skipping save');
-    return;
-  }
-
-  lastGripData = currentGripData;
-
-  // Clear existing timeout
-  if (gripSaveTimeout) {
-    clearTimeout(gripSaveTimeout);
-  }
-
-  // Show saving status immediately
-  showGripSaveStatus('saving');
-
-  // Debounce saves - wait 100ms after last change (INSTANT auto-save - reduced from 300ms)
-  gripSaveTimeout = setTimeout(async () => {
-    try {
-      const projects = loadProjects();
-      const project = projects[GripState.projectIndex];
-
-      if (!project) {
-        console.warn('Project not found for saving grip diagram');
-        showGripSaveStatus('error');
-        return;
-      }
-
-      console.log('💾 Auto-saving whiteboard to Supabase...');
-      console.log('Project ID:', project.id);
-      console.log('Current user:', window.LayerDB?.getCurrentUser?.());
-      console.log('Grip data size:', JSON.stringify(currentGripData).length, 'characters');
-
-      showGripSaveStatus('saving'); // Show saving status
-
-      // Update the project in Supabase
-      const result = await window.LayerDB.updateProject(project.id, {
-        grip_diagram: currentGripData,
-        updated_at: new Date().toISOString()
-      });
-
-      console.log('✅ Whiteboard auto-saved to Supabase:', result);
-      showGripSaveStatus('saved');
-    } catch (error) {
-      console.error('❌ Failed to auto-save whiteboard to Supabase:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      showGripSaveStatus('error');
-    }
-  }, 100); // 100ms debounce for INSTANT auto-save (reduced from 300ms)
-}
-
-// INSTANT SAVE FUNCTION - No debouncing for immediate saves
-function saveGripDataInstant() {
+async function saveGripDataInstant() {
   console.log('⚡ INSTANT SAVE triggered');
-  console.log('Current GripState:', {
-    nodes: GripState.nodes?.length || 0,
-    edges: GripState.edges?.length || 0,
-    projectIndex: GripState.projectIndex,
-    hasUser: !!window.LayerDB?.getCurrentUser?.(),
-    saveInProgress: instantSaveInProgress
-  });
-
+  
+  const isStandalone = !!GripState.whiteboardId;
+  
   if (!window.LayerDB?.getCurrentUser?.()) {
     console.log('User not authenticated, skipping instant Supabase save');
     return;
   }
 
   if (instantSaveInProgress) {
-    console.log('⚠️ Instant save already in progress, skipping');
     return;
   }
 
@@ -498,79 +454,35 @@ function saveGripDataInstant() {
     scale: GripState.scale
   };
 
-  console.log('📋 Grip data prepared for instant save:', {
-    nodesCount: currentGripData.nodes?.length || 0,
-    edgesCount: currentGripData.edges?.length || 0,
-    timestamp: new Date().toISOString()
-  });
-
-  // Save to localStorage first (but skip the data change check for instant save)
   saveGripDataToLocalStorage();
 
-  // Then save to Supabase immediately (no debounce)
-  (async () => {
-    try {
+  try {
+    instantSaveInProgress = true;
+    showGripSaveStatus('saving');
+
+    if (isStandalone) {
+      await window.LayerDB.updateWhiteboard(GripState.whiteboardId, {
+        data: currentGripData
+      });
+    } else {
       const projects = loadProjects();
-      console.log('📁 Loaded projects:', projects?.length || 0);
       const project = projects[GripState.projectIndex];
-
-      if (!project) {
-        console.warn('❌ Project not found for instant grip diagram save');
-        console.warn('Available projects:', projects?.map(p => ({ id: p.id, name: p.name })) || []);
-        console.warn('Requested projectIndex:', GripState.projectIndex);
-        return;
+      if (project) {
+        await window.LayerDB.updateProject(project.id, {
+          grip_diagram: currentGripData,
+          updated_at: new Date().toISOString()
+        });
       }
-
-      console.log('🚀 INSTANT save to Supabase starting...');
-      console.log('Project details:', { id: project.id, name: project.name });
-
-      instantSaveInProgress = true;
-      console.log('🔒 Instant save locked - in progress');
-      showGripSaveStatus('saving'); // Show saving status
-
-      const updateResult = await window.LayerDB.updateProject(project.id, {
-        grip_diagram: currentGripData,
-        updated_at: new Date().toISOString()
-      });
-
-      console.log('✅ INSTANT whiteboard saved to Supabase successfully');
-      console.log('Update result:', updateResult);
-
-      // Update lastGripData to ensure subsequent saves work correctly
-      lastGripData = currentGripData;
-      console.log('Updated lastGripData for next comparison');
-
-      instantSaveInProgress = false;
-      console.log('🔓 Instant save unlocked - completed');
-
-      showGripSaveStatus('saved');
-
-      // Verify the save actually worked
-      setTimeout(async () => {
-        try {
-          const verification = await window.LayerDB.getProject(project.id);
-          console.log('🔍 Verification check - saved data:', {
-            savedNodes: verification.grip_diagram?.nodes?.length || 0,
-            savedEdges: verification.grip_diagram?.edges?.length || 0,
-            matchesCurrent: verification.grip_diagram?.nodes?.length === currentGripData.nodes?.length
-          });
-        } catch (verifyError) {
-          console.error('❌ Verification failed:', verifyError);
-        }
-      }, 500);
-
-    } catch (error) {
-      console.error('❌ INSTANT save failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details
-      });
-      instantSaveInProgress = false;
-      console.log('🔓 Instant save unlocked - failed');
-      showGripSaveStatus('error');
     }
-  })();
+
+    lastGripData = currentGripData;
+    instantSaveInProgress = false;
+    showGripSaveStatus('saved');
+  } catch (error) {
+    console.error('❌ INSTANT save failed:', error);
+    instantSaveInProgress = false;
+    showGripSaveStatus('error');
+  }
 }
 
 function showGripSaveStatus(status) {
@@ -621,8 +533,72 @@ function showRemoteUpdateNotification() {
   }, 3000);
 }
 
+// ============================================
+// Whiteboard Title Editing
+// ============================================
 
-
+async function saveGripFilename() {
+  const input = document.getElementById('gripFilenameInput');
+  if (!input) return;
+  
+  const newName = input.value.trim() || 'Untitled Whiteboard';
+  const oldName = GripState.projectName;
+  
+  if (newName === oldName) return; // No change
+  
+  console.log('📝 Saving whiteboard name:', newName, 'whiteboardId:', GripState.whiteboardId);
+  
+  GripState.projectName = newName;
+  
+  // Save to appropriate storage
+  if (GripState.whiteboardId) {
+    // Standalone whiteboard - update whiteboards table
+    if (window.LayerDB && window.LayerDB.updateWhiteboard) {
+      try {
+        const result = await window.LayerDB.updateWhiteboard(GripState.whiteboardId, { name: newName });
+        console.log('✅ Whiteboard name updated in DB:', result);
+        
+        // Also update the draft title if this is a draft
+        if (window.LayerDB.loadDrafts && window.LayerDB.updateDraft) {
+          const drafts = await window.LayerDB.loadDrafts();
+          const whiteboardIdStr = String(GripState.whiteboardId);
+          const draft = drafts.find(d => String(d.metadata?.whiteboardId) === whiteboardIdStr);
+          if (draft) {
+            await window.LayerDB.updateDraft(draft.id, { title: newName });
+            console.log('✅ Draft title synced in DB');
+            
+            // Clear and refresh cache to ensure consistency
+            window.cachedDrafts = null;
+            const refreshedDrafts = await window.LayerDB.loadDrafts();
+            window.cachedDrafts = refreshedDrafts;
+            console.log('✅ Draft cache refreshed');
+          }
+        }
+      } catch (err) {
+        console.error('❌ Failed to update whiteboard name:', err);
+        showToast('Failed to rename whiteboard', 'error');
+      }
+    } else {
+      console.warn('LayerDB or updateWhiteboard not available');
+    }
+  } else if (GripState.projectIndex !== null && GripState.projectIndex >= 0) {
+    // Project-based whiteboard - update project name
+    const projects = loadProjects();
+    if (projects[GripState.projectIndex]) {
+      projects[GripState.projectIndex].name = newName;
+      saveProjects(projects);
+      
+      if (window.LayerDB && projects[GripState.projectIndex].id) {
+        try {
+          await window.LayerDB.updateProject(projects[GripState.projectIndex].id, { name: newName });
+          console.log('✅ Project name updated:', newName);
+        } catch (err) {
+          console.error('Failed to update project name:', err);
+        }
+      }
+    }
+  }
+}
 
 // ============================================
 // History Management
@@ -701,7 +677,7 @@ function renderGripOverlay() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <div class="grip-divider-vertical"></div>
-          <div class="grip-filename">${GripState.projectName}</div>
+          <input type="text" class="grip-filename-input" id="gripFilenameInput" value="${GripState.projectName}" onblur="saveGripFilename()" onkeydown="if(event.key==='Enter'){this.blur();}" />
           <div class="grip-team-avatars" id="gripTeamAvatars">
             ${renderGripTeamAvatars()}
           </div>

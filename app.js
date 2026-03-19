@@ -434,7 +434,7 @@ function cleanupProjectDetailRealtime() {
 // ============================================
 // Initialization
 // ============================================
-function init() {
+async function init() {
   // Professional loading sequence - refined timing for smooth animation
   const loadingScreen = document.getElementById('loadingScreen');
   const appContainer = document.getElementById('app');
@@ -489,10 +489,10 @@ function init() {
     setupForm.addEventListener('submit', handleFirstTimeSetupSubmit);
   }
 
-  // Check for existing user session
-  checkExistingSession();
+  // Check for existing user session (await to ensure spaces are loaded before rendering)
+  await checkExistingSession();
 
-  // Render initial view
+  // Render initial view (now runs after spaces are loaded)
   renderCurrentView();
 
   // Initialize AI icon morphing animation
@@ -702,6 +702,10 @@ function setupNavigation() {
         // Reset currentSpaceId when navigating away from space views
         if (typeof currentSpaceId !== 'undefined') {
           currentSpaceId = null;
+        }
+        // Close AI drawer when leaving custom space (drawer is space-specific)
+        if (typeof closeAIChatDrawer === 'function') {
+          closeAIChatDrawer();
         }
         renderCurrentView();
       }
@@ -2747,13 +2751,15 @@ async function renderCurrentView(preserveScroll = false) {
       updateBreadcrumb('AI');
       break;
     case 'drafts':
-      if (viewsContent) {
-        viewsContent.innerHTML = renderDraftsView();
-      } else {
-        viewsContainer.innerHTML = renderDraftsView();
-      }
-      updateBreadcrumb('Drafts');
-      window.draftsNeedRefresh = false; // Reset the flag after rendering
+      renderDraftsView().then(html => {
+        if (viewsContent) {
+          viewsContent.innerHTML = html;
+        } else {
+          viewsContainer.innerHTML = html;
+        }
+        updateBreadcrumb('Drafts');
+        window.draftsNeedRefresh = false;
+      });
       break;
     default:
       if (viewsContent) {
@@ -3300,8 +3306,18 @@ function renderActivityView(searchQuery = '') {
   `;
 }
 
-function renderDraftsView() {
-  const drafts = loadDrafts();
+async function renderDraftsView() {
+  // Force fresh load from DB to ensure we have latest data
+  if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+    try {
+      const freshDrafts = await window.LayerDB.loadDrafts();
+      window.cachedDrafts = freshDrafts;
+    } catch (e) {
+      console.error('Failed to load fresh drafts:', e);
+    }
+  }
+  
+  const drafts = window.cachedDrafts || loadDrafts();
   
   // Group drafts by type for stats
   const docDrafts = drafts.filter(d => d.type === 'doc');
@@ -3366,7 +3382,7 @@ function renderDraftsView() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
                 New Sheet
               </button>
-              <button class="draft-btn draft-btn-secondary" onclick="createWhiteboardDraft().then(index => { if(index !== null) openGripDiagram(index); })">
+              <button class="draft-btn draft-btn-secondary" onclick="createWhiteboardDraft().then(whiteboardId => { if(whiteboardId !== null) openGripDiagram(whiteboardId, true); })">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="18" height="14" rx="1"/><line x1="5" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="14" y2="10"/><line x1="5" y1="13" x2="9" y2="13"/><line x1="6" y1="17" x2="5" y2="22"/><line x1="16" y1="17" x2="17" y2="22"/></svg>
                 New Whiteboard
               </button>
@@ -3544,14 +3560,14 @@ function renderDraftsView() {
                           </div>
 
                           <div class="save-dropdown-section">
-                            <div class="save-dropdown-label">Projects</div>
-                            <div class="save-dropdown-projects" id="save-projects-${draft.id}">
+                            <div class="save-dropdown-label">Spaces</div>
+                            <div class="save-dropdown-spaces" id="save-spaces-${draft.id}">
                             </div>
                           </div>
 
                           <div class="save-dropdown-section">
-                            <div class="save-dropdown-label">Spaces</div>
-                            <div class="save-dropdown-spaces" id="save-spaces-${draft.id}">
+                            <div class="save-dropdown-label">Projects</div>
+                            <div class="save-dropdown-projects" id="save-projects-${draft.id}">
                             </div>
                           </div>
 
@@ -3727,13 +3743,21 @@ function toggleSaveDropdown(draftId, event) {
   
   if (!isVisible) {
     currentOpenDropdown = dropdown;
+    
+    // Position dropdown outside the item using fixed positioning
+    const rect = button.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.left = `${rect.right - 240}px`;
+    dropdown.style.right = 'auto';
+    
     loadProjectsAndSpaces(draftId);
   } else {
     currentOpenDropdown = null;
   }
 }
 
-function loadProjectsAndSpaces(draftId) {
+async function loadProjectsAndSpaces(draftId) {
   // Load projects
   const projects = loadProjects();
   const projectsContainer = document.getElementById(`save-projects-${draftId}`);
@@ -3742,7 +3766,7 @@ function loadProjectsAndSpaces(draftId) {
     projectsContainer.innerHTML = '<div class="save-dropdown-empty">No projects yet</div>';
   } else {
     projectsContainer.innerHTML = projects.map(project => `
-      <div class="save-dropdown-item" onclick="moveDraftToProject('${draftId}', ${project.id})">
+      <div class="save-dropdown-item" onclick="moveDraftToProject('${draftId}', '${project.id}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
@@ -3751,24 +3775,174 @@ function loadProjectsAndSpaces(draftId) {
     `).join('');
   }
   
-  // Load spaces
-  const spaces = loadSpaces();
+  // Load spaces with folders
   const spacesContainer = document.getElementById(`save-spaces-${draftId}`);
   
-  if (spaces.length === 0) {
-    spacesContainer.innerHTML = '<div class="save-dropdown-empty">No spaces yet</div>';
-  } else {
-    spacesContainer.innerHTML = spaces.map(space => `
-      <div class="save-dropdown-item" onclick="moveDraftToSpace('${draftId}', '${space.id}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"/>
-          <rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/>
-          <rect x="3" y="14" width="7" height="7"/>
-        </svg>
-        <span>${space.name}</span>
-      </div>
-    `).join('');
+  try {
+    const spaces = loadSpaces();
+    
+    if (spaces.length === 0) {
+      spacesContainer.innerHTML = '<div class="save-dropdown-empty">No spaces yet</div>';
+      return;
+    }
+    
+    // Load all folders
+    let folders = [];
+    if (window.loadFoldersFromDB) {
+      folders = await window.loadFoldersFromDB();
+    }
+    
+    // Render spaces with their folders
+    spacesContainer.innerHTML = spaces.map(space => {
+      const spaceFolders = folders.filter(f => f.space_id === space.id);
+      const hasFolders = spaceFolders.length > 0;
+      
+      return `
+        <div class="save-dropdown-space-group" data-space-id="${space.id}">
+          <div class="save-dropdown-space-header" onclick="toggleSpaceFolders('${space.id}', '${draftId}')">
+            <div class="save-dropdown-space-info">
+              <svg class="space-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span class="space-name">${space.name}</span>
+              ${hasFolders ? `<span class="folder-count">${spaceFolders.length} folder${spaceFolders.length > 1 ? 's' : ''}</span>` : ''}
+            </div>
+            ${hasFolders ? `
+              <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            ` : ''}
+          </div>
+          <div class="save-dropdown-space-actions">
+            <button class="save-dropdown-quick-action" onclick="event.stopPropagation(); moveDraftToSpace('${draftId}', '${space.id}')" title="Move to space root">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+          ${hasFolders ? `
+            <div class="save-dropdown-folders" id="folders-${space.id}-${draftId}" style="display: none;">
+              ${spaceFolders.map(folder => `
+                <div class="save-dropdown-folder-item" onclick="moveDraftToFolder('${draftId}', '${folder.id}', '${space.id}')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span>${folder.name}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+    
+  } catch (error) {
+    console.error('Failed to load spaces:', error);
+    spacesContainer.innerHTML = '<div class="save-dropdown-empty">Failed to load spaces</div>';
+  }
+}
+
+function toggleSpaceFolders(spaceId, draftId) {
+  const foldersEl = document.getElementById(`folders-${spaceId}-${draftId}`);
+  const spaceGroup = document.querySelector(`.save-dropdown-space-group[data-space-id="${spaceId}"]`);
+  
+  if (foldersEl) {
+    const isVisible = foldersEl.style.display !== 'none';
+    foldersEl.style.display = isVisible ? 'none' : 'block';
+    
+    if (spaceGroup) {
+      spaceGroup.classList.toggle('expanded', !isVisible);
+    }
+  }
+}
+
+async function moveDraftToFolder(draftId, folderId, spaceId) {
+  try {
+    const drafts = loadDrafts();
+    const draft = drafts.find(d => d.id === draftId);
+    
+    if (!draft) {
+      showToast('Draft not found', 'error');
+      return;
+    }
+    
+    // Move based on type
+    if (draft.type === 'doc') {
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        await window.LayerDB.updateDoc(draftId, { 
+          folder_id: folderId, 
+          space_id: spaceId, 
+          is_draft: false 
+        });
+      }
+    } else if (draft.type === 'sheet') {
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        await window.LayerDB.updateExcel(draftId, { 
+          folder_id: folderId, 
+          space_id: spaceId, 
+          is_draft: false 
+        });
+        
+        // Create folder item entry for sheet
+        if (window.saveFolderItemToDB) {
+          await window.saveFolderItemToDB({
+            folder_id: folderId,
+            item_type: 'sheet',
+            item_id: draftId,
+            file_name: draft.title || 'Untitled Sheet'
+          });
+        }
+      }
+    } else if (draft.type === 'whiteboard') {
+      const whiteboardId = draft.metadata?.whiteboardId;
+      if (whiteboardId && window.LayerDB) {
+        await window.LayerDB.updateWhiteboard(whiteboardId, { 
+          folder_id: folderId, 
+          space_id: spaceId, 
+          is_draft: false 
+        });
+        
+        // Create folder item entry for whiteboard
+        if (window.saveFolderItemToDB) {
+          await window.saveFolderItemToDB({
+            folder_id: folderId,
+            item_type: 'whiteboard',
+            item_id: whiteboardId,
+            file_name: draft.title || 'Untitled Whiteboard'
+          });
+        }
+      }
+    }
+    
+    // Remove from drafts
+    const updatedDrafts = drafts.filter(d => d.id !== draftId);
+    saveDrafts(updatedDrafts);
+    
+    // Delete draft from DB
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.deleteDraft(draftId);
+    }
+    
+    // Clear draft cache to ensure fresh data
+    window.cachedDrafts = null;
+    
+    showToast('Moved to folder successfully', 'success');
+    
+    // Close dropdown and refresh
+    closeAllDropdowns();
+    await renderDraftsView();
+    
+    // Open the folder explorer to show the moved item instantly
+    if (typeof openFolderExplorer === 'function') {
+      setTimeout(() => openFolderExplorer(folderId), 100);
+    }
+    
+  } catch (error) {
+    console.error('Failed to move draft to folder:', error);
+    showToast('Failed to move to folder', 'error');
   }
 }
 
@@ -3807,18 +3981,12 @@ async function moveDraftToProject(draftId, projectId) {
         await window.LayerDB.updateExcel(draftId, { projectId: projectId, isDraft: false });
       }
     } else if (draft.type === 'whiteboard') {
-      // Move whiteboard (project diagram)
-      const whiteboardIndex = project.whiteboards?.findIndex(w => w.id === draftId);
-      if (whiteboardIndex === -1 || whiteboardIndex === undefined) {
-        // Add to project whiteboards
-        if (!project.whiteboards) project.whiteboards = [];
-        project.whiteboards.push({
-          id: draftId,
-          name: draft.title || 'Untitled Whiteboard',
-          createdAt: draft.createdAt,
-          updatedAt: draft.updatedAt
-        });
-        saveProjects(projects);
+      // Move whiteboard - update the whiteboards table with project association
+      const whiteboardId = draft.metadata?.whiteboardId;
+      if (whiteboardId && window.LayerDB) {
+        // For now, we link whiteboard to project via folder_id or just mark as not draft
+        // Projects can have their own whiteboards stored in project.grip_diagram
+        await window.LayerDB.updateWhiteboard(whiteboardId, { is_draft: false });
       }
     }
     
@@ -3826,11 +3994,16 @@ async function moveDraftToProject(draftId, projectId) {
     const updatedDrafts = drafts.filter(d => d.id !== draftId);
     saveDrafts(updatedDrafts);
     
+    // Also delete the draft from the drafts table
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.deleteDraft(draftId);
+    }
+    
     showToast(`Moved to ${project.name}`, 'success');
     
     // Close dropdown and refresh view
     closeAllDropdowns();
-    renderDraftsView();
+    await renderDraftsView();
     
   } catch (error) {
     console.error('Failed to move draft to project:', error);
@@ -3873,18 +4046,10 @@ async function moveDraftToSpace(draftId, spaceId) {
         await window.LayerDB.updateExcel(draftId, { spaceId: spaceId, isDraft: false });
       }
     } else if (draft.type === 'whiteboard') {
-      // Move whiteboard
-      const whiteboardIndex = space.whiteboards?.findIndex(w => w.id === draftId);
-      if (whiteboardIndex === -1 || whiteboardIndex === undefined) {
-        // Add to space whiteboards
-        if (!space.whiteboards) space.whiteboards = [];
-        space.whiteboards.push({
-          id: draftId,
-          name: draft.title || 'Untitled Whiteboard',
-          createdAt: draft.createdAt,
-          updatedAt: draft.updatedAt
-        });
-        saveSpaces(spaces);
+      // Move whiteboard - update the whiteboards table
+      const whiteboardId = draft.metadata?.whiteboardId;
+      if (whiteboardId && window.LayerDB) {
+        await window.LayerDB.updateWhiteboard(whiteboardId, { space_id: spaceId, is_draft: false });
       }
     }
     
@@ -3892,11 +4057,24 @@ async function moveDraftToSpace(draftId, spaceId) {
     const updatedDrafts = drafts.filter(d => d.id !== draftId);
     saveDrafts(updatedDrafts);
     
+    // Also delete the draft from the drafts table
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      await window.LayerDB.deleteDraft(draftId);
+    }
+    
+    // Clear draft cache to ensure fresh data
+    window.cachedDrafts = null;
+    
     showToast(`Moved to ${space.name}`, 'success');
     
     // Close dropdown and refresh view
     closeAllDropdowns();
-    renderDraftsView();
+    await renderDraftsView();
+    
+    // Open the space view to show the moved item instantly
+    if (typeof openSpaceView === 'function') {
+      setTimeout(() => openSpaceView(spaceId), 100);
+    }
     
   } catch (error) {
     console.error('Failed to move draft to space:', error);

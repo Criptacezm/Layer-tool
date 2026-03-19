@@ -443,35 +443,39 @@ class Calculator {
             startX = e.clientX;
             startY = e.clientY;
 
-            // Switch to absolute positioning if not already
             const rect = el.getBoundingClientRect();
+            
+            // Remove transform centering only if it hasn't been removed yet
+            if (el.style.transform !== 'none') {
+                el.style.transform = 'none';
+                el.style.left = `${rect.left}px`;
+                el.style.top = `${rect.top}px`;
+            }
 
-            // If it was centered with transform, we need to fix it in place
-            const style = window.getComputedStyle(el);
-            const matrix = new WebKitCSSMatrix(style.transform);
-
-            el.style.transform = 'none';
-            el.style.left = `${rect.left}px`;
-            el.style.top = `${rect.top}px`;
-
-            initialLeft = rect.left;
-            initialTop = rect.top;
+            initialLeft = parseFloat(el.style.left) || rect.left;
+            initialTop = parseFloat(el.style.top) || rect.top;
 
             header.style.cursor = 'grabbing';
+            e.preventDefault(); // Prevent text selection
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
+            
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
 
+            // Use requestAnimationFrame for smoother movement if needed, 
+            // but standard direct style update is usually fine if logic is minimal.
             el.style.left = `${initialLeft + dx}px`;
             el.style.top = `${initialTop + dy}px`;
         });
 
         window.addEventListener('mouseup', () => {
-            isDragging = false;
-            header.style.cursor = 'grab';
+            if (isDragging) {
+                isDragging = false;
+                header.style.cursor = 'grab';
+            }
         });
     }
 }
