@@ -1216,10 +1216,11 @@ async function loadWhiteboardFromDB(whiteboardId) {
     .from('whiteboards')
     .select('*')
     .eq('id', whiteboardId)
-    .single();
+    .eq('user_id', currentUser.id)
+    .limit(1);
 
   if (error) throw error;
-  return data;
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
 }
 
 async function updateWhiteboardInDB(whiteboardId, updates) {
@@ -4205,6 +4206,56 @@ async function deleteFolderItemFromDB(itemId) {
   }
 }
 
+// Update folder item in database
+async function updateFolderItemInDB(itemId, updates) {
+  if (!currentUser || !currentUser.id) {
+    console.error('User not authenticated for folder item update');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folder_items')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', itemId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('Folder item updated in DB:', data.id);
+    return data;
+  } catch (error) {
+    console.error('Error updating folder item in DB:', error);
+    return null;
+  }
+}
+
+// Find folder item by item_type and item_id
+async function findFolderItemByItemId(itemType, itemId) {
+  if (!currentUser || !currentUser.id) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('folder_items')
+      .select('*')
+      .eq('item_type', itemType)
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error finding folder item:', error);
+    return null;
+  }
+}
+
 // Delete all items for a folder
 async function deleteFolderItemsByFolderId(folderId) {
   if (!currentUser || !currentUser.id) {
@@ -4259,6 +4310,8 @@ window.saveFolderItemToDB = saveFolderItemToDB;
 window.loadFolderItemsFromDB = loadFolderItemsFromDB;
 window.deleteFolderItemFromDB = deleteFolderItemFromDB;
 window.deleteFolderItemsByFolderId = deleteFolderItemsByFolderId;
+window.updateFolderItemInDB = updateFolderItemInDB;
+window.findFolderItemByItemId = findFolderItemByItemId;
 window.getFolderItemCounts = getFolderItemCounts;
 
 // ============================================

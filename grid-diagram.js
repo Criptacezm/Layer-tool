@@ -128,14 +128,18 @@ async function openGripDiagram(id, isStandalone = false) {
     if (window.LayerDB) {
       try {
         const whiteboard = await window.LayerDB.loadWhiteboard(id);
-        if (whiteboard) {
-          GripState.projectName = whiteboard.name || 'Untitled Whiteboard';
-          GripState.nodes = whiteboard.data?.nodes || [];
-          GripState.edges = whiteboard.data?.edges || [];
-          GripState.offsetX = whiteboard.data?.offsetX || window.innerWidth / 2;
-          GripState.offsetY = whiteboard.data?.offsetY || window.innerHeight / 2;
-          GripState.scale = whiteboard.data?.scale || 1;
+        if (!whiteboard) {
+          console.warn('Standalone whiteboard not found or not accessible:', id);
+          showToast('Whiteboard not found', 'error');
+          return;
         }
+
+        GripState.projectName = whiteboard.name || 'Untitled Whiteboard';
+        GripState.nodes = whiteboard.data?.nodes || [];
+        GripState.edges = whiteboard.data?.edges || [];
+        GripState.offsetX = whiteboard.data?.offsetX || window.innerWidth / 2;
+        GripState.offsetY = whiteboard.data?.offsetY || window.innerHeight / 2;
+        GripState.scale = whiteboard.data?.scale || 1;
       } catch (err) {
         console.error('Failed to load standalone whiteboard:', err);
         showToast('Failed to load whiteboard', 'error');
@@ -557,6 +561,15 @@ async function saveGripFilename() {
       try {
         const result = await window.LayerDB.updateWhiteboard(GripState.whiteboardId, { name: newName });
         console.log('✅ Whiteboard name updated in DB:', result);
+        
+        // Also update the folder_item entry if this whiteboard is in a folder
+        if (window.findFolderItemByItemId && window.updateFolderItemInDB) {
+          const folderItem = await window.findFolderItemByItemId('whiteboard', GripState.whiteboardId);
+          if (folderItem) {
+            await window.updateFolderItemInDB(folderItem.id, { file_name: newName });
+            console.log('✅ Folder item title synced:', folderItem.id);
+          }
+        }
         
         // Also update the draft title if this is a draft
         if (window.LayerDB.loadDrafts && window.LayerDB.updateDraft) {
@@ -3244,10 +3257,60 @@ function closeGripDiagramWithCleanup() {
     if (calc) calc.classList.remove('visible');
   }
 
-  // Original closeGripDiagram logic
-  saveGripData();
+  // Save before closing
+  try {
+    saveGripData();
+  } catch (e) {
+    console.warn('Failed to save whiteboard on close:', e);
+  }
+
+  // Remove overlay
   const overlay = document.getElementById('gripDiagramOverlay');
   if (overlay) overlay.remove();
+
+  // Restore previous view
+  const ds = window.documentEditorState;
+  if (ds && ds.returnToInlineSpaceId && ds.returnToInlineFolderId) {
+    // We came from an inline folder; restore it
+    const spaceId = ds.returnToInlineSpaceId;
+    const folderId = ds.returnToInlineFolderId;
+    ds.returnToInlineSpaceId = null;
+    ds.returnToInlineFolderId = null;
+    (async () => {
+      try {
+        await window.openSpaceView(spaceId);
+        await window.openFolderExplorerInline(folderId);
+      } catch (e) {
+        console.error('Failed to restore inline folder after whiteboard close:', e);
+      }
+    })();
+  } else if (GripState.whiteboardId && typeof window.openSpaceView === 'function') {
+    // Standalone whiteboard: try to return to its space (if folder_id is known)
+    (async () => {
+      try {
+        const wb = window.LayerDB?.loadWhiteboard?.(GripState.whiteboardId);
+        const folderId = wb?.folder_id;
+        if (folderId) {
+          const folders = await window.loadFoldersCached?.() ?? [];
+          const folder = folders.find(f => String(f.id) === String(folderId));
+          if (folder?.space_id) {
+            await window.openSpaceView(folder.space_id);
+            await window.openFolderExplorerInline(folderId);
+            return;
+          }
+        }
+        // Fallback to current space if any
+        if (window.currentSpaceId) {
+          await window.openSpaceView(window.currentSpaceId);
+        }
+      } catch (e) {
+        console.warn('Fallback after whiteboard close failed:', e);
+      }
+    })();
+  } else if (window.currentSpaceId && typeof window.openSpaceView === 'function') {
+    // Fallback to current space
+    window.openSpaceView(window.currentSpaceId);
+  }
 }
 
 // Override the closeGripDiagram function

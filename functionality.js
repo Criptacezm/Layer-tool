@@ -13,7 +13,436 @@ function loadQuickAccessWebsites() {
   } catch {
     return [];
   }
+
 }
+
+// ============================================
+// Inline Folder Explorer (inside Space view)
+// ============================================
+
+function activateInlineFolderTab(root, tabName = 'documents') {
+  if (!root) return;
+
+  root.querySelectorAll('.inline-folder-tab').forEach(t => t.classList.remove('active'));
+  const activeTab = root.querySelector(`.inline-folder-tab[data-tab="${tabName}"]`);
+  if (activeTab) activeTab.classList.add('active');
+
+  const docsSection = root.querySelector('[data-section="documents"]');
+  const quizzesSection = root.querySelector('[data-section="quizzes"]');
+
+  if (docsSection) docsSection.classList.toggle('active', tabName === 'documents');
+  if (quizzesSection) quizzesSection.classList.toggle('active', tabName === 'quizzes');
+}
+
+function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
+  const emoji = folder.icon || folder.emoji || '📁';
+  const folderSheets = (folderItems || []).filter(i => i.item_type === 'sheet');
+  const folderWhiteboards = (folderItems || []).filter(i => i.item_type === 'whiteboard');
+  const folderPdfs = (folderItems || []).filter(i => i.item_type === 'pdf');
+  const totalDocItems = (docs?.length || 0) + folderSheets.length + folderWhiteboards.length + folderPdfs.length;
+
+  return `
+    <div class="inline-folder-explorer" data-inline-folder-id="${folder.id}">
+      <div class="inline-folder-header">
+        <button class="inline-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5"/>
+            <path d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div class="inline-folder-title">
+          <span class="inline-folder-emoji">${emoji}</span>
+          <span class="inline-folder-name" title="${folder.name}">${folder.name}</span>
+        </div>
+        <div class="inline-folder-actions">
+          <button class="inline-folder-create-btn" onclick="createFolderDocInline('${folder.id}')" title="New Doc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+          </button>
+          <button class="inline-folder-create-btn" onclick="createFolderSheetInline('${folder.id}')" title="New Sheet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+          </button>
+          <button class="inline-folder-create-btn" onclick="createFolderWhiteboardInline('${folder.id}')" title="New Whiteboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8"/>
+              <path d="M12 17v4"/>
+              <line x1="12" y1="7" x2="12" y2="13"/>
+              <line x1="9" y1="10" x2="15" y2="10"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="inline-folder-tabs">
+        <button class="inline-folder-tab active" data-tab="documents" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'documents')">
+          Docs
+          <span class="inline-folder-pill">${totalDocItems}</span>
+        </button>
+        <button class="inline-folder-tab" data-tab="quizzes" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'quizzes')">
+          Quizzes
+          <span class="inline-folder-pill">${quizzes?.length || 0}</span>
+        </button>
+      </div>
+
+      <div class="inline-folder-content">
+        <div class="inline-folder-section active" data-section="documents">
+          ${(totalDocItems > 0) ? `
+            <div class="inline-folder-list">
+              ${(docs || []).map(doc => `
+                <button class="inline-folder-row" type="button" onclick="openDocEditorFromInlineFolder('${doc.id}', '${folder.space_id}', '${folder.id}')">
+                  <span class="inline-folder-row-title">${doc.title || 'Untitled Doc'}</span>
+                  <span class="inline-folder-row-meta">${formatRelativeTime(doc.updated_at || doc.updatedAt)}</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderDocFromInline('${doc.id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
+
+              ${folderSheets.map(item => `
+                <button class="inline-folder-row" type="button" onclick="openExcelEditor('${item.item_id}')">
+                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Spreadsheet'}</span>
+                  <span class="inline-folder-row-meta">Sheet</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderSheetFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
+
+              ${folderWhiteboards.map(item => `
+                <button class="inline-folder-row" type="button" onclick="openWhiteboardFromFolderItem('${item.item_id}')">
+                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Whiteboard'}</span>
+                  <span class="inline-folder-row-meta">Board</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderWhiteboardFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
+
+              ${folderPdfs.map(item => `
+                <button class="inline-folder-row" type="button" onclick='openPdfViewerFromFolderItem(${JSON.stringify(item.file_url || '')}, ${JSON.stringify(item.file_name || 'PDF')})'>
+                  <span class="inline-folder-row-title">${item.file_name || 'PDF'}</span>
+                  <span class="inline-folder-row-meta">PDF</span>
+                </button>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="inline-folder-empty">No items yet</div>
+          `}
+        </div>
+
+        <div class="inline-folder-section" data-section="quizzes">
+          ${(quizzes && quizzes.length > 0) ? `
+            <div class="inline-folder-list">
+              ${quizzes.map(quiz => `
+                <button class="inline-folder-row" type="button" onclick="openQuizViewer('${quiz.id}')">
+                  <span class="inline-folder-row-title">${quiz.title}</span>
+                  <span class="inline-folder-row-meta">${(quiz.question_count || quiz.questions?.length || 0)}q</span>
+                </button>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="inline-folder-empty">No quizzes yet</div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function openFolderExplorerInline(folderId, initialTab = 'documents') {
+  try {
+    const placeholder = document.querySelector('.folders-placeholder');
+    if (!placeholder) return;
+
+    placeholder.innerHTML = `
+      <div class="inline-folder-explorer" data-inline-folder-id="${folderId}">
+        <div class="inline-folder-header">
+          <button class="inline-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <path d="M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="inline-folder-title">
+            <span class="inline-folder-emoji">📁</span>
+            <span class="inline-folder-name">Loading...</span>
+          </div>
+        </div>
+        <div class="inline-folder-tabs">
+          <button class="inline-folder-tab active" data-tab="documents" type="button">Docs</button>
+          <button class="inline-folder-tab" data-tab="quizzes" type="button">Quizzes</button>
+        </div>
+        <div class="inline-folder-content">
+          <div class="inline-folder-empty">Loading...</div>
+        </div>
+      </div>
+    `;
+    placeholder.classList.add('has-folders');
+
+    const folders = await loadFoldersCached();
+    const folder = (folders || []).find(f => String(f.id) === String(folderId));
+    if (!folder) {
+      showToast('Folder not found');
+      return;
+    }
+
+    const [allDocs, allQuizzes, folderItems] = await Promise.all([
+      loadAllDocsCached(true),  // Force refresh to get updated titles
+      loadAllQuizzesCached(),
+      loadFolderItemsCached(folderId, true)  // Force refresh to get updated sheet/whiteboard titles
+    ]);
+
+    const docs = (allDocs || []).filter(d => String(d?.folder_id ?? d?.folderId) === String(folderId));
+    const quizzes = (allQuizzes || []).filter(q => String(q?.folder_id ?? q?.folderId) === String(folderId));
+
+    console.log('Inline folder loaded:', {
+      folderId,
+      docs: docs?.length || 0,
+      folderItems: folderItems?.length || 0,
+      quizzes: quizzes?.length || 0
+    });
+
+    placeholder.innerHTML = renderInlineFolderExplorerView(folder, docs || [], folderItems || [], quizzes || []);
+    placeholder.classList.add('has-folders');
+
+    const root = placeholder.querySelector('.inline-folder-explorer');
+    activateInlineFolderTab(root, initialTab);
+  } catch (error) {
+    console.error('Error opening inline folder explorer:', error);
+    showToast('Failed to open folder');
+  }
+}
+
+async function deleteFolderSheetItem(folderItemId, excelId) {
+  if (!folderItemId || !excelId) return;
+
+  window._folderSheetDeletesInFlight = window._folderSheetDeletesInFlight || new Set();
+  if (window._folderSheetDeletesInFlight.has(folderItemId)) return;
+
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to delete spreadsheets', 'error');
+    return;
+  }
+
+  if (!confirm('Delete this spreadsheet? This cannot be undone.')) {
+    return;
+  }
+
+  window._folderSheetDeletesInFlight.add(folderItemId);
+  const rowEl = document.querySelector(`.folder-list-item[data-folder-item-id="${folderItemId}"]`);
+  const actionsEl = document.querySelector(`[data-actions-for-folder-item-id="${folderItemId}"]`);
+  const prevActionsHtml = actionsEl ? actionsEl.innerHTML : null;
+
+  if (rowEl) {
+    rowEl.style.pointerEvents = 'none';
+    rowEl.style.opacity = '0.75';
+  }
+  if (actionsEl) {
+    actionsEl.innerHTML = `<span class="spinner" title="Deleting..."></span>`;
+  }
+
+  try {
+    await deleteExcel(excelId);
+    const folderItemDeleteOk = await window.deleteFolderItemFromDB(folderItemId);
+
+    if (folderItemDeleteOk === false) {
+      showToast('Some items could not be deleted. Please refresh and try again.', 'error');
+    } else {
+      showToast('Spreadsheet deleted', 'success');
+    }
+  } catch (error) {
+    console.error('Error deleting folder spreadsheet:', error);
+    showToast('Failed to delete spreadsheet', 'error');
+    if (actionsEl && prevActionsHtml !== null) {
+      actionsEl.innerHTML = prevActionsHtml;
+    }
+    if (rowEl) {
+      rowEl.style.pointerEvents = '';
+      rowEl.style.opacity = '';
+    }
+  } finally {
+    window._folderSheetDeletesInFlight.delete(folderItemId);
+    if (currentFolderId) {
+      openFolderExplorer(currentFolderId);
+    }
+  }
+}
+
+function openDocEditorFromInlineFolder(docId, spaceId, folderId) {
+  documentEditorState.returnToInlineFolderId = folderId || null;
+  documentEditorState.returnToInlineSpaceId = spaceId || null;
+  if (typeof openDocEditor === 'function') {
+    openDocEditor(docId);
+  }
+}
+
+async function deleteFolderDocFromInline(docId, folderId) {
+  if (!docId) return;
+  if (!confirm('Delete this document? This cannot be undone.')) return;
+  try {
+    await deleteDoc(docId);
+    if (folderId) {
+      await openFolderExplorerInline(folderId);
+    }
+  } catch (e) {
+    console.error('Failed to delete folder doc:', e);
+    showToast('Failed to delete document', 'error');
+  }
+}
+
+async function deleteFolderSheetFromInline(folderItemId, excelId, folderId) {
+  if (!folderItemId || !excelId) return;
+  if (!confirm('Delete this spreadsheet? This cannot be undone.')) return;
+  try {
+    await deleteExcel(excelId);
+    if (typeof window.deleteFolderItemFromDB === 'function') {
+      await window.deleteFolderItemFromDB(folderItemId);
+    }
+    if (folderId) {
+      await openFolderExplorerInline(folderId);
+    }
+  } catch (e) {
+    console.error('Failed to delete folder spreadsheet:', e);
+    showToast('Failed to delete spreadsheet', 'error');
+  }
+}
+
+async function deleteFolderWhiteboardFromInline(folderItemId, whiteboardId, folderId) {
+  if (!folderItemId || !whiteboardId) return;
+  try {
+    await deleteFolderWhiteboardItem(folderItemId, whiteboardId);
+    if (folderId) {
+      await openFolderExplorerInline(folderId);
+    }
+  } catch (e) {
+    console.error('Failed to delete folder whiteboard (inline):', e);
+  }
+}
+
+window.deleteFolderDocFromInline = deleteFolderDocFromInline;
+window.deleteFolderSheetFromInline = deleteFolderSheetFromInline;
+window.deleteFolderWhiteboardFromInline = deleteFolderWhiteboardFromInline;
+window.deleteFolderSheetItem = deleteFolderSheetItem;
+
+async function createFolderDocInline(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create documents', 'error');
+    return;
+  }
+
+  try {
+    const selectedProjectId = typeof getSelectedProjectId === 'function' ? getSelectedProjectId() : null;
+    const savedDoc = await window.LayerDB.saveDoc({
+      title: 'Untitled',
+      content: '',
+      spaceId: currentSpaceId || null,
+      folder_id: folderId,
+      projectId: selectedProjectId || null
+    });
+
+    // Invalidate cache and reload docs
+    if (typeof loadAllDocsCached === 'function') {
+      await loadAllDocsCached(true);
+    }
+
+    documentEditorState.returnToInlineFolderId = folderId;
+    documentEditorState.returnToInlineSpaceId = currentSpaceId || null;
+    openDocEditor(savedDoc.id);
+    await openFolderExplorerInline(folderId);
+  } catch (error) {
+    console.error('Error creating doc in folder:', error);
+    showToast('Failed to create doc', 'error');
+  }
+}
+
+async function createFolderSheetInline(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create spreadsheets', 'error');
+    return;
+  }
+
+  try {
+    const savedExcel = await window.LayerDB.saveExcel({
+      title: 'Untitled Spreadsheet',
+      data: createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS),
+      spaceId: currentSpaceId || null
+    });
+
+    await window.saveFolderItemToDB({
+      folder_id: folderId,
+      item_type: 'sheet',
+      item_id: savedExcel.id,
+      file_name: savedExcel.title,
+      file_size: null,
+      file_url: null,
+      metadata: {}
+    });
+
+    const excels = await window.LayerDB.loadExcels();
+    saveExcels(excels);
+
+    openExcelEditor(savedExcel.id);
+    await openFolderExplorerInline(folderId);
+  } catch (error) {
+    console.error('Error creating sheet in folder:', error);
+    showToast('Failed to create spreadsheet', 'error');
+  }
+}
+
+async function createFolderWhiteboardInline(folderId) {
+  currentFolderId = folderId;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showToast('Please sign in to create whiteboards', 'error');
+    return;
+  }
+
+  try {
+    const draftWhiteboard = {
+      name: 'Untitled Whiteboard',
+      data: { nodes: [], edges: [], offsetX: 0, offsetY: 0, scale: 1 },
+      folder_id: folderId
+    };
+
+    const newWhiteboard = await window.LayerDB.saveWhiteboard(draftWhiteboard);
+    if (!newWhiteboard?.id) throw new Error('Failed to create whiteboard');
+
+    await window.saveFolderItemToDB({
+      folder_id: folderId,
+      item_type: 'whiteboard',
+      item_id: newWhiteboard.id,
+      file_name: newWhiteboard.name,
+      metadata: {}
+    });
+
+    documentEditorState.returnToInlineFolderId = folderId;
+    documentEditorState.returnToInlineSpaceId = currentSpaceId || null;
+    openGripDiagram(newWhiteboard.id, true);
+    await openFolderExplorerInline(folderId);
+  } catch (error) {
+    console.error('Error creating whiteboard in folder:', error);
+    showToast('Failed to create whiteboard', 'error');
+  }
+}
+
+window.createFolderDocInline = createFolderDocInline;
+window.createFolderSheetInline = createFolderSheetInline;
+window.createFolderWhiteboardInline = createFolderWhiteboardInline;
+window.createFolderDoc = createFolderDoc;
+window.createFolderSheet = createFolderSheet;
+window.createFolderWhiteboard = createFolderWhiteboard;
 
 function renderDashboardSpacesWidget() {
   const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
@@ -1184,14 +1613,40 @@ async function deleteFolderWhiteboardItem(folderItemId, projectId) {
   }
 
   try {
-    const projectDeleteOk = await window.LayerDB.deleteProject(projectId);
+    let whiteboardDeleteOk = true;
+    if (window.LayerDB?.supabase && window.LayerDB?.getCurrentUser) {
+      const user = window.LayerDB.getCurrentUser();
+      if (user?.id) {
+        const { error } = await window.LayerDB.supabase
+          .from('whiteboards')
+          .delete()
+          .eq('id', projectId)
+          .eq('user_id', user.id);
+        if (error) {
+          throw error;
+        }
+      }
+    } else if (window.LayerDB?.deleteWhiteboard) {
+      await window.LayerDB.deleteWhiteboard(projectId);
+    } else {
+      whiteboardDeleteOk = await window.LayerDB.deleteProject(projectId);
+    }
+
+    // Fallback: legacy folder whiteboards may still be stored as projects
+    if (window.LayerDB?.deleteProject) {
+      try {
+        await window.LayerDB.deleteProject(projectId);
+      } catch (_) {
+      }
+    }
+
     const folderItemDeleteOk = await window.deleteFolderItemFromDB(folderItemId);
 
     if (typeof window.refreshProjects === 'function') {
       await window.refreshProjects();
     }
 
-    if (projectDeleteOk === false || folderItemDeleteOk === false) {
+    if (whiteboardDeleteOk === false || folderItemDeleteOk === false) {
       showToast('Some items could not be deleted. Please refresh and try again.', 'error');
     } else {
       showToast('Whiteboard deleted', 'success');
@@ -14704,10 +15159,22 @@ async function renderFoldersInPlaceholder() {
   const placeholder = document.querySelector('.folders-placeholder');
   if (!placeholder) return;
 
+  placeholder.innerHTML = `
+    <div class="folders-placeholder-header">
+      <div class="folders-placeholder-header-left">
+        <h2 class="folders-placeholder-title">Folders</h2>
+      </div>
+    </div>
+    <div class="folders-placeholder-body">
+      <div class="inline-folder-empty">Loading...</div>
+    </div>
+  `;
+  placeholder.classList.remove('has-folders');
+
   try {
     const html = await renderEnhancedFolderGrid(currentSpaceId);
     placeholder.innerHTML = html;
-    placeholder.classList.toggle('has-folders', html.includes('folder-pill-list') || html.includes('folder-list-container-modern'));
+    placeholder.classList.toggle('has-folders', html.includes('folder-tile'));
   } catch (error) {
     console.error('Error rendering folders:', error);
   }
@@ -24551,6 +25018,15 @@ async function autoSaveDoc() {
           window.draftsNeedRefresh = true;
         }
 
+        // Sync folder_items title if this doc is in a folder
+        if (window.findFolderItemByItemId && window.updateFolderItemInDB) {
+          const folderItem = await window.findFolderItemByItemId('doc', currentDocId);
+          if (folderItem && folderItem.file_name !== title) {
+            await window.updateFolderItemInDB(folderItem.id, { file_name: title });
+            console.log('📝 Folder item title synced:', folderItem.id);
+          }
+        }
+
         // Refresh local cache
         const updatedDocs = await window.LayerDB.loadDocs();
         saveDocs(updatedDocs);
@@ -24654,9 +25130,21 @@ function closeDocEditor() {
   const folderIdToReturn = documentEditorState.returnToFolderId;
   documentEditorState.returnToFolderId = null;
 
+  const inlineFolderIdToReturn = documentEditorState.returnToInlineFolderId;
+  const inlineSpaceIdToReturn = documentEditorState.returnToInlineSpaceId;
+  documentEditorState.returnToInlineFolderId = null;
+  documentEditorState.returnToInlineSpaceId = null;
+
   // 🔄 REFRESH DASHBOARD: Update the inbox view to reflect any changes
   // Use a small delay to ensure DOM is fully cleaned up
   setTimeout(() => {
+    if (inlineSpaceIdToReturn && inlineFolderIdToReturn) {
+      openSpaceView(inlineSpaceIdToReturn);
+      setTimeout(() => {
+        openFolderExplorerInline(inlineFolderIdToReturn, 'documents');
+      }, 150);
+      return;
+    }
     if (folderIdToReturn) {
       openFolderExplorer(folderIdToReturn, 'documents');
       return;
@@ -25445,6 +25933,15 @@ async function autoSaveExcel() {
 
       // Also sync the draft card title in real-time
       syncDraftCardTitle(currentExcelId, title);
+    }
+
+    // Sync folder_items title if this sheet is in a folder
+    if (window.findFolderItemByItemId && window.updateFolderItemInDB) {
+      const folderItem = await window.findFolderItemByItemId('sheet', currentExcelId);
+      if (folderItem && folderItem.file_name !== title) {
+        await window.updateFolderItemInDB(folderItem.id, { file_name: title });
+        console.log('📊 Folder item title synced:', folderItem.id);
+      }
     }
   } catch (error) {
     console.error('Failed to auto-save excel to database:', error);
@@ -26567,6 +27064,12 @@ function openSpaceView(spaceId) {
   
   // Load folders after rendering the space view
   setTimeout(() => renderFoldersInPlaceholder(), 100);
+
+  setTimeout(() => {
+    loadFoldersCached().catch(() => {});
+    loadAllDocsCached().catch(() => {});
+    loadAllQuizzesCached().catch(() => {});
+  }, 0);
 }
 
 function renderSpaceDetailView(space) {
@@ -26860,19 +27363,21 @@ function renderSpaceDetailView(space) {
         
         <!-- Folders Section -->
         <div class="space-section">
-          <div class="section-header">
-            <h2 class="section-title">Folders</h2>
-          </div>
           <div class="folders-placeholder">
-            <div class="folder-icon-large">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
+            <div class="folders-placeholder-header">
+              <h2 class="folders-placeholder-title">Folders</h2>
             </div>
-            <div class="folders-text">Add new Folder to your Space</div>
-            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-              Add Folder
-            </button>
+            <div class="folders-placeholder-body">
+              <div class="folder-icon-large">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div class="folders-text">Add new Folder to your Space</div>
+              <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+                Add Folder
+              </button>
+            </div>
           </div>
         </div>
         
@@ -36540,6 +37045,89 @@ function stopSharedContentPolling() {
 let currentFolderId = null;
 let currentFolderData = null;
 
+const layerSessionCache = {
+  folders: null,
+  foldersPromise: null,
+  docs: null,
+  docsPromise: null,
+  quizzes: null,
+  quizzesPromise: null,
+  folderItemsByFolderId: new Map(),
+  folderItemsPromiseByFolderId: new Map()
+};
+
+async function loadFoldersCached(force = false) {
+  if (!force && Array.isArray(layerSessionCache.folders)) return layerSessionCache.folders;
+  if (!force && layerSessionCache.foldersPromise) return layerSessionCache.foldersPromise;
+  layerSessionCache.foldersPromise = (async () => {
+    const folders = await loadFoldersFromDB();
+    layerSessionCache.folders = Array.isArray(folders) ? folders : [];
+    layerSessionCache.foldersPromise = null;
+    return layerSessionCache.folders;
+  })();
+  return layerSessionCache.foldersPromise;
+}
+
+async function loadAllDocsCached(force = false) {
+  // Clear cache when force=true
+  if (force) {
+    layerSessionCache.docs = null;
+    layerSessionCache.docsPromise = null;
+  }
+  if (!force && Array.isArray(layerSessionCache.docs)) return layerSessionCache.docs;
+  if (!force && layerSessionCache.docsPromise) return layerSessionCache.docsPromise;
+  layerSessionCache.docsPromise = (async () => {
+    let docs;
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      docs = await window.LayerDB.loadDocs();
+    } else {
+      docs = loadDocs();
+    }
+    layerSessionCache.docs = Array.isArray(docs) ? docs : [];
+    layerSessionCache.docsPromise = null;
+    return layerSessionCache.docs;
+  })();
+  return layerSessionCache.docsPromise;
+}
+
+async function loadAllQuizzesCached(force = false) {
+  if (!force && Array.isArray(layerSessionCache.quizzes)) return layerSessionCache.quizzes;
+  if (!force && layerSessionCache.quizzesPromise) return layerSessionCache.quizzesPromise;
+  layerSessionCache.quizzesPromise = (async () => {
+    let quizzes;
+    if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      quizzes = await window.LayerDB.loadQuizzes();
+    } else {
+      quizzes = JSON.parse(localStorage.getItem('layer_quizzes') || '[]');
+    }
+    layerSessionCache.quizzes = Array.isArray(quizzes) ? quizzes : [];
+    layerSessionCache.quizzesPromise = null;
+    return layerSessionCache.quizzes;
+  })();
+  return layerSessionCache.quizzesPromise;
+}
+
+async function loadFolderItemsCached(folderId, force = false) {
+  const key = String(folderId);
+  if (!force && layerSessionCache.folderItemsByFolderId.has(key)) {
+    return layerSessionCache.folderItemsByFolderId.get(key);
+  }
+  if (!force && layerSessionCache.folderItemsPromiseByFolderId.has(key)) {
+    return layerSessionCache.folderItemsPromiseByFolderId.get(key);
+  }
+  const p = (async () => {
+    const items = (window.LayerDB && window.LayerDB.isAuthenticated() && typeof window.loadFolderItemsFromDB === 'function')
+      ? await window.loadFolderItemsFromDB(folderId)
+      : [];
+    const normalized = Array.isArray(items) ? items : [];
+    layerSessionCache.folderItemsByFolderId.set(key, normalized);
+    layerSessionCache.folderItemsPromiseByFolderId.delete(key);
+    return normalized;
+  })();
+  layerSessionCache.folderItemsPromiseByFolderId.set(key, p);
+  return p;
+}
+
 // AI System Prompts
 const FOLDER_SUMMARY_SYSTEM_PROMPT = `You are an expert academic summarizer. Create a clean, structured, professional summary of the uploaded document.
 
@@ -36593,35 +37181,22 @@ async function renderEnhancedFolderGrid(spaceId) {
   if (!placeholder) return '';
 
   try {
-    const folders = await loadFoldersFromDB();
+    const folders = await loadFoldersCached();
     const filteredFolders = (folders || []).filter(f => {
       if (!spaceId) return false;
       return String(f.space_id) === String(spaceId);
     });
 
-    // Get counts for each folder
-    const folderCounts = await Promise.all(
-      filteredFolders.map(async (folder) => {
-        const docs = await loadDocsFromFolder(folder.id);
-        const quizzes = await loadQuizzesFromFolder(folder.id);
-        return {
-          folderId: folder.id,
-          docCount: docs.length,
-          quizCount: quizzes.length
-        };
-      })
-    );
+    const hasFolders = filteredFolders && filteredFolders.length > 0;
 
-    const countsMap = new Map(folderCounts.map(c => [c.folderId, c]));
-
-    if (filteredFolders && filteredFolders.length > 0) {
-      return `
-        <div class="folders-section-header-modern">
-          <div class="folders-header-left">
-            <h3 class="folders-section-title-modern">Folders</h3>
-            <div class="folder-total-badge">${filteredFolders.length}</div>
-          </div>
-          <div class="folders-header-right">
+    return `
+      <div class="folders-placeholder-header">
+        <div class="folders-placeholder-header-left">
+          <h2 class="folders-placeholder-title">Folders</h2>
+          ${hasFolders ? `<div class="folder-total-badge">${filteredFolders.length}</div>` : ''}
+        </div>
+        ${hasFolders ? `
+          <div class="folders-placeholder-header-right">
             <button class="row-action-btn-modern" onclick="openFolderDropdown(this)" title="Add Folder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -36629,36 +37204,37 @@ async function renderEnhancedFolderGrid(spaceId) {
               </svg>
             </button>
           </div>
-        </div>
-
-        <div class="folder-pill-list">
-          ${filteredFolders.map(folder => {
-            return `
-              <button class="folder-pill-item" onclick="openFolderExplorer('${folder.id}')" type="button">
-                <svg class="folder-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-                <span class="folder-pill-name" title="${folder.name}">${folder.name}</span>
-              </button>
-            `;
-          }).join('')}
-        </div>
-      `;
-    } else {
-      return `
-        <div class="folders-empty-state">
-          <div class="folder-icon-large">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
+        ` : ''}
+      </div>
+      <div class="folders-placeholder-body">
+        ${hasFolders ? `
+          <div class="folders-tiles-grid">
+            ${filteredFolders.map(folder => {
+              return `
+                <button class="folder-tile" onclick="openFolderExplorerInline('${folder.id}')" type="button">
+                  <svg class="folder-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span class="folder-tile-name" title="${folder.name}">${folder.name}</span>
+                </button>
+              `;
+            }).join('')}
           </div>
-          <div class="folders-text">Add new Folder to your Space</div>
-          <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-            Add Folder
-          </button>
-        </div>
-      `;
-    }
+        ` : `
+          <div class="folders-empty-state">
+            <div class="folder-icon-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div class="folders-text">Add new Folder to your Space</div>
+            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+              Add Folder
+            </button>
+          </div>
+        `}
+      </div>
+    `;
   } catch (error) {
     console.error('Error rendering enhanced folder grid:', error);
     return '';
@@ -36871,7 +37447,7 @@ function renderFolderExplorerView(folder, docs, folderItems, quizzes) {
             `).join('')}
 
               ${folderSheets.map(item => `
-              <div class="folder-list-item" onclick="openExcelEditor('${item.item_id}')">
+              <div class="folder-list-item" data-folder-item-id="${item.id}" onclick="openExcelEditor('${item.item_id}')">
                 <div class="col-icon">
                   <div class="file-icon-mini" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: white;">
@@ -36887,7 +37463,11 @@ function renderFolderExplorerView(folder, docs, folderItems, quizzes) {
                 <div class="col-date">
                   <span class="item-date-text">${formatRelativeTime(item.updated_at)}</span>
                 </div>
-                <div class="col-actions"></div>
+                <div class="col-actions" data-actions-for-folder-item-id="${item.id}">
+                  <button class="row-action-btn delete" onclick="event.stopPropagation(); deleteFolderSheetItem('${item.id}', '${item.item_id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
               </div>
               `).join('')}
 
@@ -37161,8 +37741,10 @@ async function createFolderDoc(folderId) {
       projectId: selectedProjectId || null
     });
 
-    const docs = await window.LayerDB.loadDocs();
-    saveDocs(docs);
+    // Invalidate cache and reload docs
+    if (typeof loadAllDocsCached === 'function') {
+      await loadAllDocsCached(true);
+    }
 
     openDocEditor(savedDoc.id);
     if (currentFolderId) openFolderExplorer(currentFolderId);
@@ -37243,7 +37825,59 @@ async function createFolderWhiteboard(folderId) {
 }
 
 function openWhiteboardFromFolderItem(whiteboardId) {
-  openGripDiagram(whiteboardId, true);
+  (async () => {
+    try {
+      const id = String(whiteboardId || '').trim();
+      if (!id) {
+        showToast('Whiteboard not found', 'error');
+        return;
+      }
+
+      console.log('Opening folder whiteboard item:', { id });
+
+      // 1) Try standalone whiteboard (new system)
+      if (window.LayerDB && window.LayerDB.isAuthenticated && window.LayerDB.isAuthenticated()) {
+        try {
+          const wb = await window.LayerDB.loadWhiteboard(id);
+          if (wb) {
+            openGripDiagram(id, true);
+            return;
+          }
+        } catch (e) {
+          console.warn('Standalone whiteboard load attempt failed, will fallback:', e);
+        }
+      }
+
+      // 2) Fallback to legacy project-based grip diagram
+      const projects = loadProjects() || [];
+      let projectIndex = projects.findIndex(p => String(p?.id) === id);
+
+      if (projectIndex === -1 && window.LayerDB && window.LayerDB.getProject) {
+        try {
+          const remoteProject = await window.LayerDB.getProject(id);
+          if (remoteProject) {
+            const updated = [...projects, remoteProject];
+            saveProjects(updated);
+            projectIndex = updated.length - 1;
+            console.log('Fetched legacy whiteboard project from DB for folder item:', { id, projectIndex });
+          }
+        } catch (e) {
+          console.warn('Failed to fetch legacy project for whiteboard id:', id, e);
+        }
+      }
+
+      if (projectIndex !== -1) {
+        openGripDiagram(projectIndex, false);
+        return;
+      }
+
+      console.warn('Folder whiteboard item id not found in standalone whiteboards or projects:', { id });
+      showToast('Whiteboard not found', 'error');
+    } catch (error) {
+      console.error('Failed to open folder whiteboard:', error);
+      showToast('Failed to load whiteboard', 'error');
+    }
+  })();
 }
 
 window.openPdfViewerFromFolderItem = openPdfViewerFromFolderItem;
