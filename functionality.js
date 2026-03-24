@@ -1028,10 +1028,11 @@ function renderInboxView() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(today);
 
   const oneWeekFromNow = new Date(today);
   oneWeekFromNow.setDate(today.getDate() + 7);
+  const oneWeekStr = getLocalDateString(oneWeekFromNow);
 
   const upcomingEvents = calendarEvents
     .filter(event => {
@@ -1039,7 +1040,18 @@ function renderInboxView() {
       const eventDate = normalizeDate(event.date);
       return eventDate >= today && eventDate <= oneWeekFromNow;
     })
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => {
+      // Sort by date first, then by time if available
+      const dateCompare = new Date(a.date) - new Date(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      
+      // If same date, sort by time (put events with time first, then by time)
+      if (a.time && !b.time) return -1;
+      if (!a.time && b.time) return 1;
+      if (a.time && b.time) return a.time.localeCompare(b.time);
+      
+      return 0;
+    });
 
   const todayTasks = calendarEvents.filter(e => e.date === todayStr);
   const recentActivity = getRecentActivity(projects);
@@ -1056,7 +1068,7 @@ function renderInboxView() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     const count = calendarEvents.filter(e => e.date === dateStr && e.completed).length;
     productivityData.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }), count });
   }
@@ -1461,11 +1473,25 @@ function renderInboxView() {
 
   // === Upcoming Tasks - Card Grid Layout ===
   if (upcomingEvents.length > 0) {
+    // Separate today's events from future events
+    const todayEvents = upcomingEvents.filter(event => {
+      const eventDate = normalizeDate(event.date);
+      return eventDate.getTime() === today.getTime();
+    });
+    
+    const futureEvents = upcomingEvents.filter(event => {
+      const eventDate = normalizeDate(event.date);
+      return eventDate.getTime() !== today.getTime();
+    });
+    
+    // Combine today's events first, then future events
+    const orderedEvents = [...todayEvents, ...futureEvents];
+    
     content += `
       <div style="margin-bottom: 48px;">
         <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--foreground);">Upcoming This Week</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-          ${upcomingEvents.slice(0, 6).map(event => {
+          ${orderedEvents.slice(0, 6).map(event => {
       const eventDate = normalizeDate(event.date);
       const isToday = eventDate.getTime() === today.getTime();
       const isTomorrow = eventDate.getTime() === new Date(today.getTime() + 86400000).getTime();
@@ -1554,7 +1580,7 @@ function calculateStreak(events) {
   for (let i = 0; i < 365; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(today.getDate() - i);
-    const dateStr = checkDate.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(checkDate);
     const hasCompleted = events.some(e => e.date === dateStr && e.completed);
 
     if (i === 0 && !hasCompleted) {
@@ -1706,7 +1732,7 @@ async function generateDashboardAISummary() {
   // Check if we already have a cached summary for today
   const cached = localStorage.getItem('layerDashboardAISummary');
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(today);
   
   if (cached) {
     try {
@@ -3368,7 +3394,7 @@ function openEditTaskModal(eventId, anchorElement = null) {
   const duration = calculateDuration(startTime, endTime);
   const locationValue = task.location || '';
   const meetingLinkValue = task.conferenceLink || '';
-  const dateValue = task.date || new Date().toISOString().split('T')[0];
+  const dateValue = task.date || getLocalDateString(new Date());
   const meetingLinkInputId = `editMeetingLink_${String(eventId).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
   const content = `
@@ -3585,6 +3611,33 @@ async function handleEditEventSubmit(e, eventId) {
   // Use async update if authenticated
   await updateCalendarEventAsync(eventId, updates);
 
+  // If this is a recurring event instance, check if we should update the series
+  const events = loadCalendarEvents();
+  const currentEvent = events.find(e => e.id == eventId);
+  if (currentEvent && currentEvent.recurringId && conferenceLink) {
+    const recurringTasks = loadRecurringTasks();
+    const taskIndex = recurringTasks.findIndex(t => t.id == currentEvent.recurringId);
+    if (taskIndex !== -1) {
+      // Update the base recurring task so future generations have the link
+      recurringTasks[taskIndex].conferenceLink = conferenceLink;
+      saveRecurringTasks(recurringTasks);
+
+      // Update all existing instances in the series
+      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+        await window.LayerDB.updateRecurringEventSeries(currentEvent.recurringId, { conference_link: conferenceLink });
+      } else {
+        const allEvents = loadCalendarEvents();
+        const updatedEvents = allEvents.map(e => {
+          if (e.recurringId == currentEvent.recurringId) {
+            return { ...e, conferenceLink };
+          }
+          return e;
+        });
+        saveCalendarEvents(updatedEvents);
+      }
+    }
+  }
+
   closeModal();
   // Preserve scroll when editing task
   renderCurrentView(true);
@@ -3635,7 +3688,7 @@ function applyRecurringTasks() {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dayOfWeek = date.getDay();
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
 
     recurring.forEach(task => {
       if (task.days && task.days.includes(dayOfWeek)) {
@@ -5028,7 +5081,10 @@ function renderMiniCalendar(currentDate, selectedDate, today, events) {
 
   // Get week dates for highlighting
   const weekDates = getWeekDates(selectedDate);
-  const weekDateStrings = weekDates.map(d => d.toISOString().split('T')[0]);
+  const weekDateStrings = weekDates.map(d => getLocalDateString(d));
+
+  const selectedDateStr = getLocalDateString(selectedDate);
+  const todayStr = getLocalDateString(today);
 
   let html = '<div class="mini-cal-grid">';
 
@@ -5046,9 +5102,9 @@ function renderMiniCalendar(currentDate, selectedDate, today, events) {
   // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
-    const dateStr = date.toISOString().split('T')[0];
-    const isToday = date.toDateString() === today.toDateString();
-    const isSelected = dateStr === selectedDate.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === selectedDateStr;
     const isInWeek = weekDateStrings.includes(dateStr);
     const hasEvents = events.some(e => e.date === dateStr);
 
@@ -5102,9 +5158,9 @@ function renderWeekView(events, today) {
           
           <!-- Day Columns -->
           ${weekDates.map((date, dayIndex) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
     const dayEvents = events.filter(e => e.date === dateStr);
-    const isToday = date.toDateString() === today.toDateString();
+    const isToday = getLocalDateString(date) === getLocalDateString(today);
 
     return `
               <div class="week-day-column ${isToday ? 'today' : ''}" 
@@ -5176,9 +5232,9 @@ function renderWeekView(events, today) {
 
 // Render Day View
 function renderDayView(events, today) {
-  const dateStr = scheduleSelectedDate.toISOString().split('T')[0];
+  const dateStr = getLocalDateString(scheduleSelectedDate);
   const dayEvents = events.filter(e => e.date === dateStr);
-  const isToday = scheduleSelectedDate.toDateString() === today.toDateString();
+  const isToday = getLocalDateString(scheduleSelectedDate) === getLocalDateString(today);
   const dayName = scheduleSelectedDate.toLocaleDateString('en-US', { weekday: 'long' });
 
   const tzOffset = -(new Date().getTimezoneOffset() / 60);
@@ -5282,8 +5338,8 @@ function renderMonthViewAdvanced(events, today) {
   // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
-    const dateStr = date.toISOString().split('T')[0];
-    const isToday = date.toDateString() === today.toDateString();
+    const dateStr = getLocalDateString(date);
+    const isToday = getLocalDateString(date) === getLocalDateString(today);
     const dayEvents = events.filter(e => e.date === dateStr).slice(0, 3);
     const moreCount = events.filter(e => e.date === dateStr).length - 3;
 
@@ -5941,14 +5997,14 @@ function initCurrentTimeIndicator() {
 // AGENDA VIEW - Professional List View
 // ============================================
 function renderAgendaView(events, today) {
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(today);
 
   // Get events for next 30 days
   const futureEvents = [];
   for (let i = 0; i < 30; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
 
     const dayEvents = events.filter(e => e.date === dateStr).sort((a, b) => {
       if (!a.time && !b.time) return 0;
@@ -6005,7 +6061,9 @@ function renderAgendaView(events, today) {
       <div class="agenda-list">
         ${futureEvents.map(day => {
     const isToday = day.date === todayStr;
-    const isTomorrow = day.date === new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const isTomorrow = day.date === getLocalDateString(tomorrow);
 
     let dateLabel = '';
     if (isToday) {
@@ -6104,7 +6162,7 @@ function renderYearView(events, today) {
   const year = scheduleCurrentDate.getFullYear();
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(today);
 
   const eventsByMonth = {};
   events.forEach(event => {
@@ -6208,6 +6266,14 @@ function selectYearDate(dateStr) {
 // ============================================
 // ADVANCED EVENT MODAL (Google Calendar style)
 // ============================================
+function getLocalDateString(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
   // Require authentication to create calendar events
   if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
@@ -6217,7 +6283,7 @@ function openAdvancedEventModal(prefillDate = null, prefillTime = null) {
   }
 
   const today = new Date();
-  const date = prefillDate || today.toISOString().split('T')[0];
+  const date = prefillDate || getLocalDateString(today);
   const time = prefillTime || '';
   const endTime = prefillTime ? calculateEndTimeFromDuration(prefillTime, 60) : '';
 
@@ -6561,7 +6627,7 @@ function duplicateCalendarTask(eventId) {
   const task = events.find(e => e.id == eventId);
   if (!task) return;
 
-  const today = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
 
   const content = `
     <form id="duplicateTaskForm" onsubmit="handleDuplicateTaskSubmit(event, ${eventId})">
@@ -6739,7 +6805,7 @@ function setDefaultEndTime() {
 
 // Create modal with Google Calendar style time picker
 function openCreateEventModal(defaultDate = null) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
   const dateValue = defaultDate || todayStr;
 
   // Default start time: next hour
@@ -6764,6 +6830,16 @@ function openCreateEventModal(defaultDate = null) {
           Location
         </label>
         <input type="text" name="location" class="form-input" placeholder="Add location...">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">
+            <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+          </svg>
+          Meeting Link
+        </label>
+        <input type="url" name="conferenceLink" class="form-input" placeholder="Add video conferencing link (Zoom, Meet, Teams)...">
       </div>
       
       <div class="time-picker-group">
@@ -6947,6 +7023,8 @@ async function handleCreateEventSubmit(e, date) {
   const endTime = data.get('endTime');
   const color = data.get('color') || 'blue';
   const location = data.get('location')?.trim() || null;
+  const conferenceLinkRaw = data.get('conferenceLink')?.trim() || null;
+  const conferenceLink = conferenceLinkRaw ? normalizeMeetingLink(conferenceLinkRaw) : null;
 
   // Handle project/assignment/space IDs - convert empty strings to null
   const projectIdValue = data.get('projectId');
@@ -6977,6 +7055,7 @@ async function handleCreateEventSubmit(e, date) {
       endTime: endTime || null,
       color,
       location,
+      conferenceLink,
       projectId,
       assignmentId,
       spaceId
@@ -7048,6 +7127,7 @@ async function handleCreateEventSubmit(e, date) {
     endTime: endTime || null,
     color,
     location,
+    conferenceLink,
     projectId,
     assignmentId,
     spaceId
@@ -7098,7 +7178,7 @@ async function handleCreateEventSubmit(e, date) {
 function generateRecurringEvents(config) {
   const {
     recurringId, title, startDate, endRepeatDate, repeatType, daysToRepeat,
-    repeatCount, startTime, endTime, color, location, projectId, assignmentId, spaceId
+    repeatCount, startTime, endTime, color, location, conferenceLink, projectId, assignmentId, spaceId
   } = config;
 
   const events = [];
@@ -7136,11 +7216,12 @@ function generateRecurringEvents(config) {
       events.push({
         id: Date.now() + count + Math.floor(Math.random() * 100000),
         title,
-        date: current.toISOString().split('T')[0],
+        date: getLocalDateString(current),
         time: startTime,
         endTime: endTime,
         color,
         location,
+        conferenceLink,
         isRecurring: true,
         recurringId,
         projectId,
@@ -7216,7 +7297,7 @@ function updateRepeatDayChip(checkbox) {
 function getDefaultRepeatEndDate(startDate) {
   const date = new Date(startDate);
   date.setMonth(date.getMonth() + 1);
-  return date.toISOString().split('T')[0];
+  return getLocalDateString(date);
 }
 
 

@@ -31,6 +31,15 @@ let uiState = {
   isPreserving: false
 };
 
+// Helper to get local date string YYYY-MM-DD
+function getLocalDateString(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Save current UI state
 function saveUIState() {
   try {
@@ -1077,7 +1086,7 @@ async function saveProjectToDB(projectData) {
       description: projectData.description || '',
       status: projectData.status || 'todo',
       icon_emoji: projectData.iconEmoji || '◇',
-      start_date: projectData.startDate || new Date().toISOString().split('T')[0],
+      start_date: projectData.startDate || getLocalDateString(new Date()),
       target_date: projectData.targetDate,
       flowchart: projectData.flowchart || { nodes: [], edges: [] },
       columns: projectData.columns || [
@@ -1579,6 +1588,21 @@ async function updateCalendarEventInDB(eventId, updates) {
     .from('calendar_events')
     .update(dbUpdates)
     .eq('id', eventId)
+    .eq('user_id', currentUser.id);
+
+  if (error) throw error;
+  return await loadCalendarEventsFromDB();
+}
+
+async function updateRecurringEventSeries(recurringId, updates) {
+  if (!currentUser) {
+    return null;
+  }
+
+  const { error } = await supabaseClient
+    .from('calendar_events')
+    .update(updates)
+    .eq('recurring_id', recurringId)
     .eq('user_id', currentUser.id);
 
   if (error) throw error;
@@ -2381,6 +2405,7 @@ window.LayerDB = {
   updateCalendarEvent: updateCalendarEventInDB,
   deleteCalendarEvent: deleteCalendarEventFromDB,
   deleteRecurringEvents: deleteRecurringEventsFromDB,
+  updateRecurringEventSeries,
 
   // Documents
   loadDocs: loadDocsFromDB,
