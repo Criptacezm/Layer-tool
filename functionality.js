@@ -30790,6 +30790,100 @@ function updateAIStats() {
   localStorage.setItem('aiLastQueryDate', aiStats.lastQueryDate);
 }
 
+const AI_RESPONSE_MODES = [
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'Clear answers with just enough detail',
+    instruction: ''
+  },
+  {
+    id: 'concise',
+    label: 'Concise',
+    description: 'Short, direct, no preamble',
+    instruction: 'Answer in at most 80 words. Prefer bullet points. Omit every restatement of the question.'
+  },
+  {
+    id: 'deep',
+    label: 'Deep',
+    description: 'Step-by-step reasoning and trade-offs',
+    instruction: 'Give a thorough answer: outline the reasoning, cover edge cases and trade-offs, and finish with concrete next steps.'
+  }
+];
+
+let aiResponseMode = (() => {
+  try {
+    const saved = localStorage.getItem('aiResponseMode');
+    return AI_RESPONSE_MODES.some(m => m.id === saved) ? saved : 'balanced';
+  } catch (e) {
+    return 'balanced';
+  }
+})();
+
+function getAIResponseMode() {
+  return AI_RESPONSE_MODES.find(m => m.id === aiResponseMode) || AI_RESPONSE_MODES[0];
+}
+
+function getAIModeInstruction() {
+  return getAIResponseMode().instruction;
+}
+
+function toggleAIModeMenu(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('aiModeMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('open');
+  menu.classList.toggle('open', willOpen);
+
+  if (willOpen && !window._aiModeMenuHandler) {
+    window._aiModeMenuHandler = () => {
+      const openMenu = document.getElementById('aiModeMenu');
+      if (openMenu) openMenu.classList.remove('open');
+      document.removeEventListener('click', window._aiModeMenuHandler);
+      window._aiModeMenuHandler = null;
+    };
+    setTimeout(() => document.addEventListener('click', window._aiModeMenuHandler), 0);
+  }
+}
+
+function setAIResponseMode(modeId) {
+  if (!AI_RESPONSE_MODES.some(m => m.id === modeId)) return;
+  aiResponseMode = modeId;
+  try { localStorage.setItem('aiResponseMode', modeId); } catch (e) {}
+
+  const label = document.getElementById('aiModeLabel');
+  if (label) label.textContent = getAIResponseMode().label;
+
+  document.querySelectorAll('.ai-mode-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.mode === modeId);
+  });
+
+  const menu = document.getElementById('aiModeMenu');
+  if (menu) menu.classList.remove('open');
+}
+
+function autoGrowAIInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 220) + 'px';
+}
+
+function renderAILaunchRecents() {
+  const conversations = (typeof loadAIChatHistory === 'function' ? loadAIChatHistory() : []).slice(0, 4);
+
+  if (conversations.length === 0) {
+    return `<div class="ai-launch-recent-empty">No conversations yet — your recent chats will show up here.</div>`;
+  }
+
+  return conversations.map(conv => `
+    <button class="ai-launch-recent-item" onclick="loadConversation('${conv.id}')">
+      <span class="ai-launch-recent-dot"></span>
+      <span class="ai-launch-recent-title">${escapeHtml(conv.title || 'Untitled conversation')}</span>
+      <span class="ai-launch-recent-meta">${conv.messages ? conv.messages.length : 0} msg · ${getTimeAgo(new Date(conv.updatedAt))}</span>
+    </button>
+  `).join('');
+}
+
 function renderAIView() {
   // If we are already in an active chat session, return the chat view
   if (typeof isAiChatActive !== 'undefined' && isAiChatActive) {
@@ -30799,58 +30893,105 @@ function renderAIView() {
   // Get user name if signed in
   const currentUser = window.LayerDB?.getCurrentUser?.();
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
+  const mode = getAIResponseMode();
 
   return `
-    <div class="ai-clean-chat">
-      <div class="ai-clean-chat-inner">
-        <div class="ai-top-bar">
-          <div class="ai-top-left"></div>
-          <div class="ai-top-right">
-            <button class="ai-history-btn-minimal" onclick="toggleAIChatHistorySidebar()" title="View Chat History">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <span>History</span>
-            </button>
+    <div class="ai-launch">
+      <div class="ai-launch-inner">
+        <div class="ai-launch-topbar">
+          <div class="ai-launch-brand">
+            <span class="ai-launch-brand-dot"></span>
+            Layer AI
           </div>
+          <button class="ai-launch-ghost-btn" onclick="toggleAIChatHistorySidebar()" title="View chat history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>History</span>
+          </button>
         </div>
 
-        <!-- Clean Landing Content -->
-        <div class="ai-clean-center">
-          <h1 class="ai-clean-greeting">
-            Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},
-            <br/>
-            <span class="ai-clean-greeting-sub">What would you like to know?</span>
-          </h1>
-          <p class="ai-clean-hint">Use one of the most common prompts below or use your own to begin</p>
+        <div class="ai-launch-center">
+          <h1 class="ai-launch-title">Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},</h1>
+          <p class="ai-launch-subtitle">What would you like to get done?</p>
 
-          <!-- Prompt Cards -->
-          <div class="ai-clean-cards">
+          <div class="ai-launch-composer">
+            <div class="ai-launch-composer-hint">Describe a task, ask a question, or pick a starter below</div>
+
+            <textarea
+              class="ai-launch-textarea"
+              id="aiAgentInput"
+              placeholder="Ask Layer AI anything…"
+              rows="1"
+              oninput="autoGrowAIInput(this)"
+              onkeydown="handleAIInputKeydown(event)"
+            ></textarea>
+
+            <div class="ai-launch-composer-bar">
+              <div class="ai-launch-composer-left">
+                <button class="ai-launch-icon-btn" onclick="showAIAddOptions()" title="Add attachment">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
+
+                <div class="ai-mode-select">
+                  <button class="ai-launch-chip" onclick="toggleAIModeMenu(event)" title="Response mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
+                      <path d="M4 6h16M7 12h10M10 18h4"/>
+                    </svg>
+                    <span id="aiModeLabel">${mode.label}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </button>
+                  <div class="ai-mode-menu" id="aiModeMenu">
+                    ${AI_RESPONSE_MODES.map(m => `
+                      <button class="ai-mode-option ${m.id === mode.id ? 'selected' : ''}" data-mode="${m.id}" onclick="setAIResponseMode('${m.id}')">
+                        <span class="ai-mode-option-label">${m.label}</span>
+                        <span class="ai-mode-option-desc">${m.description}</span>
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <span class="ai-launch-chip ai-launch-chip-static" title="Active model">
+                  <span class="ai-launch-chip-dot"></span>
+                  Qwen 3.5
+                </span>
+              </div>
+
+              <div class="ai-launch-composer-right">
+                <button class="ai-launch-icon-btn" onclick="toggleVoiceInput()" title="Voice input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                    <rect x="9" y="3" width="6" height="11" rx="3"/>
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+                  </svg>
+                </button>
+                <button class="ai-launch-send" id="aiSendBtn" onclick="sendAIAgentPrompt()" title="Send">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
+                    <path d="M12 19V5M5 12l7-7 7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-launch-starters">
             ${aiFeatureCards.map(card => `
-              <button class="ai-clean-card" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
-                <span class="ai-clean-card-text">${card.title}</span>
-                <span class="ai-clean-card-icon">${card.icon}</span>
+              <button class="ai-launch-starter" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
+                <span class="ai-launch-starter-icon">${card.icon}</span>
+                <span>${escapeHtml(card.title)}</span>
               </button>
             `).join('')}
           </div>
-        </div>
 
-        <!-- Input at bottom -->
-        <div class="ai-clean-input-area">
-          <div class="ai-clean-input-box">
-            <input
-              type="text"
-              class="ai-clean-input"
-              placeholder="Ask whatever you want..."
-              id="aiAgentInput"
-              onkeydown="handleAIInputKeydown(event)"
-              autocomplete="off"
-            />
-            <button class="ai-clean-send-btn" onclick="sendAIAgentPrompt()" id="aiSendBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </button>
+          <div class="ai-launch-recent">
+            <div class="ai-launch-recent-head">
+              <span>Recent chats</span>
+              <button class="ai-launch-link" onclick="toggleAIChatHistorySidebar()">View all</button>
+            </div>
+            <div class="ai-launch-recent-list">${renderAILaunchRecents()}</div>
           </div>
         </div>
       </div>
@@ -32308,7 +32449,11 @@ async function processAIMessage(message) {
 
     // Pass the entire message history for context
     setThinkingStatus('Sending request…');
-    const response = await window.callGeminiAPI(aiChatMessages);
+    const modeInstruction = typeof getAIModeInstruction === 'function' ? getAIModeInstruction() : '';
+    const payload = modeInstruction
+      ? [{ role: 'system', content: modeInstruction }, ...aiChatMessages]
+      : aiChatMessages;
+    const response = await window.callGeminiAPI(payload);
 
     setThinkingStatus('Analysing response…');
 
