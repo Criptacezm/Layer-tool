@@ -24431,70 +24431,41 @@ function openDocEditor(docId = null) {
         </div>
       </div>
       
-      <!-- AI Sidebar - LEFT Side - Minimalistic ClickUp Brain Style -->
-      <div class="doc-ai-sidebar" id="docAiSidebar">
-        <div class="ai-sidebar-header">
-          <div class="ai-sidebar-brand">
-            <div class="ai-sidebar-brain-icon">
-              <div class="ai-brain-pulse"></div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+      <!-- Ask AI Sidebar - LEFT side -->
+      <div class="doc-ai-sidebar askai-panel" id="docAiSidebar">
+        <div class="askai-header">
+          <div class="askai-header-title">
+            <span class="askai-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3l2.1 4.9L19 10l-4.9 2.1L12 17l-2.1-4.9L5 10l4.9-2.1L12 3z"/>
               </svg>
-            </div>
-            <span class="ai-sidebar-title-text">Brain</span>
+            </span>
+            Ask AI
           </div>
-          <button class="ai-sidebar-close-minimal" onclick="toggleDocAiSidebar()" title="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6L6 18M6 6l12 12"/>
+          <div class="askai-header-actions">
+            <button class="askai-icon-btn" onclick="clearAskAiThread('docAiMessages')" title="New chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            <button class="askai-icon-btn" onclick="toggleDocAiSidebar()" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="askai-messages" id="docAiMessages">
+          ${renderAskAiIntro('doc', 'docAiInput', 'handleDocAiSend')}
+        </div>
+        <div class="askai-composer-wrap">
+          ${renderAskAiComposer('docAiInput', 'handleDocAiSend', 'Ask AI about this page…')}
+          <div class="askai-context">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
             </svg>
-          </button>
-        </div>
-        <div class="ai-sidebar-messages" id="docAiMessages">
-          <div class="ai-welcome-message">
-            <div class="ai-welcome-header">
-              <div class="ai-welcome-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-                  <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
-                </svg>
-              </div>
-              <div class="ai-welcome-content">
-                <div class="ai-welcome-name">Brain</div>
-                <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this Doc. How can I help?</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ai-sidebar-input-minimal">
-          <div class="ai-input-container">
-            <textarea id="docAiInput" placeholder="Tell AI what to do next" rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleDocAiSend()}"></textarea>
-            <div class="ai-input-actions">
-              <button class="ai-input-action-btn" title="Attach">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-              <button class="ai-input-action-btn" title="Settings">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="1"/>
-                </svg>
-              </button>
-              <button class="ai-send-btn" onclick="handleDocAiSend()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="ai-page-context">
-            <div class="ai-page-context-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-            </div>
-            <span class="ai-page-context-text"><span class="ai-page-context-name">Untitled</span> Page</span>
+            <span>This page is used as context</span>
           </div>
         </div>
       </div>
@@ -30402,6 +30373,94 @@ function closeSidebarPriorityDropdown(projectIndex) {
 // Doc AI Sidebar State
 let docAiSidebarOpen = false;
 
+const ASK_AI_SUGGESTIONS = {
+  doc: [
+    'Summarize this page',
+    'Improve the writing',
+    'Turn this into action items'
+  ],
+  whiteboard: [
+    'Summarize this whiteboard',
+    'Suggest next steps',
+    'Group these ideas into themes'
+  ]
+};
+
+function renderAskAiIntro(kind, inputId, sendFn) {
+  const subject = kind === 'whiteboard' ? 'this whiteboard' : 'this page';
+  const suggestions = (ASK_AI_SUGGESTIONS[kind] || ASK_AI_SUGGESTIONS.doc)
+    .map(text => `<button class="askai-suggestion" onclick="askAiSuggestion('${inputId}', '${sendFn}', '${text.replace(/'/g, "\\'")}')">${text}</button>`)
+    .join('');
+
+  return `
+    <div class="askai-intro">
+      <div class="askai-intro-title">Ask AI</div>
+      <div class="askai-intro-text">Ask anything about ${subject} — summaries, rewrites, next steps.</div>
+      <div class="askai-suggestions">${suggestions}</div>
+    </div>
+  `;
+}
+
+function renderAskAiComposer(inputId, sendFn, placeholder) {
+  return `
+    <div class="askai-composer">
+      <textarea
+        id="${inputId}"
+        class="askai-input"
+        rows="1"
+        placeholder="${placeholder}"
+        oninput="autoGrowAskAiInput(this)"
+        onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();${sendFn}()}"
+      ></textarea>
+      <div class="askai-composer-bar">
+        <button class="askai-composer-btn" onclick="showComingSoonToast()" title="Add context">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <span class="askai-composer-mode">Normal</span>
+        <div class="askai-composer-right">
+          <button class="askai-composer-btn" onclick="showComingSoonToast()" title="Voice input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="9" y="3" width="6" height="11" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+            </svg>
+          </button>
+          <button class="askai-send" onclick="${sendFn}()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19V5M5 12l7-7 7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function autoGrowAskAiInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function askAiSuggestion(inputId, sendFn, text) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.value = text;
+  autoGrowAskAiInput(input);
+  if (typeof window[sendFn] === 'function') window[sendFn]();
+}
+
+function clearAskAiThread(messagesId) {
+  const container = document.getElementById(messagesId);
+  if (!container) return;
+  const kind = messagesId.startsWith('whiteboard') ? 'whiteboard' : 'doc';
+  const inputId = kind === 'whiteboard' ? 'whiteboardAiInput' : 'docAiInput';
+  const sendFn = kind === 'whiteboard' ? 'handleWhiteboardAiSidebarSend' : 'handleDocAiSend';
+  container.innerHTML = renderAskAiIntro(kind, inputId, sendFn);
+  document.getElementById(inputId)?.focus();
+}
+
 function toggleDocAiSidebar() {
   docAiSidebarOpen = !docAiSidebarOpen;
   const sidebar = document.getElementById('docAiSidebar');
@@ -30512,73 +30571,43 @@ function createWhiteboardAiSidebar() {
   const sidebar = document.createElement('div');
   sidebar.id = 'whiteboardAiSidebar';
   sidebar.className = 'ai-sidebar-overlay';
+  sidebar.classList.add('askai-panel');
   sidebar.innerHTML = `
-    <div class="ai-sidebar-header">
-      <div class="ai-sidebar-brand">
-        <div class="ai-sidebar-brain-icon">
-          <div class="ai-brain-pulse"></div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+    <div class="askai-header">
+      <div class="askai-header-title">
+        <span class="askai-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3l2.1 4.9L19 10l-4.9 2.1L12 17l-2.1-4.9L5 10l4.9-2.1L12 3z"/>
           </svg>
-        </div>
-        <span class="ai-sidebar-title-text">Brain</span>
+        </span>
+        Ask AI
       </div>
-      <button class="ai-sidebar-close-minimal" onclick="toggleWhiteboardAiSidebar()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6L6 18M6 6l12 12"/>
+      <div class="askai-header-actions">
+        <button class="askai-icon-btn" onclick="clearAskAiThread('whiteboardAiMessages')" title="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <button class="askai-icon-btn" onclick="toggleWhiteboardAiSidebar()" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="askai-messages" id="whiteboardAiMessages">
+      ${renderAskAiIntro('whiteboard', 'whiteboardAiInput', 'handleWhiteboardAiSidebarSend')}
+    </div>
+    <div class="askai-composer-wrap">
+      ${renderAskAiComposer('whiteboardAiInput', 'handleWhiteboardAiSidebarSend', 'Ask AI about this whiteboard…')}
+      <div class="askai-context">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
         </svg>
-      </button>
-    </div>
-    <div class="ai-sidebar-messages" id="whiteboardAiMessages">
-      <div class="ai-welcome-message">
-        <div class="ai-welcome-header">
-          <div class="ai-welcome-avatar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
-            </svg>
-          </div>
-          <div class="ai-welcome-content">
-            <div class="ai-welcome-name">Brain</div>
-            <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this whiteboard. How can I help?</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="ai-sidebar-input-minimal">
-      <div class="ai-input-container">
-        <input type="text" id="whiteboardAiInput" 
-               placeholder="Tell AI what to do next" 
-               onkeydown="if(event.key==='Enter')handleWhiteboardAiSidebarSend()"/>
-        <div class="ai-input-actions">
-          <button class="ai-input-action-btn" title="Attach">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
-          <button class="ai-input-action-btn" title="Settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="1"/>
-            </svg>
-          </button>
-          <button class="ai-send-btn" onclick="handleWhiteboardAiSidebarSend()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="ai-page-context">
-        <div class="ai-page-context-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-          </svg>
-        </div>
-        <span class="ai-page-context-text">Whiteboard</span>
+        <span>This whiteboard is used as context</span>
       </div>
     </div>
   `;

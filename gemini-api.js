@@ -369,9 +369,12 @@ async function processAISidebarChat(inputId, messagesId, contextData = '') {
     const message = input.value.trim();
     if (!message) return;
 
+    container.querySelector('.askai-intro')?.remove();
+
     // Add user message
     await appendAiMessageEnhanced(messagesId, 'user', message, false);
     input.value = '';
+    if (input.tagName === 'TEXTAREA') input.style.height = 'auto';
     input.disabled = true;
 
     // Show loading
