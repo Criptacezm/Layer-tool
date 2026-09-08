@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const scheduleFetchHandler = require('./api/schedule-fetch');
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -46,6 +47,8 @@ app.post('/api/ai', async (req, res) => {
         res.status(500).json({ error: { message: error.message } });
     }
 });
+
+app.all('/api/schedule-fetch', scheduleFetchHandler);
 
 app.get('/layer.html', (req, res) => {
     res.sendFile(__dirname + '/layer.html');

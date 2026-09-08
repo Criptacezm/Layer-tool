@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/ai", "destination": "/api/ai.js" },
+    { "source": "/api/schedule-fetch", "destination": "/api/schedule-fetch.js" },
     { "source": "/(.*)", "destination": "/layer.html" }
   ]
 }
