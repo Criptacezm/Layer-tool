@@ -30862,6 +30862,20 @@ function setAIResponseMode(modeId) {
   if (menu) menu.classList.remove('open');
 }
 
+async function refreshAIModelChip() {
+  const chip = document.getElementById('aiModelChipLabel');
+  if (!chip) return;
+
+  try {
+    const response = await fetch('/api/ai');
+    if (!response.ok) return;
+    const info = await response.json();
+    if (info.model) chip.textContent = info.model.split('/').pop();
+  } catch (e) {
+    // Leave the default label when the provider info is unavailable
+  }
+}
+
 function autoGrowAIInput(el) {
   if (!el) return;
   el.style.height = 'auto';
@@ -30894,6 +30908,8 @@ function renderAIView() {
   const currentUser = window.LayerDB?.getCurrentUser?.();
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
   const mode = getAIResponseMode();
+
+  setTimeout(refreshAIModelChip, 0);
 
   return `
     <div class="ai-launch">
@@ -30957,7 +30973,7 @@ function renderAIView() {
 
                 <span class="ai-launch-chip ai-launch-chip-static" title="Active model">
                   <span class="ai-launch-chip-dot"></span>
-                  Qwen 3.5
+                  <span id="aiModelChipLabel">Layer AI</span>
                 </span>
               </div>
 
