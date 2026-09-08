@@ -17384,247 +17384,194 @@ function closeTeamMobileChat() {
   updateTeamChatArea();
 }
 
+// ============================================
+// Team Hub state (feed / chats / groups)
+// ============================================
+let teamHubSection = 'chats'; // 'feed' | 'chats' | 'groups'
+let teamFeedPosts = [];
+let teamFeedLoading = false;
+let teamFeedError = null;
+let teamFeedSubscription = null;
+let teamGroupsSubscription = null;
+let teamPeopleDirectory = [];
+let teamListFilter = '';
+const teamFeedOpenComments = new Set();
+
+const TEAM_HUB_ICONS = {
+  feed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>',
+  chats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  groups: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  attach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+  emoji: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>',
+  mention: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+};
+
+function teamHubCurrentUserInfo() {
+  const u = window.LayerDB?.getCurrentUser?.();
+  const name = u?.user_metadata?.name || u?.email?.split('@')[0] || 'You';
+  return { id: u?.id || null, name, email: u?.email || '', avatarUrl: u?.user_metadata?.avatar_url || null };
+}
+
+function teamHubAvatarHTML(name, avatarUrl, extraClass = '') {
+  const safeName = escapeHtml(name || 'U');
+  if (avatarUrl) {
+    return `<span class="thub-avatar ${extraClass}"><img src="${escapeHtml(avatarUrl)}" alt="${safeName}"></span>`;
+  }
+  const hue = Array.from(String(name || 'U')).reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 360, 7);
+  return `<span class="thub-avatar ${extraClass}" style="--thub-avatar-hue:${hue}"><span>${safeName.charAt(0).toUpperCase()}</span></span>`;
+}
+
+function teamHubGroupIconHTML(group, extraClass = '') {
+  const color = group?.color || '#3b82f6';
+  return `<span class="thub-avatar thub-avatar-group ${extraClass}" style="background:${escapeHtml(color)}">${TEAM_HUB_ICONS.groups}</span>`;
+}
+
+// Escape a value for use as a JS string literal inside an HTML attribute handler
+function teamHubAttrArg(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function teamHubProfileName(profile) {
+  return profile?.name || profile?.email?.split('@')[0] || 'Unknown';
+}
+
+function teamHubFindConversation(channelId) {
+  if (!channelId) return null;
+  const id = channelId.toLowerCase();
+  return teamChannels.find(c => c.id.toLowerCase() === id) ||
+    teamDirectMessages.find(d => d.id.toLowerCase() === id) || null;
+}
+
+function teamHubGroupById(groupId) {
+  if (!groupId) return null;
+  return teamGroups.find(g => g.id.toLowerCase() === groupId.toLowerCase()) || null;
+}
+
+function teamHubLinkify(text) {
+  const escaped = escapeHtml(text || '');
+  return escaped
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+    .replace(/(^|\s)#(\w+)/g, '$1<span class="thub-tag">#$2</span>')
+    .replace(/(^|\s)@(\w[\w.-]*)/g, '$1<span class="thub-mention">@$2</span>')
+    .replace(/\n/g, '<br>');
+}
+
+// ============================================
+// Team view shell
+// ============================================
 function renderTeamView() {
   // Clean up any existing subscriptions first (in case view is re-rendered)
   if (window.cleanupTeamMembersSubscription) {
     window.cleanupTeamMembersSubscription();
   }
 
-  // Render immediately with default/cached data for instant loading
   const initialHTML = `
-    <div class="team-chat-layout" id="teamChatLayout">
-      <div class="team-chat-inner">
-      <!-- Chat Sidebar -->
-      <aside class="team-chat-sidebar">
-        <div class="team-chat-sidebar-header">
-          <div class="team-chat-title">
-            <span>Chat</span>
+    <div class="team-chat-layout thub ${teamHubSection === 'feed' ? 'thub-feed-mode' : ''}" id="teamChatLayout" data-section="${teamHubSection}">
+      <div class="team-chat-inner thub-inner">
+        ${renderTeamHubRail()}
+
+        <aside class="team-chat-sidebar thub-list" id="teamHubList">
+          ${renderTeamHubListPane()}
+        </aside>
+
+        <main class="team-chat-main thub-main">
+          ${renderTeamHubMain()}
+        </main>
+
+        <aside class="team-members-panel thub-panel collapsed" id="teamMembersPanel">
+          <div class="team-panel-header">
+            <span>Team Members</span>
+            <button class="team-panel-close" onclick="toggleTeamMembersPanel()">${TEAM_HUB_ICONS.close}</button>
           </div>
-          <div class="team-chat-header-actions">
-            <button class="team-icon-btn" onclick="openTeamSearchModal()" title="Search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-              </svg>
-            </button>
-            <div class="team-create-dropdown-wrapper">
-              <button class="team-icon-btn team-create-btn" onclick="toggleTeamCreateDropdown()" title="Create">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                <svg class="dropdown-chevron-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </button>
-              <div class="team-create-dropdown" id="teamCreateDropdown">
-                <button class="team-create-item" onclick="openCreateMessageModal(); closeTeamCreateDropdown();">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                  <div>
-                    <span class="create-item-title">Message</span>
-                    <span class="create-item-desc">Start a direct conversation</span>
-                  </div>
-                </button>
-                <button class="team-create-item" onclick="openCreateChannelModal(); closeTeamCreateDropdown();">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
-                  </svg>
-                  <div>
-                    <span class="create-item-title">Channel</span>
-                    <span class="create-item-desc">Conversations on specific topics</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Channel List -->
-        <div class="team-chat-list">
-          ${teamChannels.map(channel => `
-            <button class="team-chat-item ${teamCurrentChannel === channel.id ? 'active' : ''}" onclick="selectTeamChannel('${channel.id}')">
-              <div class="team-chat-item-icon ${channel.icon === 'megaphone' ? 'megaphone' : ''}">
-                ${channel.icon === 'hash' ? '#' :
-      channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
-              </div>
-              <span class="team-chat-item-name">${channel.name}</span>
-              ${channel.unread > 0 ? `<span class="team-chat-unread">${channel.unread}</span>` : ''}
-            </button>
-          `).join('')}
-          
-          <!-- Direct Messages Section -->
-          <div class="team-chat-section-divider">
-            <span>Direct Messages</span>
-            <button class="team-icon-btn-sm" onclick="openCreateMessageModal()" title="New Message">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-          
-          ${teamDirectMessages.map(dm => `
-            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" 
-              onclick="selectTeamChannel('${dm.id}')"
-              oncontextmenu="showDMContextMenu(event, '${dm.id}', '${dm.partnerId}', '${dm.name.replace(/'/g, "\\'")}')">
-              <div class="team-dm-avatar ${dm.status}">
-                ${dm.avatar && dm.avatar.includes('/') ?
-          `<img src="${dm.avatar}" alt="${dm.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-          `<span>${dm.avatar || dm.name.charAt(0)}</span>`
-        }
-                <span class="team-dm-status-dot"></span>
-              </div>
-              <span class="team-chat-item-name">${dm.name}</span>
-              ${dm.unread > 0 ? `<span class="team-chat-unread">${dm.unread}</span>` : ''}
-            </button>
-          `).join('')}
-          
-          <!-- Groups Section -->
-          <div class="team-chat-section-divider">
-            <span>Groups</span>
-            <button class="team-icon-btn-sm" onclick="openCreateGroupModal()" title="Create Group">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-          
-          ${teamGroups.map(group => `
-            <button class="team-chat-item group" onclick="selectTeamGroup('${group.id}')">
-              <div class="team-group-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-              </div>
-              <div class="team-group-info">
-                <span class="team-chat-item-name">${group.name}</span>
-                ${group.linkedProject ? `<span class="team-group-project">🔗 ${group.linkedProject}</span>` : ''}
-              </div>
-              <span class="team-group-members">${group.members}</span>
-            </button>
-          `).join('')}
-        </div>
-      </aside>
-      
-      <!-- Main Chat Area -->
-      <main class="team-chat-main">
-        ${renderTeamChatHeader()}
-        ${renderTeamChatContent()}
-        ${renderTeamMessageInput()}
-      </main>
-      
-      <!-- Members/Followers Panel -->
-      <aside class="team-members-panel" id="teamMembersPanel">
-        <div class="team-panel-header">
-          <span>Team Members</span>
-          <button class="team-panel-close" onclick="toggleTeamMembersPanel()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="team-loading-container">
-          <div class="team-logo-loader">
-            <svg class="logo-loader-animated" width="64" height="64" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="teamLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#7c3aed" />
-                  <stop offset="100%" stop-color="#5b21b6" />
-                </linearGradient>
-              </defs>
-              <rect class="logo-layer logo-layer-1" x="38" y="38" width="52" height="52" rx="16" fill="url(#teamLogoGradient)" opacity="0.28" />
-              <rect class="logo-layer logo-layer-2" x="38" y="54" width="52" height="36" rx="14" fill="url(#teamLogoGradient)" opacity="0.55" />
-              <rect class="logo-layer logo-layer-3" x="38" y="70" width="52" height="20" rx="10" fill="url(#teamLogoGradient)" />
-              <rect class="logo-layer logo-layer-4" x="38" y="38" width="20" height="52" rx="10" fill="url(#teamLogoGradient)" />
-            </svg>
-          </div>
-          <p class="team-loading-text">Loading team members...</p>
-        </div>
-      </aside>
+          <div class="thub-loading">Loading team members...</div>
+        </aside>
       </div>
     </div>
   `;
 
-  // Load async data in the background and update UI when ready
   setTimeout(async () => {
     try {
-      // Load pending follow requests if user is authenticated
-      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      const authed = window.LayerDB && window.LayerDB.isAuthenticated();
+
+      if (authed) {
         try {
           pendingFollowRequests = await window.LayerDB.getPendingFollowRequests();
-          console.log('Loaded pending follow requests:', pendingFollowRequests);
         } catch (error) {
           console.error('Failed to load pending follow requests:', error);
           pendingFollowRequests = [];
         }
       } else {
-        console.log('User not authenticated, clearing pending requests');
         pendingFollowRequests = [];
       }
 
-      // Load team members panel HTML (await the async function)
       const teamMembersPanelHTML = await renderTeamMembersPanel();
 
-      // Load Direct Messages from Supabase
-      if (window.LayerDB && window.LayerDB.isAuthenticated()) {
+      if (authed) {
         try {
           const dms = await window.LayerDB.getDirectMessages();
-          // Only update if we got results, otherwise might be offline or error
           if (dms) {
             teamDirectMessages = dms;
-
-            // 🚀 BACKGROUND LOAD: Preload all DM messages for instant access
-            console.log('🔄 Starting background load of all DM messages...');
             preloadAllDMMessages();
           }
         } catch (error) {
           console.error('Failed to load DMs:', error);
         }
+
+        await Promise.all([
+          loadTeamGroups().catch(err => console.error('Failed to load groups:', err)),
+          loadTeamPeople().catch(err => console.error('Failed to load people:', err))
+        ]);
+
+        // Feed loads in parallel with everything else
+        loadTeamFeed();
+        setupTeamFeedRealtime();
+        setupTeamGroupsRealtime();
       }
 
-      // Update the team members panel with loaded data
       const teamMembersPanel = document.getElementById('teamMembersPanel');
       if (teamMembersPanel && currentView === 'team') {
         teamMembersPanel.innerHTML = teamMembersPanelHTML;
       }
 
-      // Re-render sidebar to show loaded DMs
       if (currentView === 'team') {
         updateTeamSidebar();
+        updateTeamChatArea();
       }
 
-      // Update active states for chat items after rendering
-      updateTeamChatArea();
-
-      // Initialize real-time subscription for team members
       if (window.initializeTeamMembersSubscription) {
         window.initializeTeamMembersSubscription();
       }
-
-      // Initialize global DM listener
       if (typeof setupGlobalDMListener === 'function') {
         setupGlobalDMListener();
       }
-
-      // Setup realtime subscriptions for all DM conversations
       if (typeof setupAllDMSubscriptions === 'function') {
         await setupAllDMSubscriptions();
       }
-
-      // Start global background polling for all DM conversations
       startGlobalDMPolling();
 
-      // Initialize Presence System (Heartbeat & UI Updates)
       if (typeof initializePresenceSystem === 'function') {
         await initializePresenceSystem();
-        // Delay fetch slightly to ensure DOM is ready
         setTimeout(fetchInitialPresence, 500);
       }
 
-      // Request notification permissions
       requestNotificationPermission();
     } catch (error) {
       console.error('Error loading team data in background:', error);
@@ -17634,150 +17581,261 @@ function renderTeamView() {
   return initialHTML;
 }
 
-// Helper to update just the sidebar list without full re-render
-function updateTeamSidebar() {
-  const sidebarList = document.querySelector('.team-chat-list');
-  if (sidebarList) {
-    sidebarList.innerHTML = `
-          ${teamChannels.map(channel => `
-            <button class="team-chat-item ${teamCurrentChannel === channel.id ? 'active' : ''}" onclick="selectTeamChannel('${channel.id}')">
-              <div class="team-chat-item-icon ${channel.icon === 'megaphone' ? 'megaphone' : ''}">
-                ${channel.icon === 'hash' ? '#' :
-        channel.icon === 'megaphone' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' : '#'}
-              </div>
-              <span class="team-chat-item-name">${channel.name}</span>
-              ${channel.unread > 0 ? `<span class="team-chat-unread">${channel.unread}</span>` : ''}
-            </button>
-          `).join('')}
-          
-          <!-- Direct Messages Section -->
-          <div class="team-chat-section-divider">
-            <span>Direct Messages</span>
-            <button class="team-icon-btn-sm" onclick="openCreateMessageModal()" title="New Message">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-          
-          ${teamDirectMessages.map(dm => `
-            <button class="team-chat-item dm ${teamCurrentChannel === dm.id ? 'active' : ''}" 
-              onclick="selectTeamChannel('${dm.id}')"
-              oncontextmenu="showDMContextMenu(event, '${dm.id}', '${dm.partnerId}', '${dm.name.replace(/'/g, "\\'")}')">
-              <div class="team-dm-avatar ${dm.status}">
-                ${(dm.avatar && dm.avatar.includes('/')) || dm.avatarUrl ?
-            `<img src="${dm.avatarUrl || dm.avatar}" alt="${dm.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-            `<span>${dm.avatar || dm.name.charAt(0)}</span>`
-          }
-                <span class="team-dm-status-dot"></span>
-              </div>
-              <span class="team-chat-item-name">${dm.name}</span>
-              ${dm.unread > 0 ? `<span class="team-chat-unread">${dm.unread}</span>` : ''}
-            </button>
-          `).join('')}
-          
-          <!-- Groups Section -->
-          <div class="team-chat-section-divider">
-            <span>Groups</span>
-            <button class="team-icon-btn-sm" onclick="openCreateGroupModal()" title="Create Group">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-          </div>
-          
-          ${teamGroups.map(group => `
-            <button class="team-chat-item group" onclick="selectTeamGroup('${group.id}')">
-              <div class="team-group-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-              </div>
-              <div class="team-group-info">
-                <span class="team-chat-item-name">${group.name}</span>
-                ${group.linkedProject ? `<span class="team-group-project">🔗 ${group.linkedProject}</span>` : ''}
-              </div>
-              <span class="team-group-members">${group.members}</span>
-            </button>
-          `).join('')}
+function renderTeamHubRail() {
+  const me = teamHubCurrentUserInfo();
+  const unreadDMs = teamDirectMessages.reduce((n, d) => n + (d.unread || 0), 0);
+  const unreadGroups = teamChannels.filter(c => c.type === 'group').reduce((n, c) => n + (c.unread || 0), 0);
+  const item = (key, label, badge) => `
+    <button class="thub-rail-btn ${teamHubSection === key ? 'active' : ''}" onclick="setTeamHubSection('${key}')" title="${label}" aria-label="${label}">
+      ${TEAM_HUB_ICONS[key]}
+      <span class="thub-rail-label">${label}</span>
+      ${badge > 0 ? `<span class="thub-rail-badge">${badge > 99 ? '99+' : badge}</span>` : ''}
+    </button>`;
+
+  return `
+    <nav class="thub-rail" aria-label="Team sections">
+      <div class="thub-rail-top">
+        ${item('feed', 'Feed', 0)}
+        ${item('chats', 'Chats', unreadDMs)}
+        ${item('groups', 'Groups', unreadGroups)}
+      </div>
+      <div class="thub-rail-bottom">
+        <button class="thub-rail-btn" onclick="openAddPeopleModal()" title="Add people" aria-label="Add people">
+          ${TEAM_HUB_ICONS.people}
+          <span class="thub-rail-label">People</span>
+        </button>
+        <button class="thub-rail-me" onclick="toggleTeamMembersPanel()" title="Team members">
+          ${teamHubAvatarHTML(me.name, me.avatarUrl, 'sm')}
+        </button>
+      </div>
+    </nav>
+  `;
+}
+
+function setTeamHubSection(section) {
+  if (!['feed', 'chats', 'groups'].includes(section)) return;
+  teamHubSection = section;
+  teamListFilter = '';
+  teamMobileChatOpen = false;
+
+  // Switch the active conversation to match the section, if one exists
+  if (section === 'chats') {
+    const current = teamHubFindConversation(teamCurrentChannel);
+    if (!current || current.type !== 'dm') {
+      const first = teamDirectMessages[0];
+      if (first) { selectTeamChannel(first.id); return finishTeamHubSectionSwitch(); }
+      teamCurrentChannel = null;
+    }
+  } else if (section === 'groups') {
+    const current = teamHubFindConversation(teamCurrentChannel);
+    if (!current || current.type !== 'group') {
+      const first = teamChannels.find(c => c.type === 'group');
+      if (first) { selectTeamChannel(first.id); return finishTeamHubSectionSwitch(); }
+      teamCurrentChannel = null;
+    }
+  } else if (section === 'feed') {
+    if (!teamFeedPosts.length && !teamFeedLoading) loadTeamFeed();
+  }
+
+  finishTeamHubSectionSwitch();
+}
+
+function finishTeamHubSectionSwitch() {
+  const layout = document.getElementById('teamChatLayout');
+  if (layout) {
+    layout.dataset.section = teamHubSection;
+    layout.classList.toggle('thub-feed-mode', teamHubSection === 'feed');
+  }
+  document.querySelectorAll('.thub-rail-btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    btn.classList.toggle('active', onclick.includes(`'${teamHubSection}'`));
+  });
+  updateTeamSidebar();
+  updateTeamChatArea();
+}
+
+function filterTeamHubList(value) {
+  teamListFilter = (value || '').toLowerCase();
+  const list = document.getElementById('teamHubListItems');
+  if (list) list.innerHTML = renderTeamHubListItems();
+}
+
+// ============================================
+// List pane (left column)
+// ============================================
+function renderTeamHubListPane() {
+  const titles = { feed: 'Community', chats: 'Messages', groups: 'Groups' };
+  const primaryAction = teamHubSection === 'groups'
+    ? `<button class="thub-icon-btn primary" onclick="openCreateGroupModal()" title="New group">${TEAM_HUB_ICONS.plus}</button>`
+    : `<button class="thub-icon-btn primary" onclick="openCreateMessageModal()" title="New message">${TEAM_HUB_ICONS.plus}</button>`;
+
+  return `
+    <div class="thub-list-header">
+      <h2>${titles[teamHubSection] || 'Team'}</h2>
+      <div class="thub-list-actions">${primaryAction}</div>
+    </div>
+    <div class="thub-search">
+      ${TEAM_HUB_ICONS.search}
+      <input type="text" placeholder="Search" value="${escapeHtml(teamListFilter)}" oninput="filterTeamHubList(this.value)" aria-label="Search">
+    </div>
+    <div class="team-chat-list thub-list-items" id="teamHubListItems">
+      ${renderTeamHubListItems()}
+    </div>
+  `;
+}
+
+function renderTeamHubListItems() {
+  const q = teamListFilter;
+  const match = (...vals) => !q || vals.some(v => (v || '').toString().toLowerCase().includes(q));
+
+  if (teamHubSection === 'groups') {
+    const groups = teamChannels.filter(c => c.type === 'group' && match(c.name));
+    if (!groups.length) {
+      return `
+        <div class="thub-empty-list">
+          <p>${q ? 'No groups match your search.' : 'No groups yet.'}</p>
+          ${q ? '' : `<button class="thub-btn primary" onclick="openCreateGroupModal()">${TEAM_HUB_ICONS.plus} Create a group</button>`}
+        </div>`;
+    }
+    return groups.map(c => {
+      const g = teamHubGroupById(c.id);
+      const memberCount = g?.members?.length || 0;
+      const last = (teamMessages[c.id] || []).slice(-1)[0];
+      return `
+        <button class="team-chat-item thub-item ${teamCurrentChannel === c.id ? 'active' : ''}" onclick="selectTeamChannel('${c.id}')" oncontextmenu="openTeamGroupDetails(event, '${c.id}')">
+          ${teamHubGroupIconHTML(g)}
+          <span class="thub-item-body">
+            <span class="thub-item-row"><span class="thub-item-name">${escapeHtml(c.name)}</span>${last ? `<span class="thub-item-time">${last.time}</span>` : ''}</span>
+            <span class="thub-item-row"><span class="thub-item-preview">${last ? escapeHtml(stripHtmlForPreview(last.content)) : `${memberCount} member${memberCount === 1 ? '' : 's'}`}</span>${c.unread > 0 ? `<span class="team-chat-unread thub-unread">${c.unread}</span>` : ''}</span>
+          </span>
+        </button>`;
+    }).join('');
+  }
+
+  if (teamHubSection === 'feed') {
+    const people = teamPeopleDirectory.filter(p => match(p.name, p.email));
+    if (!people.length) {
+      return `
+        <div class="thub-empty-list">
+          <p>${q ? 'No one matches your search.' : 'No teammates yet.'}</p>
+          ${q ? '' : `<button class="thub-btn primary" onclick="openAddPeopleModal()">${TEAM_HUB_ICONS.people} Add people</button>`}
+        </div>`;
+    }
+    return `
+      <div class="thub-list-section">Teammates &amp; friends</div>
+      ${people.map(p => `
+        <button class="thub-item thub-person" onclick="startTeamConversation('${p.id}', '${teamHubAttrArg(teamHubProfileName(p))}', '${escapeHtml(p.email || '')}')" title="Message ${escapeHtml(teamHubProfileName(p))}">
+          <span class="thub-avatar-wrap ${p.is_online ? 'online' : ''}">${teamHubAvatarHTML(teamHubProfileName(p), p.avatar_url)}<span class="thub-status-dot"></span></span>
+          <span class="thub-item-body">
+            <span class="thub-item-row"><span class="thub-item-name">${escapeHtml(teamHubProfileName(p))}</span></span>
+            <span class="thub-item-row"><span class="thub-item-preview">${p.is_online ? 'Online' : (p.email ? escapeHtml(p.email) : 'Offline')}</span></span>
+          </span>
+          <span class="thub-item-cta">${TEAM_HUB_ICONS.chats}</span>
+        </button>`).join('')}
     `;
   }
+
+  // chats
+  const dms = teamDirectMessages.filter(d => match(d.name, d.email));
+  if (!dms.length) {
+    return `
+      <div class="thub-empty-list">
+        <p>${q ? 'No conversations match your search.' : 'No conversations yet.'}</p>
+        ${q ? '' : `<button class="thub-btn primary" onclick="openCreateMessageModal()">${TEAM_HUB_ICONS.plus} New message</button>`}
+      </div>`;
+  }
+  return dms.map(dm => {
+    const last = (teamMessages[dm.id] || []).slice(-1)[0];
+    const avatarUrl = dm.avatarUrl || (dm.avatar && String(dm.avatar).includes('/') ? dm.avatar : null);
+    return `
+      <button class="team-chat-item dm thub-item ${teamCurrentChannel === dm.id ? 'active' : ''}"
+        onclick="selectTeamChannel('${dm.id}')"
+        oncontextmenu="showDMContextMenu(event, '${dm.id}', '${dm.partnerId}', '${teamHubAttrArg(dm.name)}')">
+        <span class="thub-avatar-wrap team-dm-avatar ${dm.status || 'offline'}">${teamHubAvatarHTML(dm.name, avatarUrl)}<span class="thub-status-dot team-dm-status-dot"></span></span>
+        <span class="thub-item-body">
+          <span class="thub-item-row"><span class="thub-item-name">${escapeHtml(dm.name)}</span>${last ? `<span class="thub-item-time">${last.time}</span>` : ''}</span>
+          <span class="thub-item-row"><span class="thub-item-preview">${last ? escapeHtml(stripHtmlForPreview(last.content)) : 'Start a conversation'}</span>${dm.unread > 0 ? `<span class="team-chat-unread thub-unread">${dm.unread}</span>` : ''}</span>
+        </span>
+      </button>`;
+  }).join('');
+}
+
+function stripHtmlForPreview(html) {
+  if (!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const text = (div.textContent || '').replace(/\s+/g, ' ').trim();
+  return text.length > 60 ? text.slice(0, 57) + '…' : text;
+}
+
+// Helper to update just the sidebar list without full re-render
+function updateTeamSidebar() {
+  const pane = document.getElementById('teamHubList');
+  if (pane) {
+    const searchEl = pane.querySelector('.thub-search input');
+    const hadFocus = searchEl && document.activeElement === searchEl;
+    pane.innerHTML = renderTeamHubListPane();
+    if (hadFocus) {
+      const next = pane.querySelector('.thub-search input');
+      if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+    }
+  }
+  // Refresh rail badges
+  const rail = document.querySelector('.thub-rail');
+  if (rail) rail.outerHTML = renderTeamHubRail();
+}
+
+// ============================================
+// Main column
+// ============================================
+function renderTeamHubMain() {
+  if (teamHubSection === 'feed') return renderTeamFeedMain();
+  return renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' && teamCurrentChannel ? renderTeamMessageInput() : '');
 }
 
 function renderTeamChatHeader() {
-  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
-    teamDirectMessages.find(d => d.id === teamCurrentChannel);
-  const channelName = channel ? channel.name : 'General';
-  const isChannel = channel?.type === 'channel';
+  const channel = teamHubFindConversation(teamCurrentChannel);
+  if (!teamCurrentChannel || !channel) {
+    return `<header class="team-chat-header thub-chat-header thub-chat-header-empty"></header>`;
+  }
 
-  const isDM = channel?.type === 'dm' || teamCurrentChannel?.startsWith('dm-');
-  const dmStatus = isDM ? (channel?.status || 'offline') : '';
-  const dmAvatar = isDM ? (channel?.avatar || channelName.charAt(0)) : '';
-  const dmAvatarIsImg = isDM ? (typeof dmAvatar === 'string' && dmAvatar.includes('/')) : false;
+  const isDM = channel.type === 'dm' || teamCurrentChannel.startsWith('dm-');
+  const isGroup = channel.type === 'group';
+  const group = isGroup ? teamHubGroupById(channel.id) : null;
+  const name = channel.name || 'Conversation';
+
+  let avatar;
+  let subtitle;
+  if (isDM) {
+    const status = channel.status || 'offline';
+    const avatarUrl = channel.avatarUrl || (channel.avatar && String(channel.avatar).includes('/') ? channel.avatar : null);
+    avatar = `<span class="thub-avatar-wrap ${status}">${teamHubAvatarHTML(name, avatarUrl)}<span class="thub-status-dot"></span></span>`;
+    subtitle = status === 'online' ? 'Online' : status === 'away' ? 'Away' : 'Offline';
+  } else if (isGroup) {
+    avatar = teamHubGroupIconHTML(group);
+    const count = group?.members?.length || 0;
+    subtitle = `${count} member${count === 1 ? '' : 's'}${group?.description ? ' · ' + escapeHtml(group.description) : ''}`;
+  } else {
+    avatar = `<span class="thub-avatar thub-avatar-group">#</span>`;
+    subtitle = 'Channel';
+  }
 
   return `
-    <header class="team-chat-header">
+    <header class="team-chat-header thub-chat-header">
       <div class="team-chat-header-left">
-        <button class="team-mobile-back" type="button" onclick="closeTeamMobileChat()" aria-label="Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </button>
-        <div class="team-chat-header-identity">
-          ${isDM ? `
-            <div class="team-chat-header-avatar ${dmStatus}">
-              ${dmAvatarIsImg
-        ? `<img src="${dmAvatar}" alt="${channelName}" />`
-        : `<span>${String(dmAvatar).charAt(0)}</span>`}
-              <span class="team-chat-header-status-dot"></span>
-            </div>
-          ` : `
-            <div class="team-chat-header-avatar channel">
-              <span>${isChannel ? '#' : '@'}</span>
-            </div>
-          `}
-          <div class="team-chat-header-titleblock">
-            <div class="team-channel-name">${isChannel ? '#' : ''} ${channelName}</div>
-            <div class="team-chat-header-subtitle">${isDM ? (dmStatus === 'online' ? 'Online' : dmStatus === 'away' ? 'Away' : 'Offline') : 'Channel'}</div>
+        <button class="team-mobile-back thub-icon-btn" type="button" onclick="closeTeamMobileChat()" aria-label="Back">${TEAM_HUB_ICONS.back}</button>
+        <div class="thub-chat-identity">
+          ${avatar}
+          <div class="thub-chat-titleblock">
+            <div class="team-channel-name thub-chat-name">${escapeHtml(name)}</div>
+            <div class="thub-chat-subtitle">${subtitle}</div>
           </div>
         </div>
-        <button class="team-header-action-btn" title="More options">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-            <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-          </svg>
-        </button>
       </div>
-
-      <div class="team-chat-header-center">
-        <nav class="team-chat-tabs" aria-label="Chat views">
-          <button class="team-tab ${teamCurrentTab === 'chat' ? 'active' : ''}" onclick="setTeamTab('chat')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>
-            </svg>
-            Channel
-          </button>
-          <button class="team-tab ${teamCurrentTab === 'list' ? 'active' : ''}" onclick="setTeamTab('list')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-            List
-          </button>
-        </nav>
-      </div>
-
-      <div class="team-chat-header-right">
-        <button class="team-icon-btn" onclick="toggleTeamMembersPanel()" title="Toggle members panel">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </button>
+      <div class="team-chat-header-right thub-chat-actions">
+        ${isGroup ? `<button class="thub-icon-btn" onclick="openTeamGroupDetails(event, '${channel.id}')" title="Group details">${TEAM_HUB_ICONS.info}</button>` : ''}
+        ${isDM ? `<button class="thub-icon-btn" onclick="showDMContextMenu(event, '${channel.id}', '${channel.partnerId}', '${teamHubAttrArg(name)}')" title="More">${TEAM_HUB_ICONS.more}</button>` : ''}
+        <button class="thub-icon-btn" onclick="toggleTeamMembersPanel()" title="Team members">${TEAM_HUB_ICONS.people}</button>
       </div>
     </header>
   `;
@@ -17788,89 +17846,32 @@ function renderTeamChatContent() {
     return renderTeamListTabContent();
   }
 
+  const channel = teamHubFindConversation(teamCurrentChannel);
+  if (!teamCurrentChannel || !channel) {
+    const isGroups = teamHubSection === 'groups';
+    return `
+      <div class="team-chat-content thub-chat-content">
+        <div class="thub-empty-state">
+          <div class="thub-empty-icon">${isGroups ? TEAM_HUB_ICONS.groups : TEAM_HUB_ICONS.chats}</div>
+          <h3>${isGroups ? 'Your groups' : 'Your messages'}</h3>
+          <p>${isGroups ? 'Create a group to chat with several teammates at once.' : 'Pick a conversation or start a new one with a teammate or friend.'}</p>
+          <button class="thub-btn primary" onclick="${isGroups ? 'openCreateGroupModal()' : 'openCreateMessageModal()'}">${TEAM_HUB_ICONS.plus} ${isGroups ? 'New group' : 'New message'}</button>
+        </div>
+      </div>
+    `;
+  }
+
   const messages = teamMessages[teamCurrentChannel] || [];
-  const channel = teamChannels.find(c => c.id === teamCurrentChannel) ||
-    teamDirectMessages.find(d => d.id === teamCurrentChannel);
-  const channelName = channel ? channel.name : 'General';
-  const isDM = channel?.type === 'dm' || teamCurrentChannel?.startsWith('dm-');
+  const isGroup = channel.type === 'group';
 
   if (messages.length === 0) {
-    // For DM conversations, show a simple welcome message
-    if (isDM) {
-      return `
-        <div class="team-chat-content">
-          <div class="team-chat-welcome">
-            <div class="team-welcome-main" style="text-align: center;">
-              <h2>Direct Message with ${channelName}</h2>
-              <p>Start your conversation by sending a message below.</p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    // For channels, show the full welcome screen with all features
     return `
-      <div class="team-chat-content">
-        <div class="team-chat-welcome">
-          <div class="team-welcome-bookmark">
-            <div class="bookmark-icons">
-              <span class="bookmark-icon green">📌</span>
-              <span class="bookmark-icon orange">📝</span>
-            </div>
-            <span>Bookmark tasks, add notes, and more</span>
-          </div>
-          
-          <div class="team-welcome-main">
-            <h2>Chat in #${channelName}</h2>
-            <p>Collaborate seamlessly across tasks and conversations. Start chatting with your team or connect tasks to stay on top of your work.</p>
-            
-            <div class="team-welcome-actions">
-              <button class="team-welcome-btn outline" onclick="openAddPeopleModal()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                Add People
-              </button>
-              <button class="team-welcome-btn outline slack" onclick="importFromSlack()">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;">
-                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
-                </svg>
-                Import from Slack
-              </button>
-            </div>
-            
-            <div class="team-welcome-features">
-              <button class="team-feature-card" onclick="openTrackTasksModal()">
-                <div class="feature-icon blue">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <line x1="3" y1="9" x2="21" y2="9"/>
-                    <line x1="9" y1="21" x2="9" y2="9"/>
-                  </svg>
-                </div>
-                <div class="feature-text">
-                  <span class="feature-title">Track Tasks</span>
-                  <span class="feature-desc">Manage tasks, bugs, people, and more</span>
-                </div>
-              </button>
-              
-              <button class="team-feature-card" onclick="openAddDocModal()">
-                <div class="feature-icon green">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                  </svg>
-                </div>
-                <div class="feature-text">
-                  <span class="feature-title">Add Doc</span>
-                  <span class="feature-desc">Take notes or create detailed documents</span>
-                </div>
-              </button>
-              
-            </div>
+      <div class="team-chat-content thub-chat-content">
+        <div class="team-messages-list thub-messages">
+          <div class="thub-conversation-intro">
+            ${isGroup ? teamHubGroupIconHTML(teamHubGroupById(channel.id), 'lg') : teamHubAvatarHTML(channel.name, channel.avatarUrl || (channel.avatar && String(channel.avatar).includes('/') ? channel.avatar : null), 'lg')}
+            <h3>${escapeHtml(channel.name)}</h3>
+            <p>${isGroup ? 'This is the beginning of the group. Say hello!' : `This is the beginning of your conversation with ${escapeHtml(channel.name)}.`}</p>
           </div>
         </div>
       </div>
@@ -17878,102 +17879,832 @@ function renderTeamChatContent() {
   }
 
   return `
-    <div class="team-chat-content">
-      <div class="team-messages-list">
-        ${messages.map(msg => `
-          <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}" oncontextmenu="showMessageContextMenu(event, '${msg.id}', '${msg.user_id}', '${msg.channel_type}')">
-            <div class="team-message-avatar">
-              ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
-      `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-      `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
-    }
-            </div>
-            <div class="team-message-body">
-              <div class="team-message-header">
-                <span class="team-message-user">${msg.user}</span>
-                <span class="team-message-time">${msg.time}</span>
-              </div>
-              <div class="team-message-content">
-                ${msg.content}
-              </div>
-            </div>
-          </div>
-        `).join('')}
+    <div class="team-chat-content thub-chat-content">
+      <div class="team-messages-list thub-messages">
+        ${renderTeamMessagesHTML(messages)}
       </div>
     </div>
   `;
 }
 
+function teamMessageDayKey(msg) {
+  const d = msg.createdAt ? new Date(msg.createdAt) : null;
+  if (!d || isNaN(d)) return null;
+  return d.toDateString();
+}
+
+function teamMessageDayLabel(key) {
+  const d = new Date(key);
+  const today = new Date();
+  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function renderTeamMessagesHTML(messages) {
+  let html = '';
+  let lastDay = null;
+  let prev = null;
+  messages.forEach(msg => {
+    const day = teamMessageDayKey(msg);
+    if (day && day !== lastDay) {
+      html += `<div class="thub-day-divider"><span>${teamMessageDayLabel(day)}</span></div>`;
+      lastDay = day;
+      prev = null;
+    }
+    const grouped = prev && !prev.isSystem && !msg.isSystem && prev.userId === msg.userId && prev.time === msg.time;
+    html += createMessageHTML(msg, grouped);
+    prev = msg;
+  });
+  return html;
+}
+
 function renderTeamMessageInput() {
-  const channel = teamChannels.find(c => c.id === teamCurrentChannel);
-  const channelName = channel ? channel.name : 'General';
+  const channel = teamHubFindConversation(teamCurrentChannel);
+  const placeholder = channel ? `Message ${channel.type === 'group' ? channel.name : channel.name}` : 'Type a message';
 
   return `
-    <div class="team-message-input-container">
-      <div class="team-message-input-wrapper">
-        <input type="file" id="teamComposerAttachmentInput" style="display:none" multiple onchange="handleTeamComposerAttachmentsSelected(event)">
-        <div class="team-input-toolbar">
-          <button class="toolbar-btn add" title="Add attachment" onclick="openTeamComposerAttachmentPicker(event)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
-          <div class="toolbar-divider"></div>
-          <div class="message-type-dropdown">
-            <button class="toolbar-btn message-type" onclick="toggleMessageTypeDropdown()">
-              Message
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </button>
+    <div class="team-message-input-container thub-composer-wrap">
+      <input type="file" id="teamComposerAttachmentInput" style="display:none" multiple onchange="handleTeamComposerAttachmentsSelected(event)">
+      <div class="team-composer-links" id="teamComposerLinks" style="display:none"></div>
+      <div class="team-composer-attachments" id="teamComposerAttachments" style="display:none"></div>
+      <div class="team-composer-popover" id="teamComposerPopover" style="display:none"></div>
+      <div class="team-message-input-wrapper thub-composer">
+        <button class="thub-icon-btn thub-composer-btn" title="Add attachment" onclick="openTeamComposerAttachmentPicker(event)">${TEAM_HUB_ICONS.plus}</button>
+        <div class="team-input-area thub-composer-input">
+          <input type="text" class="team-message-input" placeholder="${escapeHtml(placeholder)}" id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)" autocomplete="off">
+        </div>
+        <div class="thub-composer-tools">
+          <button class="thub-icon-btn thub-composer-btn" title="Link a document" onclick="toggleTeamComposerPopover(event, 'file')">${TEAM_HUB_ICONS.doc}</button>
+          <button class="thub-icon-btn thub-composer-btn" title="Mention" onclick="toggleTeamComposerPopover(event, 'mention')">${TEAM_HUB_ICONS.mention}</button>
+          <button class="thub-icon-btn thub-composer-btn" title="Emoji" onclick="toggleTeamComposerPopover(event, 'emoji')">${TEAM_HUB_ICONS.emoji}</button>
+        </div>
+        <button class="team-send-btn thub-send-btn" onclick="sendTeamMessage()" title="Send message" aria-label="Send">${TEAM_HUB_ICONS.send}</button>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// Feed (posts, likes, comments)
+// ============================================
+function renderTeamFeedMain() {
+  const me = teamHubCurrentUserInfo();
+  return `
+    <header class="team-chat-header thub-chat-header thub-feed-header">
+      <div class="team-chat-header-left">
+        <div class="thub-chat-titleblock">
+          <div class="thub-chat-name">Feed</div>
+          <div class="thub-chat-subtitle">Share updates with your team</div>
+        </div>
+      </div>
+      <div class="thub-chat-actions">
+        <button class="thub-icon-btn" onclick="loadTeamFeed(true)" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <button class="thub-icon-btn" onclick="toggleTeamMembersPanel()" title="Team members">${TEAM_HUB_ICONS.people}</button>
+      </div>
+    </header>
+    <div class="thub-feed" id="teamFeedScroll">
+      <div class="thub-feed-column">
+        <div class="thub-post-composer">
+          ${teamHubAvatarHTML(me.name, me.avatarUrl)}
+          <div class="thub-post-composer-body">
+            <textarea id="teamPostInput" class="thub-post-input" rows="1" maxlength="1000" placeholder="What's happening?" oninput="autoGrowTeamPostInput(this)" onkeydown="handleTeamPostKeydown(event)"></textarea>
+            <div class="thub-post-composer-footer">
+              <span class="thub-post-counter" id="teamPostCounter"></span>
+              <button class="thub-btn primary thub-post-submit" id="teamPostSubmit" onclick="submitTeamPost()">Post</button>
+            </div>
           </div>
-          <button class="toolbar-btn" title="Attach file" onclick="openTeamComposerAttachmentPicker(event)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Mention" onclick="toggleTeamComposerPopover(event, 'mention')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="Emoji" onclick="toggleTeamComposerPopover(event, 'emoji')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="GIF">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" title="File" onclick="toggleTeamComposerPopover(event, 'file')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            </svg>
-          </button>
         </div>
-
-        <div class="team-composer-links" id="teamComposerLinks" style="display:none"></div>
-
-        <div class="team-composer-attachments" id="teamComposerAttachments" style="display:none"></div>
-
-        <div class="team-composer-popover" id="teamComposerPopover" style="display:none"></div>
-        
-        <div class="team-input-area">
-          <input type="text" class="team-message-input" placeholder="Type here..." id="teamMessageInput" onkeydown="handleTeamMessageKeydown(event)">
-        </div>
-        
-        <div class="team-input-actions">
-          <button class="team-send-btn" onclick="sendTeamMessage()" title="Send message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
+        <div class="thub-feed-list" id="teamFeedList">
+          ${renderTeamFeedList()}
         </div>
       </div>
     </div>
   `;
+}
+
+function renderTeamFeedList() {
+  if (teamFeedLoading && !teamFeedPosts.length) {
+    return `<div class="thub-loading">Loading posts…</div>`;
+  }
+  if (teamFeedError) {
+    return `
+      <div class="thub-empty-state compact">
+        <h3>Couldn't load the feed</h3>
+        <p>${escapeHtml(teamFeedError)}</p>
+        <button class="thub-btn" onclick="loadTeamFeed(true)">Try again</button>
+      </div>`;
+  }
+  if (!teamFeedPosts.length) {
+    return `
+      <div class="thub-empty-state compact">
+        <div class="thub-empty-icon">${TEAM_HUB_ICONS.feed}</div>
+        <h3>Nothing here yet</h3>
+        <p>Be the first to share an update with your team.</p>
+      </div>`;
+  }
+  return teamFeedPosts.map(renderTeamPostCard).join('');
+}
+
+function renderTeamPostCard(post) {
+  const me = teamHubCurrentUserInfo();
+  const author = post.author || {};
+  const name = teamHubProfileName(author);
+  const isOwn = post.user_id === me.id;
+  const commentsOpen = teamFeedOpenComments.has(post.id);
+  const comments = post.comments || [];
+  const pending = post._pending;
+
+  return `
+    <article class="thub-post ${pending ? 'pending' : ''}" data-post-id="${post.id}">
+      ${teamHubAvatarHTML(name, author.avatar_url)}
+      <div class="thub-post-body">
+        <div class="thub-post-head">
+          <span class="thub-post-author">${escapeHtml(name)}</span>
+          ${author.email ? `<span class="thub-post-handle">@${escapeHtml(author.email.split('@')[0])}</span>` : ''}
+          <span class="thub-post-dot">·</span>
+          <time class="thub-post-time" title="${escapeHtml(new Date(post.created_at).toLocaleString())}">${formatRelativeTime(post.created_at)}</time>
+          ${isOwn && !pending ? `<button class="thub-icon-btn thub-post-delete" title="Delete post" onclick="deleteTeamPost('${post.id}')">${TEAM_HUB_ICONS.trash}</button>` : ''}
+        </div>
+        <div class="thub-post-content">${teamHubLinkify(post.content)}</div>
+        ${post.image_url ? `<img class="thub-post-image" src="${escapeHtml(post.image_url)}" alt="">` : ''}
+        <div class="thub-post-actions">
+          <button class="thub-post-action ${commentsOpen ? 'active' : ''}" onclick="toggleTeamPostComments('${post.id}')" title="Comments">
+            ${TEAM_HUB_ICONS.comment}<span>${comments.length || ''}</span>
+          </button>
+          <button class="thub-post-action like ${post.liked_by_me ? 'active' : ''}" onclick="toggleTeamPostLike('${post.id}')" title="Like" ${pending ? 'disabled' : ''}>
+            ${TEAM_HUB_ICONS.heart}<span>${post.like_count || ''}</span>
+          </button>
+          <button class="thub-post-action" onclick="shareTeamPost('${post.id}')" title="Copy text">
+            ${TEAM_HUB_ICONS.share}
+          </button>
+        </div>
+        ${commentsOpen ? `
+          <div class="thub-comments">
+            ${comments.map(c => `
+              <div class="thub-comment" data-comment-id="${c.id}">
+                ${teamHubAvatarHTML(teamHubProfileName(c.author), c.author?.avatar_url, 'sm')}
+                <div class="thub-comment-body">
+                  <div class="thub-comment-head">
+                    <span class="thub-comment-author">${escapeHtml(teamHubProfileName(c.author))}</span>
+                    <span class="thub-comment-time">${formatRelativeTime(c.created_at)}</span>
+                    ${c.user_id === me.id ? `<button class="thub-icon-btn thub-comment-delete" title="Delete" onclick="deleteTeamPostComment('${c.id}', '${post.id}')">${TEAM_HUB_ICONS.trash}</button>` : ''}
+                  </div>
+                  <div class="thub-comment-content">${teamHubLinkify(c.content)}</div>
+                </div>
+              </div>`).join('')}
+            <div class="thub-comment-composer">
+              ${teamHubAvatarHTML(me.name, me.avatarUrl, 'sm')}
+              <input type="text" class="thub-comment-input" id="teamCommentInput-${post.id}" placeholder="Write a reply…" maxlength="500" onkeydown="if(event.key==='Enter'){event.preventDefault();submitTeamPostComment('${post.id}')}">
+              <button class="thub-icon-btn primary" onclick="submitTeamPostComment('${post.id}')" title="Reply">${TEAM_HUB_ICONS.send}</button>
+            </div>
+          </div>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function updateTeamFeedList() {
+  const list = document.getElementById('teamFeedList');
+  if (list) list.innerHTML = renderTeamFeedList();
+}
+
+function refreshTeamPostCard(postId) {
+  const post = teamFeedPosts.find(p => p.id === postId);
+  const el = document.querySelector(`.thub-post[data-post-id="${postId}"]`);
+  if (!el) { updateTeamFeedList(); return; }
+  if (!post) { el.remove(); if (!teamFeedPosts.length) updateTeamFeedList(); return; }
+  const input = el.querySelector('.thub-comment-input');
+  const draft = input ? input.value : '';
+  const hadFocus = input && document.activeElement === input;
+  el.outerHTML = renderTeamPostCard(post);
+  if (draft || hadFocus) {
+    const next = document.getElementById(`teamCommentInput-${postId}`);
+    if (next) { next.value = draft; if (hadFocus) next.focus(); }
+  }
+}
+
+async function loadTeamFeed(force = false) {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) return;
+  if (teamFeedLoading && !force) return;
+  teamFeedLoading = true;
+  teamFeedError = null;
+  if (!teamFeedPosts.length) updateTeamFeedList();
+  try {
+    teamFeedPosts = await window.LayerDB.getFeedPosts();
+  } catch (error) {
+    console.error('Failed to load feed:', error);
+    teamFeedError = /relation .* does not exist|schema cache/i.test(error.message || '')
+      ? 'The feed tables are missing. Run team-social-schema.sql in Supabase to enable the feed.'
+      : (error.message || 'Unknown error');
+  } finally {
+    teamFeedLoading = false;
+    if (currentView === 'team' && teamHubSection === 'feed') updateTeamFeedList();
+  }
+}
+
+function autoGrowTeamPostInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 240) + 'px';
+  const counter = document.getElementById('teamPostCounter');
+  if (counter) counter.textContent = el.value.length > 800 ? `${1000 - el.value.length}` : '';
+  const submit = document.getElementById('teamPostSubmit');
+  if (submit) submit.disabled = !el.value.trim();
+}
+
+function handleTeamPostKeydown(event) {
+  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    submitTeamPost();
+  }
+}
+
+async function submitTeamPost() {
+  const input = document.getElementById('teamPostInput');
+  const content = input?.value?.trim();
+  if (!content) return;
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in to post', 'error');
+    return;
+  }
+
+  const me = teamHubCurrentUserInfo();
+  const tempId = 'temp-post-' + Date.now();
+  const optimistic = {
+    id: tempId,
+    user_id: me.id,
+    content,
+    created_at: new Date().toISOString(),
+    author: { id: me.id, name: me.name, email: me.email, avatar_url: me.avatarUrl },
+    like_count: 0,
+    liked_by_me: false,
+    comments: [],
+    _pending: true
+  };
+  teamFeedPosts.unshift(optimistic);
+  input.value = '';
+  autoGrowTeamPostInput(input);
+  updateTeamFeedList();
+
+  try {
+    const saved = await window.LayerDB.createFeedPost(content);
+    const idx = teamFeedPosts.findIndex(p => p.id === tempId);
+    if (teamFeedPosts.some(p => p.id === saved.id)) {
+      // realtime already delivered it
+      if (idx !== -1) teamFeedPosts.splice(idx, 1);
+    } else if (idx !== -1) {
+      teamFeedPosts[idx] = { ...optimistic, ...saved, _pending: false, author: optimistic.author, comments: [], like_count: 0, liked_by_me: false };
+    }
+    updateTeamFeedList();
+  } catch (error) {
+    console.error('Failed to create post:', error);
+    teamFeedPosts = teamFeedPosts.filter(p => p.id !== tempId);
+    updateTeamFeedList();
+    input.value = content;
+    autoGrowTeamPostInput(input);
+    showNotification('Could not publish post: ' + (error.message || 'unknown error'), 'error');
+  }
+}
+
+async function deleteTeamPost(postId) {
+  const post = teamFeedPosts.find(p => p.id === postId);
+  if (!post) return;
+  if (!confirm('Delete this post?')) return;
+  teamFeedPosts = teamFeedPosts.filter(p => p.id !== postId);
+  refreshTeamPostCard(postId);
+  try {
+    await window.LayerDB.deleteFeedPost(postId);
+  } catch (error) {
+    console.error('Failed to delete post:', error);
+    teamFeedPosts.unshift(post);
+    teamFeedPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    updateTeamFeedList();
+    showNotification('Could not delete post', 'error');
+  }
+}
+
+async function toggleTeamPostLike(postId) {
+  const post = teamFeedPosts.find(p => p.id === postId);
+  if (!post || post._pending) return;
+  const wasLiked = !!post.liked_by_me;
+  post.liked_by_me = !wasLiked;
+  post.like_count = Math.max(0, (post.like_count || 0) + (wasLiked ? -1 : 1));
+  refreshTeamPostCard(postId);
+  try {
+    if (wasLiked) await window.LayerDB.unlikeFeedPost(postId);
+    else await window.LayerDB.likeFeedPost(postId);
+  } catch (error) {
+    console.error('Failed to toggle like:', error);
+    post.liked_by_me = wasLiked;
+    post.like_count = Math.max(0, (post.like_count || 0) + (wasLiked ? 1 : -1));
+    refreshTeamPostCard(postId);
+  }
+}
+
+function toggleTeamPostComments(postId) {
+  if (teamFeedOpenComments.has(postId)) teamFeedOpenComments.delete(postId);
+  else teamFeedOpenComments.add(postId);
+  refreshTeamPostCard(postId);
+  if (teamFeedOpenComments.has(postId)) {
+    const input = document.getElementById(`teamCommentInput-${postId}`);
+    if (input) input.focus();
+  }
+}
+
+async function submitTeamPostComment(postId) {
+  const input = document.getElementById(`teamCommentInput-${postId}`);
+  const content = input?.value?.trim();
+  const post = teamFeedPosts.find(p => p.id === postId);
+  if (!content || !post) return;
+
+  const me = teamHubCurrentUserInfo();
+  const tempId = 'temp-comment-' + Date.now();
+  post.comments = post.comments || [];
+  post.comments.push({
+    id: tempId, post_id: postId, user_id: me.id, content, created_at: new Date().toISOString(),
+    author: { id: me.id, name: me.name, email: me.email, avatar_url: me.avatarUrl }
+  });
+  input.value = '';
+  refreshTeamPostCard(postId);
+  const next = document.getElementById(`teamCommentInput-${postId}`);
+  if (next) next.focus();
+
+  try {
+    const saved = await window.LayerDB.addFeedComment(postId, content);
+    const idx = post.comments.findIndex(c => c.id === tempId);
+    if (post.comments.some(c => c.id === saved.id)) {
+      if (idx !== -1) post.comments.splice(idx, 1);
+    } else if (idx !== -1) {
+      post.comments[idx] = { ...post.comments[idx], ...saved, author: post.comments[idx].author };
+    }
+    refreshTeamPostCard(postId);
+  } catch (error) {
+    console.error('Failed to add comment:', error);
+    post.comments = post.comments.filter(c => c.id !== tempId);
+    refreshTeamPostCard(postId);
+    showNotification('Could not post reply', 'error');
+  }
+}
+
+async function deleteTeamPostComment(commentId, postId) {
+  const post = teamFeedPosts.find(p => p.id === postId);
+  if (!post) return;
+  const removed = post.comments.find(c => c.id === commentId);
+  post.comments = post.comments.filter(c => c.id !== commentId);
+  refreshTeamPostCard(postId);
+  try {
+    await window.LayerDB.deleteFeedComment(commentId);
+  } catch (error) {
+    console.error('Failed to delete comment:', error);
+    if (removed) post.comments.push(removed);
+    refreshTeamPostCard(postId);
+  }
+}
+
+async function shareTeamPost(postId) {
+  const post = teamFeedPosts.find(p => p.id === postId);
+  if (!post) return;
+  const text = `${teamHubProfileName(post.author)}: ${post.content}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      showNotification('Post copied to clipboard', 'success');
+    }
+  } catch (error) {
+    if (error?.name !== 'AbortError') showNotification('Could not share post', 'error');
+  }
+}
+
+function setupTeamFeedRealtime() {
+  if (!window.LayerDB?.subscribeToFeed) return;
+  if (teamFeedSubscription) {
+    window.LayerDB.unsubscribeFromTeamMessages(teamFeedSubscription);
+    teamFeedSubscription = null;
+  }
+  teamFeedSubscription = window.LayerDB.subscribeToFeed(handleTeamFeedRealtime);
+}
+
+const teamFeedRefreshTimers = {};
+function scheduleTeamPostRefresh(postId) {
+  if (!postId) return;
+  clearTimeout(teamFeedRefreshTimers[postId]);
+  teamFeedRefreshTimers[postId] = setTimeout(async () => {
+    delete teamFeedRefreshTimers[postId];
+    try {
+      const fresh = await window.LayerDB.getFeedPost(postId);
+      const idx = teamFeedPosts.findIndex(p => p.id === postId);
+      if (!fresh) {
+        if (idx !== -1) { teamFeedPosts.splice(idx, 1); refreshTeamPostCard(postId); }
+        return;
+      }
+      if (idx === -1) {
+        teamFeedPosts.unshift(fresh);
+        teamFeedPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        if (currentView === 'team' && teamHubSection === 'feed') updateTeamFeedList();
+      } else {
+        teamFeedPosts[idx] = fresh;
+        if (currentView === 'team' && teamHubSection === 'feed') refreshTeamPostCard(postId);
+      }
+    } catch (error) {
+      console.warn('Feed refresh failed for post', postId, error);
+    }
+  }, 150);
+}
+
+function handleTeamFeedRealtime(evt) {
+  const record = evt.new && Object.keys(evt.new).length ? evt.new : evt.old;
+  if (!record) return;
+
+  if (evt.table === 'team_posts') {
+    if (evt.eventType === 'DELETE') {
+      const before = teamFeedPosts.length;
+      teamFeedPosts = teamFeedPosts.filter(p => p.id !== record.id);
+      if (before !== teamFeedPosts.length) refreshTeamPostCard(record.id);
+      return;
+    }
+    // INSERT / UPDATE — fetch the hydrated post (author, likes, comments)
+    scheduleTeamPostRefresh(record.id);
+    return;
+  }
+
+  // likes / comments reference post_id
+  if (record.post_id) scheduleTeamPostRefresh(record.post_id);
+}
+
+// ============================================
+// People directory
+// ============================================
+async function loadTeamPeople() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) { teamPeopleDirectory = []; return; }
+  const me = window.LayerDB.getCurrentUser();
+  const people = new Map();
+
+  try {
+    const followers = await window.LayerDB.getFollowers();
+    followers.filter(f => f.status === 'accepted').forEach(f => {
+      const otherId = f.follower_id === me.id ? f.following_id : f.follower_id;
+      const profile = f.follower_id === me.id ? f.following_profile : f.follower_profile;
+      if (otherId && otherId !== me.id) {
+        people.set(otherId, { id: otherId, name: profile?.name || f.following_name || f.follower_name, email: profile?.email || f.following_email || f.follower_email, avatar_url: profile?.avatar_url, is_online: false });
+      }
+    });
+  } catch (error) {
+    console.warn('Could not load followers for directory:', error);
+  }
+
+  // Include everyone we already talk to
+  teamDirectMessages.forEach(dm => {
+    if (dm.partnerId && !people.has(dm.partnerId)) {
+      people.set(dm.partnerId, { id: dm.partnerId, name: dm.name, email: dm.email, avatar_url: dm.avatarUrl || (dm.avatar && String(dm.avatar).includes('/') ? dm.avatar : null), is_online: dm.status === 'online' });
+    }
+  });
+
+  try {
+    const fresh = await window.LayerDB.getProfilesByIds(Array.from(people.keys()));
+    fresh.forEach(p => {
+      const existing = people.get(p.id) || {};
+      people.set(p.id, { ...existing, ...p, name: p.name || existing.name, email: p.email || existing.email });
+    });
+  } catch (error) {
+    console.warn('Could not hydrate directory profiles:', error);
+  }
+
+  teamPeopleDirectory = Array.from(people.values()).sort((a, b) => teamHubProfileName(a).localeCompare(teamHubProfileName(b)));
+}
+
+let teamPeopleSearchTimer = null;
+function openCreateMessageModal() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in to send messages', 'error');
+    return;
+  }
+  openModal('New message', `
+    <div class="thub-picker">
+      <div class="thub-search">
+        ${TEAM_HUB_ICONS.search}
+        <input type="text" id="teamPeopleSearch" placeholder="Search people by name or email" oninput="searchTeamPeople(this.value)" autofocus>
+      </div>
+      <div class="thub-picker-list" id="teamPeopleResults">${renderTeamPeopleResults(teamPeopleDirectory, 'startTeamConversationFromPicker')}</div>
+      <div class="thub-picker-footer">
+        <span>Can't find someone?</span>
+        <button class="thub-btn" onclick="closeModal(); openAddPeopleModal();">${TEAM_HUB_ICONS.people} Add people</button>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('teamPeopleSearch')?.focus(), 50);
+}
+
+function renderTeamPeopleResults(people, onPickFn, selectedIds = null) {
+  if (!people.length) return `<div class="thub-empty-list"><p>No people found.</p></div>`;
+  return people.map(p => {
+    const name = teamHubProfileName(p);
+    const selected = selectedIds ? selectedIds.has(p.id) : false;
+    return `
+      <button class="thub-item thub-person ${selected ? 'selected' : ''}" type="button" onclick="${onPickFn}('${p.id}', '${teamHubAttrArg(name)}', '${escapeHtml(p.email || '')}')">
+        <span class="thub-avatar-wrap ${p.is_online ? 'online' : ''}">${teamHubAvatarHTML(name, p.avatar_url)}<span class="thub-status-dot"></span></span>
+        <span class="thub-item-body">
+          <span class="thub-item-row"><span class="thub-item-name">${escapeHtml(name)}</span></span>
+          <span class="thub-item-row"><span class="thub-item-preview">${escapeHtml(p.email || '')}</span></span>
+        </span>
+        ${selectedIds ? `<span class="thub-check ${selected ? 'on' : ''}"></span>` : `<span class="thub-item-cta">${TEAM_HUB_ICONS.chats}</span>`}
+      </button>`;
+  }).join('');
+}
+
+function searchTeamPeople(query, onPickFn = 'startTeamConversationFromPicker', resultsId = 'teamPeopleResults', selectedIds = null) {
+  clearTimeout(teamPeopleSearchTimer);
+  teamPeopleSearchTimer = setTimeout(async () => {
+    const results = document.getElementById(resultsId);
+    if (!results) return;
+    const q = (query || '').trim();
+    let people;
+    if (!q) {
+      people = teamPeopleDirectory;
+    } else {
+      try {
+        people = await window.LayerDB.searchProfiles(q);
+      } catch (error) {
+        console.warn('Profile search failed:', error);
+        people = teamPeopleDirectory.filter(p => teamHubProfileName(p).toLowerCase().includes(q.toLowerCase()) || (p.email || '').toLowerCase().includes(q.toLowerCase()));
+      }
+    }
+    results.innerHTML = renderTeamPeopleResults(people, onPickFn, selectedIds);
+  }, 180);
+}
+
+async function startTeamConversationFromPicker(userId, name, email) {
+  closeModal();
+  teamHubSection = 'chats';
+  finishTeamHubSectionSwitch();
+  await startTeamConversation(userId, name, email);
+  if (!teamPeopleDirectory.some(p => p.id === userId)) {
+    teamPeopleDirectory.push({ id: userId, name, email, avatar_url: null, is_online: false });
+  }
+}
+
+function startDirectMessage() {
+  openCreateMessageModal();
+}
+
+// ============================================
+// Groups
+// ============================================
+async function loadTeamGroups() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) { teamGroups = []; return; }
+  try {
+    teamGroups = await window.LayerDB.getMyGroups();
+  } catch (error) {
+    if (/relation .* does not exist|schema cache/i.test(error.message || '')) {
+      console.warn('Group tables missing — run team-social-schema.sql in Supabase.');
+      teamGroups = [];
+    } else {
+      throw error;
+    }
+  }
+  const unreadById = Object.fromEntries(teamChannels.filter(c => c.type === 'group').map(c => [c.id, c.unread || 0]));
+  const groupChannels = teamGroups.map(g => ({
+    id: g.id.toLowerCase(),
+    name: g.name,
+    type: 'group',
+    unread: unreadById[g.id.toLowerCase()] || 0,
+    icon: 'group'
+  }));
+  teamChannels = teamChannels.filter(c => c.type !== 'group').concat(groupChannels);
+
+  // Subscribe to realtime for each group so unread badges update while elsewhere
+  if (window.LayerRealtime?.subscribeToTeamChat) {
+    groupChannels.forEach(c => {
+      try {
+        window.LayerRealtime.subscribeToTeamChat(c.id, {
+          onMessageReceived: (payload) => handleTeamChatRealtimeUpdate(payload, c.id)
+        });
+      } catch (e) { /* already subscribed */ }
+    });
+  }
+}
+
+let teamGroupsRefreshTimer = null;
+function setupTeamGroupsRealtime() {
+  if (!window.LayerDB?.subscribeToGroups) return;
+  if (teamGroupsSubscription) {
+    window.LayerDB.unsubscribeFromTeamMessages(teamGroupsSubscription);
+    teamGroupsSubscription = null;
+  }
+  teamGroupsSubscription = window.LayerDB.subscribeToGroups(() => {
+    clearTimeout(teamGroupsRefreshTimer);
+    teamGroupsRefreshTimer = setTimeout(async () => {
+      try {
+        await loadTeamGroups();
+        if (currentView !== 'team') return;
+        // If the active group disappeared (removed/deleted), clear selection
+        if (teamCurrentChannel && !teamHubFindConversation(teamCurrentChannel) && teamHubSection === 'groups') {
+          teamCurrentChannel = null;
+        }
+        updateTeamSidebar();
+        if (teamHubSection === 'groups') updateTeamChatArea();
+      } catch (error) {
+        console.warn('Group refresh failed:', error);
+      }
+    }, 200);
+  });
+}
+
+function selectTeamGroup(groupId) {
+  teamHubSection = 'groups';
+  finishTeamHubSectionSwitch();
+  return selectTeamChannel(groupId);
+}
+
+const teamGroupPickerSelection = new Set();
+function openCreateGroupModal() {
+  if (!window.LayerDB || !window.LayerDB.isAuthenticated()) {
+    showNotification('Please sign in to create a group', 'error');
+    return;
+  }
+  teamGroupPickerSelection.clear();
+  const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#06b6d4'];
+  openModal('New group', `
+    <div class="thub-picker">
+      <div class="thub-form-row">
+        <input type="text" id="newGroupName" class="thub-input" placeholder="Group name" maxlength="60" autofocus>
+      </div>
+      <div class="thub-form-row">
+        <input type="text" id="newGroupDescription" class="thub-input" placeholder="What's this group about? (optional)" maxlength="140">
+      </div>
+      <div class="thub-form-row thub-color-row" id="newGroupColors">
+        ${colors.map((c, i) => `<button type="button" class="thub-color ${i === 0 ? 'on' : ''}" style="background:${c}" data-color="${c}" onclick="pickTeamGroupColor(this)" aria-label="Color ${i + 1}"></button>`).join('')}
+      </div>
+      <div class="thub-form-label">Members <span id="teamGroupPickerCount"></span></div>
+      <div class="thub-search">
+        ${TEAM_HUB_ICONS.search}
+        <input type="text" id="teamGroupPeopleSearch" placeholder="Search people to add" oninput="searchTeamPeople(this.value, 'toggleTeamGroupPickerMember', 'teamGroupPeopleResults', teamGroupPickerSelection)">
+      </div>
+      <div class="thub-picker-list" id="teamGroupPeopleResults">${renderTeamPeopleResults(teamPeopleDirectory, 'toggleTeamGroupPickerMember', teamGroupPickerSelection)}</div>
+      <div class="form-actions thub-form-actions">
+        <button class="thub-btn" onclick="closeModal()">Cancel</button>
+        <button class="thub-btn primary" onclick="createNewGroup()">Create group</button>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('newGroupName')?.focus(), 50);
+}
+
+function pickTeamGroupColor(btn) {
+  document.querySelectorAll('#newGroupColors .thub-color').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+const teamGroupPickerPeople = new Map();
+function toggleTeamGroupPickerMember(userId, name, email) {
+  if (teamGroupPickerSelection.has(userId)) teamGroupPickerSelection.delete(userId);
+  else {
+    teamGroupPickerSelection.add(userId);
+    teamGroupPickerPeople.set(userId, { id: userId, name, email });
+  }
+  const list = document.getElementById('teamGroupPeopleResults');
+  if (list) {
+    list.querySelectorAll('.thub-person').forEach(el => {
+      const on = el.getAttribute('onclick')?.includes(`'${userId}'`);
+      if (on) {
+        el.classList.toggle('selected', teamGroupPickerSelection.has(userId));
+        el.querySelector('.thub-check')?.classList.toggle('on', teamGroupPickerSelection.has(userId));
+      }
+    });
+  }
+  const count = document.getElementById('teamGroupPickerCount');
+  if (count) count.textContent = teamGroupPickerSelection.size ? `· ${teamGroupPickerSelection.size} selected` : '';
+}
+
+async function createNewGroup() {
+  const name = document.getElementById('newGroupName')?.value?.trim();
+  const description = document.getElementById('newGroupDescription')?.value?.trim() || null;
+  const color = document.querySelector('#newGroupColors .thub-color.on')?.dataset.color || '#3b82f6';
+  if (!name) {
+    showNotification('Please enter a group name', 'error');
+    return;
+  }
+  const btn = document.querySelector('.thub-form-actions .primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  try {
+    const group = await window.LayerDB.createGroup({ name, description, color, memberIds: Array.from(teamGroupPickerSelection) });
+    closeModal();
+    await loadTeamGroups();
+    showNotification(`Group "${name}" created`, 'success');
+    await selectTeamGroup(group.id);
+  } catch (error) {
+    console.error('Failed to create group:', error);
+    if (btn) { btn.disabled = false; btn.textContent = 'Create group'; }
+    const missing = /relation .* does not exist|schema cache/i.test(error.message || '');
+    showNotification(missing ? 'Group tables are missing — run team-social-schema.sql in Supabase.' : ('Could not create group: ' + (error.message || 'unknown error')), 'error');
+  }
+}
+
+function openTeamGroupDetails(event, groupId) {
+  if (event) { event.preventDefault(); event.stopPropagation(); }
+  const group = teamHubGroupById(groupId);
+  if (!group) return;
+  const me = teamHubCurrentUserInfo();
+  const myMembership = (group.members || []).find(m => m.user_id === me.id);
+  const isAdmin = group.created_by === me.id || myMembership?.role === 'admin';
+
+  openModal(escapeHtml(group.name), `
+    <div class="thub-picker">
+      ${group.description ? `<p class="thub-group-desc">${escapeHtml(group.description)}</p>` : ''}
+      <div class="thub-form-label">${(group.members || []).length} members</div>
+      <div class="thub-picker-list">
+        ${(group.members || []).map(m => {
+          const name = m.user_id === me.id ? `${teamHubProfileName(m.profile) || me.name} (you)` : teamHubProfileName(m.profile);
+          return `
+            <div class="thub-item thub-person static">
+              ${teamHubAvatarHTML(teamHubProfileName(m.profile) || me.name, m.profile?.avatar_url)}
+              <span class="thub-item-body">
+                <span class="thub-item-row"><span class="thub-item-name">${escapeHtml(name)}</span>${m.role === 'admin' || group.created_by === m.user_id ? '<span class="thub-badge">admin</span>' : ''}</span>
+                <span class="thub-item-row"><span class="thub-item-preview">${escapeHtml(m.profile?.email || '')}</span></span>
+              </span>
+              ${isAdmin && m.user_id !== me.id ? `<button class="thub-icon-btn" title="Remove" onclick="removeTeamGroupMember('${group.id}', '${m.user_id}')">${TEAM_HUB_ICONS.close}</button>` : ''}
+            </div>`;
+        }).join('')}
+      </div>
+      ${isAdmin ? `
+        <div class="thub-form-label">Add members</div>
+        <div class="thub-search">
+          ${TEAM_HUB_ICONS.search}
+          <input type="text" placeholder="Search people" oninput="searchTeamPeople(this.value, 'addTeamGroupMemberFromPicker_${group.id.replace(/-/g, '')}', 'teamGroupAddResults')">
+        </div>
+        <div class="thub-picker-list" id="teamGroupAddResults">${renderTeamPeopleResults(teamPeopleDirectory.filter(p => !(group.members || []).some(m => m.user_id === p.id)), `addTeamGroupMemberFromPicker_${group.id.replace(/-/g, '')}`)}</div>
+      ` : ''}
+      <div class="form-actions thub-form-actions">
+        ${isAdmin ? `<button class="thub-btn danger" onclick="deleteTeamGroup('${group.id}')">Delete group</button>` : `<button class="thub-btn danger" onclick="leaveTeamGroup('${group.id}')">Leave group</button>`}
+        <button class="thub-btn" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  `);
+
+  // Per-modal picker callback bound to this group id
+  window[`addTeamGroupMemberFromPicker_${group.id.replace(/-/g, '')}`] = (userId) => addTeamGroupMember(group.id, userId);
+}
+
+async function addTeamGroupMember(groupId, userId) {
+  try {
+    await window.LayerDB.addGroupMembers(groupId, [userId]);
+    await loadTeamGroups();
+    updateTeamSidebar();
+    if (teamCurrentChannel === groupId.toLowerCase()) updateTeamChatArea();
+    openTeamGroupDetails(null, groupId);
+    showNotification('Member added', 'success');
+  } catch (error) {
+    console.error('Failed to add member:', error);
+    showNotification('Could not add member: ' + (error.message || ''), 'error');
+  }
+}
+
+async function removeTeamGroupMember(groupId, userId) {
+  try {
+    await window.LayerDB.removeGroupMember(groupId, userId);
+    await loadTeamGroups();
+    updateTeamSidebar();
+    if (teamCurrentChannel === groupId.toLowerCase()) updateTeamChatArea();
+    openTeamGroupDetails(null, groupId);
+  } catch (error) {
+    console.error('Failed to remove member:', error);
+    showNotification('Could not remove member', 'error');
+  }
+}
+
+async function leaveTeamGroup(groupId) {
+  if (!confirm('Leave this group?')) return;
+  try {
+    await window.LayerDB.leaveGroup(groupId);
+    closeModal();
+    if (teamCurrentChannel === groupId.toLowerCase()) teamCurrentChannel = null;
+    await loadTeamGroups();
+    updateTeamSidebar();
+    updateTeamChatArea();
+  } catch (error) {
+    console.error('Failed to leave group:', error);
+    showNotification('Could not leave group', 'error');
+  }
+}
+
+async function deleteTeamGroup(groupId) {
+  if (!confirm('Delete this group for everyone? Messages will be kept but no one will be able to see the group.')) return;
+  try {
+    await window.LayerDB.deleteGroup(groupId);
+    closeModal();
+    if (teamCurrentChannel === groupId.toLowerCase()) teamCurrentChannel = null;
+    await loadTeamGroups();
+    updateTeamSidebar();
+    updateTeamChatArea();
+    showNotification('Group deleted', 'success');
+  } catch (error) {
+    console.error('Failed to delete group:', error);
+    showNotification('Could not delete group', 'error');
+  }
 }
 
 let teamComposerPopoverState = { open: false, type: null, anchorRect: null };
@@ -19683,12 +20414,14 @@ function updateTeamChatArea() {
 
   const chatMain = document.querySelector('.team-chat-main');
   if (chatMain) {
-    chatMain.innerHTML = renderTeamChatHeader() + renderTeamChatContent() + (teamCurrentTab === 'chat' ? renderTeamMessageInput() : '');
+    chatMain.innerHTML = renderTeamHubMain();
   }
 
   const layout = document.getElementById('teamChatLayout');
   if (layout) {
     layout.classList.toggle('mobile-chat-open', !!teamMobileChatOpen);
+    layout.classList.toggle('thub-feed-mode', teamHubSection === 'feed');
+    layout.dataset.section = teamHubSection;
   }
 
   // Update sidebar active states
@@ -19778,9 +20511,11 @@ async function selectTeamChannel(channelId) {
   }
 
   // Determine channel type (case-insensitive finding)
-  const channel = teamChannels.find(c => c.id.toLowerCase() === channelId) ||
-    teamDirectMessages.find(d => d.id.toLowerCase() === channelId);
+  const channel = teamHubFindConversation(channelId);
   const channelType = channel?.type || 'channel';
+  if (channelType === 'group' && teamHubSection !== 'groups') teamHubSection = 'groups';
+  if (channelType !== 'group' && teamHubSection === 'feed') teamHubSection = 'chats';
+  teamCurrentTab = 'chat';
 
   // IDEMPOTENT: Clear unread count locally
   if (channel) {
@@ -20264,38 +20999,7 @@ function updateChatContentOnly() {
     const clientHeight = messagesList.clientHeight;
     const scrollFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // Generate only the messages HTML
-    const messagesHTML = messages.map(msg => `
-      <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}">
-        <div class="team-message-avatar">
-          ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
-        `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-        `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
-      }
-        </div>
-        <div class="team-message-body">
-          <div class="team-message-header">
-            <span class="team-message-user">${msg.user}</span>
-            <span class="team-message-time">${msg.time}</span>
-          </div>
-          <div class="team-message-content">
-            ${msg.content}
-          </div>
-          ${!msg.isSystem ? `
-            <div class="team-message-status">
-              ${msg.userId === window.currentUser?.id ? `
-                ${msg.isRead ?
-            `<span class="message-status seen" title="Seen">✓✓</span>` :
-            `<span class="message-status received" title="Received">✓</span>`
-          }
-              ` : `
-                <!-- Status for received messages could go here if needed -->
-              `}
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `).join('');
+    const messagesHTML = renderTeamMessagesHTML(messages);
 
     // Update only the innerHTML of the messages list
     messagesList.innerHTML = messagesHTML;
@@ -20332,33 +21036,36 @@ function updateChatContentOnly() {
 }
 
 // Helper function to create HTML for a single message
-function createMessageHTML(msg) {
+function createMessageHTML(msg, grouped = false) {
+  const me = window.LayerDB?.getCurrentUser()?.id;
+  const own = msg.userId === me;
+  const name = msg.user || 'User';
+  const avatarUrl = msg.avatarUrl || (msg.avatar && String(msg.avatar).includes('/') ? msg.avatar : null);
+
+  if (msg.isSystem) {
+    return `<div class="team-message system thub-msg thub-msg-system" data-message-id="${msg.id}"><span>${msg.content}</span></div>`;
+  }
+
+  const status = own ? `<span class="message-status thub-msg-status ${msg.isRead ? 'seen' : 'received'}" title="${msg.isRead ? 'Seen' : 'Sent'}">${msg.isRead ? '✓✓' : '✓'}</span>` : '';
+  const edited = msg.isEdited ? `<span class="thub-msg-edited">edited</span>` : '';
+  const pending = msg.isOptimistic ? ' pending' : '';
+
   return `
-    <div class="team-message ${msg.isSystem ? 'system' : ''} ${msg.userId === window.LayerDB?.getCurrentUser()?.id ? 'own' : ''}" data-message-id="${msg.id}">
-      <div class="team-message-avatar">
-        ${(msg.avatar && msg.avatar.toString().includes('/')) || msg.avatarUrl ?
-      `<img src="${msg.avatarUrl || msg.avatar}" alt="${msg.user}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-      `<span>${msg.initial || msg.avatar || msg.user.charAt(0)}</span>`
-    }
-      </div>
-      <div class="team-message-body">
-        <div class="team-message-header">
-          <span class="team-message-user">${msg.user}</span>
-          <span class="team-message-time">${msg.time}</span>
-        </div>
-        <div class="team-message-content">
-          ${msg.content}
-        </div>
-        ${!msg.isSystem ? `
-          <div class="team-message-status">
-            ${msg.userId === window.currentUser?.id ? `
-              ${msg.isRead ?
-          `<span class="message-status seen" title="Seen">✓✓</span>` :
-          `<span class="message-status received" title="Received">✓</span>`
-        }
-            ` : ''}
+    <div class="team-message thub-msg ${own ? 'own' : ''} ${grouped ? 'grouped' : ''}${pending}" data-message-id="${msg.id}" data-user-id="${msg.userId || ''}">
+      <div class="team-message-avatar thub-msg-avatar">${grouped ? '' : teamHubAvatarHTML(name, avatarUrl, 'sm')}</div>
+      <div class="team-message-body thub-msg-body">
+        ${grouped ? '' : `
+          <div class="team-message-header thub-msg-meta">
+            <span class="team-message-user thub-msg-user">${escapeHtml(name)}</span>
+            <span class="team-message-time thub-msg-time">${msg.time || ''}</span>
+          </div>`}
+        <div class="thub-msg-row">
+          <div class="team-message-content thub-msg-bubble">${msg.content}</div>
+          <div class="thub-msg-tools">
+            <button class="thub-msg-tool" type="button" onclick="showMessageContextMenu(event, '${msg.id}', '${msg.userId || ''}', '${teamHubFindConversation(teamCurrentChannel)?.type || 'channel'}')" title="More">${TEAM_HUB_ICONS.more}</button>
           </div>
-        ` : ''}
+        </div>
+        <div class="team-message-status thub-msg-footer">${edited}${status}</div>
       </div>
     </div>
   `;
@@ -20381,10 +21088,6 @@ function loadMessageReactionsForCurrentChannel() {
 function initializeMessageReactions() {
   loadMessageReactionsForCurrentChannel();
   updateTeamChatArea();
-}
-
-function selectTeamGroup(groupId) {
-  openModal('Group Details', '<p>Group management coming soon!</p>');
 }
 
 function setTeamTab(tab) {
@@ -20485,6 +21188,7 @@ async function sendTeamMessage() {
     avatarUrl: currentUser?.user_metadata?.avatar_url || null,
     content: messageText,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAt: new Date().toISOString(),
     isSystem: false,
     userId: currentUser?.id,
     isOptimistic: true, // Flag to identify optimistic messages
@@ -20598,6 +21302,7 @@ async function sendTeamMessage() {
         avatar: (window.LayerDB.getCurrentUser()?.user_metadata?.name || window.LayerDB.getCurrentUser()?.email?.split('@')[0] || 'U').charAt(0).toUpperCase(),
         content: messageData.message,
         time: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: messageData.created_at,
         isSystem: false,
         userId: messageData.user_id,
         avatarUrl: messageData.user_profile?.avatar_url || null,
@@ -20734,6 +21439,7 @@ async function loadTeamMessages(channelId, channelType = 'channel') {
       initial: (msg.user_profile?.name || msg.sender?.email || 'U').charAt(0).toUpperCase(),
       content: msg.message,
       time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: msg.created_at,
       isSystem: msg.message_type === 'system',
       userId: msg.user_id,
       isEdited: msg.is_edited,
@@ -20896,6 +21602,7 @@ async function setupGlobalDMListener() {
             avatarUrl: profile.avatar_url,
             content: newRecord.message,
             time: new Date(newRecord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            createdAt: newRecord.created_at,
             isSystem: newRecord.message_type === 'system',
             userId: newRecord.user_id,
             isEdited: newRecord.is_edited,
@@ -21130,6 +21837,7 @@ async function handleTeamChatRealtimeUpdate(payload, subscriptionChannelId) {
       avatarUrl: avatarUrl,
       content: newRecord.message,
       time: new Date(newRecord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: newRecord.created_at,
       isSystem: newRecord.message_type === 'system',
       userId: newRecord.user_id,
       isEdited: newRecord.is_edited,
@@ -21610,49 +22318,6 @@ function openCreateChannelModal() {
   `);
 }
 
-function openCreateMessageModal() {
-  openModal('New Message', `
-    <div class="modal-form">
-      <div class="form-group">
-        <label>To</label>
-        <input type="text" id="dmRecipient" placeholder="Search for a team member..." class="form-input">
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="startDirectMessage()">Start Conversation</button>
-      </div>
-    </div>
-  `);
-}
-
-function openCreateGroupModal() {
-  const projects = JSON.parse(localStorage.getItem('layerProjectsData') || '[]');
-
-  openModal('Create Group', `
-    <div class="modal-form">
-      <div class="form-group">
-        <label>Group Name</label>
-        <input type="text" id="newGroupName" placeholder="e.g., Marketing Team" class="form-input">
-      </div>
-      <div class="form-group">
-        <label>Link to Project (optional)</label>
-        <select id="groupLinkedProject" class="form-select">
-          <option value="">No project linked</option>
-          ${projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Add Members</label>
-        <input type="text" id="groupMembers" placeholder="Search for team members..." class="form-input">
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="createNewGroup()">Create Group</button>
-      </div>
-    </div>
-  `);
-}
-
 // Toggle Add People Dropdown
 function toggleAddPeopleDropdown() {
   const dropdown = document.getElementById('addPeopleDropdown');
@@ -22006,29 +22671,6 @@ function createNewChannel() {
   renderCurrentView();
 }
 
-function createNewGroup() {
-  const name = document.getElementById('newGroupName')?.value?.trim();
-  const linkedProject = document.getElementById('groupLinkedProject')?.value;
-
-  if (!name) {
-    showNotification('Please enter a group name', 'error');
-    return;
-  }
-
-  const newGroup = {
-    id: 'grp-' + Date.now(),
-    name: name,
-    members: 1,
-    linkedProject: linkedProject || null
-  };
-
-  teamGroups.push(newGroup);
-
-  closeModal();
-  showNotification(`Group "${name}" created!`, 'success');
-  renderCurrentView();
-}
-
 function openTeamSearchModal() {
   openModal('Search', `
     <div class="modal-form">
@@ -22085,11 +22727,6 @@ function openAddDocModal() {
 
 function startSyncUp() {
   // Not available
-}
-
-function startDirectMessage() {
-  closeModal();
-  showNotification('Direct message started!', 'success');
 }
 
 async function addPeopleToChannel() {
