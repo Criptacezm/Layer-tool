@@ -31546,22 +31546,45 @@ function autoGrowAIInput(el) {
   if (!el) return;
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 220) + 'px';
+  syncAIHomeSendState(el);
 }
 
-function renderAILaunchRecents() {
+function syncAIHomeSendState(el) {
+  const input = el || document.getElementById('aiAgentInput');
+  const send = document.getElementById('aiHomeSend');
+  if (!input || !send) return;
+  send.disabled = input.value.trim().length === 0;
+}
+
+function getAIHomeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 5) return 'Still up';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function renderAIHomeRecents() {
   const conversations = (typeof loadAIChatHistory === 'function' ? loadAIChatHistory() : []).slice(0, 4);
 
   if (conversations.length === 0) {
-    return `<div class="ai-launch-recent-empty">No conversations yet — your recent chats will show up here.</div>`;
+    return `<div class="aihome-recent-empty">No conversations yet — your recent chats will show up here.</div>`;
   }
 
-  return conversations.map(conv => `
-    <button class="ai-launch-recent-item" onclick="loadConversation('${conv.id}')">
-      <span class="ai-launch-recent-dot"></span>
-      <span class="ai-launch-recent-title">${escapeHtml(conv.title || 'Untitled conversation')}</span>
-      <span class="ai-launch-recent-meta">${conv.messages ? conv.messages.length : 0} msg · ${getTimeAgo(new Date(conv.updatedAt))}</span>
-    </button>
-  `).join('');
+  return conversations.map(conv => {
+    const count = conv.messages ? conv.messages.length : 0;
+    return `
+      <button class="aihome-recent-item" onclick="loadConversation('${conv.id}')">
+        <span class="aihome-recent-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </span>
+        <span class="aihome-recent-title">${escapeHtml(conv.title || 'Untitled conversation')}</span>
+        <span class="aihome-recent-meta">${count} msg · ${getTimeAgo(new Date(conv.updatedAt))}</span>
+      </button>
+    `;
+  }).join('');
 }
 
 function renderAIView() {
@@ -31576,54 +31599,61 @@ function renderAIView() {
   const mode = getAIResponseMode();
 
   setTimeout(refreshAIModelChip, 0);
+  setTimeout(() => syncAIHomeSendState(), 0);
+
+  const greeting = userName === 'there' ? 'Hi there' : `${getAIHomeGreeting()}, ${escapeHtml(userName)}`;
 
   return `
-    <div class="ai-launch">
-      <div class="ai-launch-inner">
-        <div class="ai-launch-topbar">
-          <div class="ai-launch-brand">
-            <span class="ai-launch-brand-dot"></span>
+    <div class="aihome">
+      <div class="aihome-aura" aria-hidden="true"></div>
+
+      <div class="aihome-shell">
+        <header class="aihome-bar">
+          <span class="aihome-brand">
+            <span class="aihome-brand-pulse"></span>
             Layer AI
-          </div>
-          <button class="ai-launch-ghost-btn" onclick="toggleAIChatHistorySidebar()" title="View chat history">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+          </span>
+          <button class="aihome-ghost" onclick="toggleAIChatHistorySidebar()" title="View chat history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
               <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span>History</span>
+            History
           </button>
-        </div>
+        </header>
 
-        <div class="ai-launch-center">
-          <h1 class="ai-launch-title">Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},</h1>
-          <p class="ai-launch-subtitle">What would you like to get done?</p>
+        <main class="aihome-stage">
+          <h1 class="aihome-greeting">${greeting},</h1>
+          <p class="aihome-prompt">What would you like to get done?</p>
 
-          <div class="ai-launch-composer">
-            <div class="ai-launch-composer-hint">Describe a task, ask a question, or pick a starter below</div>
+          <section class="aihome-composer">
+            <span class="aihome-composer-hint">Describe a task, ask a question, or pick a starter below</span>
 
             <textarea
-              class="ai-launch-textarea"
+              class="aihome-input"
               id="aiAgentInput"
               placeholder="Ask Layer AI anything…"
               rows="1"
+              autocomplete="off"
+              spellcheck="true"
               oninput="autoGrowAIInput(this)"
               onkeydown="handleAIInputKeydown(event)"
             ></textarea>
 
-            <div class="ai-launch-composer-bar">
-              <div class="ai-launch-composer-left">
-                <button class="ai-launch-icon-btn" onclick="showAIAddOptions()" title="Add attachment">
+            <div class="aihome-tools">
+              <div class="aihome-tools-group">
+                <button class="aihome-icon" onclick="showAIAddOptions()" title="Add attachment" aria-label="Add attachment">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <path d="M12 5v14M5 12h14"/>
                   </svg>
                 </button>
 
                 <div class="ai-mode-select">
-                  <button class="ai-launch-chip" onclick="toggleAIModeMenu(event)" title="Response mode">
+                  <button class="aihome-chip" onclick="toggleAIModeMenu(event)" title="Response mode">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
                       <path d="M4 6h16M7 12h10M10 18h4"/>
                     </svg>
                     <span id="aiModeLabel">${mode.label}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                    <svg class="aihome-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
                       <path d="M6 9l6 6 6-6"/>
                     </svg>
                   </button>
@@ -31637,45 +31667,47 @@ function renderAIView() {
                   </div>
                 </div>
 
-                <span class="ai-launch-chip ai-launch-chip-static" title="Active model">
-                  <span class="ai-launch-chip-dot"></span>
+                <span class="aihome-chip aihome-chip-model" title="Active model">
+                  <span class="aihome-chip-dot"></span>
                   <span id="aiModelChipLabel">Layer AI</span>
                 </span>
               </div>
 
-              <div class="ai-launch-composer-right">
-                <button class="ai-launch-icon-btn" onclick="toggleVoiceInput()" title="Voice input">
+              <div class="aihome-tools-group">
+                <button class="aihome-icon" onclick="toggleVoiceInput()" title="Voice input" aria-label="Voice input">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
                     <rect x="9" y="3" width="6" height="11" rx="3"/>
                     <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
                   </svg>
                 </button>
-                <button class="ai-launch-send" id="aiSendBtn" onclick="sendAIAgentPrompt()" title="Send">
+                <button class="aihome-send" id="aiHomeSend" onclick="sendAIAgentPrompt()" title="Send" aria-label="Send" disabled>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
                     <path d="M12 19V5M5 12l7-7 7 7"/>
                   </svg>
                 </button>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div class="ai-launch-starters">
-            ${aiFeatureCards.map(card => `
-              <button class="ai-launch-starter" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
-                <span class="ai-launch-starter-icon">${card.icon}</span>
-                <span>${escapeHtml(card.title)}</span>
+          <div class="aihome-shortcut"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</div>
+
+          <div class="aihome-starters">
+            ${aiFeatureCards.map((card, i) => `
+              <button class="aihome-starter" style="--i:${i}" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
+                <span class="aihome-starter-icon">${card.icon}</span>
+                <span class="aihome-starter-text">${escapeHtml(card.title)}</span>
               </button>
             `).join('')}
           </div>
 
-          <div class="ai-launch-recent">
-            <div class="ai-launch-recent-head">
+          <section class="aihome-recent">
+            <div class="aihome-recent-head">
               <span>Recent chats</span>
-              <button class="ai-launch-link" onclick="toggleAIChatHistorySidebar()">View all</button>
+              <button class="aihome-link" onclick="toggleAIChatHistorySidebar()">View all</button>
             </div>
-            <div class="ai-launch-recent-list">${renderAILaunchRecents()}</div>
-          </div>
-        </div>
+            <div class="aihome-recent-list">${renderAIHomeRecents()}</div>
+          </section>
+        </main>
       </div>
     </div>
   `;
@@ -31696,6 +31728,12 @@ function handleAIInputKeydown(event) {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     sendAIAgentPrompt();
+    return;
+  }
+
+  if (event.key === 'Escape' && event.target.value) {
+    event.target.value = '';
+    autoGrowAIInput(event.target);
   }
 }
 
@@ -31703,6 +31741,7 @@ function setAIPrompt(prompt) {
   const input = document.getElementById('aiAgentInput');
   if (input) {
     input.value = prompt;
+    autoGrowAIInput(input);
     input.focus();
   }
 }
