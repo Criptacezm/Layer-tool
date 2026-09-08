@@ -11,8 +11,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const NVIDIA_API_KEY = "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";
-const INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const { resolveProvider, providerInfo, proxyAIRequest } = require('./api/ai-provider');
+
+app.get('/api/ai', (req, res) => res.json(providerInfo()));
 
 app.post('/api/ai', async (req, res) => {
     try {
@@ -20,27 +21,11 @@ app.post('/api/ai', async (req, res) => {
         const lastMessage = messages[messages.length - 1];
         const content = lastMessage ? lastMessage.content : '';
         const logContent = typeof content === 'string' ? content.substring(0, 50) : '[Non-string content]';
-        console.log('Received AI request:', logContent + '...');
+        console.log(`Received AI request (${resolveProvider().label}):`, logContent + '...');
 
-        const response = await fetch(INVOKE_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(req.body)
-        });
-
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            res.status(response.status).json(data);
-        } else {
-            const text = await response.text();
-            console.error('NVIDIA API non-JSON response:', text);
-            res.status(response.status).json({ error: { message: 'NVIDIA API returned non-JSON response', details: text } });
-        }
+        const { status, body } = await proxyAIRequest(req.body);
+        if (body.error) console.error('AI provider error:', body.error);
+        res.status(status).json(body);
     } catch (error) {
         console.error('Proxy Error:', error);
         res.status(500).json({ error: { message: error.message } });

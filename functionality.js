@@ -25068,70 +25068,41 @@ function openDocEditor(docId = null) {
         </div>
       </div>
       
-      <!-- AI Sidebar - LEFT Side - Minimalistic ClickUp Brain Style -->
-      <div class="doc-ai-sidebar" id="docAiSidebar">
-        <div class="ai-sidebar-header">
-          <div class="ai-sidebar-brand">
-            <div class="ai-sidebar-brain-icon">
-              <div class="ai-brain-pulse"></div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+      <!-- Ask AI Sidebar - LEFT side -->
+      <div class="doc-ai-sidebar askai-panel" id="docAiSidebar">
+        <div class="askai-header">
+          <div class="askai-header-title">
+            <span class="askai-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3l2.1 4.9L19 10l-4.9 2.1L12 17l-2.1-4.9L5 10l4.9-2.1L12 3z"/>
               </svg>
-            </div>
-            <span class="ai-sidebar-title-text">Brain</span>
+            </span>
+            Ask AI
           </div>
-          <button class="ai-sidebar-close-minimal" onclick="toggleDocAiSidebar()" title="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6L6 18M6 6l12 12"/>
+          <div class="askai-header-actions">
+            <button class="askai-icon-btn" onclick="clearAskAiThread('docAiMessages')" title="New chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            <button class="askai-icon-btn" onclick="toggleDocAiSidebar()" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="askai-messages" id="docAiMessages">
+          ${renderAskAiIntro('doc', 'docAiInput', 'handleDocAiSend')}
+        </div>
+        <div class="askai-composer-wrap">
+          ${renderAskAiComposer('docAiInput', 'handleDocAiSend', 'Ask AI about this page…')}
+          <div class="askai-context">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
             </svg>
-          </button>
-        </div>
-        <div class="ai-sidebar-messages" id="docAiMessages">
-          <div class="ai-welcome-message">
-            <div class="ai-welcome-header">
-              <div class="ai-welcome-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-                  <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
-                </svg>
-              </div>
-              <div class="ai-welcome-content">
-                <div class="ai-welcome-name">Brain</div>
-                <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this Doc. How can I help?</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ai-sidebar-input-minimal">
-          <div class="ai-input-container">
-            <textarea id="docAiInput" placeholder="Tell AI what to do next" rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleDocAiSend()}"></textarea>
-            <div class="ai-input-actions">
-              <button class="ai-input-action-btn" title="Attach">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-              <button class="ai-input-action-btn" title="Settings">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="1"/>
-                </svg>
-              </button>
-              <button class="ai-send-btn" onclick="handleDocAiSend()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="ai-page-context">
-            <div class="ai-page-context-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-            </div>
-            <span class="ai-page-context-text"><span class="ai-page-context-name">Untitled</span> Page</span>
+            <span>This page is used as context</span>
           </div>
         </div>
       </div>
@@ -31039,6 +31010,94 @@ function closeSidebarPriorityDropdown(projectIndex) {
 // Doc AI Sidebar State
 let docAiSidebarOpen = false;
 
+const ASK_AI_SUGGESTIONS = {
+  doc: [
+    'Summarize this page',
+    'Improve the writing',
+    'Turn this into action items'
+  ],
+  whiteboard: [
+    'Summarize this whiteboard',
+    'Suggest next steps',
+    'Group these ideas into themes'
+  ]
+};
+
+function renderAskAiIntro(kind, inputId, sendFn) {
+  const subject = kind === 'whiteboard' ? 'this whiteboard' : 'this page';
+  const suggestions = (ASK_AI_SUGGESTIONS[kind] || ASK_AI_SUGGESTIONS.doc)
+    .map(text => `<button class="askai-suggestion" onclick="askAiSuggestion('${inputId}', '${sendFn}', '${text.replace(/'/g, "\\'")}')">${text}</button>`)
+    .join('');
+
+  return `
+    <div class="askai-intro">
+      <div class="askai-intro-title">Ask AI</div>
+      <div class="askai-intro-text">Ask anything about ${subject} — summaries, rewrites, next steps.</div>
+      <div class="askai-suggestions">${suggestions}</div>
+    </div>
+  `;
+}
+
+function renderAskAiComposer(inputId, sendFn, placeholder) {
+  return `
+    <div class="askai-composer">
+      <textarea
+        id="${inputId}"
+        class="askai-input"
+        rows="1"
+        placeholder="${placeholder}"
+        oninput="autoGrowAskAiInput(this)"
+        onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();${sendFn}()}"
+      ></textarea>
+      <div class="askai-composer-bar">
+        <button class="askai-composer-btn" onclick="showComingSoonToast()" title="Add context">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <span class="askai-composer-mode">Normal</span>
+        <div class="askai-composer-right">
+          <button class="askai-composer-btn" onclick="showComingSoonToast()" title="Voice input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="9" y="3" width="6" height="11" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+            </svg>
+          </button>
+          <button class="askai-send" onclick="${sendFn}()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19V5M5 12l7-7 7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function autoGrowAskAiInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function askAiSuggestion(inputId, sendFn, text) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.value = text;
+  autoGrowAskAiInput(input);
+  if (typeof window[sendFn] === 'function') window[sendFn]();
+}
+
+function clearAskAiThread(messagesId) {
+  const container = document.getElementById(messagesId);
+  if (!container) return;
+  const kind = messagesId.startsWith('whiteboard') ? 'whiteboard' : 'doc';
+  const inputId = kind === 'whiteboard' ? 'whiteboardAiInput' : 'docAiInput';
+  const sendFn = kind === 'whiteboard' ? 'handleWhiteboardAiSidebarSend' : 'handleDocAiSend';
+  container.innerHTML = renderAskAiIntro(kind, inputId, sendFn);
+  document.getElementById(inputId)?.focus();
+}
+
 function toggleDocAiSidebar() {
   docAiSidebarOpen = !docAiSidebarOpen;
   const sidebar = document.getElementById('docAiSidebar');
@@ -31149,73 +31208,43 @@ function createWhiteboardAiSidebar() {
   const sidebar = document.createElement('div');
   sidebar.id = 'whiteboardAiSidebar';
   sidebar.className = 'ai-sidebar-overlay';
+  sidebar.classList.add('askai-panel');
   sidebar.innerHTML = `
-    <div class="ai-sidebar-header">
-      <div class="ai-sidebar-brand">
-        <div class="ai-sidebar-brain-icon">
-          <div class="ai-brain-pulse"></div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
+    <div class="askai-header">
+      <div class="askai-header-title">
+        <span class="askai-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3l2.1 4.9L19 10l-4.9 2.1L12 17l-2.1-4.9L5 10l4.9-2.1L12 3z"/>
           </svg>
-        </div>
-        <span class="ai-sidebar-title-text">Brain</span>
+        </span>
+        Ask AI
       </div>
-      <button class="ai-sidebar-close-minimal" onclick="toggleWhiteboardAiSidebar()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6L6 18M6 6l12 12"/>
+      <div class="askai-header-actions">
+        <button class="askai-icon-btn" onclick="clearAskAiThread('whiteboardAiMessages')" title="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <button class="askai-icon-btn" onclick="toggleWhiteboardAiSidebar()" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="askai-messages" id="whiteboardAiMessages">
+      ${renderAskAiIntro('whiteboard', 'whiteboardAiInput', 'handleWhiteboardAiSidebarSend')}
+    </div>
+    <div class="askai-composer-wrap">
+      ${renderAskAiComposer('whiteboardAiInput', 'handleWhiteboardAiSidebarSend', 'Ask AI about this whiteboard…')}
+      <div class="askai-context">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
         </svg>
-      </button>
-    </div>
-    <div class="ai-sidebar-messages" id="whiteboardAiMessages">
-      <div class="ai-welcome-message">
-        <div class="ai-welcome-header">
-          <div class="ai-welcome-avatar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54"/>
-              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54"/>
-            </svg>
-          </div>
-          <div class="ai-welcome-content">
-            <div class="ai-welcome-name">Brain</div>
-            <div class="ai-welcome-text">Welcome back! Feel free to ask me anything about this whiteboard. How can I help?</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="ai-sidebar-input-minimal">
-      <div class="ai-input-container">
-        <input type="text" id="whiteboardAiInput" 
-               placeholder="Tell AI what to do next" 
-               onkeydown="if(event.key==='Enter')handleWhiteboardAiSidebarSend()"/>
-        <div class="ai-input-actions">
-          <button class="ai-input-action-btn" title="Attach">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
-          <button class="ai-input-action-btn" title="Settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="1"/>
-            </svg>
-          </button>
-          <button class="ai-send-btn" onclick="handleWhiteboardAiSidebarSend()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="ai-page-context">
-        <div class="ai-page-context-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-          </svg>
-        </div>
-        <span class="ai-page-context-text">Whiteboard</span>
+        <span>This whiteboard is used as context</span>
       </div>
     </div>
   `;
@@ -31427,6 +31456,114 @@ function updateAIStats() {
   localStorage.setItem('aiLastQueryDate', aiStats.lastQueryDate);
 }
 
+const AI_RESPONSE_MODES = [
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'Clear answers with just enough detail',
+    instruction: ''
+  },
+  {
+    id: 'concise',
+    label: 'Concise',
+    description: 'Short, direct, no preamble',
+    instruction: 'Answer in at most 80 words. Prefer bullet points. Omit every restatement of the question.'
+  },
+  {
+    id: 'deep',
+    label: 'Deep',
+    description: 'Step-by-step reasoning and trade-offs',
+    instruction: 'Give a thorough answer: outline the reasoning, cover edge cases and trade-offs, and finish with concrete next steps.'
+  }
+];
+
+let aiResponseMode = (() => {
+  try {
+    const saved = localStorage.getItem('aiResponseMode');
+    return AI_RESPONSE_MODES.some(m => m.id === saved) ? saved : 'balanced';
+  } catch (e) {
+    return 'balanced';
+  }
+})();
+
+function getAIResponseMode() {
+  return AI_RESPONSE_MODES.find(m => m.id === aiResponseMode) || AI_RESPONSE_MODES[0];
+}
+
+function getAIModeInstruction() {
+  return getAIResponseMode().instruction;
+}
+
+function toggleAIModeMenu(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('aiModeMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('open');
+  menu.classList.toggle('open', willOpen);
+
+  if (willOpen && !window._aiModeMenuHandler) {
+    window._aiModeMenuHandler = () => {
+      const openMenu = document.getElementById('aiModeMenu');
+      if (openMenu) openMenu.classList.remove('open');
+      document.removeEventListener('click', window._aiModeMenuHandler);
+      window._aiModeMenuHandler = null;
+    };
+    setTimeout(() => document.addEventListener('click', window._aiModeMenuHandler), 0);
+  }
+}
+
+function setAIResponseMode(modeId) {
+  if (!AI_RESPONSE_MODES.some(m => m.id === modeId)) return;
+  aiResponseMode = modeId;
+  try { localStorage.setItem('aiResponseMode', modeId); } catch (e) {}
+
+  const label = document.getElementById('aiModeLabel');
+  if (label) label.textContent = getAIResponseMode().label;
+
+  document.querySelectorAll('.ai-mode-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.mode === modeId);
+  });
+
+  const menu = document.getElementById('aiModeMenu');
+  if (menu) menu.classList.remove('open');
+}
+
+async function refreshAIModelChip() {
+  const chip = document.getElementById('aiModelChipLabel');
+  if (!chip) return;
+
+  try {
+    const response = await fetch('/api/ai');
+    if (!response.ok) return;
+    const info = await response.json();
+    if (info.model) chip.textContent = info.model.split('/').pop();
+  } catch (e) {
+    // Leave the default label when the provider info is unavailable
+  }
+}
+
+function autoGrowAIInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 220) + 'px';
+}
+
+function renderAILaunchRecents() {
+  const conversations = (typeof loadAIChatHistory === 'function' ? loadAIChatHistory() : []).slice(0, 4);
+
+  if (conversations.length === 0) {
+    return `<div class="ai-launch-recent-empty">No conversations yet — your recent chats will show up here.</div>`;
+  }
+
+  return conversations.map(conv => `
+    <button class="ai-launch-recent-item" onclick="loadConversation('${conv.id}')">
+      <span class="ai-launch-recent-dot"></span>
+      <span class="ai-launch-recent-title">${escapeHtml(conv.title || 'Untitled conversation')}</span>
+      <span class="ai-launch-recent-meta">${conv.messages ? conv.messages.length : 0} msg · ${getTimeAgo(new Date(conv.updatedAt))}</span>
+    </button>
+  `).join('');
+}
+
 function renderAIView() {
   // If we are already in an active chat session, return the chat view
   if (typeof isAiChatActive !== 'undefined' && isAiChatActive) {
@@ -31436,58 +31573,107 @@ function renderAIView() {
   // Get user name if signed in
   const currentUser = window.LayerDB?.getCurrentUser?.();
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
+  const mode = getAIResponseMode();
+
+  setTimeout(refreshAIModelChip, 0);
 
   return `
-    <div class="ai-clean-chat">
-      <div class="ai-clean-chat-inner">
-        <div class="ai-top-bar">
-          <div class="ai-top-left"></div>
-          <div class="ai-top-right">
-            <button class="ai-history-btn-minimal" onclick="toggleAIChatHistorySidebar()" title="View Chat History">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <span>History</span>
-            </button>
+    <div class="ai-launch">
+      <div class="ai-launch-inner">
+        <div class="ai-launch-topbar">
+          <div class="ai-launch-brand">
+            <span class="ai-launch-brand-dot"></span>
+            Layer AI
           </div>
+          <button class="ai-launch-ghost-btn" onclick="toggleAIChatHistorySidebar()" title="View chat history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>History</span>
+          </button>
         </div>
 
-        <!-- Clean Landing Content -->
-        <div class="ai-clean-center">
-          <h1 class="ai-clean-greeting">
-            Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},
-            <br/>
-            <span class="ai-clean-greeting-sub">What would you like to know?</span>
-          </h1>
-          <p class="ai-clean-hint">Use one of the most common prompts below or use your own to begin</p>
+        <div class="ai-launch-center">
+          <h1 class="ai-launch-title">Hi ${escapeHtml(userName === 'there' ? 'there' : userName)},</h1>
+          <p class="ai-launch-subtitle">What would you like to get done?</p>
 
-          <!-- Prompt Cards -->
-          <div class="ai-clean-cards">
+          <div class="ai-launch-composer">
+            <div class="ai-launch-composer-hint">Describe a task, ask a question, or pick a starter below</div>
+
+            <textarea
+              class="ai-launch-textarea"
+              id="aiAgentInput"
+              placeholder="Ask Layer AI anything…"
+              rows="1"
+              oninput="autoGrowAIInput(this)"
+              onkeydown="handleAIInputKeydown(event)"
+            ></textarea>
+
+            <div class="ai-launch-composer-bar">
+              <div class="ai-launch-composer-left">
+                <button class="ai-launch-icon-btn" onclick="showAIAddOptions()" title="Add attachment">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
+
+                <div class="ai-mode-select">
+                  <button class="ai-launch-chip" onclick="toggleAIModeMenu(event)" title="Response mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
+                      <path d="M4 6h16M7 12h10M10 18h4"/>
+                    </svg>
+                    <span id="aiModeLabel">${mode.label}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </button>
+                  <div class="ai-mode-menu" id="aiModeMenu">
+                    ${AI_RESPONSE_MODES.map(m => `
+                      <button class="ai-mode-option ${m.id === mode.id ? 'selected' : ''}" data-mode="${m.id}" onclick="setAIResponseMode('${m.id}')">
+                        <span class="ai-mode-option-label">${m.label}</span>
+                        <span class="ai-mode-option-desc">${m.description}</span>
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <span class="ai-launch-chip ai-launch-chip-static" title="Active model">
+                  <span class="ai-launch-chip-dot"></span>
+                  <span id="aiModelChipLabel">Layer AI</span>
+                </span>
+              </div>
+
+              <div class="ai-launch-composer-right">
+                <button class="ai-launch-icon-btn" onclick="toggleVoiceInput()" title="Voice input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                    <rect x="9" y="3" width="6" height="11" rx="3"/>
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+                  </svg>
+                </button>
+                <button class="ai-launch-send" id="aiSendBtn" onclick="sendAIAgentPrompt()" title="Send">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
+                    <path d="M12 19V5M5 12l7-7 7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-launch-starters">
             ${aiFeatureCards.map(card => `
-              <button class="ai-clean-card" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
-                <span class="ai-clean-card-text">${card.title}</span>
-                <span class="ai-clean-card-icon">${card.icon}</span>
+              <button class="ai-launch-starter" onclick="sendSuggestedPrompt('${card.prompt.replace(/'/g, "\\'")}')">
+                <span class="ai-launch-starter-icon">${card.icon}</span>
+                <span>${escapeHtml(card.title)}</span>
               </button>
             `).join('')}
           </div>
-        </div>
 
-        <!-- Input at bottom -->
-        <div class="ai-clean-input-area">
-          <div class="ai-clean-input-box">
-            <input
-              type="text"
-              class="ai-clean-input"
-              placeholder="Ask whatever you want..."
-              id="aiAgentInput"
-              onkeydown="handleAIInputKeydown(event)"
-              autocomplete="off"
-            />
-            <button class="ai-clean-send-btn" onclick="sendAIAgentPrompt()" id="aiSendBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </button>
+          <div class="ai-launch-recent">
+            <div class="ai-launch-recent-head">
+              <span>Recent chats</span>
+              <button class="ai-launch-link" onclick="toggleAIChatHistorySidebar()">View all</button>
+            </div>
+            <div class="ai-launch-recent-list">${renderAILaunchRecents()}</div>
           </div>
         </div>
       </div>
@@ -32945,7 +33131,11 @@ async function processAIMessage(message) {
 
     // Pass the entire message history for context
     setThinkingStatus('Sending request…');
-    const response = await window.callGeminiAPI(aiChatMessages);
+    const modeInstruction = typeof getAIModeInstruction === 'function' ? getAIModeInstruction() : '';
+    const payload = modeInstruction
+      ? [{ role: 'system', content: modeInstruction }, ...aiChatMessages]
+      : aiChatMessages;
+    const response = await window.callGeminiAPI(payload);
 
     setThinkingStatus('Analysing response…');
 

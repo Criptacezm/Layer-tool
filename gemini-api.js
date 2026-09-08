@@ -1,13 +1,11 @@
 /* ============================================
-   Layer - Qwen AI API Integration (NVIDIA)
-   Enhanced with concise responses, professional code blocks,
-   and theme-aware styling
+   Layer - AI API Integration
+   Requests go through the /api/ai proxy, which picks the provider
+   and model server-side (free keyless provider by default).
    ============================================ */
 
 // API CONFIGURATION
-const NVIDIA_API_KEY = "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";
 const INVOKE_URL = "/api/ai";
-const MODEL_NAME = "qwen/qwen3.5-397b-a17b";
 
 // System instructions
 const GENERAL_SYSTEM_PROMPT = `You are a highly intelligent, concise AI assistant. You provide SHORT, direct answers.
@@ -53,7 +51,7 @@ If no errors are found, return: {"errors": []}
 Only return valid JSON, no other text or explanation.`;
 
 /**
- * Core API Call to NVIDIA Qwen API
+ * Core API call routed through the Layer AI proxy
  */
 async function callQwenAPI(userPrompt, systemPrompt, context = '') {
     try {
@@ -71,7 +69,6 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                "model": MODEL_NAME,
                 "messages": Array.isArray(userPrompt) 
                     ? [
                         { "role": "system", "content": systemPrompt },
@@ -87,9 +84,7 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
                 "max_tokens": 4096,
                 "temperature": 0.60,
                 "top_p": 0.95,
-                "top_k": 20,
                 "presence_penalty": 0,
-                "repetition_penalty": 1,
                 "stream": false
             })
         });
@@ -115,7 +110,7 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
         if (text) return text;
         throw new Error('AI returned an empty response.');
     } catch (error) {
-        console.error('NVIDIA API Error:', error);
+        console.error('AI API Error:', error);
         const errorMsg = error.message || String(error);
 
         if (errorMsg.includes('429') || errorMsg.includes('Rate limit')) {
@@ -123,7 +118,7 @@ async function callQwenAPI(userPrompt, systemPrompt, context = '') {
         }
 
         if (errorMsg.includes('401') || errorMsg.includes('403')) {
-            return "⚠️ API key issue. Please check your NVIDIA API key is valid.";
+            return "⚠️ API key issue. Check the AI provider key configured on the server.";
         }
 
         return `❌ Error: ${errorMsg}`;
@@ -374,9 +369,12 @@ async function processAISidebarChat(inputId, messagesId, contextData = '') {
     const message = input.value.trim();
     if (!message) return;
 
+    container.querySelector('.askai-intro')?.remove();
+
     // Add user message
     await appendAiMessageEnhanced(messagesId, 'user', message, false);
     input.value = '';
+    if (input.tagName === 'TEXTAREA') input.style.height = 'auto';
     input.disabled = true;
 
     // Show loading
