@@ -32,12 +32,8 @@ app.post('/api/ai', async (req, res) => {
     }
 });
 
-app.get('/layer.html', (req, res) => {
-    res.sendFile(__dirname + '/layer.html');
-});
-
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/layer.html');
+    res.sendFile(__dirname + '/index.html');
 });
 
 module.exports = app;
