@@ -3082,6 +3082,240 @@ window.LayerDB = {
     }
   },
 
+  // ============================================
+  // TEAM HUB — people directory
+  // ============================================
+  searchProfiles: async (query, limit = 12) => {
+    if (!currentUser) return [];
+    const q = (query || '').trim();
+    let req = supabaseClient
+      .from('profiles')
+      .select('id, email, name, avatar_url, is_online, last_seen')
+      .neq('id', currentUser.id)
+      .limit(limit);
+    if (q) req = req.or(`name.ilike.%${q}%,email.ilike.%${q}%`);
+    const { data, error } = await req;
+    if (error) throw error;
+    return data || [];
+  },
+
+  getProfilesByIds: async (ids) => {
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    if (!unique.length) return [];
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('id, email, name, avatar_url, is_online, last_seen')
+      .in('id', unique);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // ============================================
+  // TEAM HUB — feed (posts, likes, comments)
+  // ============================================
+  getFeedPosts: async (limit = 50) => {
+    if (!currentUser) return [];
+    const { data: posts, error } = await supabaseClient
+      .from('team_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    if (!posts || !posts.length) return [];
+
+    const postIds = posts.map(p => p.id);
+    const [{ data: likes }, { data: comments }] = await Promise.all([
+      supabaseClient.from('team_post_likes').select('post_id, user_id').in('post_id', postIds),
+      supabaseClient.from('team_post_comments').select('*').in('post_id', postIds).order('created_at', { ascending: true })
+    ]);
+
+    const userIds = new Set(posts.map(p => p.user_id));
+    (comments || []).forEach(c => userIds.add(c.user_id));
+    const profiles = await window.LayerDB.getProfilesByIds(Array.from(userIds));
+    const byId = Object.fromEntries(profiles.map(p => [p.id, p]));
+
+    return posts.map(p => {
+      const postLikes = (likes || []).filter(l => l.post_id === p.id);
+      return {
+        ...p,
+        author: byId[p.user_id] || null,
+        like_count: postLikes.length,
+        liked_by_me: postLikes.some(l => l.user_id === currentUser.id),
+        comments: (comments || []).filter(c => c.post_id === p.id).map(c => ({ ...c, author: byId[c.user_id] || null }))
+      };
+    });
+  },
+
+  getFeedPost: async (postId) => {
+    const { data, error } = await supabaseClient.from('team_posts').select('*').eq('id', postId).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const [{ data: likes }, { data: comments }] = await Promise.all([
+      supabaseClient.from('team_post_likes').select('post_id, user_id').eq('post_id', postId),
+      supabaseClient.from('team_post_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true })
+    ]);
+    const userIds = [data.user_id, ...(comments || []).map(c => c.user_id)];
+    const profiles = await window.LayerDB.getProfilesByIds(userIds);
+    const byId = Object.fromEntries(profiles.map(p => [p.id, p]));
+    return {
+      ...data,
+      author: byId[data.user_id] || null,
+      like_count: (likes || []).length,
+      liked_by_me: (likes || []).some(l => l.user_id === currentUser?.id),
+      comments: (comments || []).map(c => ({ ...c, author: byId[c.user_id] || null }))
+    };
+  },
+
+  createFeedPost: async (content, imageUrl = null) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { data, error } = await supabaseClient
+      .from('team_posts')
+      .insert({ user_id: currentUser.id, content, image_url: imageUrl })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  deleteFeedPost: async (postId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_posts').delete().eq('id', postId).eq('user_id', currentUser.id);
+    if (error) throw error;
+    return true;
+  },
+
+  likeFeedPost: async (postId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_post_likes').upsert({ post_id: postId, user_id: currentUser.id });
+    if (error) throw error;
+    return true;
+  },
+
+  unlikeFeedPost: async (postId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_post_likes').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+    if (error) throw error;
+    return true;
+  },
+
+  addFeedComment: async (postId, content) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { data, error } = await supabaseClient
+      .from('team_post_comments')
+      .insert({ post_id: postId, user_id: currentUser.id, content })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  deleteFeedComment: async (commentId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_post_comments').delete().eq('id', commentId).eq('user_id', currentUser.id);
+    if (error) throw error;
+    return true;
+  },
+
+  // Fires callback({ table, eventType, new, old }) for any change on the feed tables
+  subscribeToFeed: (callback) => {
+    if (!currentUser) return null;
+    const channel = supabaseClient.channel(`team_feed_${currentUser.id}_${Date.now()}`);
+    ['team_posts', 'team_post_likes', 'team_post_comments'].forEach(table => {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table }, payload => {
+        callback({ table, eventType: payload.eventType, new: payload.new, old: payload.old });
+      });
+    });
+    channel.subscribe();
+    return channel;
+  },
+
+  // ============================================
+  // TEAM HUB — groups
+  // ============================================
+  getMyGroups: async () => {
+    if (!currentUser) return [];
+    const { data: groups, error } = await supabaseClient
+      .from('team_groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!groups || !groups.length) return [];
+
+    const { data: members } = await supabaseClient
+      .from('team_group_members')
+      .select('group_id, user_id, role')
+      .in('group_id', groups.map(g => g.id));
+
+    const memberList = members || [];
+    const profiles = await window.LayerDB.getProfilesByIds(memberList.map(m => m.user_id));
+    const byId = Object.fromEntries(profiles.map(p => [p.id, p]));
+
+    return groups.map(g => ({
+      ...g,
+      members: memberList.filter(m => m.group_id === g.id).map(m => ({ ...m, profile: byId[m.user_id] || null }))
+    }));
+  },
+
+  createGroup: async ({ name, description = null, color = null, memberIds = [] }) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { data: group, error } = await supabaseClient
+      .from('team_groups')
+      .insert({ name, description, color: color || '#3b82f6', created_by: currentUser.id })
+      .select()
+      .single();
+    if (error) throw error;
+
+    const rows = [{ group_id: group.id, user_id: currentUser.id, role: 'admin' }];
+    Array.from(new Set(memberIds)).forEach(id => {
+      if (id && id !== currentUser.id) rows.push({ group_id: group.id, user_id: id, role: 'member' });
+    });
+    const { error: memberError } = await supabaseClient.from('team_group_members').insert(rows);
+    if (memberError) throw memberError;
+    return group;
+  },
+
+  addGroupMembers: async (groupId, memberIds) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const rows = Array.from(new Set(memberIds)).filter(Boolean).map(id => ({ group_id: groupId, user_id: id, role: 'member' }));
+    if (!rows.length) return true;
+    const { error } = await supabaseClient.from('team_group_members').upsert(rows, { onConflict: 'group_id,user_id' });
+    if (error) throw error;
+    return true;
+  },
+
+  removeGroupMember: async (groupId, userId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_group_members').delete().eq('group_id', groupId).eq('user_id', userId);
+    if (error) throw error;
+    return true;
+  },
+
+  leaveGroup: async (groupId) => window.LayerDB.removeGroupMember(groupId, currentUser?.id),
+
+  deleteGroup: async (groupId) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { error } = await supabaseClient.from('team_groups').delete().eq('id', groupId);
+    if (error) throw error;
+    return true;
+  },
+
+  updateGroup: async (groupId, patch) => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const { data, error } = await supabaseClient.from('team_groups').update(patch).eq('id', groupId).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Fires on membership changes involving the current user or group metadata updates
+  subscribeToGroups: (callback) => {
+    if (!currentUser) return null;
+    const channel = supabaseClient.channel(`team_groups_${currentUser.id}_${Date.now()}`);
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'team_group_members' }, payload => callback({ table: 'team_group_members', ...payload }));
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'team_groups' }, payload => callback({ table: 'team_groups', ...payload }));
+    channel.subscribe();
+    return channel;
+  },
+
   // Edit a team chat message
   editTeamMessage: async (messageId, newMessage) => {
     if (!currentUser) throw new Error('Not authenticated');
