@@ -1,0 +1,652 @@
+/* ============================================
+   Layer - Professional Circuit Designer Styles
+   ============================================ */
+
+/* Circuit CSS Variables */
+:root {
+  --circuit-wire: #8b9dc3;
+  --circuit-component: #c8d6e5;
+  --circuit-gate: #a29bfe;
+  --circuit-accent: #55efc4;
+  --circuit-label: #dfe6e9;
+  --circuit-pin-size: 10px;
+  --circuit-pin-glow: rgba(85, 239, 196, 0.5);
+  --circuit-panel-bg: rgba(15, 15, 20, 0.95);
+  --circuit-panel-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] {
+  --circuit-wire: #576574;
+  --circuit-component: #222f3e;
+  --circuit-gate: #6c5ce7;
+  --circuit-accent: #00b894;
+  --circuit-label: #2d3436;
+  --circuit-pin-glow: rgba(0, 184, 148, 0.5);
+  --circuit-panel-bg: rgba(255, 255, 255, 0.96);
+  --circuit-panel-border: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   Circuit Panel
+   ============================================ */
+.circuit-panel {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-110%);
+  width: 280px;
+  max-height: 80vh;
+  background: var(--circuit-panel-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--circuit-panel-border);
+  border-radius: 16px;
+  z-index: 2100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  opacity: 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.circuit-panel.open {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+}
+
+/* Panel Header */
+.circuit-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--circuit-panel-border);
+}
+
+.circuit-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--circuit-accent);
+  letter-spacing: 0.3px;
+}
+
+.circuit-panel-title svg {
+  stroke: var(--circuit-accent);
+}
+
+.circuit-panel-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--circuit-label);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.circuit-panel-close:hover {
+  background: rgba(255, 80, 80, 0.2);
+  color: #ff6b6b;
+}
+
+/* Search */
+.circuit-panel-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 0;
+}
+
+.circuit-panel-search svg {
+  stroke: var(--circuit-label);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.circuit-panel-search input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--circuit-label);
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.circuit-panel-search input:focus {
+  border-color: var(--circuit-accent);
+}
+
+.circuit-panel-search input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Category Tabs */
+.circuit-category-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-wrap: wrap;
+}
+
+.circuit-category-tabs::-webkit-scrollbar { display: none; }
+
+.circuit-cat-tab {
+  padding: 4px 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--circuit-label);
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.7;
+}
+
+.circuit-cat-tab:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.circuit-cat-tab.active {
+  background: var(--cat-color, var(--circuit-accent));
+  color: #000;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.circuit-cat-icon { font-size: 11px; }
+
+/* Panel Body */
+.circuit-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.circuit-panel-body::-webkit-scrollbar { width: 4px; }
+.circuit-panel-body::-webkit-scrollbar-track { background: transparent; }
+.circuit-panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Category Section */
+.circuit-category-section {
+  margin-bottom: 12px;
+}
+
+.circuit-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--circuit-label);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  opacity: 0.6;
+}
+
+.circuit-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.circuit-cat-count {
+  font-size: 9px;
+  background: rgba(255,255,255,0.08);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* Component Grid */
+.circuit-component-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* Component Card */
+.circuit-component-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.circuit-component-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--circuit-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(85, 239, 196, 0.15);
+}
+
+.circuit-component-card:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.circuit-component-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  width: 100%;
+  overflow: visible;
+}
+
+.circuit-component-preview svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.circuit-component-name {
+  font-size: 10px;
+  color: var(--circuit-label);
+  text-align: center;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+.circuit-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--circuit-label);
+  opacity: 0.4;
+  font-size: 13px;
+}
+
+/* ============================================
+   Circuit Node on Canvas
+   ============================================ */
+.circuit-node {
+  position: absolute;
+  cursor: default;
+  transition: box-shadow 0.2s;
+}
+
+.circuit-node.selected {
+  z-index: 10;
+}
+
+.circuit-node-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+}
+
+.circuit-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Circuit Node Label */
+.circuit-node-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--circuit-accent);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* ============================================
+   Circuit Pins - Professional Engineering Style
+   ============================================ */
+.circuit-pin {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  cursor: crosshair;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circuit-pin-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--circuit-wire);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 0 0 transparent, inset 0 1px 2px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.circuit-pin:hover .circuit-pin-dot {
+  transform: scale(1.3);
+  width: 14px;
+  height: 14px;
+  border-color: var(--circuit-accent);
+  box-shadow: 
+    0 0 20px 8px rgba(85, 239, 196, 0.8),
+    0 0 8px 3px rgba(85, 239, 196, 0.6),
+    inset 0 0 4px rgba(255,255,255,0.5);
+  cursor: crosshair;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.circuit-pin::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px dashed transparent;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.circuit-pin:hover::before {
+  border-color: rgba(85, 239, 196, 0.6);
+  opacity: 0.6;
+  transform: scale(1.1);
+}
+
+.circuit-pin.connected .circuit-pin-dot {
+  background: var(--circuit-accent);
+  border-color: var(--circuit-accent);
+  box-shadow: 0 0 8px 3px var(--circuit-pin-glow), inset 0 0 2px rgba(255,255,255,0.3);
+}
+
+.circuit-pin.connected::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.6;
+}
+
+/* Enhanced transitions for all pin states */
+.circuit-pin .circuit-pin-dot {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.circuit-pin::after {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Add subtle glow effect for signal transitions */
+.circuit-pin.signal-high .circuit-pin-dot {
+  background: linear-gradient(135deg, #55efc4 0%, #00b894 100%);
+  border-color: #55efc4;
+  box-shadow: 
+    0 0 12px 4px rgba(85, 239, 196, 0.6),
+    0 0 20px 8px rgba(85, 239, 196, 0.3),
+    inset 0 0 3px rgba(255,255,255,0.4);
+  animation: signalPulseHigh 2s ease-in-out infinite;
+}
+
+.circuit-pin.signal-low .circuit-pin-dot {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 0 0 transparent,
+    inset 0 1px 2px rgba(0,0,0,0.2),
+    inset 0 -1px 1px rgba(255,255,255,0.1);
+  animation: signalPulseLow 3s ease-in-out infinite;
+}
+
+/* Override connected state with signal state */
+.circuit-pin.connected.signal-high .circuit-pin-dot {
+  background: linear-gradient(135deg, #55efc4 0%, #00b894 100%);
+  border-color: #55efc4;
+  box-shadow: 
+    0 0 15px 5px rgba(85, 239, 196, 0.7),
+    0 0 25px 10px rgba(85, 239, 196, 0.4),
+    inset 0 0 3px rgba(255,255,255,0.5);
+  animation: signalPulseHigh 1.5s ease-in-out infinite;
+}
+
+.circuit-pin.connected.signal-low .circuit-pin-dot {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.15) 100%);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 0 0 0 transparent,
+    inset 0 1px 2px rgba(0,0,0,0.3),
+    inset 0 -1px 1px rgba(255,255,255,0.15);
+  animation: signalPulseLow 4s ease-in-out infinite;
+}
+
+/* Enhanced signal state indicators for connected pins */
+.circuit-pin.connected.signal-high::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(85, 239, 196, 0.8) 100%);
+  pointer-events: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  box-shadow: 0 0 6px 2px rgba(85, 239, 196, 0.6);
+  animation: indicatorPulse 1.5s ease-in-out infinite;
+}
+
+.circuit-pin.connected.signal-low::after {
+  content: '';
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%);
+  pointer-events: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  box-shadow: 0 0 3px 1px rgba(255, 255, 255, 0.2);
+  animation: indicatorPulseLow 4s ease-in-out infinite;
+}
+
+/* Signal animations */
+@keyframes signalPulseHigh {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 
+      0 0 12px 4px rgba(85, 239, 196, 0.6),
+      0 0 20px 8px rgba(85, 239, 196, 0.3),
+      inset 0 0 3px rgba(255,255,255,0.4);
+  }
+  50% { 
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 18px 6px rgba(85, 239, 196, 0.8),
+      0 0 30px 12px rgba(85, 239, 196, 0.5),
+      inset 0 0 4px rgba(255,255,255,0.6);
+  }
+}
+
+@keyframes signalPulseLow {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+}
+
+@keyframes indicatorPulse {
+  0%, 100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes indicatorPulseLow {
+  0%, 100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.3;
+  }
+}
+
+.circuit-pin-label {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 5px);
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--circuit-label);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  letter-spacing: 0.3px;
+}
+
+.circuit-pin:hover .circuit-pin-label,
+.circuit-node.selected .circuit-pin-label {
+  opacity: 0.85;
+}
+
+/* ============================================
+   Circuit Toolbar Override
+   ============================================ */
+.circuit-toolbar {
+  top: -42px;
+  background: rgba(15, 15, 20, 0.9);
+  border: 1px solid var(--circuit-panel-border);
+}
+
+/* Toggle Button in Toolbar */
+.circuit-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px !important;
+  border-radius: 6px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.circuit-toggle-btn.active {
+  background: rgba(85, 239, 196, 0.2) !important;
+  color: var(--circuit-accent) !important;
+  box-shadow: 0 0 8px rgba(85, 239, 196, 0.3);
+}
+
+.circuit-toggle-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Properties Panel Active Button */
+.grip-prop-btn.active {
+  background: rgba(85, 239, 196, 0.2);
+  color: var(--circuit-accent);
+  border-color: rgba(85, 239, 196, 0.3);
+}
+
+/* ============================================
+   Toolbar Circuit Button Active State
+   ============================================ */
+.grip-tool-btn[data-tool="circuit"].active {
+  background: rgba(85, 239, 196, 0.15);
+  color: var(--circuit-accent);
+  border-color: rgba(85, 239, 196, 0.3);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes circuitPulse {
+  0%, 100% { box-shadow: 0 0 8px 3px var(--circuit-pin-glow), inset 0 0 2px rgba(255,255,255,0.3); }
+  50% { box-shadow: 0 0 14px 5px var(--circuit-pin-glow), inset 0 0 4px rgba(255,255,255,0.5); }
+}
+
+.circuit-pin.connected .circuit-pin-dot {
+  animation: circuitPulse 3s ease-in-out infinite;
+}
+
+/* Bulb Component Styles */
+@keyframes bulbGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 220, 50, 0.6)); }
+  50% { filter: drop-shadow(0 0 12px rgba(255, 220, 50, 0.9)); }
+}
+
+.circuit-node[data-circuit-type="bulb"] .circuit-svg .bulb-filament-on {
+  animation: bulbGlow 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Mobile Responsive
+   ============================================ */
+@media (max-width: 768px) {
+  .circuit-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-height: 50vh;
+    border-radius: 16px 16px 0 0;
+    transform: translateY(110%);
+  }
+
+  .circuit-panel.open {
+    transform: translateY(0);
+  }
+
+  .circuit-component-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

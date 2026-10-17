@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layer Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .admin-table th { text-align: left; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-weight: 500; font-size: 0.875rem; }
+        .admin-table td { padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.875rem; }
+        .status-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .loading-spinner { border: 3px solid rgba(255, 255, 255, 0.1); border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen">
+    <nav class="border-b border-white/10 p-4 mb-8 glass-panel sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">L</div>
+                <h1 class="text-xl font-bold tracking-tight">Layer Admin</h1>
+            </div>
+            <div id="admin-auth-status" class="flex items-center gap-4 text-sm text-slate-400">
+                <span id="admin-user-email">Checking access...</span>
+                <button onclick="window.location.href='/index.html'" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-md transition-colors border border-white/10">Back to App</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 pb-12">
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass-panel p-6 rounded-xl">
+                <p class="text-sm text-slate-400 mb-1">Total Users</p>
+                <h3 id="stat-total-users" class="text-2xl font-bold">--</h3>
+            </div>
+            <div id="stat-panel-docs" class="glass-panel p-6 rounded-xl">
+                <p class="text-sm text-slate-400 mb-1">Total Docs</p>
+                <h3 id="stat-total-docs" class="text-2xl font-bold">--</h3>
+            </div>
+            <div class="glass-panel p-6 rounded-xl">
+                <p class="text-sm text-slate-400 mb-1">Total Projects</p>
+                <h3 id="stat-total-projects" class="text-2xl font-bold">--</h3>
+            </div>
+            <div class="glass-panel p-6 rounded-xl">
+                <p class="text-sm text-slate-400 mb-1">Total Sheets</p>
+                <h3 id="stat-total-sheets" class="text-2xl font-bold">--</h3>
+            </div>
+        </div>
+
+        <!-- Users Detail Table -->
+        <div class="glass-panel rounded-xl overflow-hidden">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center">
+                <h2 class="text-lg font-semibold">User Data Directory</h2>
+                <div class="flex gap-2">
+                    <button onclick="fetchAllAdminData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                        Refresh Data
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full admin-table" id="admin-user-table">
+                    <thead>
+                        <tr>
+                            <th>User Details</th>
+                            <th>Stats</th>
+                            <th>Theme</th>
+                            <th>Recent Content</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-data-tbody">
+                        <tr>
+                            <td colspan="5" class="text-center py-20">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="loading-spinner"></div>
+                                    <p class="text-slate-400">Loading user directory...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="supabase-client.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
