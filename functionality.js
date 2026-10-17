@@ -41,30 +41,88 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
   const folderPdfs = (folderItems || []).filter(i => i.item_type === 'pdf');
   const totalDocItems = (docs?.length || 0) + folderSheets.length + folderWhiteboards.length + folderPdfs.length;
 
+  // Combine all documents for display
+  const allDocs = [];
+  
+  if (docs && docs.length > 0) {
+    docs.forEach(doc => {
+      allDocs.push({
+        id: doc.id,
+        name: doc.title || 'Untitled',
+        type: 'DOCX',
+        size: formatFileSize(doc.content?.length || 0),
+        modified: doc.updated_at || doc.created_at || new Date().toISOString(),
+        itemType: 'doc'
+      });
+    });
+  }
+  
+  if (folderSheets.length > 0) {
+    folderSheets.forEach(item => {
+      allDocs.push({
+        id: item.id,
+        itemId: item.item_id,
+        name: item.file_name || 'Untitled Sheet',
+        type: 'XLSX',
+        size: formatFileSize(item.file_size || 0),
+        modified: item.created_at || new Date().toISOString(),
+        itemType: 'sheet'
+      });
+    });
+  }
+  
+  if (folderWhiteboards.length > 0) {
+    folderWhiteboards.forEach(item => {
+      allDocs.push({
+        id: item.id,
+        itemId: item.item_id,
+        name: item.file_name || 'Untitled Whiteboard',
+        type: 'Board',
+        size: formatFileSize(item.file_size || 0),
+        modified: item.created_at || new Date().toISOString(),
+        itemType: 'whiteboard'
+      });
+    });
+  }
+  
+  if (folderPdfs.length > 0) {
+    folderPdfs.forEach(item => {
+      allDocs.push({
+        id: item.id,
+        itemId: item.item_id,
+        name: item.file_name || 'PDF',
+        type: 'PDF',
+        size: formatFileSize(item.file_size || 0),
+        modified: item.created_at || new Date().toISOString(),
+        itemType: 'pdf'
+      });
+    });
+  }
+
   return `
-    <div class="inline-folder-explorer" data-inline-folder-id="${folder.id}">
-      <div class="inline-folder-header">
-        <button class="inline-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5"/>
-            <path d="M12 19l-7-7 7-7"/>
-          </svg>
-        </button>
-        <div class="inline-folder-title">
-          <span class="inline-folder-emoji">${emoji}</span>
-          <span class="inline-folder-name" title="${folder.name}">${folder.name}</span>
+    <div class="inline-folder-explorer vault-folder-view" data-inline-folder-id="${folder.id}">
+      <div class="vault-folder-header">
+        <div class="vault-folder-breadcrumbs">
+          <button class="vault-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M19 12H5"/>
+              <path d="M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <span class="breadcrumb-separator">></span>
+          <span class="breadcrumb-item active">${folder.name}</span>
         </div>
-        <div class="inline-folder-actions">
-          <button class="inline-folder-create-btn" onclick="createFolderDocInline('${folder.id}')" title="New Doc">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="vault-folder-actions">
+          <button class="vault-btn-icon" onclick="createFolderDocInline('${folder.id}')" title="New Doc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
               <line x1="12" y1="11" x2="12" y2="17"/>
               <line x1="9" y1="14" x2="15" y2="14"/>
             </svg>
           </button>
-          <button class="inline-folder-create-btn" onclick="createFolderSheetInline('${folder.id}')" title="New Sheet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="vault-btn-icon" onclick="createFolderSheetInline('${folder.id}')" title="New Sheet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <line x1="3" y1="9" x2="21" y2="9"/>
               <line x1="9" y1="3" x2="9" y2="21"/>
@@ -72,8 +130,8 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
               <line x1="9" y1="14" x2="15" y2="14"/>
             </svg>
           </button>
-          <button class="inline-folder-create-btn" onclick="createFolderWhiteboardInline('${folder.id}')" title="New Whiteboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="vault-btn-icon" onclick="createFolderWhiteboardInline('${folder.id}')" title="New Whiteboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <rect x="2" y="3" width="20" height="14" rx="2"/>
               <path d="M8 21h8"/>
               <path d="M12 17v4"/>
@@ -84,80 +142,134 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
         </div>
       </div>
 
-      <div class="inline-folder-tabs">
-        <button class="inline-folder-tab active" data-tab="documents" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'documents')">
+      <div class="vault-folder-tabs">
+        <button class="vault-folder-tab active" data-tab="documents" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'documents')">
           Docs
-          <span class="inline-folder-pill">${totalDocItems}</span>
+          <span class="vault-folder-tab-count">${totalDocItems}</span>
         </button>
-        <button class="inline-folder-tab" data-tab="quizzes" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'quizzes')">
+        <button class="vault-folder-tab" data-tab="quizzes" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'quizzes')">
           Quizzes
-          <span class="inline-folder-pill">${quizzes?.length || 0}</span>
+          <span class="vault-folder-tab-count">${quizzes?.length || 0}</span>
         </button>
       </div>
 
-      <div class="inline-folder-content">
-        <div class="inline-folder-section active" data-section="documents">
-          ${(totalDocItems > 0) ? `
-            <div class="inline-folder-list">
-              ${(docs || []).map(doc => `
-                <button class="inline-folder-row" type="button" onclick="openDocEditorFromInlineFolder('${doc.id}', '${folder.space_id}', '${folder.id}')">
-                  <span class="inline-folder-row-title">${doc.title || 'Untitled Doc'}</span>
-                  <span class="inline-folder-row-meta">${formatRelativeTime(doc.updated_at || doc.updatedAt)}</span>
-                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderDocFromInline('${doc.id}', '${folder.id}')" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </span>
-                </button>
-              `).join('')}
-
-              ${folderSheets.map(item => `
-                <button class="inline-folder-row" type="button" onclick="openExcelEditor('${item.item_id}')">
-                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Spreadsheet'}</span>
-                  <span class="inline-folder-row-meta">Sheet</span>
-                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderSheetFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </span>
-                </button>
-              `).join('')}
-
-              ${folderWhiteboards.map(item => `
-                <button class="inline-folder-row" type="button" onclick="openWhiteboardFromFolderItem('${item.item_id}')">
-                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Whiteboard'}</span>
-                  <span class="inline-folder-row-meta">Board</span>
-                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderWhiteboardFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </span>
-                </button>
-              `).join('')}
-
-              ${folderPdfs.map(item => `
-                <button class="inline-folder-row" type="button" onclick='openPdfViewerFromFolderItem(${JSON.stringify(item.file_url || '')}, ${JSON.stringify(item.file_name || 'PDF')})'>
-                  <span class="inline-folder-row-title">${item.file_name || 'PDF'}</span>
-                  <span class="inline-folder-row-meta">PDF</span>
-                </button>
-              `).join('')}
+      <div class="vault-folder-content">
+        <div class="vault-folder-section active" data-section="documents">
+          ${allDocs.length > 0 ? `
+            <div class="vault-folder-docs-list">
+              ${allDocs.map(doc => renderVaultFolderDoc(doc, folder.id)).join('')}
             </div>
           ` : `
-            <div class="inline-folder-empty">No items yet</div>
+            <div class="vault-folder-empty">
+              <div class="vault-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div class="vault-empty-text">No documents yet</div>
+            </div>
           `}
         </div>
 
-        <div class="inline-folder-section" data-section="quizzes">
+        <div class="vault-folder-section" data-section="quizzes">
           ${(quizzes && quizzes.length > 0) ? `
-            <div class="inline-folder-list">
+            <div class="vault-folder-docs-list">
               ${quizzes.map(quiz => `
-                <button class="inline-folder-row" type="button" onclick="openQuizViewer('${quiz.id}')">
-                  <span class="inline-folder-row-title">${quiz.title}</span>
-                  <span class="inline-folder-row-meta">${(quiz.question_count || quiz.questions?.length || 0)}q</span>
-                </button>
+                <div class="vault-folder-doc-item">
+                  <div class="vault-folder-doc-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M9 12h6M9 16h6M9 8h6M5 5h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+                    </svg>
+                  </div>
+                  <div class="vault-folder-doc-info">
+                    <div class="vault-folder-doc-name">${quiz.title}</div>
+                    <div class="vault-folder-doc-meta">${(quiz.question_count || quiz.questions?.length || 0)} questions</div>
+                  </div>
+                  <button class="vault-folder-doc-action" onclick="openQuizViewer('${quiz.id}')">
+                    View
+                  </button>
+                </div>
               `).join('')}
             </div>
           ` : `
-            <div class="inline-folder-empty">No quizzes yet</div>
+            <div class="vault-folder-empty">
+              <div class="vault-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div class="vault-empty-text">No quizzes yet</div>
+            </div>
           `}
         </div>
       </div>
     </div>
   `;
+}
+
+function renderVaultFolderDoc(doc, folderId) {
+  const icon = getFileTypeIcon(doc.type);
+  const timeAgo = getTimeAgo(new Date(doc.modified));
+  
+  let onClick = '';
+  if (doc.itemType === 'doc') {
+    onClick = `onclick="openDocEditorFromInlineFolder('${doc.id}', '${folderId}')"`; // Simplified
+  } else if (doc.itemType === 'sheet') {
+    onClick = `onclick="openExcelEditor('${doc.itemId}')"`;
+  } else if (doc.itemType === 'whiteboard') {
+    onClick = `onclick="openWhiteboardFromFolderItem('${doc.itemId}')"`;
+  } else if (doc.itemType === 'pdf') {
+    onClick = `onclick='openPdfViewerFromFolderItem(${JSON.stringify(doc.file_url || '')}, ${JSON.stringify(doc.name)})'`;
+  }
+  
+  return `
+    <div class="vault-folder-doc-item" ${onClick}>
+      <div class="vault-folder-doc-icon">
+        ${icon}
+      </div>
+      <div class="vault-folder-doc-info">
+        <div class="vault-folder-doc-name" title="${doc.name}">${doc.name}</div>
+        <div class="vault-folder-doc-meta">${doc.type} • ${doc.size} • Modified ${timeAgo}</div>
+      </div>
+      <div class="vault-folder-doc-actions">
+        <button class="vault-folder-doc-btn" onclick="event.stopPropagation(); openVaultFolderDoc('${doc.id}', '${doc.itemType}', '${folderId}')">
+          ${doc.itemType === 'sheet' ? 'Sheet' : 'View'}
+        </button>
+        <button class="vault-folder-doc-btn vault-folder-doc-btn-delete" onclick="event.stopPropagation(); deleteVaultFolderDoc('${doc.id}', '${doc.itemType}', '${folderId}')" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function openVaultFolderDoc(docId, itemType, folderId) {
+  if (itemType === 'doc') {
+    openDocEditorFromInlineFolder(docId, folderId);
+  } else if (itemType === 'sheet') {
+    openExcelEditor(docId);
+  } else if (itemType === 'whiteboard') {
+    openWhiteboardFromFolderItem(docId);
+  } else if (itemType === 'pdf') {
+    showToast('Opening PDF...');
+  }
+}
+
+function deleteVaultFolderDoc(docId, itemType, folderId) {
+  if (!confirm('Are you sure you want to delete this item?')) return;
+  
+  if (itemType === 'sheet') {
+    deleteFolderSheetFromInline(docId, null, folderId);
+  } else if (itemType === 'whiteboard') {
+    deleteFolderWhiteboardFromInline(docId, null, folderId);
+  } else {
+    showToast('Delete functionality coming soon');
+  }
 }
 
 async function openFolderExplorerInline(folderId, initialTab = 'documents') {
@@ -1012,6 +1124,24 @@ function initQuickAccessWebsitesWidget() {
   refreshQuickAccessWebsitesWidget();
 }
 
+function initDateTimeWidget() {
+  const dateEl = document.getElementById('datetimeDate');
+  const dayEl = document.getElementById('datetimeDay');
+  const timeEl = document.getElementById('datetimeTime');
+
+  if (!dateEl || !dayEl || !timeEl) return;
+
+  function updateDateTime() {
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+    dayEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+    timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
+}
+
 function renderInboxView() {
   const projects = loadProjects();
   const calendarEvents = loadCalendarEvents();
@@ -1108,7 +1238,24 @@ function renderInboxView() {
                 </div>
               </div>
             </div>
-            
+
+            <!-- Date & Time Widget -->
+            <div class="dashboard-widget datetime-widget" data-widget-id="datetime">
+              <div class="datetime-widget-content">
+                <div class="datetime-header">
+                  <span class="datetime-date" id="datetimeDate">${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                  <div class="datetime-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="datetime-day" id="datetimeDay">${new Date().toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                <div class="datetime-time" id="datetimeTime">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+              </div>
+            </div>
+
             <!-- Stats Widget -->
             <div class="dashboard-widget" data-widget-id="overview">
               <div class="widget-header">
@@ -15057,6 +15204,9 @@ async function createFolder() {
       // Show success message
       showToast('Folder created successfully!');
 
+      // Invalidate cache
+      invalidateVaultCache();
+
       // Render folders in the placeholder
       await renderFoldersInPlaceholder();
     } else {
@@ -15207,6 +15357,10 @@ async function createFolderFromModal(event) {
 
     closeModal();
     showToast('Folder created successfully!');
+    
+    // Invalidate cache
+    invalidateVaultCache();
+    
     await renderFoldersInPlaceholder();
   } catch (error) {
     console.error('Error creating folder from modal:', error);
@@ -15309,6 +15463,9 @@ async function deleteFolder(folderId) {
     if (success) {
       showToast('Folder deleted successfully!');
       
+      // Invalidate cache
+      invalidateVaultCache();
+
       // If we are currently inside the folder that was just deleted, go back to space view
       const folderExplorer = document.querySelector('.folder-explorer-container');
       if (folderExplorer && folderExplorer.dataset.folderId === folderId) {
@@ -38084,63 +38241,294 @@ Return ONLY the JSON object, no additional text or markdown.`;
 // Enhanced Folder Grid View
 // ============================================
 
+// Cache for vault data to enable instant loading (persisted in localStorage)
+function getVaultCache() {
+  try {
+    const cached = localStorage.getItem('vaultDataCache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      // Only use cache if less than 5 minutes old
+      if (Date.now() - parsed.timestamp < 300000) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.log('Cache read error:', e);
+  }
+  return null;
+}
+
+function setVaultCache(data) {
+  try {
+    data.timestamp = Date.now();
+    localStorage.setItem('vaultDataCache', JSON.stringify(data));
+  } catch (e) {
+    console.log('Cache write error:', e);
+  }
+}
+
+function clearVaultCache() {
+  try {
+    localStorage.removeItem('vaultDataCache');
+  } catch (e) {
+    console.log('Cache clear error:', e);
+  }
+}
+
 async function renderEnhancedFolderGrid(spaceId) {
   const placeholder = document.querySelector('.folders-placeholder');
   if (!placeholder) return '';
 
   try {
-    const folders = await loadFoldersCached();
+    // Check localStorage cache first for instant loading
+    const cached = getVaultCache();
+    let folders, folderCounts, allFiles;
+
+    if (cached && cached.lastSpaceId === String(spaceId) && cached.folders) {
+      // Use cached data for instant render
+      folders = cached.folders;
+      folderCounts = cached.folderCounts;
+      allFiles = cached.allFiles;
+      console.log('Using cached vault data - instant load');
+    } else {
+      // Load fresh data
+      console.log('Loading fresh vault data');
+      folders = await loadFoldersCached();
+      const filteredFolders = (folders || []).filter(f => {
+        if (!spaceId) return false;
+        return String(f.space_id) === String(spaceId);
+      });
+
+      // Load folder items in parallel for speed
+      const folderPromises = filteredFolders.map(async (folder) => {
+        try {
+          const [items, docs, quizzes] = await Promise.all([
+            loadFolderItemsCached(folder.id),
+            loadDocsFromFolder(folder.id),
+            loadQuizzesFromFolder(folder.id)
+          ]);
+          return {
+            folderId: folder.id,
+            count: (items?.length || 0) + (docs?.length || 0) + (quizzes?.length || 0),
+            items: items || [],
+            docs: docs || []
+          };
+        } catch (e) {
+          return { folderId: folder.id, count: 0, items: [], docs: [] };
+        }
+      });
+
+      const folderData = await Promise.all(folderPromises);
+      
+      folderCounts = {};
+      folderData.forEach(fd => {
+        folderCounts[fd.folderId] = fd.count;
+      });
+
+      // Build all files list
+      allFiles = [];
+      folderData.forEach(fd => {
+        const folder = filteredFolders.find(f => f.id === fd.folderId);
+        if (!folder) return;
+
+        // Add folder items
+        if (fd.items && fd.items.length > 0) {
+          fd.items.forEach(item => {
+            allFiles.push({
+              id: item.id,
+              name: item.file_name || 'Untitled',
+              type: item.item_type === 'pdf' ? 'PDF' : item.item_type === 'sheet' ? 'XLSX' : 'DOCX',
+              size: formatFileSize(item.file_size || 0),
+              status: 'Active',
+              modified: item.created_at || new Date().toISOString(),
+              folderId: folder.id,
+              folderName: folder.name
+            });
+          });
+        }
+        
+        // Add docs
+        if (fd.docs && fd.docs.length > 0) {
+          fd.docs.forEach(doc => {
+            allFiles.push({
+              id: doc.id,
+              name: doc.title || 'Untitled Document',
+              type: 'DOCX',
+              size: formatFileSize(doc.content?.length || 0),
+              status: 'Active',
+              modified: doc.updated_at || doc.created_at || new Date().toISOString(),
+              folderId: folder.id,
+              folderName: folder.name
+            });
+          });
+        }
+      });
+
+      // Save to localStorage cache
+      setVaultCache({
+        folders: filteredFolders,
+        folderCounts,
+        allFiles,
+        lastSpaceId: String(spaceId)
+      });
+    }
+
     const filteredFolders = (folders || []).filter(f => {
       if (!spaceId) return false;
       return String(f.space_id) === String(spaceId);
     });
 
     const hasFolders = filteredFolders && filteredFolders.length > 0;
+    const hasFiles = allFiles && allFiles.length > 0;
+    const displayFiles = hasFiles ? allFiles.slice(0, 4) : [];
 
     return `
-      <div class="folders-placeholder-header">
-        <div class="folders-placeholder-header-left">
-          <h2 class="folders-placeholder-title">Folders</h2>
-          ${hasFolders ? `<div class="folder-total-badge">${filteredFolders.length}</div>` : ''}
+      <div class="vault-header">
+        <div class="vault-breadcrumbs">
+          <span class="breadcrumb-item">Vault</span>
+          <span class="breadcrumb-separator">></span>
+          <span class="breadcrumb-item active">Contract</span>
         </div>
-        ${hasFolders ? `
-          <div class="folders-placeholder-header-right">
-            <button class="row-action-btn-modern" onclick="openFolderDropdown(this)" title="Add Folder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </button>
+        <div class="vault-header-actions">
+          <button class="vault-header-btn" title="Language">
+            <span>ENG</span>
+          </button>
+          <button class="vault-header-btn" onclick="toggleTheme()" title="Toggle Theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <circle cx="12" cy="12" r="5"/>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+          </button>
+          <div class="vault-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </div>
-        ` : ''}
+        </div>
       </div>
-      <div class="folders-placeholder-body">
-        ${hasFolders ? `
-          <div class="folders-tiles-grid">
-            ${filteredFolders.map(folder => {
-              return `
-                <button class="folder-tile" onclick="openFolderExplorerInline('${folder.id}')" type="button">
-                  <svg class="folder-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+      <div class="vault-section">
+        <div class="vault-section-header">
+          <h2 class="vault-section-title">Folders</h2>
+          <button class="vault-btn-primary" onclick="openFolderDropdown(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Folder
+          </button>
+        </div>
+        <div class="vault-folder-grid">
+          ${hasFolders ? filteredFolders.map(folder => {
+            const itemCount = folderCounts[folder.id] || 0;
+            const itemText = itemCount === 0 ? 'Empty' : `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
+            return `
+              <button class="vault-folder-card" onclick="openFolderExplorerInline('${folder.id}')" type="button">
+                <div class="vault-folder-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                   </svg>
-                  <span class="folder-tile-name" title="${folder.name}">${folder.name}</span>
-                </button>
-              `;
-            }).join('')}
-          </div>
-        ` : `
-          <div class="folders-empty-state">
-            <div class="folder-icon-large">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
+                </div>
+                <div class="vault-folder-info">
+                  <div class="vault-folder-name">${folder.name}</div>
+                  <div class="vault-folder-meta">${itemText}</div>
+                </div>
+              </button>
+            `;
+          }).join('') : `
+            <div class="vault-empty-folders">
+              <div class="vault-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div class="vault-empty-text">No folders yet</div>
+              <button class="vault-btn-secondary" onclick="openFolderDropdown(this)">Create Folder</button>
             </div>
-            <div class="folders-text">Add new Folder to your Space</div>
-            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
-              Add Folder
+          `}
+        </div>
+      </div>
+
+      <div class="vault-section">
+        <div class="vault-section-header">
+          <h2 class="vault-section-title">File</h2>
+          <div class="vault-section-actions">
+            <div class="vault-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input type="text" placeholder="Search files..." class="vault-search-input" oninput="filterVaultFiles(this.value)">
+            </div>
+            <button class="vault-btn-icon" title="Sort by Name" onclick="sortVaultFiles('name')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M3 6h18M6 12h12M9 18h6"/>
+              </svg>
+            </button>
+            <button class="vault-btn-icon vault-btn-icon-active" title="Grid View">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+            <button class="vault-btn-icon" title="List View" onclick="toggleVaultView('list')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </button>
+            <button class="vault-btn-icon" title="Trash">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+            <button class="vault-btn-primary" title="Upload File" onclick="triggerVaultFileUpload()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Upload File
             </button>
           </div>
-        `}
+        </div>
+        <div class="vault-file-grid" id="vaultFileGrid">
+          ${hasFiles ? displayFiles.map(file => renderVaultFileCard(file)).join('') : `
+            <div class="vault-empty-files">
+              <div class="vault-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div class="vault-empty-text">No files uploaded yet</div>
+            </div>
+          `}
+        </div>
+        <div class="vault-pagination">
+          <span class="vault-pagination-info">Showing ${hasFiles ? `1-${Math.min(4, allFiles.length)}` : '0'} of ${allFiles.length} Policies</span>
+          <div class="vault-pagination-controls">
+            <button class="vault-pagination-btn vault-pagination-btn-disabled" disabled>Previous</button>
+            <button class="vault-pagination-btn vault-pagination-btn-active page-number">1</button>
+            ${allFiles.length > 4 ? `<button class="vault-pagination-btn page-number">2</button>` : ''}
+            ${allFiles.length > 8 ? `<button class="vault-pagination-btn page-number">3</button>` : ''}
+            ${allFiles.length > 12 ? `<span class="vault-pagination-ellipsis">...</span>` : ''}
+            ${allFiles.length > 4 ? `<button class="vault-pagination-btn page-number">${Math.ceil(allFiles.length / 4)}</button>` : ''}
+            <button class="vault-pagination-btn vault-pagination-btn-disabled" disabled>Next</button>
+          </div>
+          <select class="vault-pagination-select" onchange="changeVaultPerPage(this.value)">
+            <option value="4" ${true ? 'selected' : ''}>4 per page</option>
+            <option value="8">8 per page</option>
+            <option value="12">12 per page</option>
+          </select>
+        </div>
       </div>
     `;
   } catch (error) {
@@ -38148,6 +38536,115 @@ async function renderEnhancedFolderGrid(spaceId) {
     return '';
   }
 }
+
+// Function to invalidate cache when folders/files change
+function invalidateVaultCache() {
+  clearVaultCache();
+}
+
+function renderVaultFileCard(file) {
+  const fileIcon = getFileTypeIcon(file.type);
+  const timeAgo = getTimeAgo(new Date(file.modified));
+  const statusClass = file.status === 'Active' ? 'active' : 'expiring';
+  
+  return `
+    <div class="vault-file-card" data-file-id="${file.id}">
+      <div class="vault-file-header">
+        <div class="vault-file-icon">
+          ${fileIcon}
+        </div>
+        <div class="vault-file-info">
+          <div class="vault-file-name" title="${file.name}">${file.name}</div>
+          <div class="vault-file-meta">${file.type} • ${file.size}</div>
+        </div>
+        <button class="vault-file-menu" onclick="showVaultFileMenu(event, '${file.id}')" title="More options">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="19" cy="12" r="1"/>
+            <circle cx="5" cy="12" r="1"/>
+          </svg>
+        </button>
+      </div>
+      <div class="vault-file-footer">
+        <span class="vault-file-status ${statusClass}">${file.status}</span>
+        <span class="vault-file-time">Last Modified ${timeAgo}</span>
+      </div>
+    </div>
+  `;
+}
+
+function getFileTypeIcon(type) {
+  const icons = {
+    'PDF': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>`,
+    'DOCX': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>`,
+    'XLSX': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M10 9h8"/></svg>`,
+    'default': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
+  };
+  return icons[type] || icons['default'];
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+  const intervals = {
+    year: 31536000,
+    month: 2592000,
+    week: 604800,
+    day: 86400,
+    hour: 3600,
+    minute: 60
+  };
+  
+  for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+    const interval = Math.floor(seconds / secondsInUnit);
+    if (interval >= 1) {
+      return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
+    }
+  }
+  return 'Just now';
+}
+
+function filterVaultFiles(query) {
+  const cards = document.querySelectorAll('.vault-file-card');
+  const lowerQuery = query.toLowerCase();
+  
+  cards.forEach(card => {
+    const name = card.querySelector('.vault-file-name').textContent.toLowerCase();
+    const visible = name.includes(lowerQuery);
+    card.style.display = visible ? 'flex' : 'none';
+  });
+}
+
+function sortVaultFiles(by) {
+  showToast(`Sorting by ${by}...`);
+}
+
+function toggleVaultView(view) {
+  showToast(`Switching to ${view} view...`);
+}
+
+function triggerVaultFileUpload() {
+  showToast('File upload dialog will open...');
+}
+
+function showVaultFileMenu(event, fileId) {
+  event.stopPropagation();
+  showToast(`File menu for ${fileId}`);
+}
+
+function changeVaultPerPage(perPage) {
+  showToast(`Showing ${perPage} files per page`);
+}
+
+// Attach to window for global access
+window.invalidateVaultCache = invalidateVaultCache;
 
 // ============================================
 // Folder Explorer View

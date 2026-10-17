@@ -35,13 +35,20 @@ const PROVIDERS = {
   nvidia: {
     label: 'NVIDIA',
     url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    model: 'meta/llama-3.1-8b-instruct',
-    keyEnv: 'NVIDIA_API_KEY'
+    model: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    keyEnv: 'NVIDIA_API_KEY',
+    defaultParams: {
+      temperature: 1,
+      top_p: 0.95,
+      max_tokens: 16384,
+      seed: 42,
+      parallel_tool_calls: true
+    }
   }
 };
 
 // Providers that need a key, in the order they are auto-selected.
-const KEYED_ORDER = ['groq', 'openrouter', 'gemini', 'nvidia'];
+const KEYED_ORDER = ['nvidia', 'groq', 'openrouter', 'gemini'];
 
 // Parameters the free OpenAI-compatible endpoints reject.
 const UNSUPPORTED_PARAMS = ['top_k', 'repetition_penalty'];
@@ -72,6 +79,16 @@ function buildPayload(body, provider) {
   UNSUPPORTED_PARAMS.forEach(param => { delete payload[param]; });
   payload.model = process.env.AI_MODEL || provider.model;
   payload.stream = false;
+
+  // Add Nvidia-specific parameters
+  if (provider.name === 'nvidia' && provider.defaultParams) {
+    Object.assign(payload, provider.defaultParams);
+    // Allow body to override default params if provided
+    if (body.temperature !== undefined) payload.temperature = body.temperature;
+    if (body.top_p !== undefined) payload.top_p = body.top_p;
+    if (body.max_tokens !== undefined) payload.max_tokens = body.max_tokens;
+  }
+
   return payload;
 }
 

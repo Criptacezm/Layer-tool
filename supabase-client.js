@@ -2589,23 +2589,30 @@ window.LayerDB = {
       const token = session.access_token;
 
       // Call the Supabase Edge Function to send welcome email
-      const { data, error: invokeError } = await supabaseClient.functions.invoke('send-welcome-email', {
-        body: {
-          email: userEmail,
-          name: userName || 'User'
-        },
-        headers: {
-          'Authorization': 'Bearer ' + token
+      try {
+        const { data, error: invokeError } = await supabaseClient.functions.invoke('send-welcome-email', {
+          body: {
+            email: userEmail,
+            name: userName || 'User'
+          },
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        if (invokeError) {
+          console.warn('Failed to send welcome email (CORS or Edge Function issue):', invokeError);
+          // Don't fail the signup if email fails
+          return true;
         }
-      });
 
-      if (invokeError) {
-        console.error('Failed to send welcome email:', invokeError);
-        return false;
+        console.log('Welcome email sent successfully:', data);
+        return true;
+      } catch (error) {
+        console.warn('Welcome email skipped due to error:', error.message);
+        // Don't fail the signup if email fails
+        return true;
       }
-
-      console.log('Welcome email sent successfully:', data);
-      return true;
     } catch (error) {
       console.error('Error sending welcome email:', error);
       return false;

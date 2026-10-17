@@ -14,6 +14,9 @@
 
   /* Hello Kitty signature pink */
   --primary: hsl(340, 80%, 65%);
+  --primary-h: 340;
+  --primary-s: 80%;
+  --primary-l: 65%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   /* Soft blush pink */
@@ -75,6 +78,9 @@
 
   /* Hello Kitty pink */
   --primary: hsl(340, 80%, 70%);
+  --primary-h: 340;
+  --primary-s: 80%;
+  --primary-l: 70%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsla(280, 15%, 18%, 0.8);
@@ -127,6 +133,9 @@
   --popover-foreground: hsl(265, 35%, 95%);
 
   --primary: hsl(256, 60%, 61%);
+  --primary-h: 256;
+  --primary-s: 60%;
+  --primary-l: 61%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(260, 30%, 25%);
@@ -184,6 +193,9 @@
   --popover-foreground: hsl(165, 40%, 88%);
 
   --primary: hsl(174, 30%, 60%);
+  --primary-h: 174;
+  --primary-s: 30%;
+  --primary-l: 60%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(160, 30%, 75%);
@@ -241,6 +253,9 @@
   --popover-foreground: hsl(150, 20%, 90%);
 
   --primary: hsl(150, 70%, 50%);
+  --primary-h: 150;
+  --primary-s: 70%;
+  --primary-l: 50%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(150, 30%, 12%);
@@ -298,6 +313,9 @@
   --popover-foreground: hsl(220, 20%, 94%);
 
   --primary: hsl(220, 90%, 60%);
+  --primary-h: 220;
+  --primary-s: 90%;
+  --primary-l: 60%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(220, 40%, 12%);
@@ -355,6 +373,9 @@
   --popover-foreground: hsl(60, 30%, 96%);
 
   --primary: hsl(330, 81%, 60%);
+  --primary-h: 330;
+  --primary-s: 81%;
+  --primary-l: 60%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(231, 15%, 22%);
@@ -412,6 +433,9 @@
   --popover-foreground: hsl(48, 45%, 82%);
 
   --primary: hsl(42, 75%, 49%);
+  --primary-h: 42;
+  --primary-s: 75%;
+  --primary-l: 49%;
   --primary-foreground: hsl(0, 0%, 16%);
 
   --secondary: hsl(30, 5%, 32%);
@@ -469,6 +493,9 @@
   --popover-foreground: hsl(120, 100%, 85%);
 
   --primary: hsl(120, 100%, 60%);
+  --primary-h: 120;
+  --primary-s: 100%;
+  --primary-l: 60%;
   --primary-foreground: hsl(0, 0%, 4%);
 
   --secondary: hsl(0, 0%, 12%);
@@ -599,6 +626,9 @@
 
   /* Hello Kitty signature pink */
   --primary: hsl(340, 80%, 65%);
+  --primary-h: 340;
+  --primary-s: 80%;
+  --primary-l: 65%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   /* Soft pastel pink */
@@ -671,6 +701,9 @@
   --popover-foreground: hsl(260, 40%, 16%);
 
   --primary: hsl(256, 65%, 55%);
+  --primary-h: 256;
+  --primary-s: 65%;
+  --primary-l: 55%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(265, 50%, 95%);
@@ -732,6 +765,9 @@
   --popover-foreground: hsl(195, 50%, 16%);
 
   --primary: hsl(174, 50%, 42%);
+  --primary-h: 174;
+  --primary-s: 50%;
+  --primary-l: 42%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(170, 40%, 94%);
@@ -793,6 +829,9 @@
   --popover-foreground: hsl(150, 45%, 14%);
 
   --primary: hsl(150, 65%, 38%);
+  --primary-h: 150;
+  --primary-s: 65%;
+  --primary-l: 38%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(145, 40%, 93%);
@@ -854,6 +893,9 @@
   --popover-foreground: hsl(220, 50%, 14%);
 
   --primary: hsl(220, 85%, 52%);
+  --primary-h: 220;
+  --primary-s: 85%;
+  --primary-l: 52%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(220, 50%, 95%);
@@ -915,6 +957,9 @@
   --popover-foreground: hsl(250, 30%, 18%);
 
   --primary: hsl(330, 75%, 52%);
+  --primary-h: 330;
+  --primary-s: 75%;
+  --primary-l: 52%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(340, 45%, 95%);
@@ -976,6 +1021,9 @@
   --popover-foreground: hsl(30, 12%, 20%);
 
   --primary: hsl(42, 90%, 38%);
+  --primary-h: 42;
+  --primary-s: 90%;
+  --primary-l: 38%;
   --primary-foreground: hsl(50, 87%, 95%);
 
   --secondary: hsl(50, 55%, 88%);
@@ -1037,6 +1085,9 @@
   --popover-foreground: hsl(257, 35%, 35%);
 
   --primary: hsl(270, 30%, 52%);
+  --primary-h: 270;
+  --primary-s: 30%;
+  --primary-l: 52%;
   --primary-foreground: hsl(32, 60%, 97%);
 
   --secondary: hsl(32, 40%, 92%);
@@ -2374,6 +2425,9 @@
   --popover-foreground: hsl(35, 25%, 88%);
 
   --primary: hsl(17, 64%, 56%);
+  --primary-h: 17;
+  --primary-s: 64%;
+  --primary-l: 56%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(40, 8%, 18%);
@@ -2433,6 +2487,9 @@
   --popover-foreground: hsl(30, 15%, 15%);
 
   --primary: hsl(17, 64%, 52%);
+  --primary-h: 17;
+  --primary-s: 64%;
+  --primary-l: 52%;
   --primary-foreground: hsl(0, 0%, 100%);
 
   --secondary: hsl(36, 25%, 90%);
