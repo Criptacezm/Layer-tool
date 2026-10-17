@@ -31702,7 +31702,7 @@ async function refreshAIModelChip() {
 function autoGrowAIInput(el) {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 220) + 'px';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
 function renderAILaunchRecents() {
@@ -32330,27 +32330,28 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
           </div>
         </div>
         ` : `
-        <div class="ai-clean-chat-header">
-          <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <span class="ai-clean-chat-title">Layer Intelligence</span>
-          <div class="ai-clean-header-actions">
-            ${renderProjectContextButton()}
-            <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M16 18l6-6-6-6"/>
-                <path d="M8 6l-6 6 6 6"/>
-                <path d="M14 4l-4 16"/>
+        <div class="ai-thread-header">
+          <div class="ai-thread-nav">
+            <button class="ai-thread-back-btn" onclick="goBackToAILanding()" title="Back">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
               </svg>
             </button>
-            <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </button>
+            <div class="ai-thread-title">Zeyad's Thread</div>
+            <div class="ai-thread-tabs">
+              <button class="ai-thread-tab">Edit</button>
+              <button class="ai-thread-tab active">Chat</button>
+              <button class="ai-thread-tab">Memories</button>
+            </div>
+            <div class="ai-thread-actions">
+              <button class="ai-thread-action-btn">Assign</button>
+              <button class="ai-thread-action-btn ai-thread-action-primary">
+                Create Task
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         `}
@@ -32361,13 +32362,24 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             <div class="ai-clean-messages" id="aiChatMessages">
               ${renderAIChatMessages()}
               ${aiChatIsLoading ? `
-                <div class="ai-clean-loading" role="status" aria-live="polite">
-                  <div class="ai-assistant-header">
-                    <span class="ai-assistant-name">Layer Intelligence</span>
+                <div class="ai-thread-msg ai-thread-msg-assistant">
+                  <div class="ai-thread-msg-header">
+                    <div class="ai-thread-avatar ai-thread-avatar-assistant">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
+                    </div>
+                    <div class="ai-thread-msg-info">
+                      <span class="ai-thread-msg-name">Layer Intelligence</span>
+                      <span class="ai-thread-msg-time">Thinking...</span>
+                    </div>
                   </div>
-                  <div class="ai-thinking-bubble">
-                    <span class="ai-thinking-text">${aiThinkingStatus}</span>
-                    <span class="ai-thinking-timer">${aiThinkingElapsedText}</span>
+                  <div class="ai-thread-msg-content">
+                    <div class="ai-thinking-row">
+                      <div class="ai-thinking-spinner"></div>
+                      <span class="ai-thinking-text">${aiThinkingStatus}</span>
+                      <span class="ai-thinking-time">${aiThinkingElapsedText}</span>
+                    </div>
                   </div>
                 </div>
               ` : ''}
@@ -32377,32 +32389,88 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             <div id="aiAttachments"></div>
 
             <!-- Input -->
-            <div class="ai-clean-chat-input-area">
-              <div class="ai-clean-input-box">
-                <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                </button>
+            <div class="ai-thread-input-area">
+              <div class="ai-thread-input-wrapper">
                 <textarea 
-                  class="ai-clean-input" 
+                  class="ai-thread-input" 
                   id="aiChatInput" 
-                  placeholder="Ask anything"
+                  placeholder="Reply, press 'space' for AI, '/' for commands"
+                  oninput="autoGrowAIInput(this)"
                   onkeydown="handleAIChatKeydown(event)"
                   rows="1"
                 ></textarea>
-                <div class="ai-input-actions">
-                  <button class="ai-input-model-selector">
-                    <span>${aiChatDrawerOpen ? "All Sources" : "Auto"}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                      <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                  </button>
-                  <button class="ai-clean-send-btn" id="aiSendBtn" onclick="sendAIChatMessage()" title="Send message" ${aiChatIsLoading ? 'disabled' : ''}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                    </svg>
-                  </button>
+                <div class="ai-thread-input-checkbox">
+                  <input type="checkbox" id="aiThreadOutside" />
+                  <label for="aiThreadOutside">Also send outside of thread</label>
+                </div>
+                <div class="ai-thread-input-toolbar">
+                  <div class="ai-thread-toolbar-left">
+                    <button class="ai-thread-tool-btn" onclick="handleAIPlusClick()" title="Attach">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Integration">
+                      <div class="ai-tool-icon-gradient"></div>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Link">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Mention">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Emoji">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Video">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <polygon points="23 7 16 12 23 17 23 7"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-tool-btn" title="Image">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="ai-thread-toolbar-right">
+                    <div class="ai-thread-msg-count">1</div>
+                    <button class="ai-thread-tool-btn" title="Voice">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                      </svg>
+                    </button>
+                    <button class="ai-thread-send-btn" id="aiSendBtn" onclick="sendAIChatMessage()" title="Send message" ${aiChatIsLoading ? 'disabled' : ''}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                      </svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -32836,9 +32904,9 @@ function closeProjectSelectorModal() {
 function clearProjectContext() {
   window.ProjectContext?.clearProject();
   // Re-render the chat header
-  const header = document.querySelector('.ai-clean-chat-header');
+  const header = document.querySelector('.ai-thread-subheader');
   if (header) {
-    const actionsContainer = header.querySelector('.ai-clean-header-actions');
+    const actionsContainer = header.querySelector('.ai-thread-subheader-actions');
     if (actionsContainer) {
       // Re-render the button
       const tempDiv = document.createElement('div');
@@ -32981,11 +33049,11 @@ async function selectProjectFromSelector(projectId, projectName) {
   
   // Use ProjectContext to select the project
   await window.ProjectContext?.selectProject(projectId, projectName);
-  
+
   // Update the header button
-  const header = document.querySelector('.ai-clean-chat-header');
+  const header = document.querySelector('.ai-thread-subheader');
   if (header) {
-    const actionsContainer = header.querySelector('.ai-clean-header-actions');
+    const actionsContainer = header.querySelector('.ai-thread-subheader-actions');
     if (actionsContainer) {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = renderProjectContextButton();
@@ -33009,7 +33077,7 @@ async function selectProjectFromSelector(projectId, projectName) {
  * Update the project badge in the chat input area
  */
 function updateProjectBadgeInInput() {
-  const inputArea = document.querySelector('.ai-clean-chat-input-area');
+  const inputArea = document.querySelector('.ai-thread-input-area');
   if (!inputArea) return;
 
   const existingBadge = inputArea.querySelector('.ai-project-badge');
@@ -33052,47 +33120,103 @@ function renderAIChatMessages() {
     `;
   }
 
-  return aiChatMessages.map((msg, index) => {
+  // Group messages by date for date separators
+  const messagesByDate = [];
+  let currentDate = null;
+  
+  aiChatMessages.forEach((msg, index) => {
+    const msgDate = new Date(msg.timestamp).toDateString();
+    if (msgDate !== currentDate) {
+      currentDate = msgDate;
+      messagesByDate.push({ type: 'date', date: new Date(msg.timestamp) });
+    }
+    messagesByDate.push({ type: 'message', msg, index });
+  });
+
+  return messagesByDate.map(item => {
+    if (item.type === 'date') {
+      const date = item.date;
+      const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      return `
+        <div class="ai-chat-date-separator">
+          <span class="ai-chat-date-text">${formattedDate}</span>
+        </div>
+      `;
+    }
+
+    const { msg, index } = item;
+    const timestamp = new Date(msg.timestamp);
+    const timeStr = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
     if (msg.role === 'user') {
       return `
-        <div class="ai-clean-msg ai-clean-msg-user">
-          <div class="ai-clean-bubble-user">${escapeHtml(msg.content)}</div>
+        <div class="ai-thread-msg ai-thread-msg-user">
+          <div class="ai-thread-msg-header">
+            <div class="ai-thread-avatar ai-thread-avatar-user">ZM</div>
+            <div class="ai-thread-msg-info">
+              <span class="ai-thread-msg-name">Zeyad Maher</span>
+              <span class="ai-thread-msg-time">${timeStr}</span>
+            </div>
+          </div>
+          <div class="ai-thread-msg-content">${escapeHtml(msg.content)}</div>
         </div>
       `;
     } else {
       const hasFencedCode = typeof msg.content === 'string' && msg.content.includes('```');
       return `
-        <div class="ai-clean-msg ai-clean-msg-assistant">
-          <div class="ai-assistant-header">
-            <span class="ai-assistant-name">Layer Intelligence</span>
-          </div>
-          <div class="ai-clean-bubble-assistant">
-            <div class="ai-clean-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
-            <div class="ai-clean-actions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
-              <button class="ai-clean-action-btn" onclick="copyAIMessage(${index})" title="Copy">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-                <span>Copy</span>
-              </button>
-              ${hasFencedCode ? `
-              <button class="ai-clean-action-btn" onclick="importAIMessageCode(${index})" title="Import code to editor">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span>Import</span>
-              </button>
-              ` : ''}
-              <button class="ai-clean-action-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                  <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-                </svg>
-                <span>Regenerate</span>
-              </button>
+        <div class="ai-thread-msg ai-thread-msg-assistant">
+          <div class="ai-thread-msg-header">
+            <div class="ai-thread-avatar ai-thread-avatar-assistant">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
             </div>
+            <div class="ai-thread-msg-info">
+              <span class="ai-thread-msg-name">Meeting Super Agent</span>
+              <span class="ai-thread-msg-time">${timeStr}</span>
+            </div>
+            <div class="ai-thread-replies">3 Replies • <span class="ai-thread-new">New</span></div>
+          </div>
+          <div class="ai-thread-msg-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
+          <div class="ai-thread-reactions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
+            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Thumbs up">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+              </svg>
+            </button>
+            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Thumbs down">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+              </svg>
+            </button>
+            <button class="ai-thread-reaction-btn" onclick="importAIMessageCode(${index})" title="Reply">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            ${hasFencedCode ? `
+            <button class="ai-thread-reaction-btn" onclick="importAIMessageCode(${index})" title="Import code">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+            ` : ''}
+            <button class="ai-thread-reaction-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+            </button>
           </div>
         </div>
       `;

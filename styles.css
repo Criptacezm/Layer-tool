@@ -823,7 +823,6 @@ body {
   flex-shrink: 0;
   border-radius: 6px;
   display: block;
-  vertical-align: middle;
   transition: all 0.15s ease-out;
   cursor: pointer;
   animation: logoSubtleMotion 4s ease-in-out infinite;
@@ -2342,6 +2341,7 @@ html:not([data-mode="light"]) body:not(.light) .nav-item:hover {
   letter-spacing: -0.03em;
   margin-bottom: 8px;
   background: linear-gradient(135deg, var(--foreground) 0%, var(--muted-foreground) 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -3025,7 +3025,6 @@ body.light .views-background,
   flex-shrink: 0;
   filter: drop-shadow(0 2px 4px rgba(94, 106, 210, 0.3));
   display: block;
-  vertical-align: middle;
   width: 24px;
   height: 24px;
 }
@@ -3574,6 +3573,7 @@ body.light .views-background,
   .issue-description {
     font-size: 14px;
     line-height: 1.5;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
   }
 
