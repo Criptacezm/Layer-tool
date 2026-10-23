@@ -832,6 +832,37 @@ function setupSearch() {
 // ============================================
 // Theme System with Mode Support
 // ============================================
+function getThemeColor(theme, mode) {
+  const themeColors = {
+    'dark': '#0a0a0a',
+    'light': '#ffffff',
+    'pink': mode === 'light' ? '#ea8db5' : '#dc6a96',
+    'purple': '#7c3aed',
+    'ocean': '#3db5b5',
+    'forest': '#2d8a5e',
+    'midnight': '#3b82f6',
+    'dracula': '#ff79c6',
+    'gruvbox': '#d79921',
+    'rosepine': '#ea9a97',
+    'claude': '#d97706'
+  };
+  return themeColors[theme] || '#0a0a0a';
+}
+
+function updateThemeColorMeta() {
+  const currentTheme = loadTheme();
+  const currentMode = localStorage.getItem('layerThemeMode') || 'dark';
+  const themeColor = getThemeColor(currentTheme, currentMode);
+  
+  let metaTag = document.querySelector('meta[name="theme-color"]');
+  if (!metaTag) {
+    metaTag = document.createElement('meta');
+    metaTag.name = 'theme-color';
+    document.head.appendChild(metaTag);
+  }
+  metaTag.content = themeColor;
+}
+
 function initTheme() {
   const savedTheme = loadTheme();
   const savedMode = localStorage.getItem('layerThemeMode') || 'dark';
@@ -845,6 +876,8 @@ function initTheme() {
     document.documentElement.setAttribute('data-theme', savedTheme);
     document.documentElement.setAttribute('data-mode', savedMode);
   }
+  
+  updateThemeColorMeta();
 }
 
 function setupThemeToggle() {
@@ -882,6 +915,8 @@ function toggleThemeMode() {
     document.documentElement.setAttribute('data-mode', newMode);
     localStorage.setItem('layerThemeMode', newMode);
   }
+  
+  updateThemeColorMeta();
 }
 
 // Mobile Search
@@ -2388,6 +2423,13 @@ function applyThemePreview(themeId, mode) {
     html.setAttribute('data-theme', themeId);
     html.setAttribute('data-mode', mode);
   }
+  
+  // Update theme color meta for preview
+  const themeColor = getThemeColor(themeId, mode);
+  let metaTag = document.querySelector('meta[name="theme-color"]');
+  if (metaTag) {
+    metaTag.content = themeColor;
+  }
 }
 
 function getSelectedTheme() {
@@ -2439,6 +2481,9 @@ async function handleFirstTimeSetupSubmit(event) {
     // Save to localStorage as fallback
     localStorage.setItem('layerTheme', selectedTheme.theme);
     localStorage.setItem('layerThemeMode', selectedTheme.mode);
+    
+    // Update theme color meta
+    updateThemeColorMeta();
     
     // Close setup modal
     closeFirstTimeSetup();

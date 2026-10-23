@@ -23517,6 +23517,23 @@ async function confirmDeleteAccount() {
 // ========================
 // Theme Application with Mode Support
 // ========================
+function getThemeColor(theme, mode) {
+  const themeColors = {
+    'dark': '#0a0a0a',
+    'light': '#ffffff',
+    'pink': mode === 'light' ? '#ea8db5' : '#dc6a96',
+    'purple': '#7c3aed',
+    'ocean': '#3db5b5',
+    'forest': '#2d8a5e',
+    'midnight': '#3b82f6',
+    'dracula': '#ff79c6',
+    'gruvbox': '#d79921',
+    'rosepine': '#ea9a97',
+    'claude': '#d97706'
+  };
+  return themeColors[theme] || '#0a0a0a';
+}
+
 function applyTheme(theme) {
   document.body.classList.remove('light');
   document.documentElement.removeAttribute('data-theme');
@@ -23534,12 +23551,28 @@ function applyTheme(theme) {
   }
 
   localStorage.setItem('layerTheme', theme);
+  
+  // Update theme color meta
+  const currentMode = localStorage.getItem('layerThemeMode') || 'dark';
+  const themeColor = getThemeColor(theme, currentMode);
+  let metaTag = document.querySelector('meta[name="theme-color"]');
+  if (metaTag) {
+    metaTag.content = themeColor;
+  }
 }
 
 function toggleThemeModeFromSettings(isLight) {
   const newMode = isLight ? 'light' : 'dark';
   localStorage.setItem('layerThemeMode', newMode);
   document.documentElement.setAttribute('data-mode', newMode);
+  
+  // Update theme color meta
+  const currentTheme = localStorage.getItem('layerTheme') || 'dark';
+  const themeColor = getThemeColor(currentTheme, newMode);
+  let metaTag = document.querySelector('meta[name="theme-color"]');
+  if (metaTag) {
+    metaTag.content = themeColor;
+  }
 }
 
 function initThemeSelector() {
@@ -23634,6 +23667,15 @@ function initMainSidebar() {
 document.addEventListener('DOMContentLoaded', async () => {
   const saved = localStorage.getItem('layerTheme') || 'rosepine';
   applyTheme(saved);
+  
+  // Update theme color meta
+  const currentMode = localStorage.getItem('layerThemeMode') || 'dark';
+  const themeColor = getThemeColor(saved, currentMode);
+  let metaTag = document.querySelector('meta[name="theme-color"]');
+  if (metaTag) {
+    metaTag.content = themeColor;
+  }
+  
   initThemeSelector();
 
   // Initialize main sidebar
