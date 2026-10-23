@@ -41,88 +41,30 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
   const folderPdfs = (folderItems || []).filter(i => i.item_type === 'pdf');
   const totalDocItems = (docs?.length || 0) + folderSheets.length + folderWhiteboards.length + folderPdfs.length;
 
-  // Combine all documents for display
-  const allDocs = [];
-  
-  if (docs && docs.length > 0) {
-    docs.forEach(doc => {
-      allDocs.push({
-        id: doc.id,
-        name: doc.title || 'Untitled',
-        type: 'DOCX',
-        size: formatFileSize(doc.content?.length || 0),
-        modified: doc.updated_at || doc.created_at || new Date().toISOString(),
-        itemType: 'doc'
-      });
-    });
-  }
-  
-  if (folderSheets.length > 0) {
-    folderSheets.forEach(item => {
-      allDocs.push({
-        id: item.id,
-        itemId: item.item_id,
-        name: item.file_name || 'Untitled Sheet',
-        type: 'XLSX',
-        size: formatFileSize(item.file_size || 0),
-        modified: item.created_at || new Date().toISOString(),
-        itemType: 'sheet'
-      });
-    });
-  }
-  
-  if (folderWhiteboards.length > 0) {
-    folderWhiteboards.forEach(item => {
-      allDocs.push({
-        id: item.id,
-        itemId: item.item_id,
-        name: item.file_name || 'Untitled Whiteboard',
-        type: 'Board',
-        size: formatFileSize(item.file_size || 0),
-        modified: item.created_at || new Date().toISOString(),
-        itemType: 'whiteboard'
-      });
-    });
-  }
-  
-  if (folderPdfs.length > 0) {
-    folderPdfs.forEach(item => {
-      allDocs.push({
-        id: item.id,
-        itemId: item.item_id,
-        name: item.file_name || 'PDF',
-        type: 'PDF',
-        size: formatFileSize(item.file_size || 0),
-        modified: item.created_at || new Date().toISOString(),
-        itemType: 'pdf'
-      });
-    });
-  }
-
   return `
-    <div class="inline-folder-explorer vault-folder-view" data-inline-folder-id="${folder.id}">
-      <div class="vault-folder-header">
-        <div class="vault-folder-breadcrumbs">
-          <button class="vault-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M19 12H5"/>
-              <path d="M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <span class="breadcrumb-separator">></span>
-          <span class="breadcrumb-item active">${folder.name}</span>
+    <div class="inline-folder-explorer" data-inline-folder-id="${folder.id}">
+      <div class="inline-folder-header">
+        <button class="inline-folder-back" onclick="renderFoldersInPlaceholder()" title="Back to folders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5"/>
+            <path d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div class="inline-folder-title">
+          <span class="inline-folder-emoji">${emoji}</span>
+          <span class="inline-folder-name" title="${folder.name}">${folder.name}</span>
         </div>
-        <div class="vault-folder-actions">
-          <button class="vault-btn-icon" onclick="createFolderDocInline('${folder.id}')" title="New Doc">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <div class="inline-folder-actions">
+          <button class="inline-folder-create-btn" onclick="createFolderDocInline('${folder.id}')" title="New Doc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
               <line x1="12" y1="11" x2="12" y2="17"/>
               <line x1="9" y1="14" x2="15" y2="14"/>
             </svg>
           </button>
-          <button class="vault-btn-icon" onclick="createFolderSheetInline('${folder.id}')" title="New Sheet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <button class="inline-folder-create-btn" onclick="createFolderSheetInline('${folder.id}')" title="New Sheet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <line x1="3" y1="9" x2="21" y2="9"/>
               <line x1="9" y1="3" x2="9" y2="21"/>
@@ -130,8 +72,8 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
               <line x1="9" y1="14" x2="15" y2="14"/>
             </svg>
           </button>
-          <button class="vault-btn-icon" onclick="createFolderWhiteboardInline('${folder.id}')" title="New Whiteboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <button class="inline-folder-create-btn" onclick="createFolderWhiteboardInline('${folder.id}')" title="New Whiteboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="2" y="3" width="20" height="14" rx="2"/>
               <path d="M8 21h8"/>
               <path d="M12 17v4"/>
@@ -142,134 +84,80 @@ function renderInlineFolderExplorerView(folder, docs, folderItems, quizzes) {
         </div>
       </div>
 
-      <div class="vault-folder-tabs">
-        <button class="vault-folder-tab active" data-tab="documents" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'documents')">
+      <div class="inline-folder-tabs">
+        <button class="inline-folder-tab active" data-tab="documents" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'documents')">
           Docs
-          <span class="vault-folder-tab-count">${totalDocItems}</span>
+          <span class="inline-folder-pill">${totalDocItems}</span>
         </button>
-        <button class="vault-folder-tab" data-tab="quizzes" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'quizzes')">
+        <button class="inline-folder-tab" data-tab="quizzes" onclick="activateInlineFolderTab(this.closest('.inline-folder-explorer'), 'quizzes')">
           Quizzes
-          <span class="vault-folder-tab-count">${quizzes?.length || 0}</span>
+          <span class="inline-folder-pill">${quizzes?.length || 0}</span>
         </button>
       </div>
 
-      <div class="vault-folder-content">
-        <div class="vault-folder-section active" data-section="documents">
-          ${allDocs.length > 0 ? `
-            <div class="vault-folder-docs-list">
-              ${allDocs.map(doc => renderVaultFolderDoc(doc, folder.id)).join('')}
-            </div>
-          ` : `
-            <div class="vault-folder-empty">
-              <div class="vault-empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-              </div>
-              <div class="vault-empty-text">No documents yet</div>
-            </div>
-          `}
-        </div>
+      <div class="inline-folder-content">
+        <div class="inline-folder-section active" data-section="documents">
+          ${(totalDocItems > 0) ? `
+            <div class="inline-folder-list">
+              ${(docs || []).map(doc => `
+                <button class="inline-folder-row" type="button" onclick="openDocEditorFromInlineFolder('${doc.id}', '${folder.space_id}', '${folder.id}')">
+                  <span class="inline-folder-row-title">${doc.title || 'Untitled Doc'}</span>
+                  <span class="inline-folder-row-meta">${formatRelativeTime(doc.updated_at || doc.updatedAt)}</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderDocFromInline('${doc.id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
 
-        <div class="vault-folder-section" data-section="quizzes">
-          ${(quizzes && quizzes.length > 0) ? `
-            <div class="vault-folder-docs-list">
-              ${quizzes.map(quiz => `
-                <div class="vault-folder-doc-item">
-                  <div class="vault-folder-doc-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M9 12h6M9 16h6M9 8h6M5 5h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
-                    </svg>
-                  </div>
-                  <div class="vault-folder-doc-info">
-                    <div class="vault-folder-doc-name">${quiz.title}</div>
-                    <div class="vault-folder-doc-meta">${(quiz.question_count || quiz.questions?.length || 0)} questions</div>
-                  </div>
-                  <button class="vault-folder-doc-action" onclick="openQuizViewer('${quiz.id}')">
-                    View
-                  </button>
-                </div>
+              ${folderSheets.map(item => `
+                <button class="inline-folder-row" type="button" onclick="openExcelEditor('${item.item_id}')">
+                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Spreadsheet'}</span>
+                  <span class="inline-folder-row-meta">Sheet</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderSheetFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
+
+              ${folderWhiteboards.map(item => `
+                <button class="inline-folder-row" type="button" onclick="openWhiteboardFromFolderItem('${item.item_id}')">
+                  <span class="inline-folder-row-title">${item.file_name || 'Untitled Whiteboard'}</span>
+                  <span class="inline-folder-row-meta">Board</span>
+                  <span class="inline-folder-row-meta" onclick="event.stopPropagation(); deleteFolderWhiteboardFromInline('${item.id}', '${item.item_id}', '${folder.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                </button>
+              `).join('')}
+
+              ${folderPdfs.map(item => `
+                <button class="inline-folder-row" type="button" onclick='openPdfViewerFromFolderItem(${JSON.stringify(item.file_url || '')}, ${JSON.stringify(item.file_name || 'PDF')})'>
+                  <span class="inline-folder-row-title">${item.file_name || 'PDF'}</span>
+                  <span class="inline-folder-row-meta">PDF</span>
+                </button>
               `).join('')}
             </div>
           ` : `
-            <div class="vault-folder-empty">
-              <div class="vault-empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </div>
-              <div class="vault-empty-text">No quizzes yet</div>
+            <div class="inline-folder-empty">No items yet</div>
+          `}
+        </div>
+
+        <div class="inline-folder-section" data-section="quizzes">
+          ${(quizzes && quizzes.length > 0) ? `
+            <div class="inline-folder-list">
+              ${quizzes.map(quiz => `
+                <button class="inline-folder-row" type="button" onclick="openQuizViewer('${quiz.id}')">
+                  <span class="inline-folder-row-title">${quiz.title}</span>
+                  <span class="inline-folder-row-meta">${(quiz.question_count || quiz.questions?.length || 0)}q</span>
+                </button>
+              `).join('')}
             </div>
+          ` : `
+            <div class="inline-folder-empty">No quizzes yet</div>
           `}
         </div>
       </div>
     </div>
   `;
-}
-
-function renderVaultFolderDoc(doc, folderId) {
-  const icon = getFileTypeIcon(doc.type);
-  const timeAgo = getTimeAgo(new Date(doc.modified));
-  
-  let onClick = '';
-  if (doc.itemType === 'doc') {
-    onClick = `onclick="openDocEditorFromInlineFolder('${doc.id}', '${folderId}')"`; // Simplified
-  } else if (doc.itemType === 'sheet') {
-    onClick = `onclick="openExcelEditor('${doc.itemId}')"`;
-  } else if (doc.itemType === 'whiteboard') {
-    onClick = `onclick="openWhiteboardFromFolderItem('${doc.itemId}')"`;
-  } else if (doc.itemType === 'pdf') {
-    onClick = `onclick='openPdfViewerFromFolderItem(${JSON.stringify(doc.file_url || '')}, ${JSON.stringify(doc.name)})'`;
-  }
-  
-  return `
-    <div class="vault-folder-doc-item" ${onClick}>
-      <div class="vault-folder-doc-icon">
-        ${icon}
-      </div>
-      <div class="vault-folder-doc-info">
-        <div class="vault-folder-doc-name" title="${doc.name}">${doc.name}</div>
-        <div class="vault-folder-doc-meta">${doc.type} • ${doc.size} • Modified ${timeAgo}</div>
-      </div>
-      <div class="vault-folder-doc-actions">
-        <button class="vault-folder-doc-btn" onclick="event.stopPropagation(); openVaultFolderDoc('${doc.id}', '${doc.itemType}', '${folderId}')">
-          ${doc.itemType === 'sheet' ? 'Sheet' : 'View'}
-        </button>
-        <button class="vault-folder-doc-btn vault-folder-doc-btn-delete" onclick="event.stopPropagation(); deleteVaultFolderDoc('${doc.id}', '${doc.itemType}', '${folderId}')" title="Delete">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function openVaultFolderDoc(docId, itemType, folderId) {
-  if (itemType === 'doc') {
-    openDocEditorFromInlineFolder(docId, folderId);
-  } else if (itemType === 'sheet') {
-    openExcelEditor(docId);
-  } else if (itemType === 'whiteboard') {
-    openWhiteboardFromFolderItem(docId);
-  } else if (itemType === 'pdf') {
-    showToast('Opening PDF...');
-  }
-}
-
-function deleteVaultFolderDoc(docId, itemType, folderId) {
-  if (!confirm('Are you sure you want to delete this item?')) return;
-  
-  if (itemType === 'sheet') {
-    deleteFolderSheetFromInline(docId, null, folderId);
-  } else if (itemType === 'whiteboard') {
-    deleteFolderWhiteboardFromInline(docId, null, folderId);
-  } else {
-    showToast('Delete functionality coming soon');
-  }
 }
 
 async function openFolderExplorerInline(folderId, initialTab = 'documents') {
@@ -1124,24 +1012,6 @@ function initQuickAccessWebsitesWidget() {
   refreshQuickAccessWebsitesWidget();
 }
 
-function initDateTimeWidget() {
-  const dateEl = document.getElementById('datetimeDate');
-  const dayEl = document.getElementById('datetimeDay');
-  const timeEl = document.getElementById('datetimeTime');
-
-  if (!dateEl || !dayEl || !timeEl) return;
-
-  function updateDateTime() {
-    const now = new Date();
-    dateEl.textContent = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
-    dayEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
-    timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  }
-
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
-}
-
 function renderInboxView() {
   const projects = loadProjects();
   const calendarEvents = loadCalendarEvents();
@@ -1209,9 +1079,19 @@ function renderInboxView() {
       <!-- Main Dashboard Content -->
       <div class="dashboard-main">
         <div class="inbox-container" style="padding: 32px 24px;">
-          <!-- Dashboard Header with Edit Toggle -->
+          <!-- Dashboard Header with Search and AI Chats -->
           <div class="dashboard-header-row">
             <h2 class="view-title" style="margin-bottom: 0; font-size: 28px; font-weight: 700;">Dashboard</h2>
+            <div class="dashboard-header-center">
+              <div class="dashboard-search-bar">
+                <input type="text" placeholder="Search Ctrl K" class="dashboard-search-input" id="dashboardSearchInput" oninput="handleDashboardSearch(this.value)" onfocus="handleDashboardSearch(this.value)" />
+                <button class="dashboard-ai-chats-btn" onclick="openAIChatDrawer(); return false;" title="AI Chats">
+                  <span class="ai-drawer-model-dot"></span>
+                  <span>AI Chats</span>
+                </button>
+                <div class="dashboard-search-dropdown" id="dashboardSearchDropdown"></div>
+              </div>
+            </div>
             <div class="dashboard-header-actions">
               <button class="dashboard-edit-toggle" id="dashboardEditToggle" onclick="toggleDashboardEditMode()" title="Customize widget layout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
@@ -1238,24 +1118,7 @@ function renderInboxView() {
                 </div>
               </div>
             </div>
-
-            <!-- Date & Time Widget -->
-            <div class="dashboard-widget datetime-widget" data-widget-id="datetime">
-              <div class="datetime-widget-content">
-                <div class="datetime-header">
-                  <span class="datetime-date" id="datetimeDate">${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                  <div class="datetime-avatar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                  </div>
-                </div>
-                <div class="datetime-day" id="datetimeDay">${new Date().toLocaleDateString('en-US', { weekday: 'long' })}</div>
-                <div class="datetime-time" id="datetimeTime">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
-              </div>
-            </div>
-
+            
             <!-- Stats Widget -->
             <div class="dashboard-widget" data-widget-id="overview">
               <div class="widget-header">
@@ -2285,13 +2148,9 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
              <div class="issues-count-badge">${issues.length}</div>
           </div>
           <div class="issues-toolbar-right">
-             <div class="search-bar-minimal">
-               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-               <input type="text" placeholder="Filter..." value="${searchQuery}" oninput="renderMyIssuesView('${filter}', this.value)">
-             </div>
              <div class="filter-group-minimal">
                ${filters.map(f => `
-                 <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '${searchQuery}')">${f.label}</button>
+                 <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '')">${f.label}</button>
                `).join('')}
              </div>
              <button class="btn-primary-small" onclick="toggleCreateIssueForm()">
@@ -2326,13 +2185,9 @@ function renderMyIssuesView(filter = 'all', searchQuery = '') {
            <div class="issues-count-badge">${issues.length}</div>
         </div>
         <div class="issues-toolbar-right">
-           <div class="search-bar-minimal">
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-             <input type="text" placeholder="Filter..." value="${searchQuery}" oninput="renderMyIssuesView('${filter}', this.value)">
-           </div>
            <div class="filter-group-minimal">
              ${filters.map(f => `
-               <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '${searchQuery}')">${f.label}</button>
+               <button class="filter-btn-minimal ${filter === f.id ? 'active' : ''}" onclick="renderMyIssuesView('${f.id}', '')">${f.label}</button>
              `).join('')}
            </div>
            <button class="btn-primary-small" onclick="toggleCreateIssueForm()">
@@ -3562,12 +3417,12 @@ function openEditTaskModal(eventId, anchorElement = null) {
             <div class="time-picker-group-header">Time</div>
             <div class="time-picker-row">
               <span class="time-picker-label">From</span>
-              <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="setDefaultEndTime()">
+              <select id="eventStartTime" name="startTime" class="time-picker-select" onchange="handleTimeChangeForRecurringEvent(this, 'start', '${eventId}')">
                 <option value="">—</option>
                 ${generateTimeOptions(startTime)}
               </select>
               <span class="time-picker-divider">→</span>
-              <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="updateDurationHint()">
+              <select id="eventEndTime" name="endTime" class="time-picker-select" onchange="handleTimeChangeForRecurringEvent(this, 'end', '${eventId}')">
                 <option value="">—</option>
                 ${generateTimeOptions(endTime)}
               </select>
@@ -3586,48 +3441,23 @@ function openEditTaskModal(eventId, anchorElement = null) {
           
           <div class="form-group">
             <label>Color</label>
-            <select name="color" class="form-select">
-              <option value="blue" ${task.color === 'blue' ? 'selected' : ''}>Blue</option>
-              <option value="green" ${task.color === 'green' ? 'selected' : ''}>Green</option>
-              <option value="purple" ${task.color === 'purple' ? 'selected' : ''}>Purple</option>
-              <option value="orange" ${task.color === 'orange' ? 'selected' : ''}>Orange</option>
-              <option value="red" ${task.color === 'red' ? 'selected' : ''}>Red</option>
-              <option value="teal" ${task.color === 'teal' ? 'selected' : ''}>Teal</option>
-              <option value="yellow" ${task.color === 'yellow' ? 'selected' : ''}>Yellow</option>
-              <option value="pink" ${task.color === 'pink' ? 'selected' : ''}>Pink</option>
-              <option value="cyan" ${task.color === 'cyan' ? 'selected' : ''}>Cyan</option>
-              <option value="gray" ${task.color === 'gray' ? 'selected' : ''}>Gray</option>
-            </select>
-          </div>
-          
-          <div class="form-group-collapsible">
-            <div class="form-collapsible-header collapsed" onclick="toggleEventLinksSection()">
-              <span>Link to Project / Assignment / Space</span>
+            <div class="color-picker-row">
+              <button type="button" class="color-dot ${task.color === 'blue' ? 'selected' : ''}" style="background: #3b82f6;" data-color="blue" onclick="selectEventColor(this, 'blue')"></button>
+              <button type="button" class="color-dot ${task.color === 'green' ? 'selected' : ''}" style="background: #22c55e;" data-color="green" onclick="selectEventColor(this, 'green')"></button>
+              <button type="button" class="color-dot ${task.color === 'purple' ? 'selected' : ''}" style="background: #a855f7;" data-color="purple" onclick="selectEventColor(this, 'purple')"></button>
+              <button type="button" class="color-dot ${task.color === 'orange' ? 'selected' : ''}" style="background: #f97316;" data-color="orange" onclick="selectEventColor(this, 'orange')"></button>
+              <button type="button" class="color-dot ${task.color === 'red' ? 'selected' : ''}" style="background: #ef4444;" data-color="red" onclick="selectEventColor(this, 'red')"></button>
+              <button type="button" class="color-dot ${task.color === 'teal' ? 'selected' : ''}" style="background: #14b8a6;" data-color="teal" onclick="selectEventColor(this, 'teal')"></button>
+              <button type="button" class="color-dot ${task.color === 'yellow' ? 'selected' : ''}" style="background: #eab308;" data-color="yellow" onclick="selectEventColor(this, 'yellow')"></button>
+              <button type="button" class="color-dot ${task.color === 'pink' ? 'selected' : ''}" style="background: #ec4899;" data-color="pink" onclick="selectEventColor(this, 'pink')"></button>
+              <button type="button" class="color-dot ${task.color === 'cyan' ? 'selected' : ''}" style="background: #06b6d4;" data-color="cyan" onclick="selectEventColor(this, 'cyan')"></button>
+              <button type="button" class="color-dot ${task.color === 'gray' ? 'selected' : ''}" style="background: #6b7280;" data-color="gray" onclick="selectEventColor(this, 'gray')"></button>
             </div>
-            <div class="form-collapsible-content collapsed" id="eventLinksSection">
-              <div class="form-row-triple">
-                <div class="form-group-inline">
-                  <label>Project</label>
-                  <select name="projectId" class="form-select form-select-sm">
-                    ${generateProjectOptions(task.projectId)}
-                  </select>
-                </div>
-                <div class="form-group-inline">
-                  <label>Assignment</label>
-                  <select name="assignmentId" class="form-select form-select-sm">
-                    ${generateAssignmentOptions(task.assignmentId)}
-                  </select>
-                </div>
-                <div class="form-group-inline">
-                  <label>Space</label>
-                  <select name="spaceId" class="form-select form-select-sm">
-                    ${generateSpaceOptions(task.spaceId)}
-                  </select>
-                </div>
-              </div>
-            </div>
+            <input type="hidden" name="color" id="selectedColorInput" value="${task.color || 'blue'}">
           </div>
-          
+
+          <input type="hidden" name="editAll" id="editAllFlag" value="false">
+
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="closeEventDropdown()">Cancel</button>
             <button type="submit" class="btn btn-primary">Save</button>
@@ -3669,34 +3499,49 @@ function openEditTaskModal(eventId, anchorElement = null) {
       // Clear any previous transform when anchoring
       dropdown.style.transform = '';
 
-      // Measure after insert
-      const rect = dropdown.getBoundingClientRect();
-      const offset = 10;
-      const viewportPadding = 10;
+      // Function to position dropdown
+      const positionDropdown = () => {
+        const rect = dropdown.getBoundingClientRect();
+        const offset = 10;
+        const viewportPadding = 10;
 
-      // Prefer opening to the right of the anchor
-      let posX = anchorRect.right + offset;
-      let posY = anchorRect.top;
+        // Prefer opening to the right of the anchor
+        let posX = anchorRect.right + offset;
+        let posY = anchorRect.top;
 
-      // If off-screen to the right, open to the left
-      if (posX + rect.width > window.innerWidth - viewportPadding) {
-        posX = anchorRect.left - rect.width - offset;
-      }
+        // If off-screen to the right, open to the left
+        if (posX + rect.width > window.innerWidth - viewportPadding) {
+          posX = anchorRect.left - rect.width - offset;
+        }
 
-      // Clamp horizontally
-      if (posX < viewportPadding) posX = viewportPadding;
-      if (posX + rect.width > window.innerWidth - viewportPadding) {
-        posX = window.innerWidth - rect.width - viewportPadding;
-      }
+        // Clamp horizontally
+        if (posX < viewportPadding) posX = viewportPadding;
+        if (posX + rect.width > window.innerWidth - viewportPadding) {
+          posX = window.innerWidth - rect.width - viewportPadding;
+        }
 
-      // Clamp vertically
-      if (posY + rect.height > window.innerHeight - viewportPadding) {
-        posY = window.innerHeight - rect.height - viewportPadding;
-      }
-      if (posY < viewportPadding) posY = viewportPadding;
+        // Clamp vertically
+        if (posY + rect.height > window.innerHeight - viewportPadding) {
+          posY = window.innerHeight - rect.height - viewportPadding;
+        }
+        if (posY < viewportPadding) posY = viewportPadding;
 
-      dropdown.style.left = `${posX}px`;
-      dropdown.style.top = `${posY}px`;
+        dropdown.style.left = `${posX}px`;
+        dropdown.style.top = `${posY}px`;
+      };
+
+      // Initial position
+      positionDropdown();
+
+      // Reposition when modal size changes (e.g., when sections expand/collapse)
+      const resizeObserver = new ResizeObserver(() => {
+        positionDropdown();
+      });
+
+      resizeObserver.observe(dropdown);
+
+      // Store observer for cleanup
+      dropdown._positionObserver = resizeObserver;
     }
   }
 
@@ -3758,25 +3603,44 @@ async function handleEditEventSubmit(e, eventId) {
   // Use async update if authenticated
   await updateCalendarEventAsync(eventId, updates);
 
-  // If this is a recurring event instance, check if we should update the series
+  // If this is a recurring event instance, update the series with title, location, color, and conference link
   const events = loadCalendarEvents();
   const currentEvent = events.find(e => e.id == eventId);
-  if (currentEvent && currentEvent.recurringId && conferenceLink) {
+  if (currentEvent && currentEvent.recurringId) {
     const recurringTasks = loadRecurringTasks();
     const taskIndex = recurringTasks.findIndex(t => t.id == currentEvent.recurringId);
     if (taskIndex !== -1) {
-      // Update the base recurring task so future generations have the link
-      recurringTasks[taskIndex].conferenceLink = conferenceLink;
+      // Update the base recurring task so future generations have the changes
+      recurringTasks[taskIndex].title = title;
+      recurringTasks[taskIndex].location = location;
+      recurringTasks[taskIndex].color = color;
+      if (conferenceLink) {
+        recurringTasks[taskIndex].conferenceLink = conferenceLink;
+      }
       saveRecurringTasks(recurringTasks);
 
       // Update all existing instances in the series
+      const seriesUpdates = {
+        title,
+        location,
+        color
+      };
+      if (conferenceLink) {
+        seriesUpdates.conferenceLink = conferenceLink;
+      }
+
       if (window.LayerDB && window.LayerDB.isAuthenticated()) {
-        await window.LayerDB.updateRecurringEventSeries(currentEvent.recurringId, { conference_link: conferenceLink });
+        await window.LayerDB.updateRecurringEventSeries(currentEvent.recurringId, {
+          title,
+          location,
+          color,
+          ...(conferenceLink && { conference_link: conferenceLink })
+        });
       } else {
         const allEvents = loadCalendarEvents();
         const updatedEvents = allEvents.map(e => {
           if (e.recurringId == currentEvent.recurringId) {
-            return { ...e, conferenceLink };
+            return { ...e, ...seriesUpdates };
           }
           return e;
         });
@@ -4420,18 +4284,19 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
           
           <div class="form-group">
             <label>Color</label>
-            <select name="color" class="form-select">
-              <option value="blue">Blue</option>
-              <option value="green">Green</option>
-              <option value="purple">Purple</option>
-              <option value="orange">Orange</option>
-              <option value="red">Red</option>
-              <option value="teal">Teal</option>
-              <option value="yellow">Yellow</option>
-              <option value="pink">Pink</option>
-              <option value="cyan">Cyan</option>
-              <option value="gray">Gray</option>
-            </select>
+            <div class="color-picker-row">
+              <button type="button" class="color-dot selected" style="background: #3b82f6;" data-color="blue" onclick="selectEventColor(this, 'blue')"></button>
+              <button type="button" class="color-dot" style="background: #22c55e;" data-color="green" onclick="selectEventColor(this, 'green')"></button>
+              <button type="button" class="color-dot" style="background: #a855f7;" data-color="purple" onclick="selectEventColor(this, 'purple')"></button>
+              <button type="button" class="color-dot" style="background: #f97316;" data-color="orange" onclick="selectEventColor(this, 'orange')"></button>
+              <button type="button" class="color-dot" style="background: #ef4444;" data-color="red" onclick="selectEventColor(this, 'red')"></button>
+              <button type="button" class="color-dot" style="background: #14b8a6;" data-color="teal" onclick="selectEventColor(this, 'teal')"></button>
+              <button type="button" class="color-dot" style="background: #eab308;" data-color="yellow" onclick="selectEventColor(this, 'yellow')"></button>
+              <button type="button" class="color-dot" style="background: #ec4899;" data-color="pink" onclick="selectEventColor(this, 'pink')"></button>
+              <button type="button" class="color-dot" style="background: #06b6d4;" data-color="cyan" onclick="selectEventColor(this, 'cyan')"></button>
+              <button type="button" class="color-dot" style="background: #6b7280;" data-color="gray" onclick="selectEventColor(this, 'gray')"></button>
+            </div>
+            <input type="hidden" name="color" id="selectedColorInput" value="blue">
           </div>
           
           <!-- Repeat Section -->
@@ -4515,39 +4380,70 @@ function openCreateEventDropdown(x, y, date, startTime, endTime, previewElement 
   // Add dropdown to body
   document.body.insertAdjacentHTML('beforeend', content);
 
-  // Position the dropdown near the cursor
+  // Position the dropdown
   const dropdown = document.getElementById('eventDropdownForm');
+  dropdown.style.position = 'fixed';
+  dropdown.style.zIndex = '10000';
 
   // Store preview element reference for later cleanup
   window.currentEventPreviewElement = previewElement;
 
-  // Calculate position to avoid going off-screen
-  const rect = dropdown.getBoundingClientRect();
-  let posX = x + 10; // Small offset from cursor
-  let posY = y + 10; // Small offset from cursor
+  let anchorRect = null;
 
-  // Adjust if it goes off the right edge
-  if (posX + rect.width > window.innerWidth) {
-    posX = window.innerWidth - rect.width - 10;
+  // Use preview element as anchor if available
+  if (previewElement && typeof previewElement.getBoundingClientRect === 'function') {
+    anchorRect = previewElement.getBoundingClientRect();
   }
 
-  // Adjust if it goes off the bottom edge
-  if (posY + rect.height > window.innerHeight) {
-    posY = y - rect.height - 10; // Position above cursor if needed
+  // Default to cursor position if no anchor
+  if (!anchorRect) {
+    anchorRect = { left: x, top: y, right: x, bottom: y };
   }
 
-  // Ensure it doesn't go off the left edge
-  if (posX < 10) {
-    posX = 10;
-  }
+  // Function to position dropdown
+  const positionDropdown = () => {
+    const rect = dropdown.getBoundingClientRect();
+    const offset = 10;
+    const viewportPadding = 10;
 
-  // Ensure it doesn't go off the top edge
-  if (posY < 10) {
-    posY = 10;
-  }
+    // Prefer opening to the right of the anchor
+    let posX = anchorRect.right + offset;
+    let posY = anchorRect.top;
 
-  dropdown.style.left = `${posX}px`;
-  dropdown.style.top = `${posY}px`;
+    // If off-screen to the right, open to the left
+    if (posX + rect.width > window.innerWidth - viewportPadding) {
+      posX = anchorRect.left - rect.width - offset;
+    }
+
+    // Clamp horizontally
+    if (posX < viewportPadding) posX = viewportPadding;
+    if (posX + rect.width > window.innerWidth - viewportPadding) {
+      posX = window.innerWidth - rect.width - viewportPadding;
+    }
+
+    // Clamp vertically
+    if (posY + rect.height > window.innerHeight - viewportPadding) {
+      posY = window.innerHeight - rect.height - viewportPadding;
+    }
+    if (posY < viewportPadding) posY = viewportPadding;
+
+    dropdown.style.left = `${posX}px`;
+    dropdown.style.top = `${posY}px`;
+    dropdown.style.transform = '';
+  };
+
+  // Initial position
+  positionDropdown();
+
+  // Reposition when modal size changes (e.g., when sections expand/collapse)
+  const resizeObserver = new ResizeObserver(() => {
+    positionDropdown();
+  });
+
+  resizeObserver.observe(dropdown);
+
+  // Store observer for cleanup
+  dropdown._positionObserver = resizeObserver;
 
   // Add click listener to close dropdown when clicking outside
   setTimeout(() => {
@@ -4699,6 +4595,11 @@ function openDocIconPicker(event) {
 function closeEventDropdown() {
   const dropdown = document.getElementById('eventDropdownForm');
   if (dropdown) {
+    // Clean up position observer if it exists
+    if (dropdown._positionObserver) {
+      dropdown._positionObserver.disconnect();
+      dropdown._positionObserver = null;
+    }
     dropdown.remove();
   }
 
@@ -5085,6 +4986,7 @@ function renderScheduleView() {
     <div class="advanced-schedule-container">
       <!-- Left Sidebar -->
       <aside class="schedule-left-sidebar">
+        <h1 class="schedule-main-title">Calendar</h1>
         <!-- Calendar Selector -->
         <div class="calendar-selector">
           <div class="calendar-selector-header" onclick="toggleCalendarDropdown()">
@@ -5134,16 +5036,28 @@ function renderScheduleView() {
       <main class="schedule-main-content">
         <!-- Header Breadcrumb -->
         <div class="schedule-breadcrumb">
-          <span class="breadcrumb-item">Calendar</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="breadcrumb-chevron"><path d="M9 18l6-6-6-6"/></svg>
-          <span class="breadcrumb-item active">All Calendar</span>
+          <!-- Search Bar -->
+          <div class="dashboard-search-bar">
+            <input type="text" placeholder="Search Ctrl K" class="dashboard-search-input" id="scheduleSearchInput" oninput="handleDashboardSearch(this.value)" onfocus="handleDashboardSearch(this.value)" />
+            <button class="dashboard-ai-chats-btn" onclick="openAIChatDrawer(); return false;" title="AI Chats">
+              <span class="ai-drawer-model-dot"></span>
+              <span>AI Chats</span>
+            </button>
+            <div class="dashboard-search-dropdown" id="scheduleSearchDropdown" style="display: none;"></div>
+          </div>
+          <!-- Add Event Button -->
+          <button class="schedule-add-event-btn" onclick="openAdvancedEventModal()" title="Add Event">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>Add Event</span>
+          </button>
         </div>
-        
+
         <!-- Main Header -->
         <div class="schedule-main-header">
           <div class="schedule-header-left">
-            <h1 class="schedule-main-title">Calendar</h1>
-            
+            <h1 class="schedule-main-title-mobile">Calendar</h1>
             <!-- Today Button -->
             <button class="today-btn" onclick="goToScheduleToday()" title="Go to today (T)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5156,10 +5070,10 @@ function renderScheduleView() {
             
             <!-- Navigation Arrows -->
             <div class="schedule-nav-arrows">
-              <button class="nav-arrow-btn" onclick="navigateSchedulePrev()" title="Previous (P)">
+              <button class="nav-arrow-btn" onclick="navigateSchedulePrev()" title="Previous Month (P)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
-              <button class="nav-arrow-btn" onclick="navigateScheduleNext()" title="Next (N)">
+              <button class="nav-arrow-btn" onclick="navigateScheduleNext()" title="Next Month (N)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>
@@ -5191,7 +5105,6 @@ function renderScheduleView() {
               <button class="view-toggle-btn ${scheduleViewMode === 'week' ? 'active' : ''}" onclick="setScheduleViewMode('week')" title="Week view (W)">Week</button>
               <button class="view-toggle-btn ${scheduleViewMode === 'month' ? 'active' : ''}" onclick="setScheduleViewMode('month')" title="Month view (M)">Month</button>
               <button class="view-toggle-btn ${scheduleViewMode === 'year' ? 'active' : ''}" onclick="setScheduleViewMode('year')" title="Year view (Y)">Year</button>
-              <button class="view-toggle-btn ${scheduleViewMode === 'agenda' ? 'active' : ''}" onclick="setScheduleViewMode('agenda')" title="Agenda view (A)">Agenda</button>
             </div>
             <div class="schedule-header-actions">
               <button class="smart-schedule-btn" onclick="openSmartScheduleModal()" title="Find available times">
@@ -5203,10 +5116,6 @@ function renderScheduleView() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               </button>
             </div>
-            <button class="btn btn-primary schedule-add-btn" onclick="openAdvancedEventModal()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              Add Event
-            </button>
           </div>
         </div>
         
@@ -6717,17 +6626,7 @@ async function handleAdvancedEventSubmit(e) {
 // goToScheduleToday - defined at end of file with enhanced scrolling
 
 function navigateScheduleNext() {
-  if (scheduleViewMode === 'day') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 1);
-  } else if (scheduleViewMode === 'week') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 7);
-  } else if (scheduleViewMode === 'month') {
-    scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() + 1);
-  } else if (scheduleViewMode === 'year') {
-    scheduleCurrentDate.setFullYear(scheduleCurrentDate.getFullYear() + 1);
-  } else if (scheduleViewMode === 'agenda') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() + 30);
-  }
+  scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() + 1);
   renderCurrentView();
   // Reinitialize swipe functionality after navigation
   setTimeout(() => {
@@ -6736,17 +6635,7 @@ function navigateScheduleNext() {
 }
 
 function navigateSchedulePrev() {
-  if (scheduleViewMode === 'day') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 1);
-  } else if (scheduleViewMode === 'week') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 7);
-  } else if (scheduleViewMode === 'month') {
-    scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() - 1);
-  } else if (scheduleViewMode === 'year') {
-    scheduleCurrentDate.setFullYear(scheduleCurrentDate.getFullYear() - 1);
-  } else if (scheduleViewMode === 'agenda') {
-    scheduleCurrentDate.setDate(scheduleCurrentDate.getDate() - 30);
-  }
+  scheduleCurrentDate.setMonth(scheduleCurrentDate.getMonth() - 1);
   renderCurrentView();
   // Reinitialize swipe functionality after navigation
   setTimeout(() => {
@@ -7447,6 +7336,30 @@ function getDefaultRepeatEndDate(startDate) {
   return getLocalDateString(date);
 }
 
+function handleTimeChangeForRecurringEvent(selectElement, timeType, eventId) {
+  const task = loadCalendarEvents().find(e => e.id === eventId);
+  
+  if (task && task.repeatType && task.repeatType !== 'none') {
+    const choice = confirm(
+      'This event is part of a recurring series.\n\n' +
+      'Click OK to edit this event only.\n' +
+      'Click Cancel to edit all events in the series.'
+    );
+    
+    const editAllFlag = document.getElementById('editAllFlag');
+    if (editAllFlag) {
+      editAllFlag.value = choice ? 'false' : 'true';
+    }
+  }
+  
+  // Call the original function
+  if (timeType === 'start') {
+    setDefaultEndTime();
+  } else {
+    updateDurationHint();
+  }
+}
+
 
 
 /* ============================================
@@ -7473,9 +7386,11 @@ function renderActivityView(searchQuery = '') {
       <div class="projects-container">
         <div class="view-header" style="border: none; padding: 0; margin-bottom: 24px;">
           <h2 class="view-title">Projects</h2>
-          <button class="btn btn-primary" onclick="openCreateProjectModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Create project
+          <button class="dashboard-edit-toggle" onclick="openCreateProjectModal()" title="Create project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>Create project</span>
           </button>
         </div>
         <div class="empty-state">
@@ -7486,9 +7401,11 @@ function renderActivityView(searchQuery = '') {
           </div>
           <h3 class="empty-state-title">No projects yet</h3>
           <p class="empty-state-text">Get started by creating your first project</p>
-          <button class="btn btn-primary" onclick="openCreateProjectModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Create Project
+          <button class="dashboard-edit-toggle" onclick="openCreateProjectModal()" title="Create Project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>Create Project</span>
           </button>
         </div>
       </div>
@@ -7514,9 +7431,11 @@ function renderActivityView(searchQuery = '') {
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           </button>
-          <button class="btn btn-primary" onclick="openCreateProjectModal()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            New Project
+          <button class="dashboard-edit-toggle" onclick="openCreateProjectModal()" title="New Project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>New Project</span>
           </button>
         </div>
       </div>
@@ -15204,9 +15123,6 @@ async function createFolder() {
       // Show success message
       showToast('Folder created successfully!');
 
-      // Invalidate cache
-      invalidateVaultCache();
-
       // Render folders in the placeholder
       await renderFoldersInPlaceholder();
     } else {
@@ -15357,10 +15273,6 @@ async function createFolderFromModal(event) {
 
     closeModal();
     showToast('Folder created successfully!');
-    
-    // Invalidate cache
-    invalidateVaultCache();
-    
     await renderFoldersInPlaceholder();
   } catch (error) {
     console.error('Error creating folder from modal:', error);
@@ -15463,9 +15375,6 @@ async function deleteFolder(folderId) {
     if (success) {
       showToast('Folder deleted successfully!');
       
-      // Invalidate cache
-      invalidateVaultCache();
-
       // If we are currently inside the folder that was just deleted, go back to space view
       const folderExplorer = document.querySelector('.folder-explorer-container');
       if (folderExplorer && folderExplorer.dataset.folderId === folderId) {
@@ -31702,7 +31611,7 @@ async function refreshAIModelChip() {
 function autoGrowAIInput(el) {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  el.style.height = Math.min(el.scrollHeight, 220) + 'px';
 }
 
 function renderAILaunchRecents() {
@@ -31722,11 +31631,6 @@ function renderAILaunchRecents() {
 }
 
 function renderAIView() {
-  // If we are already in an active chat session, return the chat view
-  if (typeof isAiChatActive !== 'undefined' && isAiChatActive) {
-    return renderAIChatView();
-  }
-
   // Get user name if signed in
   const currentUser = window.LayerDB?.getCurrentUser?.();
   const userName = currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || 'there';
@@ -31742,12 +31646,19 @@ function renderAIView() {
             <span class="ai-launch-brand-dot"></span>
             Layer AI
           </div>
-          <button class="ai-launch-ghost-btn" onclick="toggleAIChatHistorySidebar()" title="View chat history">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
-              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span>History</span>
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="ai-launch-ghost-btn" onclick="toggleAIChatHistorySidebar()" title="View chat history">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>History</span>
+            </button>
+            <button class="ai-launch-ghost-btn" onclick="closeAIChatDrawer()" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="ai-launch-center">
@@ -31915,18 +31826,24 @@ function ensureAIChatDrawer() {
 }
 
 function openAIChatDrawer(initialMessage) {
+  if (aiChatDrawerOpen) {
+    closeAIChatDrawer();
+    return;
+  }
+
   const { drawer } = ensureAIChatDrawer();
   aiChatDrawerOpen = true;
   drawer.classList.add('open');
   document.body.classList.add('ai-chat-drawer-open');
 
-  isAiChatActive = true;
+  isAiChatActive = false;
   const mount = getAIChatMountElement();
   if (mount) {
-    mount.innerHTML = renderAIChatView();
-    const chatInput = document.getElementById('aiChatInput');
-    if (chatInput) chatInput.focus();
-    if (initialMessage) processAIMessage(initialMessage);
+    mount.innerHTML = renderAIView();
+    if (initialMessage) {
+      isAiChatActive = true;
+      processAIMessage(initialMessage);
+    }
   }
 
   if (!window._aiChatDrawerEscHandler) {
@@ -31941,6 +31858,7 @@ function openAIChatDrawer(initialMessage) {
 function closeAIChatDrawer() {
   const drawer = document.getElementById('aiChatDrawer');
   aiChatDrawerOpen = false;
+  isAiChatActive = false;
   if (drawer) drawer.classList.remove('open');
   document.body.classList.remove('ai-chat-drawer-open');
 }
@@ -32330,28 +32248,27 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
           </div>
         </div>
         ` : `
-        <div class="ai-thread-header">
-          <div class="ai-thread-nav">
-            <button class="ai-thread-back-btn" onclick="goBackToAILanding()" title="Back">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
+        <div class="ai-clean-chat-header">
+          <button class="ai-clean-back-btn" onclick="goBackToAILanding()" title="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <span class="ai-clean-chat-title">Layer Intelligence</span>
+          <div class="ai-clean-header-actions">
+            ${renderProjectContextButton()}
+            <button class="ai-clean-code-btn ${aiCodingModeOpen ? 'active' : ''}" onclick="toggleAICodingMode()" title="Coding mode">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M16 18l6-6-6-6"/>
+                <path d="M8 6l-6 6 6 6"/>
+                <path d="M14 4l-4 16"/>
               </svg>
             </button>
-            <div class="ai-thread-title">Zeyad's Thread</div>
-            <div class="ai-thread-tabs">
-              <button class="ai-thread-tab">Edit</button>
-              <button class="ai-thread-tab active">Chat</button>
-              <button class="ai-thread-tab">Memories</button>
-            </div>
-            <div class="ai-thread-actions">
-              <button class="ai-thread-action-btn">Assign</button>
-              <button class="ai-thread-action-btn ai-thread-action-primary">
-                Create Task
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </button>
-            </div>
+            <button class="ai-clean-history-btn" onclick="toggleAIChatHistorySidebar()" title="History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
           </div>
         </div>
         `}
@@ -32362,24 +32279,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             <div class="ai-clean-messages" id="aiChatMessages">
               ${renderAIChatMessages()}
               ${aiChatIsLoading ? `
-                <div class="ai-thread-msg ai-thread-msg-assistant">
-                  <div class="ai-thread-msg-header">
-                    <div class="ai-thread-avatar ai-thread-avatar-assistant">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                      </svg>
-                    </div>
-                    <div class="ai-thread-msg-info">
-                      <span class="ai-thread-msg-name">Layer Intelligence</span>
-                      <span class="ai-thread-msg-time">Thinking...</span>
-                    </div>
+                <div class="ai-clean-loading" role="status" aria-live="polite">
+                  <div class="ai-assistant-header">
+                    <span class="ai-assistant-name">Layer Intelligence</span>
                   </div>
-                  <div class="ai-thread-msg-content">
-                    <div class="ai-thinking-row">
-                      <div class="ai-thinking-spinner"></div>
-                      <span class="ai-thinking-text">${aiThinkingStatus}</span>
-                      <span class="ai-thinking-time">${aiThinkingElapsedText}</span>
-                    </div>
+                  <div class="ai-thinking-bubble">
+                    <span class="ai-thinking-text">${aiThinkingStatus}</span>
+                    <span class="ai-thinking-timer">${aiThinkingElapsedText}</span>
                   </div>
                 </div>
               ` : ''}
@@ -32389,88 +32295,32 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
             <div id="aiAttachments"></div>
 
             <!-- Input -->
-            <div class="ai-thread-input-area">
-              <div class="ai-thread-input-wrapper">
+            <div class="ai-clean-chat-input-area">
+              <div class="ai-clean-input-box">
+                <button class="ai-input-plus-btn" onclick="handleAIPlusClick()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
                 <textarea 
-                  class="ai-thread-input" 
+                  class="ai-clean-input" 
                   id="aiChatInput" 
-                  placeholder="Reply, press 'space' for AI, '/' for commands"
-                  oninput="autoGrowAIInput(this)"
+                  placeholder="Ask anything"
                   onkeydown="handleAIChatKeydown(event)"
                   rows="1"
                 ></textarea>
-                <div class="ai-thread-input-checkbox">
-                  <input type="checkbox" id="aiThreadOutside" />
-                  <label for="aiThreadOutside">Also send outside of thread</label>
-                </div>
-                <div class="ai-thread-input-toolbar">
-                  <div class="ai-thread-toolbar-left">
-                    <button class="ai-thread-tool-btn" onclick="handleAIPlusClick()" title="Attach">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <path d="M12 5v14M5 12h14"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Integration">
-                      <div class="ai-tool-icon-gradient"></div>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Link">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Mention">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <circle cx="12" cy="12" r="4"/>
-                        <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Emoji">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                        <line x1="9" y1="9" x2="9.01" y2="9"/>
-                        <line x1="15" y1="9" x2="15.01" y2="9"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Video">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <polygon points="23 7 16 12 23 17 23 7"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Check">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-tool-btn" title="Image">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <polyline points="21 15 16 10 5 21"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="ai-thread-toolbar-right">
-                    <div class="ai-thread-msg-count">1</div>
-                    <button class="ai-thread-tool-btn" title="Voice">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                      </svg>
-                    </button>
-                    <button class="ai-thread-send-btn" id="aiSendBtn" onclick="sendAIChatMessage()" title="Send message" ${aiChatIsLoading ? 'disabled' : ''}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                      </svg>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                        <path d="M6 9l6 6 6-6"/>
-                      </svg>
-                    </button>
-                  </div>
+                <div class="ai-input-actions">
+                  <button class="ai-input-model-selector">
+                    <span>${aiChatDrawerOpen ? "All Sources" : "Auto"}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </button>
+                  <button class="ai-clean-send-btn" id="aiSendBtn" onclick="sendAIChatMessage()" title="Send message" ${aiChatIsLoading ? 'disabled' : ''}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -32904,9 +32754,9 @@ function closeProjectSelectorModal() {
 function clearProjectContext() {
   window.ProjectContext?.clearProject();
   // Re-render the chat header
-  const header = document.querySelector('.ai-thread-subheader');
+  const header = document.querySelector('.ai-clean-chat-header');
   if (header) {
-    const actionsContainer = header.querySelector('.ai-thread-subheader-actions');
+    const actionsContainer = header.querySelector('.ai-clean-header-actions');
     if (actionsContainer) {
       // Re-render the button
       const tempDiv = document.createElement('div');
@@ -33049,11 +32899,11 @@ async function selectProjectFromSelector(projectId, projectName) {
   
   // Use ProjectContext to select the project
   await window.ProjectContext?.selectProject(projectId, projectName);
-
+  
   // Update the header button
-  const header = document.querySelector('.ai-thread-subheader');
+  const header = document.querySelector('.ai-clean-chat-header');
   if (header) {
-    const actionsContainer = header.querySelector('.ai-thread-subheader-actions');
+    const actionsContainer = header.querySelector('.ai-clean-header-actions');
     if (actionsContainer) {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = renderProjectContextButton();
@@ -33077,7 +32927,7 @@ async function selectProjectFromSelector(projectId, projectName) {
  * Update the project badge in the chat input area
  */
 function updateProjectBadgeInInput() {
-  const inputArea = document.querySelector('.ai-thread-input-area');
+  const inputArea = document.querySelector('.ai-clean-chat-input-area');
   if (!inputArea) return;
 
   const existingBadge = inputArea.querySelector('.ai-project-badge');
@@ -33120,103 +32970,47 @@ function renderAIChatMessages() {
     `;
   }
 
-  // Group messages by date for date separators
-  const messagesByDate = [];
-  let currentDate = null;
-  
-  aiChatMessages.forEach((msg, index) => {
-    const msgDate = new Date(msg.timestamp).toDateString();
-    if (msgDate !== currentDate) {
-      currentDate = msgDate;
-      messagesByDate.push({ type: 'date', date: new Date(msg.timestamp) });
-    }
-    messagesByDate.push({ type: 'message', msg, index });
-  });
-
-  return messagesByDate.map(item => {
-    if (item.type === 'date') {
-      const date = item.date;
-      const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-      return `
-        <div class="ai-chat-date-separator">
-          <span class="ai-chat-date-text">${formattedDate}</span>
-        </div>
-      `;
-    }
-
-    const { msg, index } = item;
-    const timestamp = new Date(msg.timestamp);
-    const timeStr = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
+  return aiChatMessages.map((msg, index) => {
     if (msg.role === 'user') {
       return `
-        <div class="ai-thread-msg ai-thread-msg-user">
-          <div class="ai-thread-msg-header">
-            <div class="ai-thread-avatar ai-thread-avatar-user">ZM</div>
-            <div class="ai-thread-msg-info">
-              <span class="ai-thread-msg-name">Zeyad Maher</span>
-              <span class="ai-thread-msg-time">${timeStr}</span>
-            </div>
-          </div>
-          <div class="ai-thread-msg-content">${escapeHtml(msg.content)}</div>
+        <div class="ai-clean-msg ai-clean-msg-user">
+          <div class="ai-clean-bubble-user">${escapeHtml(msg.content)}</div>
         </div>
       `;
     } else {
       const hasFencedCode = typeof msg.content === 'string' && msg.content.includes('```');
       return `
-        <div class="ai-thread-msg ai-thread-msg-assistant">
-          <div class="ai-thread-msg-header">
-            <div class="ai-thread-avatar ai-thread-avatar-assistant">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <div class="ai-thread-msg-info">
-              <span class="ai-thread-msg-name">Meeting Super Agent</span>
-              <span class="ai-thread-msg-time">${timeStr}</span>
-            </div>
-            <div class="ai-thread-replies">3 Replies • <span class="ai-thread-new">New</span></div>
+        <div class="ai-clean-msg ai-clean-msg-assistant">
+          <div class="ai-assistant-header">
+            <span class="ai-assistant-name">Layer Intelligence</span>
           </div>
-          <div class="ai-thread-msg-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
-          <div class="ai-thread-reactions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
-            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Thumbs up">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-              </svg>
-            </button>
-            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Thumbs down">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
-              </svg>
-            </button>
-            <button class="ai-thread-reaction-btn" onclick="importAIMessageCode(${index})" title="Reply">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
-            <button class="ai-thread-reaction-btn" onclick="copyAIMessage(${index})" title="Copy">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-            </button>
-            ${hasFencedCode ? `
-            <button class="ai-thread-reaction-btn" onclick="importAIMessageCode(${index})" title="Import code">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-            </button>
-            ` : ''}
-            <button class="ai-thread-reaction-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="16"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-            </button>
+          <div class="ai-clean-bubble-assistant">
+            <div class="ai-clean-content" id="ai-msg-content-${index}">${msg.isNew ? '' : formatAIResponse(msg.content)}</div>
+            <div class="ai-clean-actions" id="ai-msg-actions-${index}" style="${msg.isNew ? 'display: none;' : ''}">
+              <button class="ai-clean-action-btn" onclick="copyAIMessage(${index})" title="Copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                <span>Copy</span>
+              </button>
+              ${hasFencedCode ? `
+              <button class="ai-clean-action-btn" onclick="importAIMessageCode(${index})" title="Import code to editor">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Import</span>
+              </button>
+              ` : ''}
+              <button class="ai-clean-action-btn" onclick="regenerateAIMessage(${index})" title="Regenerate">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                </svg>
+                <span>Regenerate</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -33754,6 +33548,403 @@ function removeAttachment() {
 
 window.isAiChatActive = () => isAiChatActive;
 window.setAiChatActive = (val) => isAiChatActive = val;
+
+/* ============================================
+   Dashboard Smart Quick Search
+   ============================================ */
+
+let searchDropdownVisible = false;
+
+function handleDashboardSearch(query) {
+  const dropdown = document.getElementById('dashboardSearchDropdown') || document.getElementById('scheduleSearchDropdown');
+  if (!dropdown) return;
+
+  const searchTerm = query.trim().toLowerCase();
+
+  if (searchTerm.length === 0) {
+    // Show recent items when search is empty
+    const recentItems = getRecentItems();
+    renderRecentItemsDropdown(recentItems, dropdown);
+    dropdown.style.display = 'block';
+    searchDropdownVisible = true;
+    return;
+  }
+
+  const results = performSmartSearch(searchTerm);
+  renderSearchDropdown(results, dropdown);
+  dropdown.style.display = 'block';
+  searchDropdownVisible = true;
+}
+
+function performSmartSearch(searchTerm) {
+  const results = {
+    spaces: [],
+    projects: [],
+    folders: [],
+    documents: [],
+    sheets: [],
+    whiteboards: [],
+    events: []
+  };
+
+  // Search spaces
+  const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
+  results.spaces = spaces
+    .filter(space => space.name.toLowerCase().includes(searchTerm))
+    .map(space => ({
+      id: space.id,
+      name: space.name,
+      type: 'space',
+      icon: space.icon || 'folder',
+      color: space.colorTag
+    }))
+    .slice(0, 5);
+
+  // Search projects
+  const projects = typeof loadProjects === 'function' ? loadProjects() : [];
+  results.projects = projects
+    .filter(project => project.name.toLowerCase().includes(searchTerm))
+    .map(project => ({
+      id: project.id,
+      name: project.name,
+      type: 'project',
+      spaceId: project.spaceId
+    }))
+    .slice(0, 5);
+
+  // Search folders
+  const folders = typeof loadFolders === 'function' ? loadFolders() : [];
+  results.folders = folders
+    .filter(folder => folder.name.toLowerCase().includes(searchTerm))
+    .map(folder => ({
+      id: folder.id,
+      name: folder.name,
+      type: 'folder',
+      spaceId: folder.spaceId,
+      contentType: folder.contentType
+    }))
+    .slice(0, 5);
+
+  // Search documents
+  const docs = typeof loadDocs === 'function' ? loadDocs() : [];
+  results.documents = docs
+    .filter(doc => doc.title.toLowerCase().includes(searchTerm))
+    .map(doc => ({
+      id: doc.id,
+      name: doc.title,
+      type: 'document',
+      spaceId: doc.spaceId,
+      folderId: doc.folderId
+    }))
+    .slice(0, 5);
+
+  // Search sheets
+  const sheets = typeof loadSheets === 'function' ? loadSheets() : [];
+  results.sheets = sheets
+    .filter(sheet => sheet.title.toLowerCase().includes(searchTerm))
+    .map(sheet => ({
+      id: sheet.id,
+      name: sheet.title,
+      type: 'sheet',
+      spaceId: sheet.spaceId,
+      folderId: sheet.folderId
+    }))
+    .slice(0, 5);
+
+  // Search whiteboards
+  const whiteboards = typeof loadWhiteboards === 'function' ? loadWhiteboards() : [];
+  results.whiteboards = whiteboards
+    .filter(wb => wb.title.toLowerCase().includes(searchTerm))
+    .map(wb => ({
+      id: wb.id,
+      name: wb.title,
+      type: 'whiteboard',
+      spaceId: wb.spaceId,
+      folderId: wb.folderId
+    }))
+    .slice(0, 5);
+
+  // Search calendar events
+  const events = typeof calendarEvents !== 'undefined' ? calendarEvents : [];
+  results.events = events
+    .filter(event => event.title && event.title.toLowerCase().includes(searchTerm))
+    .map(event => ({
+      id: event.id,
+      name: event.title,
+      type: 'event',
+      date: event.date,
+      time: event.time
+    }))
+    .slice(0, 5);
+
+  return results;
+}
+
+function renderSearchDropdown(results, dropdown) {
+  if (!dropdown) return;
+
+  let html = '';
+
+  // Helper to render a section
+  const renderSection = (title, items) => {
+    if (items.length === 0) return '';
+    return `
+      <div class="search-section">
+        <div class="search-section-title">${title}</div>
+        ${items.map(item => `
+          <div class="search-result-item" onclick="handleSearchResultClick('${item.type}', '${item.id}', '${item.spaceId || ''}', '${item.folderId || ''}')">
+            <div class="search-result-icon">${getIconForType(item.type)}</div>
+            <div class="search-result-info">
+              <div class="search-result-name">${escapeHtml(item.name)}</div>
+              <div class="search-result-type">${item.type}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  };
+
+  html += renderSection('Spaces', results.spaces);
+  html += renderSection('Projects', results.projects);
+  html += renderSection('Folders', results.folders);
+  html += renderSection('Documents', results.documents);
+  html += renderSection('Sheets', results.sheets);
+  html += renderSection('Whiteboards', results.whiteboards);
+
+  if (html === '') {
+    html = '<div class="search-no-results">No results found</div>';
+  } else {
+    html += `<button class="clear-history-btn" onclick="clearSearchHistory()" title="Clear History">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+      </svg>
+    </button>`;
+  }
+
+  dropdown.innerHTML = html;
+}
+
+function handleSearchResultClick(type, id, spaceId, folderId) {
+  const dropdown = document.getElementById('dashboardSearchDropdown');
+  const input = document.getElementById('dashboardSearchInput');
+  if (dropdown) dropdown.style.display = 'none';
+  if (input) input.value = '';
+  searchDropdownVisible = false;
+
+  // Add to recent items
+  addToRecentItems(type, id, spaceId, folderId);
+
+  switch (type) {
+    case 'space':
+      if (typeof openSpaceView === 'function') {
+        openSpaceView(id);
+      }
+      break;
+    case 'project':
+      if (typeof openProjectView === 'function') {
+        openProjectView(id);
+      }
+      break;
+    case 'folder':
+      if (spaceId && typeof openSpaceView === 'function') {
+        openSpaceView(spaceId);
+        setTimeout(() => {
+          if (typeof openFolderExplorerInline === 'function') {
+            openFolderExplorerInline(id, 'documents');
+          }
+        }, 150);
+      }
+      break;
+    case 'document':
+      if (typeof openDocEditor === 'function') {
+        openDocEditor(id);
+      }
+      break;
+    case 'sheet':
+      if (typeof openExcelEditor === 'function') {
+        openExcelEditor(id);
+      }
+      break;
+    case 'whiteboard':
+      if (typeof openGripDiagram === 'function') {
+        openGripDiagram(id, true);
+      }
+      break;
+  }
+}
+
+function getRecentItems() {
+  try {
+    const recent = localStorage.getItem('layer_recent_items');
+    return recent ? JSON.parse(recent) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addToRecentItems(type, id, spaceId, folderId) {
+  try {
+    const recent = getRecentItems();
+    const newItem = { type, id, spaceId, folderId, timestamp: Date.now() };
+
+    // Remove if already exists
+    const filtered = recent.filter(item => !(item.type === type && item.id === id));
+
+    // Add to front
+    filtered.unshift(newItem);
+
+    // Keep only last 10
+    const trimmed = filtered.slice(0, 10);
+
+    localStorage.setItem('layer_recent_items', JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('Error saving recent items:', e);
+  }
+}
+
+function renderRecentItemsDropdown(recentItems, dropdown) {
+  if (!dropdown) return;
+
+  if (recentItems.length === 0) {
+    dropdown.innerHTML = '<div class="search-no-results">No recent items</div>';
+    return;
+  }
+
+  let html = '<div class="search-section">';
+
+  recentItems.forEach(item => {
+    const name = getItemName(item.type, item.id);
+    if (!name) return;
+
+    const icon = getIconForType(item.type);
+    html += `
+      <div class="search-result-item" onclick="handleSearchResultClick('${item.type}', '${item.id}', '${item.spaceId || ''}', '${item.folderId || ''}')">
+        <div class="search-result-icon">${icon}</div>
+        <div class="search-result-info">
+          <div class="search-result-name">${escapeHtml(name)}</div>
+          <div class="search-result-type">${item.type}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `<button class="clear-history-btn" onclick="clearSearchHistory()" title="Clear History">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 6h18"></path>
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+    </svg>
+  </button>`;
+  html += '</div>';
+  dropdown.innerHTML = html;
+}
+
+function getItemName(type, id) {
+  switch (type) {
+    case 'space':
+      const spaces = typeof loadSpaces === 'function' ? loadSpaces() : [];
+      const space = spaces.find(s => String(s.id) === String(id));
+      return space?.name;
+    case 'project':
+      const projects = typeof loadProjects === 'function' ? loadProjects() : [];
+      const project = projects.find(p => String(p.id) === String(id));
+      return project?.name;
+    case 'folder':
+      const folders = typeof loadFolders === 'function' ? loadFolders() : [];
+      const folder = folders.find(f => String(f.id) === String(id));
+      return folder?.name;
+    case 'document':
+      const docs = typeof loadDocs === 'function' ? loadDocs() : [];
+      const doc = docs.find(d => String(d.id) === String(id));
+      return doc?.title;
+    case 'sheet':
+      const sheets = typeof loadSheets === 'function' ? loadSheets() : [];
+      const sheet = sheets.find(s => String(s.id) === String(id));
+      return sheet?.title;
+    case 'whiteboard':
+      const whiteboards = typeof loadWhiteboards === 'function' ? loadWhiteboards() : [];
+      const wb = whiteboards.find(w => String(w.id) === String(id));
+      return wb?.title;
+    default:
+      return null;
+  }
+}
+
+function getIconForType(type) {
+  const icons = {
+    space: '<svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+    project: '<svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+    document: '<svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>',
+    whiteboard: '<svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l2 2 4-4"/></svg>'
+  };
+  return icons[type] || icons.document;
+}
+
+function clearSearchHistory() {
+  try {
+    localStorage.removeItem('layer_recent_items');
+    const dropdown1 = document.getElementById('dashboardSearchDropdown');
+    const dropdown2 = document.getElementById('scheduleSearchDropdown');
+    if (dropdown1) {
+      dropdown1.innerHTML = '<div class="search-no-results">No recent items</div>';
+    }
+    if (dropdown2) {
+      dropdown2.innerHTML = '<div class="search-no-results">No recent items</div>';
+    }
+    showToast('Search history cleared', 'success');
+  } catch (e) {
+    console.error('Error clearing search history:', e);
+  }
+}
+
+function closeSearchDropdown() {
+  const dropdown1 = document.getElementById('dashboardSearchDropdown');
+  const dropdown2 = document.getElementById('scheduleSearchDropdown');
+  if (dropdown1) dropdown1.style.display = 'none';
+  if (dropdown2) dropdown2.style.display = 'none';
+  searchDropdownVisible = false;
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const searchBars = document.querySelectorAll('.dashboard-search-bar');
+  let clickedInsideSearch = false;
+  searchBars.forEach(bar => {
+    if (bar.contains(e.target)) {
+      clickedInsideSearch = true;
+    }
+  });
+  if (!clickedInsideSearch) {
+    closeSearchDropdown();
+  }
+});
+
+// Keyboard shortcut Ctrl+K
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const searchInput = document.getElementById('dashboardSearchInput') || document.getElementById('scheduleSearchInput');
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }
+  if (e.key === 'Escape' && searchDropdownVisible) {
+    closeSearchDropdown();
+  }
+});
+
+window.handleDashboardSearch = handleDashboardSearch;
+window.handleSearchResultClick = handleSearchResultClick;
+window.closeSearchDropdown = closeSearchDropdown;
+window.getRecentItems = getRecentItems;
+window.addToRecentItems = addToRecentItems;
+window.getItemName = getItemName;
+window.getIconForType = getIconForType;
+window.clearSearchHistory = clearSearchHistory;
 
 // Expose functions globally
 window.renderAIView = renderAIView;
@@ -38365,294 +38556,63 @@ Return ONLY the JSON object, no additional text or markdown.`;
 // Enhanced Folder Grid View
 // ============================================
 
-// Cache for vault data to enable instant loading (persisted in localStorage)
-function getVaultCache() {
-  try {
-    const cached = localStorage.getItem('vaultDataCache');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      // Only use cache if less than 5 minutes old
-      if (Date.now() - parsed.timestamp < 300000) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.log('Cache read error:', e);
-  }
-  return null;
-}
-
-function setVaultCache(data) {
-  try {
-    data.timestamp = Date.now();
-    localStorage.setItem('vaultDataCache', JSON.stringify(data));
-  } catch (e) {
-    console.log('Cache write error:', e);
-  }
-}
-
-function clearVaultCache() {
-  try {
-    localStorage.removeItem('vaultDataCache');
-  } catch (e) {
-    console.log('Cache clear error:', e);
-  }
-}
-
 async function renderEnhancedFolderGrid(spaceId) {
   const placeholder = document.querySelector('.folders-placeholder');
   if (!placeholder) return '';
 
   try {
-    // Check localStorage cache first for instant loading
-    const cached = getVaultCache();
-    let folders, folderCounts, allFiles;
-
-    if (cached && cached.lastSpaceId === String(spaceId) && cached.folders) {
-      // Use cached data for instant render
-      folders = cached.folders;
-      folderCounts = cached.folderCounts;
-      allFiles = cached.allFiles;
-      console.log('Using cached vault data - instant load');
-    } else {
-      // Load fresh data
-      console.log('Loading fresh vault data');
-      folders = await loadFoldersCached();
-      const filteredFolders = (folders || []).filter(f => {
-        if (!spaceId) return false;
-        return String(f.space_id) === String(spaceId);
-      });
-
-      // Load folder items in parallel for speed
-      const folderPromises = filteredFolders.map(async (folder) => {
-        try {
-          const [items, docs, quizzes] = await Promise.all([
-            loadFolderItemsCached(folder.id),
-            loadDocsFromFolder(folder.id),
-            loadQuizzesFromFolder(folder.id)
-          ]);
-          return {
-            folderId: folder.id,
-            count: (items?.length || 0) + (docs?.length || 0) + (quizzes?.length || 0),
-            items: items || [],
-            docs: docs || []
-          };
-        } catch (e) {
-          return { folderId: folder.id, count: 0, items: [], docs: [] };
-        }
-      });
-
-      const folderData = await Promise.all(folderPromises);
-      
-      folderCounts = {};
-      folderData.forEach(fd => {
-        folderCounts[fd.folderId] = fd.count;
-      });
-
-      // Build all files list
-      allFiles = [];
-      folderData.forEach(fd => {
-        const folder = filteredFolders.find(f => f.id === fd.folderId);
-        if (!folder) return;
-
-        // Add folder items
-        if (fd.items && fd.items.length > 0) {
-          fd.items.forEach(item => {
-            allFiles.push({
-              id: item.id,
-              name: item.file_name || 'Untitled',
-              type: item.item_type === 'pdf' ? 'PDF' : item.item_type === 'sheet' ? 'XLSX' : 'DOCX',
-              size: formatFileSize(item.file_size || 0),
-              status: 'Active',
-              modified: item.created_at || new Date().toISOString(),
-              folderId: folder.id,
-              folderName: folder.name
-            });
-          });
-        }
-        
-        // Add docs
-        if (fd.docs && fd.docs.length > 0) {
-          fd.docs.forEach(doc => {
-            allFiles.push({
-              id: doc.id,
-              name: doc.title || 'Untitled Document',
-              type: 'DOCX',
-              size: formatFileSize(doc.content?.length || 0),
-              status: 'Active',
-              modified: doc.updated_at || doc.created_at || new Date().toISOString(),
-              folderId: folder.id,
-              folderName: folder.name
-            });
-          });
-        }
-      });
-
-      // Save to localStorage cache
-      setVaultCache({
-        folders: filteredFolders,
-        folderCounts,
-        allFiles,
-        lastSpaceId: String(spaceId)
-      });
-    }
-
+    const folders = await loadFoldersCached();
     const filteredFolders = (folders || []).filter(f => {
       if (!spaceId) return false;
       return String(f.space_id) === String(spaceId);
     });
 
     const hasFolders = filteredFolders && filteredFolders.length > 0;
-    const hasFiles = allFiles && allFiles.length > 0;
-    const displayFiles = hasFiles ? allFiles.slice(0, 4) : [];
 
     return `
-      <div class="vault-header">
-        <div class="vault-breadcrumbs">
-          <span class="breadcrumb-item">Vault</span>
-          <span class="breadcrumb-separator">></span>
-          <span class="breadcrumb-item active">Contract</span>
+      <div class="folders-placeholder-header">
+        <div class="folders-placeholder-header-left">
+          <h2 class="folders-placeholder-title">Folders</h2>
+          ${hasFolders ? `<div class="folder-total-badge">${filteredFolders.length}</div>` : ''}
         </div>
-        <div class="vault-header-actions">
-          <button class="vault-header-btn" title="Language">
-            <span>ENG</span>
-          </button>
-          <button class="vault-header-btn" onclick="toggleTheme()" title="Toggle Theme">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <circle cx="12" cy="12" r="5"/>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-            </svg>
-          </button>
-          <div class="vault-avatar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
+        ${hasFolders ? `
+          <div class="folders-placeholder-header-right">
+            <button class="row-action-btn-modern" onclick="openFolderDropdown(this)" title="Add Folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
           </div>
-        </div>
+        ` : ''}
       </div>
-
-      <div class="vault-section">
-        <div class="vault-section-header">
-          <h2 class="vault-section-title">Folders</h2>
-          <button class="vault-btn-primary" onclick="openFolderDropdown(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            New Folder
-          </button>
-        </div>
-        <div class="vault-folder-grid">
-          ${hasFolders ? filteredFolders.map(folder => {
-            const itemCount = folderCounts[folder.id] || 0;
-            const itemText = itemCount === 0 ? 'Empty' : `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
-            return `
-              <button class="vault-folder-card" onclick="openFolderExplorerInline('${folder.id}')" type="button">
-                <div class="vault-folder-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <div class="folders-placeholder-body">
+        ${hasFolders ? `
+          <div class="folders-tiles-grid">
+            ${filteredFolders.map(folder => {
+              return `
+                <button class="folder-tile" onclick="openFolderExplorerInline('${folder.id}')" type="button">
+                  <svg class="folder-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                   </svg>
-                </div>
-                <div class="vault-folder-info">
-                  <div class="vault-folder-name">${folder.name}</div>
-                  <div class="vault-folder-meta">${itemText}</div>
-                </div>
-              </button>
-            `;
-          }).join('') : `
-            <div class="vault-empty-folders">
-              <div class="vault-empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-              </div>
-              <div class="vault-empty-text">No folders yet</div>
-              <button class="vault-btn-secondary" onclick="openFolderDropdown(this)">Create Folder</button>
+                  <span class="folder-tile-name" title="${folder.name}">${folder.name}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="folders-empty-state">
+            <div class="folder-icon-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
             </div>
-          `}
-        </div>
-      </div>
-
-      <div class="vault-section">
-        <div class="vault-section-header">
-          <h2 class="vault-section-title">File</h2>
-          <div class="vault-section-actions">
-            <div class="vault-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-              </svg>
-              <input type="text" placeholder="Search files..." class="vault-search-input" oninput="filterVaultFiles(this.value)">
-            </div>
-            <button class="vault-btn-icon" title="Sort by Name" onclick="sortVaultFiles('name')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M3 6h18M6 12h12M9 18h6"/>
-              </svg>
-            </button>
-            <button class="vault-btn-icon vault-btn-icon-active" title="Grid View">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <rect x="3" y="3" width="7" height="7"/>
-                <rect x="14" y="3" width="7" height="7"/>
-                <rect x="3" y="14" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/>
-              </svg>
-            </button>
-            <button class="vault-btn-icon" title="List View" onclick="toggleVaultView('list')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <line x1="8" y1="6" x2="21" y2="6"/>
-                <line x1="8" y1="12" x2="21" y2="12"/>
-                <line x1="8" y1="18" x2="21" y2="18"/>
-                <line x1="3" y1="6" x2="3.01" y2="6"/>
-                <line x1="3" y1="12" x2="3.01" y2="12"/>
-                <line x1="3" y1="18" x2="3.01" y2="18"/>
-              </svg>
-            </button>
-            <button class="vault-btn-icon" title="Trash">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-            <button class="vault-btn-primary" title="Upload File" onclick="triggerVaultFileUpload()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              Upload File
+            <div class="folders-text">Add new Folder to your Space</div>
+            <button class="add-folder-btn" onclick="openFolderDropdown(this)">
+              Add Folder
             </button>
           </div>
-        </div>
-        <div class="vault-file-grid" id="vaultFileGrid">
-          ${hasFiles ? displayFiles.map(file => renderVaultFileCard(file)).join('') : `
-            <div class="vault-empty-files">
-              <div class="vault-empty-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-              </div>
-              <div class="vault-empty-text">No files uploaded yet</div>
-            </div>
-          `}
-        </div>
-        <div class="vault-pagination">
-          <span class="vault-pagination-info">Showing ${hasFiles ? `1-${Math.min(4, allFiles.length)}` : '0'} of ${allFiles.length} Policies</span>
-          <div class="vault-pagination-controls">
-            <button class="vault-pagination-btn vault-pagination-btn-disabled" disabled>Previous</button>
-            <button class="vault-pagination-btn vault-pagination-btn-active page-number">1</button>
-            ${allFiles.length > 4 ? `<button class="vault-pagination-btn page-number">2</button>` : ''}
-            ${allFiles.length > 8 ? `<button class="vault-pagination-btn page-number">3</button>` : ''}
-            ${allFiles.length > 12 ? `<span class="vault-pagination-ellipsis">...</span>` : ''}
-            ${allFiles.length > 4 ? `<button class="vault-pagination-btn page-number">${Math.ceil(allFiles.length / 4)}</button>` : ''}
-            <button class="vault-pagination-btn vault-pagination-btn-disabled" disabled>Next</button>
-          </div>
-          <select class="vault-pagination-select" onchange="changeVaultPerPage(this.value)">
-            <option value="4" ${true ? 'selected' : ''}>4 per page</option>
-            <option value="8">8 per page</option>
-            <option value="12">12 per page</option>
-          </select>
-        </div>
+        `}
       </div>
     `;
   } catch (error) {
@@ -38660,115 +38620,6 @@ async function renderEnhancedFolderGrid(spaceId) {
     return '';
   }
 }
-
-// Function to invalidate cache when folders/files change
-function invalidateVaultCache() {
-  clearVaultCache();
-}
-
-function renderVaultFileCard(file) {
-  const fileIcon = getFileTypeIcon(file.type);
-  const timeAgo = getTimeAgo(new Date(file.modified));
-  const statusClass = file.status === 'Active' ? 'active' : 'expiring';
-  
-  return `
-    <div class="vault-file-card" data-file-id="${file.id}">
-      <div class="vault-file-header">
-        <div class="vault-file-icon">
-          ${fileIcon}
-        </div>
-        <div class="vault-file-info">
-          <div class="vault-file-name" title="${file.name}">${file.name}</div>
-          <div class="vault-file-meta">${file.type} • ${file.size}</div>
-        </div>
-        <button class="vault-file-menu" onclick="showVaultFileMenu(event, '${file.id}')" title="More options">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <circle cx="12" cy="12" r="1"/>
-            <circle cx="19" cy="12" r="1"/>
-            <circle cx="5" cy="12" r="1"/>
-          </svg>
-        </button>
-      </div>
-      <div class="vault-file-footer">
-        <span class="vault-file-status ${statusClass}">${file.status}</span>
-        <span class="vault-file-time">Last Modified ${timeAgo}</span>
-      </div>
-    </div>
-  `;
-}
-
-function getFileTypeIcon(type) {
-  const icons = {
-    'PDF': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>`,
-    'DOCX': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>`,
-    'XLSX': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M10 9h8"/></svg>`,
-    'default': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
-  };
-  return icons[type] || icons['default'];
-}
-
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-}
-
-function getTimeAgo(date) {
-  const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-  const intervals = {
-    year: 31536000,
-    month: 2592000,
-    week: 604800,
-    day: 86400,
-    hour: 3600,
-    minute: 60
-  };
-  
-  for (const [unit, secondsInUnit] of Object.entries(intervals)) {
-    const interval = Math.floor(seconds / secondsInUnit);
-    if (interval >= 1) {
-      return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
-    }
-  }
-  return 'Just now';
-}
-
-function filterVaultFiles(query) {
-  const cards = document.querySelectorAll('.vault-file-card');
-  const lowerQuery = query.toLowerCase();
-  
-  cards.forEach(card => {
-    const name = card.querySelector('.vault-file-name').textContent.toLowerCase();
-    const visible = name.includes(lowerQuery);
-    card.style.display = visible ? 'flex' : 'none';
-  });
-}
-
-function sortVaultFiles(by) {
-  showToast(`Sorting by ${by}...`);
-}
-
-function toggleVaultView(view) {
-  showToast(`Switching to ${view} view...`);
-}
-
-function triggerVaultFileUpload() {
-  showToast('File upload dialog will open...');
-}
-
-function showVaultFileMenu(event, fileId) {
-  event.stopPropagation();
-  showToast(`File menu for ${fileId}`);
-}
-
-function changeVaultPerPage(perPage) {
-  showToast(`Showing ${perPage} files per page`);
-}
-
-// Attach to window for global access
-window.invalidateVaultCache = invalidateVaultCache;
 
 // ============================================
 // Folder Explorer View

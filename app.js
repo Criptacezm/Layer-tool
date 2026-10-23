@@ -2676,9 +2676,6 @@ async function renderCurrentView(preserveScroll = false) {
       if (typeof initQuickAccessWebsitesWidget === 'function') {
         initQuickAccessWebsitesWidget();
       }
-      if (typeof initDateTimeWidget === 'function') {
-        initDateTimeWidget();
-      }
       // Restore dashboard AI sidebar state
       if (typeof restoreDashboardAiSidebarState === 'function') {
         restoreDashboardAiSidebarState();
